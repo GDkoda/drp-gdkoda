@@ -160,6 +160,30 @@ export type Database = {
         }
         Relationships: []
       }
+      puzzle_sessions: {
+        Row: {
+          answer: string
+          created_at: string
+          id: string
+          solved: boolean | null
+          user_id: string
+        }
+        Insert: {
+          answer: string
+          created_at?: string
+          id?: string
+          solved?: boolean | null
+          user_id: string
+        }
+        Update: {
+          answer?: string
+          created_at?: string
+          id?: string
+          solved?: boolean | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       shop_items: {
         Row: {
           active: boolean
@@ -249,12 +273,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      _reward: {
+        Args: { _coins: number; _kind: string; _note: string }
+        Returns: undefined
+      }
+      _spend_vigor: { Args: { _n: number }; Returns: undefined }
       buy_item: { Args: { _item: string }; Returns: undefined }
       daily_checkin: { Args: never; Returns: number }
       equip_item: {
         Args: { _char: string; _chest: string }
         Returns: undefined
       }
+      get_vigor: { Args: never; Returns: number }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -270,6 +300,10 @@ export type Database = {
         Args: { _item: string; _user: string }
         Returns: undefined
       }
+      play_combat: { Args: never; Returns: Json }
+      play_dice: { Args: { _bet: number }; Returns: Json }
+      solve_puzzle: { Args: { _answer: string; _id: string }; Returns: Json }
+      start_puzzle: { Args: never; Returns: Json }
       transfer_coins: {
         Args: { _amount: number; _to: string }
         Returns: undefined
