@@ -14,16 +14,273 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      characters: {
+        Row: {
+          a: number
+          advantages: Json
+          concept: string
+          created_at: string
+          disadvantages: Json
+          f: number
+          h: number
+          id: string
+          name: string
+          notes: string
+          owner_id: string
+          pdf: number
+          pm_current: number
+          pp_total: number
+          pv_current: number
+          r: number
+          skills: Json
+          updated_at: string
+          xp: number
+        }
+        Insert: {
+          a?: number
+          advantages?: Json
+          concept?: string
+          created_at?: string
+          disadvantages?: Json
+          f?: number
+          h?: number
+          id?: string
+          name?: string
+          notes?: string
+          owner_id: string
+          pdf?: number
+          pm_current?: number
+          pp_total?: number
+          pv_current?: number
+          r?: number
+          skills?: Json
+          updated_at?: string
+          xp?: number
+        }
+        Update: {
+          a?: number
+          advantages?: Json
+          concept?: string
+          created_at?: string
+          disadvantages?: Json
+          f?: number
+          h?: number
+          id?: string
+          name?: string
+          notes?: string
+          owner_id?: string
+          pdf?: number
+          pm_current?: number
+          pp_total?: number
+          pv_current?: number
+          r?: number
+          skills?: Json
+          updated_at?: string
+          xp?: number
+        }
+        Relationships: []
+      }
+      chest_items: {
+        Row: {
+          bonus: Json
+          category: string
+          created_at: string
+          description: string
+          equipped_character_id: string | null
+          id: string
+          name: string
+          owner_id: string
+        }
+        Insert: {
+          bonus?: Json
+          category: string
+          created_at?: string
+          description?: string
+          equipped_character_id?: string | null
+          id?: string
+          name: string
+          owner_id: string
+        }
+        Update: {
+          bonus?: Json
+          category?: string
+          created_at?: string
+          description?: string
+          equipped_character_id?: string | null
+          id?: string
+          name?: string
+          owner_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chest_items_equipped_character_id_fkey"
+            columns: ["equipped_character_id"]
+            isOneToOne: false
+            referencedRelation: "characters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          active_character_id: string | null
+          checkin_streak: number
+          coins: number
+          created_at: string
+          display_name: string
+          id: string
+          last_checkin: string | null
+          username: string
+          vigor: number
+          vigor_date: string
+        }
+        Insert: {
+          active_character_id?: string | null
+          checkin_streak?: number
+          coins?: number
+          created_at?: string
+          display_name: string
+          id: string
+          last_checkin?: string | null
+          username: string
+          vigor?: number
+          vigor_date?: string
+        }
+        Update: {
+          active_character_id?: string | null
+          checkin_streak?: number
+          coins?: number
+          created_at?: string
+          display_name?: string
+          id?: string
+          last_checkin?: string | null
+          username?: string
+          vigor?: number
+          vigor_date?: string
+        }
+        Relationships: []
+      }
+      shop_items: {
+        Row: {
+          active: boolean
+          bonus: Json
+          category: string
+          created_at: string
+          description: string
+          id: string
+          name: string
+          price: number
+        }
+        Insert: {
+          active?: boolean
+          bonus?: Json
+          category?: string
+          created_at?: string
+          description?: string
+          id?: string
+          name: string
+          price?: number
+        }
+        Update: {
+          active?: boolean
+          bonus?: Json
+          category?: string
+          created_at?: string
+          description?: string
+          id?: string
+          name?: string
+          price?: number
+        }
+        Relationships: []
+      }
+      transactions: {
+        Row: {
+          coins: number
+          created_at: string
+          from_user: string | null
+          id: string
+          item_name: string | null
+          kind: string
+          note: string | null
+          to_user: string | null
+        }
+        Insert: {
+          coins?: number
+          created_at?: string
+          from_user?: string | null
+          id?: string
+          item_name?: string | null
+          kind: string
+          note?: string | null
+          to_user?: string | null
+        }
+        Update: {
+          coins?: number
+          created_at?: string
+          from_user?: string | null
+          id?: string
+          item_name?: string | null
+          kind?: string
+          note?: string | null
+          to_user?: string | null
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      buy_item: { Args: { _item: string }; Returns: undefined }
+      daily_checkin: { Args: never; Returns: number }
+      equip_item: {
+        Args: { _char: string; _chest: string }
+        Returns: undefined
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      master_adjust_coins: {
+        Args: { _delta: number; _note: string; _user: string }
+        Returns: undefined
+      }
+      master_give_item: {
+        Args: { _item: string; _user: string }
+        Returns: undefined
+      }
+      transfer_coins: {
+        Args: { _amount: number; _to: string }
+        Returns: undefined
+      }
+      transfer_item: {
+        Args: { _chest: string; _to: string }
+        Returns: undefined
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "master" | "player"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +407,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["master", "player"],
+    },
   },
 } as const
