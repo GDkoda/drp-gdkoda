@@ -10,33 +10,106 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AuthenticatedBauRouteImport } from './routes/_authenticated/bau'
+import { Route as AuthenticatedLojaRouteImport } from './routes/_authenticated/loja'
+import { Route as AuthenticatedTavernaRouteImport } from './routes/_authenticated/taverna'
+import { Route as AuthenticatedFichasIndexRouteImport } from './routes/_authenticated/fichas.index'
+import { Route as AuthenticatedFichasIdRouteImport } from './routes/_authenticated/fichas.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedBauRoute = AuthenticatedBauRouteImport.update({
+  id: '/bau',
+  path: '/bau',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedLojaRoute = AuthenticatedLojaRouteImport.update({
+  id: '/loja',
+  path: '/loja',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedTavernaRoute = AuthenticatedTavernaRouteImport.update({
+  id: '/taverna',
+  path: '/taverna',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedFichasIndexRoute =
+  AuthenticatedFichasIndexRouteImport.update({
+    id: '/fichas/',
+    path: '/fichas/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedFichasIdRoute = AuthenticatedFichasIdRouteImport.update({
+  id: '/fichas/$id',
+  path: '/fichas/$id',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/bau': typeof AuthenticatedBauRoute
+  '/loja': typeof AuthenticatedLojaRoute
+  '/taverna': typeof AuthenticatedTavernaRoute
+  '/fichas/$id': typeof AuthenticatedFichasIdRoute
+  '/fichas/': typeof AuthenticatedFichasIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/bau': typeof AuthenticatedBauRoute
+  '/loja': typeof AuthenticatedLojaRoute
+  '/taverna': typeof AuthenticatedTavernaRoute
+  '/fichas/$id': typeof AuthenticatedFichasIdRoute
+  '/fichas': typeof AuthenticatedFichasIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/auth': typeof AuthRoute
+  '/_authenticated/bau': typeof AuthenticatedBauRoute
+  '/_authenticated/loja': typeof AuthenticatedLojaRoute
+  '/_authenticated/taverna': typeof AuthenticatedTavernaRoute
+  '/_authenticated/fichas/$id': typeof AuthenticatedFichasIdRoute
+  '/_authenticated/fichas/': typeof AuthenticatedFichasIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    '/' | '/auth' | '/bau' | '/loja' | '/taverna' | '/fichas/$id' | '/fichas/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/auth' | '/bau' | '/loja' | '/taverna' | '/fichas/$id' | '/fichas'
+  id:
+    | '__root__'
+    | '/'
+    | '/_authenticated'
+    | '/auth'
+    | '/_authenticated/bau'
+    | '/_authenticated/loja'
+    | '/_authenticated/taverna'
+    | '/_authenticated/fichas/$id'
+    | '/_authenticated/fichas/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  AuthRoute: typeof AuthRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +121,81 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/bau': {
+      id: '/_authenticated/bau'
+      path: '/bau'
+      fullPath: '/bau'
+      preLoaderRoute: typeof AuthenticatedBauRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/loja': {
+      id: '/_authenticated/loja'
+      path: '/loja'
+      fullPath: '/loja'
+      preLoaderRoute: typeof AuthenticatedLojaRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/taverna': {
+      id: '/_authenticated/taverna'
+      path: '/taverna'
+      fullPath: '/taverna'
+      preLoaderRoute: typeof AuthenticatedTavernaRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/fichas/': {
+      id: '/_authenticated/fichas/'
+      path: '/fichas'
+      fullPath: '/fichas/'
+      preLoaderRoute: typeof AuthenticatedFichasIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/fichas/$id': {
+      id: '/_authenticated/fichas/$id'
+      path: '/fichas/$id'
+      fullPath: '/fichas/$id'
+      preLoaderRoute: typeof AuthenticatedFichasIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
+interface AuthenticatedRouteRouteChildren {
+  AuthenticatedBauRoute: typeof AuthenticatedBauRoute
+  AuthenticatedLojaRoute: typeof AuthenticatedLojaRoute
+  AuthenticatedTavernaRoute: typeof AuthenticatedTavernaRoute
+  AuthenticatedFichasIdRoute: typeof AuthenticatedFichasIdRoute
+  AuthenticatedFichasIndexRoute: typeof AuthenticatedFichasIndexRoute
+}
+
+const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedBauRoute: AuthenticatedBauRoute,
+  AuthenticatedLojaRoute: AuthenticatedLojaRoute,
+  AuthenticatedTavernaRoute: AuthenticatedTavernaRoute,
+  AuthenticatedFichasIdRoute: AuthenticatedFichasIdRoute,
+  AuthenticatedFichasIndexRoute: AuthenticatedFichasIndexRoute,
+}
+
+const AuthenticatedRouteRouteWithChildren =
+  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  AuthRoute: AuthRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

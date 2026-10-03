@@ -278,6 +278,7 @@ export type Database = {
         Args: { _chest: string; _to: string }
         Returns: undefined
       }
+      use_consumable: { Args: { _chest: string }; Returns: undefined }
     }
     Enums: {
       app_role: "master" | "player"
