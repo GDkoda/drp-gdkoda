@@ -30,14 +30,7 @@ function Bau() {
   });
 
   async function usePotion(item: { id: string; bonus: unknown; name: string }) {
-    const charId = me?.profile?.active_character_id;
-    if (!charId) return toast.error("Defina uma ficha ativa primeiro");
-    const { data: c } = await supabase.from("characters").select("r, pv_current, pm_current").eq("id", charId).single();
-    if (!c) return;
-    const b = item.bonus as { pv?: number; pm?: number };
-    const max = c.r * 5;
-    await supabase.from("characters").update({ pv_current: Math.min(max, c.pv_current + (b.pv ?? 0)), pm_current: Math.min(max, c.pm_current + (b.pm ?? 0)) }).eq("id", charId);
-    // consumable removal uses equip→transfer-less path: mark used by equipping then deleting is master-only, so call RPC-free delete via transfer to none isn't allowed; use dedicated logic
+    if (!me?.profile?.active_character_id) return toast.error("Defina uma ficha ativa primeiro");
     await rpc("use_consumable", { _chest: item.id }, `${item.name} usada`);
     refresh();
   }
