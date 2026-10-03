@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedBauRouteImport } from './routes/_authenticated/bau'
 import { Route as AuthenticatedLojaRouteImport } from './routes/_authenticated/loja'
+import { Route as AuthenticatedMestreRouteImport } from './routes/_authenticated/mestre'
 import { Route as AuthenticatedTavernaRouteImport } from './routes/_authenticated/taverna'
 import { Route as AuthenticatedFichasIndexRouteImport } from './routes/_authenticated/fichas.index'
 import { Route as AuthenticatedFichasIdRouteImport } from './routes/_authenticated/fichas.$id'
@@ -42,6 +43,11 @@ const AuthenticatedLojaRoute = AuthenticatedLojaRouteImport.update({
   path: '/loja',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedMestreRoute = AuthenticatedMestreRouteImport.update({
+  id: '/mestre',
+  path: '/mestre',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedTavernaRoute = AuthenticatedTavernaRouteImport.update({
   id: '/taverna',
   path: '/taverna',
@@ -64,6 +70,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/bau': typeof AuthenticatedBauRoute
   '/loja': typeof AuthenticatedLojaRoute
+  '/mestre': typeof AuthenticatedMestreRoute
   '/taverna': typeof AuthenticatedTavernaRoute
   '/fichas/$id': typeof AuthenticatedFichasIdRoute
   '/fichas/': typeof AuthenticatedFichasIndexRoute
@@ -73,6 +80,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/bau': typeof AuthenticatedBauRoute
   '/loja': typeof AuthenticatedLojaRoute
+  '/mestre': typeof AuthenticatedMestreRoute
   '/taverna': typeof AuthenticatedTavernaRoute
   '/fichas/$id': typeof AuthenticatedFichasIdRoute
   '/fichas': typeof AuthenticatedFichasIndexRoute
@@ -84,6 +92,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/_authenticated/bau': typeof AuthenticatedBauRoute
   '/_authenticated/loja': typeof AuthenticatedLojaRoute
+  '/_authenticated/mestre': typeof AuthenticatedMestreRoute
   '/_authenticated/taverna': typeof AuthenticatedTavernaRoute
   '/_authenticated/fichas/$id': typeof AuthenticatedFichasIdRoute
   '/_authenticated/fichas/': typeof AuthenticatedFichasIndexRoute
@@ -91,9 +100,24 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/auth' | '/bau' | '/loja' | '/taverna' | '/fichas/$id' | '/fichas/'
+    | '/'
+    | '/auth'
+    | '/bau'
+    | '/loja'
+    | '/mestre'
+    | '/taverna'
+    | '/fichas/$id'
+    | '/fichas/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/bau' | '/loja' | '/taverna' | '/fichas/$id' | '/fichas'
+  to:
+    | '/'
+    | '/auth'
+    | '/bau'
+    | '/loja'
+    | '/mestre'
+    | '/taverna'
+    | '/fichas/$id'
+    | '/fichas'
   id:
     | '__root__'
     | '/'
@@ -101,6 +125,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/_authenticated/bau'
     | '/_authenticated/loja'
+    | '/_authenticated/mestre'
     | '/_authenticated/taverna'
     | '/_authenticated/fichas/$id'
     | '/_authenticated/fichas/'
@@ -149,6 +174,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedLojaRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/mestre': {
+      id: '/_authenticated/mestre'
+      path: '/mestre'
+      fullPath: '/mestre'
+      preLoaderRoute: typeof AuthenticatedMestreRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/taverna': {
       id: '/_authenticated/taverna'
       path: '/taverna'
@@ -176,6 +208,7 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedBauRoute: typeof AuthenticatedBauRoute
   AuthenticatedLojaRoute: typeof AuthenticatedLojaRoute
+  AuthenticatedMestreRoute: typeof AuthenticatedMestreRoute
   AuthenticatedTavernaRoute: typeof AuthenticatedTavernaRoute
   AuthenticatedFichasIdRoute: typeof AuthenticatedFichasIdRoute
   AuthenticatedFichasIndexRoute: typeof AuthenticatedFichasIndexRoute
@@ -184,6 +217,7 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedBauRoute: AuthenticatedBauRoute,
   AuthenticatedLojaRoute: AuthenticatedLojaRoute,
+  AuthenticatedMestreRoute: AuthenticatedMestreRoute,
   AuthenticatedTavernaRoute: AuthenticatedTavernaRoute,
   AuthenticatedFichasIdRoute: AuthenticatedFichasIdRoute,
   AuthenticatedFichasIndexRoute: AuthenticatedFichasIndexRoute,
