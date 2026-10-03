@@ -8,3 +8,6 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+
+- All economy changes (coins, chest items, check-in, transfers) go through SECURITY DEFINER Postgres RPCs; clients never write coins directly — prevents players editing balances.
+- Usernames without "@" log in as `<username>@mesa.local` — lets the Master and players use plain usernames.
