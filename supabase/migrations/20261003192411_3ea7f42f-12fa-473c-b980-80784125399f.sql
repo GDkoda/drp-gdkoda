@@ -1,0 +1,3 @@
+revoke execute on function public.buy_item(uuid), public.transfer_coins(uuid,int), public.transfer_item(uuid,uuid), public.equip_item(uuid,uuid), public.daily_checkin(), public.master_adjust_coins(uuid,int,text), public.master_give_item(uuid,uuid), public.has_role(uuid,app_role), public.handle_new_user() from public, anon;
+revoke execute on function public.handle_new_user() from authenticated;
+grant execute on function public.buy_item(uuid), public.transfer_coins(uuid,int), public.transfer_item(uuid,uuid), public.equip_item(uuid,uuid), public.daily_checkin(), public.master_adjust_coins(uuid,int,text), public.master_give_item(uuid,uuid), public.has_role(uuid,app_role) to authenticated;
