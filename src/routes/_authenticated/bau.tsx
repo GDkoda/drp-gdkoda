@@ -30,7 +30,7 @@ function Bau() {
   });
 
   async function usePotion(item: { id: string; bonus: unknown; name: string }) {
-    if (!me?.profile?.active_character_id) return toast.error("Defina uma ficha ativa primeiro");
+    if (!me?.profile?.active_character_id) { toast.error("Defina uma ficha ativa primeiro"); return; }
     await rpc("use_consumable", { _chest: item.id }, `${item.name} usada`);
     refresh();
   }

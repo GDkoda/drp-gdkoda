@@ -25,7 +25,7 @@ function Fichas() {
 
   async function create() {
     const { data, error } = await supabase.from("characters").insert({ owner_id: me!.id }).select("id").single();
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     nav({ to: "/fichas/$id", params: { id: data.id } });
   }
 

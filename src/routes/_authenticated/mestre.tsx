@@ -99,11 +99,11 @@ function ShopAdmin() {
   const [form, setForm] = useState(empty);
 
   // bonus input format: "f:1, a:2, pv:5"
-  const parseBonus = (s: string) => Object.fromEntries(s.split(",").map((x) => x.split(":").map((y) => y.trim())).filter(([k, v]) => k && v).map(([k, v]) => [k.toLowerCase(), Number(v)]));
+  const parseBonus = (s: string) => Object.fromEntries(s.split(",").map((x) => x.split(":").map((y) => y.trim())).filter(([k, v]) => k && v).map(([k, v]) => [String(k).toLowerCase(), Number(v)]));
 
   async function add() {
     const { error } = await supabase.from("shop_items").insert({ name: form.name, description: form.description, category: form.category, price: form.price, bonus: parseBonus(form.bonus) });
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     setForm(empty); refresh();
   }
 
