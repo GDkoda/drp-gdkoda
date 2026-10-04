@@ -121,6 +121,81 @@ export type Database = {
           },
         ]
       }
+      game_settings: {
+        Row: {
+          checkin_per_day: number
+          combat_loss: number
+          combat_win_base: number
+          combat_win_per_level: number
+          dice_max_bet: number
+          id: number
+          puzzle_reward: number
+          updated_at: string
+          vigor_daily: number
+        }
+        Insert: {
+          checkin_per_day?: number
+          combat_loss?: number
+          combat_win_base?: number
+          combat_win_per_level?: number
+          dice_max_bet?: number
+          id?: number
+          puzzle_reward?: number
+          updated_at?: string
+          vigor_daily?: number
+        }
+        Update: {
+          checkin_per_day?: number
+          combat_loss?: number
+          combat_win_base?: number
+          combat_win_per_level?: number
+          dice_max_bet?: number
+          id?: number
+          puzzle_reward?: number
+          updated_at?: string
+          vigor_daily?: number
+        }
+        Relationships: []
+      }
+      monsters: {
+        Row: {
+          a: number
+          active: boolean
+          created_at: string
+          f: number
+          h: number
+          id: string
+          name: string
+          pdf: number
+          pv: number
+          reward: number | null
+        }
+        Insert: {
+          a?: number
+          active?: boolean
+          created_at?: string
+          f?: number
+          h?: number
+          id?: string
+          name: string
+          pdf?: number
+          pv?: number
+          reward?: number | null
+        }
+        Update: {
+          a?: number
+          active?: boolean
+          created_at?: string
+          f?: number
+          h?: number
+          id?: string
+          name?: string
+          pdf?: number
+          pv?: number
+          reward?: number | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           active_character_id: string | null
@@ -165,6 +240,7 @@ export type Database = {
           answer: string
           created_at: string
           id: string
+          reward: number | null
           solved: boolean | null
           user_id: string
         }
@@ -172,6 +248,7 @@ export type Database = {
           answer: string
           created_at?: string
           id?: string
+          reward?: number | null
           solved?: boolean | null
           user_id: string
         }
@@ -179,8 +256,36 @@ export type Database = {
           answer?: string
           created_at?: string
           id?: string
+          reward?: number | null
           solved?: boolean | null
           user_id?: string
+        }
+        Relationships: []
+      }
+      puzzles: {
+        Row: {
+          active: boolean
+          answer: string
+          created_at: string
+          id: string
+          question: string
+          reward: number | null
+        }
+        Insert: {
+          active?: boolean
+          answer: string
+          created_at?: string
+          id?: string
+          question: string
+          reward?: number | null
+        }
+        Update: {
+          active?: boolean
+          answer?: string
+          created_at?: string
+          id?: string
+          question?: string
+          reward?: number | null
         }
         Relationships: []
       }
@@ -296,10 +401,15 @@ export type Database = {
         Args: { _delta: number; _note: string; _user: string }
         Returns: undefined
       }
+      master_adjust_vigor: {
+        Args: { _delta: number; _user: string }
+        Returns: undefined
+      }
       master_give_item: {
         Args: { _item: string; _user: string }
         Returns: undefined
       }
+      master_purge_user: { Args: { _user: string }; Returns: undefined }
       play_combat: { Args: never; Returns: Json }
       play_dice: { Args: { _bet: number }; Returns: Json }
       solve_puzzle: { Args: { _answer: string; _id: string }; Returns: Json }
