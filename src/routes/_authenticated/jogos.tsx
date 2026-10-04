@@ -90,8 +90,8 @@ function Dice({ onDone }: { onDone: () => void }) {
       </div>
       {res && (
         <div className="grid grid-cols-2 gap-3 text-center">
-          <div><div className="text-xs text-muted-foreground">Você</div><div className="text-5xl">{res.player.map((d) => face[d]).join(" ")}</div><div>{res.player[0] + res.player[1]}</div></div>
-          <div><div className="text-xs text-muted-foreground">Taverneiro</div><div className="text-5xl">{res.house.map((d) => face[d]).join(" ")}</div><div>{res.house[0] + res.house[1]}</div></div>
+          <div><div className="text-xs text-muted-foreground">Você</div><div className="text-5xl">{res.player.map((d) => face[d]).join(" ")}</div><div>{res.player.reduce((a, b) => a + b, 0)}</div></div>
+          <div><div className="text-xs text-muted-foreground">Taverneiro</div><div className="text-5xl">{res.house.map((d) => face[d]).join(" ")}</div><div>{res.house.reduce((a, b) => a + b, 0)}</div></div>
           <p className={`col-span-2 font-display ${res.delta > 0 ? "text-gold" : res.delta < 0 ? "text-blood" : ""}`}>
             {res.result.toUpperCase()} {res.delta ? `(${res.delta > 0 ? "+" : ""}${res.delta} moedas)` : ""}
           </p>
