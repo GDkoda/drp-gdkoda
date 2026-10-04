@@ -79,7 +79,7 @@ function Taverna() {
           {!txs?.length && <li className="py-2 text-muted-foreground">Nada ainda.</li>}
         </ul>
       </section>
-      <p className="text-center text-sm text-muted-foreground">Missões diárias e mini-jogos chegam na próxima etapa.</p>
+      <p className="text-center text-sm text-muted-foreground">Desafie a sorte na aba Jogos!</p>
     </div>
   );
 }

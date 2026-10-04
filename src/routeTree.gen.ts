@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedBauRouteImport } from './routes/_authenticated/bau'
+import { Route as AuthenticatedJogosRouteImport } from './routes/_authenticated/jogos'
 import { Route as AuthenticatedLojaRouteImport } from './routes/_authenticated/loja'
 import { Route as AuthenticatedMestreRouteImport } from './routes/_authenticated/mestre'
 import { Route as AuthenticatedTavernaRouteImport } from './routes/_authenticated/taverna'
@@ -36,6 +37,11 @@ const AuthRoute = AuthRouteImport.update({
 const AuthenticatedBauRoute = AuthenticatedBauRouteImport.update({
   id: '/bau',
   path: '/bau',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedJogosRoute = AuthenticatedJogosRouteImport.update({
+  id: '/jogos',
+  path: '/jogos',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedLojaRoute = AuthenticatedLojaRouteImport.update({
@@ -69,6 +75,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/bau': typeof AuthenticatedBauRoute
+  '/jogos': typeof AuthenticatedJogosRoute
   '/loja': typeof AuthenticatedLojaRoute
   '/mestre': typeof AuthenticatedMestreRoute
   '/taverna': typeof AuthenticatedTavernaRoute
@@ -79,6 +86,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/bau': typeof AuthenticatedBauRoute
+  '/jogos': typeof AuthenticatedJogosRoute
   '/loja': typeof AuthenticatedLojaRoute
   '/mestre': typeof AuthenticatedMestreRoute
   '/taverna': typeof AuthenticatedTavernaRoute
@@ -91,6 +99,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/bau': typeof AuthenticatedBauRoute
+  '/_authenticated/jogos': typeof AuthenticatedJogosRoute
   '/_authenticated/loja': typeof AuthenticatedLojaRoute
   '/_authenticated/mestre': typeof AuthenticatedMestreRoute
   '/_authenticated/taverna': typeof AuthenticatedTavernaRoute
@@ -103,6 +112,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/bau'
+    | '/jogos'
     | '/loja'
     | '/mestre'
     | '/taverna'
@@ -113,6 +123,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/bau'
+    | '/jogos'
     | '/loja'
     | '/mestre'
     | '/taverna'
@@ -124,6 +135,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/_authenticated/bau'
+    | '/_authenticated/jogos'
     | '/_authenticated/loja'
     | '/_authenticated/mestre'
     | '/_authenticated/taverna'
@@ -167,6 +179,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedBauRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/jogos': {
+      id: '/_authenticated/jogos'
+      path: '/jogos'
+      fullPath: '/jogos'
+      preLoaderRoute: typeof AuthenticatedJogosRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/loja': {
       id: '/_authenticated/loja'
       path: '/loja'
@@ -207,6 +226,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedBauRoute: typeof AuthenticatedBauRoute
+  AuthenticatedJogosRoute: typeof AuthenticatedJogosRoute
   AuthenticatedLojaRoute: typeof AuthenticatedLojaRoute
   AuthenticatedMestreRoute: typeof AuthenticatedMestreRoute
   AuthenticatedTavernaRoute: typeof AuthenticatedTavernaRoute
@@ -216,6 +236,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedBauRoute: AuthenticatedBauRoute,
+  AuthenticatedJogosRoute: AuthenticatedJogosRoute,
   AuthenticatedLojaRoute: AuthenticatedLojaRoute,
   AuthenticatedMestreRoute: AuthenticatedMestreRoute,
   AuthenticatedTavernaRoute: AuthenticatedTavernaRoute,
