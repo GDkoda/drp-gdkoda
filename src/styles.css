@@ -59,19 +59,46 @@
   --gold: oklch(0.8 0.14 85);
   --blood: oklch(0.58 0.2 25);
   --mana: oklch(0.62 0.15 250);
+  --app-foreground: #eadfca;
+  --app-primary: #d7a83e;
+  --app-background: #241e19;
+  --app-card: #352b23;
+  --app-text-size: 17px;
+  --app-title-scale: 1;
+  --app-item-scale: 1;
+  --app-bg-image: none;
+  --app-bg-opacity: 0.2;
+  --app-bg-size: cover;
 }
 
 @layer base {
   * { border-color: var(--color-border); }
   body {
-    background-color: var(--color-background);
+    background-color: var(--app-background);
     background-image: radial-gradient(ellipse at top, oklch(0.26 0.05 50), transparent 60%);
     background-attachment: fixed;
-    color: var(--color-foreground);
+    color: var(--app-foreground);
     font-family: var(--font-sans);
-    font-size: 1.05rem;
+    font-size: var(--app-text-size);
+    position: relative;
   }
-  h1, h2, h3 { font-family: var(--font-display); letter-spacing: 0.03em; }
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background-image: var(--app-bg-image);
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: var(--app-bg-size);
+    opacity: var(--app-bg-opacity);
+    pointer-events: none;
+  }
+  h1, h2, h3 { font-family: var(--font-display); letter-spacing: 0.03em; font-size: calc(1em * var(--app-title-scale)); }
+  .bg-card { background-color: color-mix(in oklab, var(--app-card) 94%, transparent); }
+  .bg-primary { background-color: var(--app-primary); }
+  .text-gold { color: var(--app-primary); }
+  [data-slot="card"], main section, main > div > div.rounded-lg { padding: calc(1rem * var(--app-item-scale)); }
 }
 
 @media print {
