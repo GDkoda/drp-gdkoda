@@ -24,7 +24,7 @@ function Jogos() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl text-gold">Mini-jogos</h1>
-        <span className="flex items-center gap-1 font-display text-mana"><Zap className="h-4 w-4" />{vigor ?? "…"}/10 vigor</span>
+        <span className="flex items-center gap-1 font-display text-mana"><Zap className="h-4 w-4" />{vigor ?? "…"} vigor</span>
       </div>
       <p className="text-sm text-muted-foreground">O vigor renova todo dia. Combate custa 2, dados e enigmas custam 1.</p>
       <Tabs defaultValue="combat">
@@ -83,9 +83,9 @@ function Dice({ onDone }: { onDone: () => void }) {
   const face = ["", "⚀", "⚁", "⚂", "⚃", "⚄", "⚅"];
   return (
     <div className="space-y-3 rounded-lg border bg-card p-4">
-      <p className="text-sm text-muted-foreground">Role 2d6 contra o taverneiro. Maior soma leva a aposta (1 a 50 moedas).</p>
+      <p className="text-sm text-muted-foreground">Role 2d6 contra o taverneiro. Maior soma leva a aposta (o Mestre define o limite).</p>
       <div className="flex gap-2">
-        <Input type="number" min={1} max={50} value={bet} onChange={(e) => setBet(+e.target.value)} className="w-24" />
+        <Input type="number" min={1} value={bet} onChange={(e) => setBet(+e.target.value)} className="w-24" />
         <Button onClick={async () => { setRes(await rpc("play_dice", { _bet: bet })); onDone(); }}>Rolar (1 vigor)</Button>
       </div>
       {res && (
