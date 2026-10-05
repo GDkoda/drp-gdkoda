@@ -322,6 +322,30 @@ export type Database = {
         }
         Relationships: []
       }
+      site_settings: {
+        Row: {
+          appearance: Json
+          id: number
+          texts: Json
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          appearance?: Json
+          id?: number
+          texts?: Json
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          appearance?: Json
+          id?: number
+          texts?: Json
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       transactions: {
         Row: {
           coins: number
