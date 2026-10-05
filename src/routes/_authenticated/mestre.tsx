@@ -191,7 +191,7 @@ function Rules() {
   async function save() {
     const { id, updated_at, ...rest } = v as any;
     const { error } = await (supabase as any).from("game_settings").update({ ...rest, updated_at: new Date().toISOString() }).eq("id", 1);
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     toast.success("Regras salvas"); setForm(null); refresh();
   }
   return (
@@ -220,7 +220,7 @@ function Monsters() {
   const num = ["f", "h", "a", "pdf", "pv"] as const;
   async function add() {
     const { error } = await (supabase as any).from("monsters").insert({ ...form, reward: form.reward === "" ? null : form.reward });
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     setForm(emptyMonster); refresh();
   }
   async function upd(id: string, patch: Record<string, unknown>) {
@@ -262,7 +262,7 @@ function Puzzles() {
   const [form, setForm] = useState({ question: "", answer: "", reward: "" as number | "" });
   async function add() {
     const { error } = await (supabase as any).from("puzzles").insert({ question: form.question, answer: form.answer.trim(), reward: form.reward === "" ? null : form.reward });
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     setForm({ question: "", answer: "", reward: "" }); refresh();
   }
   return (
