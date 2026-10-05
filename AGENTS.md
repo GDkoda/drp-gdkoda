@@ -11,3 +11,4 @@
 
 - All economy changes (coins, chest items, check-in, transfers) go through SECURITY DEFINER Postgres RPCs; clients never write coins directly — prevents players editing balances.
 - Usernames without "@" log in as `<username>@mesa.local` — lets the Master and players use plain usernames.
+- Tunable economy values live in the single-row game_settings table and are read by the game RPCs — lets the Master change rewards without code changes.
