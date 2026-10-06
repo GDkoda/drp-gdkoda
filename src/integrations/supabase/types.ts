@@ -131,6 +131,8 @@ export type Database = {
           id: number
           puzzle_reward: number
           updated_at: string
+          vigor_cost_1: number
+          vigor_cost_5: number
           vigor_daily: number
         }
         Insert: {
@@ -142,6 +144,8 @@ export type Database = {
           id?: number
           puzzle_reward?: number
           updated_at?: string
+          vigor_cost_1?: number
+          vigor_cost_5?: number
           vigor_daily?: number
         }
         Update: {
@@ -153,6 +157,8 @@ export type Database = {
           id?: number
           puzzle_reward?: number
           updated_at?: string
+          vigor_cost_1?: number
+          vigor_cost_5?: number
           vigor_daily?: number
         }
         Relationships: []
@@ -402,6 +408,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      _br_today: { Args: never; Returns: string }
       _reward: {
         Args: { _coins: number; _kind: string; _note: string }
         Returns: undefined
@@ -436,6 +443,7 @@ export type Database = {
       master_purge_user: { Args: { _user: string }; Returns: undefined }
       play_combat: { Args: never; Returns: Json }
       play_dice: { Args: { _bet: number }; Returns: Json }
+      restore_vigor: { Args: { _amount: number }; Returns: number }
       solve_puzzle: { Args: { _answer: string; _id: string }; Returns: Json }
       start_puzzle: { Args: never; Returns: Json }
       transfer_coins: {
