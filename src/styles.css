@@ -95,7 +95,7 @@
     pointer-events: none;
   }
   body > * { position: relative; z-index: 1; }
-  h1, h2, h3 { font-family: var(--font-display); letter-spacing: 0.03em; font-size: calc(1em * var(--app-title-scale)); }
+  h1, h2, h3 { font-family: var(--font-display); letter-spacing: 0.03em; zoom: var(--app-title-scale); }
   .bg-card { background-color: color-mix(in oklab, var(--app-card) 94%, transparent); }
   .bg-primary { background-color: var(--app-primary); }
   .text-gold { color: var(--app-primary); }
