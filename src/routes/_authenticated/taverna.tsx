@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CalendarCheck, Coins, Zap, Send } from "lucide-react";
+import { useCustomization } from "@/lib/app-customization";
 
 export const Route = createFileRoute("/_authenticated/taverna")({
   head: () => ({ meta: [{ title: "Taverna — Mesa 3D&T" }, { name: "description", content: "Sua carteira, check-in diário e transferências." }] }),
@@ -14,6 +15,7 @@ export const Route = createFileRoute("/_authenticated/taverna")({
 });
 
 function Taverna() {
+  const { text } = useCustomization();
   const { data: me } = useMe();
   const refresh = useRefresh();
   const p = me?.profile;
@@ -34,7 +36,7 @@ function Taverna() {
 
   return (
     <div className="space-y-5">
-      <h1 className="text-2xl text-gold">Taverna</h1>
+      <h1 className="text-2xl text-gold">{text("taverna_title")}</h1>
       <div className="grid gap-3 sm:grid-cols-3">
         <Stat icon={Coins} label="Moedas" value={p?.coins ?? 0} cls="text-gold" />
         <Stat icon={Zap} label="Vigor hoje" value={`${p?.vigor ?? 0}/10`} cls="text-mana" />
@@ -42,19 +44,19 @@ function Taverna() {
       </div>
 
       <section className="rounded-lg border bg-card p-4">
-        <h2 className="text-lg">Check-in diário</h2>
-        <p className="text-sm text-muted-foreground">Recompensa cresce a cada dia seguido (até 70 moedas).</p>
+        <h2 className="text-lg">{text("taverna_checkin_title")}</h2>
+        <p className="text-sm text-muted-foreground">{text("taverna_checkin_help")}</p>
         <Button className="mt-3" disabled={!canCheckin} onClick={async () => {
           const r = await rpc("daily_checkin", {});
           refresh();
           import("sonner").then(({ toast }) => toast.success(`+${r} moedas!`));
         }}>
-          {canCheckin ? "Fazer check-in" : `Disponível ${next?.toLocaleString("pt-BR")}`}
+          {canCheckin ? text("taverna_checkin_button") : `Disponível ${next?.toLocaleString("pt-BR")}`}
         </Button>
       </section>
 
       <section className="rounded-lg border bg-card p-4">
-        <h2 className="flex items-center gap-2 text-lg"><Send className="h-4 w-4" />Enviar moedas</h2>
+        <h2 className="flex items-center gap-2 text-lg"><Send className="h-4 w-4" />{text("taverna_send_title")}</h2>
         <div className="mt-3 flex flex-col gap-2 sm:flex-row">
           <Select value={to} onValueChange={setTo}>
             <SelectTrigger className="sm:w-56"><SelectValue placeholder="Jogador" /></SelectTrigger>
@@ -63,12 +65,12 @@ function Taverna() {
             </SelectContent>
           </Select>
           <Input type="number" min={1} value={amount} onChange={(e) => setAmount(+e.target.value)} className="sm:w-28" />
-          <Button disabled={!to} onClick={async () => { await rpc("transfer_coins", { _to: to, _amount: amount }, "Moedas enviadas"); refresh(); }}>Enviar</Button>
+          <Button disabled={!to} onClick={async () => { await rpc("transfer_coins", { _to: to, _amount: amount }, "Moedas enviadas"); refresh(); }}>{text("taverna_send_button")}</Button>
         </div>
       </section>
 
       <section className="rounded-lg border bg-card p-4">
-        <h2 className="text-lg">Últimas movimentações</h2>
+        <h2 className="text-lg">{text("taverna_history_title")}</h2>
         <ul className="mt-2 divide-y text-sm">
           {txs?.map((t) => (
             <li key={t.id} className="flex justify-between py-2">

@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { rpc, useRefresh, bonusLabel, categoryLabel, useMe } from "@/lib/game";
 import { Button } from "@/components/ui/button";
 import { Coins } from "lucide-react";
+import { useCustomization } from "@/lib/app-customization";
 
 export const Route = createFileRoute("/_authenticated/loja")({
   head: () => ({ meta: [{ title: "Loja — Mesa 3D&T" }, { name: "description", content: "Armas, armaduras e poções." }] }),
@@ -12,6 +13,7 @@ export const Route = createFileRoute("/_authenticated/loja")({
 });
 
 function Loja() {
+  const { text } = useCustomization();
   const refresh = useRefresh();
   const { data: me } = useMe();
   const [cat, setCat] = useState("todos");
@@ -22,10 +24,10 @@ function Loja() {
   const list = items?.filter((i) => cat === "todos" || i.category === cat);
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl text-gold">Loja do Ferreiro</h1>
+      <h1 className="text-2xl text-gold">{text("loja_title")}</h1>
       <div className="flex gap-2 overflow-x-auto">
         {["todos", "arma", "armadura", "consumivel"].map((c) => (
-          <Button key={c} size="sm" variant={cat === c ? "default" : "secondary"} onClick={() => setCat(c)}>{c === "todos" ? "Todos" : categoryLabel[c]}</Button>
+          <Button key={c} size="sm" variant={cat === c ? "default" : "secondary"} onClick={() => setCat(c)}>{c === "todos" ? text("loja_all") : categoryLabel[c]}</Button>
         ))}
       </div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

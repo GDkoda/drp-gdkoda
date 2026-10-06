@@ -5,6 +5,7 @@ import { useMe } from "@/lib/game";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
+import { useCustomization } from "@/lib/app-customization";
 
 export const Route = createFileRoute("/_authenticated/fichas/")({
   head: () => ({ meta: [{ title: "Fichas — Mesa 3D&T" }, { name: "description", content: "Seus personagens 3D&T Alpha." }] }),
@@ -12,6 +13,7 @@ export const Route = createFileRoute("/_authenticated/fichas/")({
 });
 
 function Fichas() {
+  const { text } = useCustomization();
   const { data: me } = useMe();
   const nav = useNavigate();
   const { data: chars } = useQuery({
@@ -32,8 +34,8 @@ function Fichas() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl text-gold">{me?.isMaster ? "Todas as fichas" : "Minhas fichas"}</h1>
-        <Button onClick={create}><Plus className="h-4 w-4" />Nova ficha</Button>
+        <h1 className="text-2xl text-gold">{me?.isMaster ? text("fichas_master_title") : text("fichas_title")}</h1>
+        <Button onClick={create}><Plus className="h-4 w-4" />{text("fichas_new")}</Button>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         {chars?.map((c) => (
@@ -46,7 +48,7 @@ function Fichas() {
             <p className="mt-2 font-display text-sm">F{c.f} H{c.h} R{c.r} A{c.a} PdF{c.pdf} · {c.xp} XP</p>
           </Link>
         ))}
-        {!chars?.length && <p className="text-muted-foreground">Nenhum herói ainda. Crie o primeiro!</p>}
+        {!chars?.length && <p className="text-muted-foreground">{text("fichas_empty")}</p>}
       </div>
     </div>
   );
