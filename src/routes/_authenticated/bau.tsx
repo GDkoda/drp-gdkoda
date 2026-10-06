@@ -5,6 +5,7 @@ import { rpc, useRefresh, bonusLabel, categoryLabel, useMe } from "@/lib/game";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
+import { useCustomization } from "@/lib/app-customization";
 
 export const Route = createFileRoute("/_authenticated/bau")({
   head: () => ({ meta: [{ title: "Baú — Mesa 3D&T" }, { name: "description", content: "Itens guardados da sua conta." }] }),
@@ -12,6 +13,7 @@ export const Route = createFileRoute("/_authenticated/bau")({
 });
 
 function Bau() {
+  const { text } = useCustomization();
   const { data: me } = useMe();
   const refresh = useRefresh();
   const { data: items } = useQuery({
@@ -37,7 +39,7 @@ function Bau() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl text-gold">Baú da conta</h1>
+      <h1 className="text-2xl text-gold">{text("bau_title")}</h1>
       <div className="space-y-3">
         {items?.map((i) => (
           <div key={i.id} className="rounded-lg border bg-card p-4">
@@ -48,18 +50,18 @@ function Bau() {
             <p className="text-sm text-gold">{bonusLabel(i.bonus)}</p>
             <div className="mt-3 flex flex-col gap-2 sm:flex-row">
               {i.category === "consumivel" ? (
-                <Button size="sm" onClick={() => usePotion(i)}>Usar na ficha ativa</Button>
+                <Button size="sm" onClick={() => usePotion(i)}>{text("bau_use")}</Button>
               ) : (
                 <Select value={i.equipped_character_id ?? "none"} onValueChange={async (v) => { await rpc("equip_item", { _chest: i.id, _char: v === "none" ? null : v }, "Atualizado"); refresh(); }}>
                   <SelectTrigger className="sm:w-56"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">Guardado no baú</SelectItem>
+                    <SelectItem value="none">{text("bau_stored")}</SelectItem>
                     {chars?.map((c) => <SelectItem key={c.id} value={c.id}>Equipado em {c.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               )}
               <Select onValueChange={async (v) => { if (!confirm("Enviar este item?")) return; await rpc("transfer_item", { _chest: i.id, _to: v }, "Item enviado"); refresh(); }}>
-                <SelectTrigger className="sm:w-56"><SelectValue placeholder="Enviar para jogador…" /></SelectTrigger>
+                <SelectTrigger className="sm:w-56"><SelectValue placeholder={text("bau_send")} /></SelectTrigger>
                 <SelectContent>
                   {players?.filter((p) => p.id !== me?.id).map((p) => <SelectItem key={p.id} value={p.id}>{p.display_name}</SelectItem>)}
                 </SelectContent>
@@ -67,7 +69,7 @@ function Bau() {
             </div>
           </div>
         ))}
-        {!items?.length && <p className="text-muted-foreground">Baú vazio. Visite a loja!</p>}
+        {!items?.length && <p className="text-muted-foreground">{text("bau_empty")}</p>}
       </div>
     </div>
   );

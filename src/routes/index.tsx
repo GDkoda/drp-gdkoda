@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Swords, Coins, ScrollText, Store } from "lucide-react";
+import { useCustomization } from "@/lib/app-customization";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -15,6 +16,7 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
+  const { text } = useCustomization();
   const feats = [
     { icon: ScrollText, t: "Fichas 3D&T Alpha", d: "Cálculo automático de PV, PM, FA e FD." },
     { icon: Store, t: "Loja e Baú", d: "Equipe itens em qualquer personagem." },
@@ -23,13 +25,13 @@ function Index() {
   ];
   return (
     <main className="mx-auto flex min-h-screen max-w-3xl flex-col items-center justify-center px-5 py-16 text-center">
-      <p className="font-display text-sm uppercase tracking-[0.3em] text-muted-foreground">Bem-vindo, viajante</p>
-      <h1 className="mt-3 text-4xl font-bold text-gold sm:text-6xl">Taverna 3D&T</h1>
+      <p className="font-display text-sm uppercase tracking-[0.3em] text-muted-foreground">{text("home_eyebrow")}</p>
+      <h1 className="mt-3 text-4xl font-bold text-gold sm:text-6xl">{text("home_title")}</h1>
       <p className="mt-4 max-w-lg text-lg text-muted-foreground">
-        A mesa onde heróis guardam suas fichas, gastam moedas suadas e desafiam a sorte nos dados.
+        {text("home_description")}
       </p>
       <Button asChild size="lg" className="mt-8 font-display">
-        <Link to="/auth">Entrar na taverna</Link>
+        <Link to="/auth">{text("home_enter")}</Link>
       </Button>
       <div className="mt-14 grid w-full gap-3 sm:grid-cols-2">
         {feats.map((f) => (

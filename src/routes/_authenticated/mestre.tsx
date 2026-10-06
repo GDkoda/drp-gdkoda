@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMe, rpc, useRefresh, categoryLabel, bonusLabel } from "@/lib/game";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { deleteAccount } from "@/lib/admin.functions";
+import { defaultAppearance, defaultTexts, useCustomization, type Appearance, type Customization, type TextKey } from "@/lib/app-customization";
+import { Slider } from "@/components/ui/slider";
+import { ImageUp, RotateCcw, Save } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/mestre")({
   head: () => ({ meta: [{ title: "Painel do Mestre — Mesa 3D&T" }, { name: "description", content: "Gerencie jogadores, loja e tesouros." }] }),
@@ -18,28 +21,135 @@ export const Route = createFileRoute("/_authenticated/mestre")({
 
 function Mestre() {
   const { data: me } = useMe();
+  const { text } = useCustomization();
   if (me && !me.isMaster) return <p>Apenas o Mestre pode ver esta página.</p>;
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl text-gold">Painel do Mestre</h1>
+      <h1 className="text-2xl text-gold">{text("mestre_title")}</h1>
       <Tabs defaultValue="players">
         <TabsList className="flex h-auto w-full flex-wrap">
-          <TabsTrigger value="players" className="flex-1">Jogadores</TabsTrigger>
-          <TabsTrigger value="shop" className="flex-1">Loja</TabsTrigger>
-          <TabsTrigger value="rules" className="flex-1">Regras</TabsTrigger>
-          <TabsTrigger value="monsters" className="flex-1">Monstros</TabsTrigger>
-          <TabsTrigger value="puzzles" className="flex-1">Enigmas</TabsTrigger>
-          <TabsTrigger value="log" className="flex-1">Registro</TabsTrigger>
+          <TabsTrigger value="players" className="flex-1">{text("mestre_players")}</TabsTrigger>
+          <TabsTrigger value="shop" className="flex-1">{text("mestre_shop")}</TabsTrigger>
+          <TabsTrigger value="rules" className="flex-1">{text("mestre_rules")}</TabsTrigger>
+          <TabsTrigger value="monsters" className="flex-1">{text("mestre_monsters")}</TabsTrigger>
+          <TabsTrigger value="puzzles" className="flex-1">{text("mestre_puzzles")}</TabsTrigger>
+          <TabsTrigger value="appearance" className="flex-1">{text("mestre_appearance")}</TabsTrigger>
+          <TabsTrigger value="log" className="flex-1">{text("mestre_log")}</TabsTrigger>
         </TabsList>
         <TabsContent value="players"><Players /></TabsContent>
         <TabsContent value="shop"><ShopAdmin /></TabsContent>
         <TabsContent value="rules"><Rules /></TabsContent>
         <TabsContent value="monsters"><Monsters /></TabsContent>
         <TabsContent value="puzzles"><Puzzles /></TabsContent>
+        <TabsContent value="appearance"><AppearanceEditor /></TabsContent>
         <TabsContent value="log"><Log /></TabsContent>
       </Tabs>
     </div>
   );
+}
+
+const textGroups: { title: string; keys: TextKey[] }[] = [
+  { title: "Menu", keys: ["brand", "nav_taverna", "nav_fichas", "nav_jogos", "nav_loja", "nav_bau", "nav_mestre"] },
+  { title: "Entrada", keys: ["home_eyebrow", "home_title", "home_description", "home_enter"] },
+  { title: "Taverna", keys: ["taverna_title", "taverna_checkin_title", "taverna_checkin_help", "taverna_checkin_button", "taverna_send_title", "taverna_send_button", "taverna_history_title"] },
+  { title: "Fichas", keys: ["fichas_title", "fichas_master_title", "fichas_new", "fichas_empty"] },
+  { title: "Jogos", keys: ["jogos_title", "jogos_help", "jogos_combat", "jogos_dice", "jogos_puzzle", "jogos_fight", "jogos_roll", "jogos_new_puzzle"] },
+  { title: "Loja e Baú", keys: ["loja_title", "loja_all", "bau_title", "bau_use", "bau_stored", "bau_send", "bau_empty"] },
+  { title: "Painel do Mestre", keys: ["mestre_title", "mestre_players", "mestre_shop", "mestre_rules", "mestre_monsters", "mestre_puzzles", "mestre_log", "mestre_appearance"] },
+];
+
+const textLabels: Partial<Record<TextKey, string>> = {
+  brand: "Marca", home_eyebrow: "Saudação", home_title: "Título", home_description: "Apresentação", home_enter: "Botão de entrada",
+  taverna_title: "Título", taverna_checkin_title: "Título do check-in", taverna_checkin_help: "Explicação do check-in", taverna_checkin_button: "Botão do check-in", taverna_send_title: "Título de envio", taverna_send_button: "Botão de envio", taverna_history_title: "Título do histórico",
+  fichas_title: "Título do jogador", fichas_master_title: "Título do Mestre", fichas_new: "Botão de nova ficha", fichas_empty: "Mensagem sem fichas",
+  jogos_title: "Título", jogos_help: "Explicação", jogos_combat: "Aba combate", jogos_dice: "Aba dados", jogos_puzzle: "Aba enigmas", jogos_fight: "Botão de combate", jogos_roll: "Botão de dados", jogos_new_puzzle: "Botão de enigma",
+  loja_title: "Título da loja", loja_all: "Filtro geral", bau_title: "Título do baú", bau_use: "Botão de poção", bau_stored: "Item guardado", bau_send: "Envio de item", bau_empty: "Mensagem de baú vazio",
+};
+
+function AppearanceEditor() {
+  const { settings, setPreview, refresh } = useCustomization();
+  const [draft, setDraft] = useState<Customization>(settings);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { setDraft(settings); }, [settings]);
+  useEffect(() => { setPreview(draft); return () => setPreview(null); }, [draft, setPreview]);
+  const setLook = <K extends keyof Appearance>(key: K, value: Appearance[K]) => setDraft((old) => ({ ...old, appearance: { ...old.appearance, [key]: value } }));
+  const setText = (key: TextKey, value: string) => setDraft((old) => ({ ...old, texts: { ...old.texts, [key]: value } }));
+
+  async function upload(file: File) {
+    if (!file.type.startsWith("image/")) { toast.error("Escolha uma imagem."); return; }
+    if (file.size > 5 * 1024 * 1024) { toast.error("A imagem deve ter até 5 MB."); return; }
+    setBusy(true);
+    const extension = file.name.split(".").pop()?.replace(/[^a-z0-9]/gi, "").toLowerCase() || "jpg";
+    const path = `active/background-${Date.now()}.${extension}`;
+    const { error } = await supabase.storage.from("site-backgrounds").upload(path, file, { contentType: file.type });
+    setBusy(false);
+    if (error) { toast.error(error.message); return; }
+    setLook("backgroundPath", path);
+  }
+
+  async function save() {
+    if (!confirm("Publicar esta aparência e estes textos para todos os jogadores?")) return;
+    setBusy(true);
+    const { error } = await supabase.from("site_settings").update({ texts: draft.texts, appearance: draft.appearance }).eq("id", 1);
+    setBusy(false);
+    if (error) { toast.error(error.message); return; }
+    await refresh();
+    setPreview(null);
+    toast.success("Personalização publicada");
+  }
+
+  function restore() {
+    if (!confirm("Restaurar a prévia para o tema medieval original?")) return;
+    setDraft({ texts: { ...defaultTexts }, appearance: { ...defaultAppearance } });
+  }
+
+  return (
+    <div className="space-y-5">
+      <section className="space-y-4 rounded-lg border bg-card p-4">
+        <div>
+          <h2 className="text-lg">Aparência</h2>
+          <p className="text-sm text-muted-foreground">As mudanças aparecem nesta tela antes de serem publicadas.</p>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {([['textColor', 'Cor do texto'], ['primaryColor', 'Destaques e botões'], ['backgroundColor', 'Cor do fundo'], ['cardColor', 'Cor dos itens']] as [keyof Appearance, string][]).map(([key, label]) => (
+            <label key={key} className="text-sm">{label}<Input type="color" className="mt-1 h-10 p-1" value={String(draft.appearance[key])} onChange={(e) => setLook(key, e.target.value as never)} /></label>
+          ))}
+        </div>
+        <div className="grid gap-5 sm:grid-cols-3">
+          <ScaleControl label={`Texto: ${draft.appearance.textSize}px`} value={draft.appearance.textSize} min={14} max={22} step={1} onChange={(v) => setLook("textSize", v)} />
+          <ScaleControl label={`Títulos: ${Math.round(draft.appearance.titleSize * 100)}%`} value={draft.appearance.titleSize} min={.8} max={1.5} step={.05} onChange={(v) => setLook("titleSize", v)} />
+          <ScaleControl label={`Itens: ${Math.round(draft.appearance.itemScale * 100)}%`} value={draft.appearance.itemScale} min={.85} max={1.25} step={.05} onChange={(v) => setLook("itemScale", v)} />
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="text-sm">Imagem de fundo
+            <span className="mt-1 flex items-center gap-2"><Input type="file" accept="image/png,image/jpeg,image/webp" disabled={busy} onChange={(e) => { const file = e.target.files?.[0]; if (file) void upload(file); }} /><ImageUp className="h-5 w-5 text-muted-foreground" /></span>
+          </label>
+          <div className="space-y-3">
+            <ScaleControl label={`Intensidade: ${Math.round(draft.appearance.backgroundOpacity * 100)}%`} value={draft.appearance.backgroundOpacity} min={0} max={.7} step={.05} onChange={(v) => setLook("backgroundOpacity", v)} />
+            <Select value={draft.appearance.backgroundPosition} onValueChange={(v) => setLook("backgroundPosition", v as "cover" | "contain")}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="cover">Preencher a tela</SelectItem><SelectItem value="contain">Mostrar imagem inteira</SelectItem></SelectContent></Select>
+          </div>
+        </div>
+        {draft.appearance.backgroundPath && <Button variant="secondary" size="sm" onClick={() => setLook("backgroundPath", "")}>Remover imagem da prévia</Button>}
+      </section>
+
+      {textGroups.map((group) => (
+        <section key={group.title} className="space-y-3 rounded-lg border bg-card p-4">
+          <h2 className="text-lg">Textos — {group.title}</h2>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {group.keys.map((key) => <label key={key} className="text-sm">{textLabels[key] ?? defaultTexts[key]}<Input className="mt-1" maxLength={240} value={draft.texts[key]} onChange={(e) => setText(key, e.target.value)} /></label>)}
+          </div>
+        </section>
+      ))}
+      <div className="sticky bottom-20 z-20 flex flex-wrap gap-2 border-t bg-background/95 py-3 backdrop-blur md:bottom-0">
+        <Button onClick={save} disabled={busy}><Save className="h-4 w-4" />Publicar para todos</Button>
+        <Button variant="secondary" onClick={restore} disabled={busy}><RotateCcw className="h-4 w-4" />Restaurar padrão</Button>
+      </div>
+    </div>
+  );
+}
+
+function ScaleControl({ label, value, min, max, step, onChange }: { label: string; value: number; min: number; max: number; step: number; onChange: (value: number) => void }) {
+  return <label className="space-y-2 text-sm"><span>{label}</span><Slider value={[value]} min={min} max={max} step={step} onValueChange={(values) => { const value = values[0]; if (value !== undefined) onChange(value); }} /></label>;
 }
 
 function usePlayers() {

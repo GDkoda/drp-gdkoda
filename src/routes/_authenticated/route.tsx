@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useMe } from "@/lib/game";
 import { Beer, ScrollText, Store, Package, Crown, LogOut, Coins, Swords } from "lucide-react";
+import { useCustomization } from "@/lib/app-customization";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
@@ -18,13 +19,14 @@ function Layout() {
   const { data: me } = useMe();
   const qc = useQueryClient();
   const nav = useNavigate();
+  const { text } = useCustomization();
   const links = [
-    { to: "/taverna", label: "Taverna", icon: Beer },
-    { to: "/fichas", label: "Fichas", icon: ScrollText },
-    { to: "/jogos", label: "Jogos", icon: Swords },
-    { to: "/loja", label: "Loja", icon: Store },
-    { to: "/bau", label: "Baú", icon: Package },
-    ...(me?.isMaster ? [{ to: "/mestre", label: "Mestre", icon: Crown }] : []),
+    { to: "/taverna", label: text("nav_taverna"), icon: Beer },
+    { to: "/fichas", label: text("nav_fichas"), icon: ScrollText },
+    { to: "/jogos", label: text("nav_jogos"), icon: Swords },
+    { to: "/loja", label: text("nav_loja"), icon: Store },
+    { to: "/bau", label: text("nav_bau"), icon: Package },
+    ...(me?.isMaster ? [{ to: "/mestre", label: text("nav_mestre"), icon: Crown }] : []),
   ] as const;
 
   async function signOut() {
@@ -38,7 +40,7 @@ function Layout() {
     <div className="min-h-screen pb-20 md:pb-0">
       <header className="no-print sticky top-0 z-30 border-b bg-background/90 backdrop-blur">
         <div className="mx-auto flex max-w-5xl items-center gap-4 px-4 py-2">
-          <Link to="/taverna" className="font-display text-lg text-gold">3D&T</Link>
+          <Link to="/taverna" className="font-display text-lg text-gold">{text("brand")}</Link>
           <nav className="hidden gap-1 md:flex">
             {links.map((l) => (
               <Link key={l.to} to={l.to} className="rounded px-3 py-1 text-sm hover:bg-muted" activeProps={{ className: "bg-muted text-gold" }}>

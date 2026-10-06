@@ -38,9 +38,9 @@ function normalize(texts: unknown, appearance: unknown): Customization {
   const color = (key: keyof Appearance) => typeof rawAppearance[key] === "string" && hex.test(String(rawAppearance[key])) ? String(rawAppearance[key]) : defaultAppearance[key] as string;
   return { texts: safeTexts, appearance: {
     textColor: color("textColor"), primaryColor: color("primaryColor"), backgroundColor: color("backgroundColor"), cardColor: color("cardColor"),
-    textSize: number(rawAppearance.textSize, 17, 14, 22), titleSize: number(rawAppearance.titleSize, 1, .8, 1.5), itemScale: number(rawAppearance.itemScale, 1, .85, 1.25),
-    backgroundPath: typeof rawAppearance.backgroundPath === "string" ? rawAppearance.backgroundPath : "",
-    backgroundOpacity: number(rawAppearance.backgroundOpacity, .2, 0, .7), backgroundPosition: rawAppearance.backgroundPosition === "contain" ? "contain" : "cover",
+    textSize: number(rawAppearance["textSize"], 17, 14, 22), titleSize: number(rawAppearance["titleSize"], 1, .8, 1.5), itemScale: number(rawAppearance["itemScale"], 1, .85, 1.25),
+    backgroundPath: typeof rawAppearance["backgroundPath"] === "string" ? rawAppearance["backgroundPath"] : "",
+    backgroundOpacity: number(rawAppearance["backgroundOpacity"], .2, 0, .7), backgroundPosition: rawAppearance["backgroundPosition"] === "contain" ? "contain" : "cover",
   }};
 }
 

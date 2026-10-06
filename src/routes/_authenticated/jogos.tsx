@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Zap, Swords, Dice5, Brain } from "lucide-react";
+import { useCustomization } from "@/lib/app-customization";
 
 export const Route = createFileRoute("/_authenticated/jogos")({
   head: () => ({ meta: [{ title: "Mini-jogos — Mesa 3D&T" }, { name: "description", content: "Combate, dados da taverna e enigmas." }] }),
@@ -15,6 +16,7 @@ export const Route = createFileRoute("/_authenticated/jogos")({
 type LogEntry = { turn: number; who: string; fa: number; fd: number; dmg: number; crit: boolean; hp: number };
 
 function Jogos() {
+  const { text } = useCustomization();
   const refresh = useRefresh();
   const { data: me } = useMe();
   const { data: vigor, refetch } = useQuery({ queryKey: ["vigor"], queryFn: () => rpc("get_vigor", {}) as Promise<number> });
@@ -23,25 +25,25 @@ function Jogos() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl text-gold">Mini-jogos</h1>
+        <h1 className="text-2xl text-gold">{text("jogos_title")}</h1>
         <span className="flex items-center gap-1 font-display text-mana"><Zap className="h-4 w-4" />{vigor ?? "…"} vigor</span>
       </div>
-      <p className="text-sm text-muted-foreground">O vigor renova todo dia. Combate custa 2, dados e enigmas custam 1.</p>
+      <p className="text-sm text-muted-foreground">{text("jogos_help")}</p>
       <Tabs defaultValue="combat">
         <TabsList className="w-full">
-          <TabsTrigger value="combat" className="flex-1"><Swords className="h-4 w-4" />Combate</TabsTrigger>
-          <TabsTrigger value="dice" className="flex-1"><Dice5 className="h-4 w-4" />Dados</TabsTrigger>
-          <TabsTrigger value="puzzle" className="flex-1"><Brain className="h-4 w-4" />Enigmas</TabsTrigger>
+          <TabsTrigger value="combat" className="flex-1"><Swords className="h-4 w-4" />{text("jogos_combat")}</TabsTrigger>
+          <TabsTrigger value="dice" className="flex-1"><Dice5 className="h-4 w-4" />{text("jogos_dice")}</TabsTrigger>
+          <TabsTrigger value="puzzle" className="flex-1"><Brain className="h-4 w-4" />{text("jogos_puzzle")}</TabsTrigger>
         </TabsList>
-        <TabsContent value="combat"><Combat onDone={after} hasActive={!!me?.profile?.active_character_id} /></TabsContent>
-        <TabsContent value="dice"><Dice onDone={after} /></TabsContent>
-        <TabsContent value="puzzle"><Puzzle onDone={after} /></TabsContent>
+        <TabsContent value="combat"><Combat onDone={after} hasActive={!!me?.profile?.active_character_id} buttonLabel={text("jogos_fight")} /></TabsContent>
+        <TabsContent value="dice"><Dice onDone={after} buttonLabel={text("jogos_roll")} /></TabsContent>
+        <TabsContent value="puzzle"><Puzzle onDone={after} buttonLabel={text("jogos_new_puzzle")} /></TabsContent>
       </Tabs>
     </div>
   );
 }
 
-function Combat({ onDone, hasActive }: { onDone: () => void; hasActive: boolean }) {
+function Combat({ onDone, hasActive, buttonLabel }: { onDone: () => void; hasActive: boolean; buttonLabel: string }) {
   const [res, setRes] = useState<{ monster: string; hero: string; won: boolean; reward: number; xp: number; log: LogEntry[] } | null>(null);
   const [shown, setShown] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -59,7 +61,7 @@ function Combat({ onDone, hasActive }: { onDone: () => void; hasActive: boolean 
     <div className="space-y-3 rounded-lg border bg-card p-4">
       <p className="text-sm text-muted-foreground">Sua ficha ativa enfrenta um monstro. FA = F/PdF + H + 1d6 contra FD = A + H + 1d6. Um 6 no dado é crítico!</p>
       {!hasActive && <p className="text-sm text-destructive">Defina uma ficha ativa na tela de Fichas.</p>}
-      <Button onClick={fight} disabled={busy || !hasActive || (!!res && !done)}>Lutar (2 vigor)</Button>
+      <Button onClick={fight} disabled={busy || !hasActive || (!!res && !done)}>{buttonLabel}</Button>
       {res && (
         <div>
           <h3 className="font-display">{res.hero} vs {res.monster}</h3>
@@ -77,7 +79,7 @@ function Combat({ onDone, hasActive }: { onDone: () => void; hasActive: boolean 
   );
 }
 
-function Dice({ onDone }: { onDone: () => void }) {
+function Dice({ onDone, buttonLabel }: { onDone: () => void; buttonLabel: string }) {
   const [bet, setBet] = useState(10);
   const [res, setRes] = useState<{ player: number[]; house: number[]; result: string; delta: number } | null>(null);
   const face = ["", "⚀", "⚁", "⚂", "⚃", "⚄", "⚅"];
@@ -86,7 +88,7 @@ function Dice({ onDone }: { onDone: () => void }) {
       <p className="text-sm text-muted-foreground">Role 2d6 contra o taverneiro. Maior soma leva a aposta (o Mestre define o limite).</p>
       <div className="flex gap-2">
         <Input type="number" min={1} value={bet} onChange={(e) => setBet(+e.target.value)} className="w-24" />
-        <Button onClick={async () => { setRes(await rpc("play_dice", { _bet: bet })); onDone(); }}>Rolar (1 vigor)</Button>
+        <Button onClick={async () => { setRes(await rpc("play_dice", { _bet: bet })); onDone(); }}>{buttonLabel}</Button>
       </div>
       {res && (
         <div className="grid grid-cols-2 gap-3 text-center">
@@ -101,14 +103,14 @@ function Dice({ onDone }: { onDone: () => void }) {
   );
 }
 
-function Puzzle({ onDone }: { onDone: () => void }) {
+function Puzzle({ onDone, buttonLabel }: { onDone: () => void; buttonLabel: string }) {
   const [p, setP] = useState<{ id: string; question: string } | null>(null);
   const [ans, setAns] = useState("");
   const [res, setRes] = useState<{ correct: boolean; answer: string; reward: number } | null>(null);
   return (
     <div className="space-y-3 rounded-lg border bg-card p-4">
       <p className="text-sm text-muted-foreground">Uma tentativa por enigma, 10 minutos para responder. Acerto vale 15 moedas.</p>
-      <Button onClick={async () => { setP(await rpc("start_puzzle", {})); setRes(null); setAns(""); onDone(); }}>Novo enigma (1 vigor)</Button>
+      <Button onClick={async () => { setP(await rpc("start_puzzle", {})); setRes(null); setAns(""); onDone(); }}>{buttonLabel}</Button>
       {p && (
         <div className="space-y-2">
           <p className="font-display">{p.question}</p>
