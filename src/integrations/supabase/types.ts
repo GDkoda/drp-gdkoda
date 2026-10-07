@@ -175,6 +175,7 @@ export type Database = {
           pdf: number
           pv: number
           reward: number | null
+          xp: number
         }
         Insert: {
           a?: number
@@ -187,6 +188,7 @@ export type Database = {
           pdf?: number
           pv?: number
           reward?: number | null
+          xp?: number
         }
         Update: {
           a?: number
@@ -199,6 +201,7 @@ export type Database = {
           pdf?: number
           pv?: number
           reward?: number | null
+          xp?: number
         }
         Relationships: []
       }
