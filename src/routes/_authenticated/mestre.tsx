@@ -345,7 +345,7 @@ function Monsters() {
       <section className="space-y-2 rounded-lg border bg-card p-4">
         <h2 className="text-lg">Novo monstro</h2>
         <Input placeholder="Nome" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-        <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+        <div className="grid grid-cols-3 gap-2 sm:grid-cols-7">
           {num.map((k) => <label key={k} className="text-xs uppercase">{k === "pv" ? "PV" : k}<Input type="number" value={form[k]} onChange={(e) => setForm({ ...form, [k]: +e.target.value })} /></label>)}
           <label className="text-xs">Moedas<Input type="number" placeholder="padrão" value={form.reward} onChange={(e) => setForm({ ...form, reward: e.target.value === "" ? "" : +e.target.value })} /></label>
         </div>
@@ -354,7 +354,7 @@ function Monsters() {
       {data?.map((m: any) => (
         <div key={m.id} className="space-y-2 rounded-lg border bg-card p-3">
           <Input defaultValue={m.name} className={m.active ? "" : "opacity-60"} onBlur={(e) => e.target.value !== m.name && upd(m.id, { name: e.target.value })} />
-          <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-7">
             {num.map((k) => <label key={k} className="text-xs uppercase">{k === "pv" ? "PV" : k}<Input type="number" defaultValue={m[k]} onBlur={(e) => +e.target.value !== m[k] && upd(m.id, { [k]: +e.target.value })} /></label>)}
             <label className="text-xs">Moedas<Input type="number" placeholder="padrão" defaultValue={m.reward ?? ""} onBlur={(e) => upd(m.id, { reward: e.target.value === "" ? null : +e.target.value })} /></label>
           </div>
