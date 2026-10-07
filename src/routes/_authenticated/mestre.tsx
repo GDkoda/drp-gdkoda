@@ -284,6 +284,8 @@ function Log() {
 
 const ruleFields: [string, string][] = [
   ["vigor_daily", "Vigor diário"],
+  ["vigor_cost_1", "Restaurar 1 vigor: custo em moedas"],
+  ["vigor_cost_5", "Restaurar 5 vigor: custo em moedas"],
   ["combat_win_base", "Combate: vitória (base)"],
   ["combat_win_per_level", "Combate: vitória (+ por nível do monstro)"],
   ["combat_loss", "Combate: derrota (consolo)"],

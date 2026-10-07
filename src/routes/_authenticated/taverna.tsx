@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CalendarCheck, Coins, Zap, Send } from "lucide-react";
 import { useCustomization } from "@/lib/app-customization";
+import { VigorRestore, useGameSettings } from "@/components/VigorRestore";
 
 export const Route = createFileRoute("/_authenticated/taverna")({
   head: () => ({ meta: [{ title: "Taverna — Mesa 3D&T" }, { name: "description", content: "Sua carteira, check-in diário e transferências." }] }),
@@ -19,6 +20,8 @@ function Taverna() {
   const { data: me } = useMe();
   const refresh = useRefresh();
   const p = me?.profile;
+  const { data: settings } = useGameSettings();
+  const { data: vigor } = useQuery({ queryKey: ["vigor"], queryFn: () => rpc("get_vigor", {}) as Promise<number> });
   const { data: players } = useQuery({
     queryKey: ["players"],
     queryFn: async () => (await supabase.from("profiles").select("id, display_name, username").order("display_name")).data ?? [],
@@ -39,9 +42,10 @@ function Taverna() {
       <h1 className="text-2xl text-gold">{text("taverna_title")}</h1>
       <div className="grid gap-3 sm:grid-cols-3">
         <Stat icon={Coins} label="Moedas" value={p?.coins ?? 0} cls="text-gold" />
-        <Stat icon={Zap} label="Vigor hoje" value={`${p?.vigor ?? 0}/10`} cls="text-mana" />
+        <Stat icon={Zap} label="Vigor hoje" value={`${vigor ?? p?.vigor ?? 0}/${settings?.vigor_daily ?? 5}`} cls="text-mana" />
         <Stat icon={CalendarCheck} label="Sequência" value={`${p?.checkin_streak ?? 0} dia(s)`} cls="text-foreground" />
       </div>
+      <VigorRestore vigor={vigor ?? p?.vigor} />
 
       <section className="rounded-lg border bg-card p-4">
         <h2 className="text-lg">{text("taverna_checkin_title")}</h2>

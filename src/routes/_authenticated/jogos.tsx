@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Zap, Swords, Dice5, Brain } from "lucide-react";
 import { useCustomization } from "@/lib/app-customization";
+import { VigorRestore, useGameSettings } from "@/components/VigorRestore";
 
 export const Route = createFileRoute("/_authenticated/jogos")({
   head: () => ({ meta: [{ title: "Mini-jogos — Mesa 3D&T" }, { name: "description", content: "Combate, dados da taverna e enigmas." }] }),
@@ -20,15 +21,17 @@ function Jogos() {
   const refresh = useRefresh();
   const { data: me } = useMe();
   const { data: vigor, refetch } = useQuery({ queryKey: ["vigor"], queryFn: () => rpc("get_vigor", {}) as Promise<number> });
+  const { data: settings } = useGameSettings();
   const after = () => { refetch(); refresh(); };
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl text-gold">{text("jogos_title")}</h1>
-        <span className="flex items-center gap-1 font-display text-mana"><Zap className="h-4 w-4" />{vigor ?? "…"} vigor</span>
+        <span className="flex items-center gap-1 font-display text-mana"><Zap className="h-4 w-4" />{vigor ?? "…"}/{settings?.vigor_daily ?? 5} vigor</span>
       </div>
       <p className="text-sm text-muted-foreground">{text("jogos_help")}</p>
+      <VigorRestore vigor={vigor} />
       <Tabs defaultValue="combat">
         <TabsList className="w-full">
           <TabsTrigger value="combat" className="flex-1"><Swords className="h-4 w-4" />{text("jogos_combat")}</TabsTrigger>
