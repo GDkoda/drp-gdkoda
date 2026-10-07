@@ -322,14 +322,14 @@ function Rules() {
   );
 }
 
-const emptyMonster = { name: "", f: 1, h: 1, a: 1, pdf: 0, pv: 5, reward: "" as number | "" };
+const emptyMonster = { name: "", f: 1, h: 1, a: 1, pdf: 0, pv: 5, xp: 1, reward: "" as number | "" };
 
 function Monsters() {
   const refresh = useRefresh();
   const { data } = useQuery({ queryKey: ["monsters"], queryFn: async () => (await (supabase as any).from("monsters").select("*").order("name")).data ?? [] });
   const [form, setForm] = useState(emptyMonster);
   const db = (supabase as any).from("monsters");
-  const num = ["f", "h", "a", "pdf", "pv"] as const;
+  const num = ["f", "h", "a", "pdf", "pv", "xp"] as const;
   async function add() {
     const { error } = await (supabase as any).from("monsters").insert({ ...form, reward: form.reward === "" ? null : form.reward });
     if (error) { toast.error(error.message); return; }
