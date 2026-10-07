@@ -56,10 +56,17 @@ function Layout() {
         </div>
       </header>
       <main className="mx-auto max-w-5xl px-4 py-5"><Outlet /></main>
-      <nav className="no-print fixed inset-x-0 bottom-0 z-30 flex border-t bg-background md:hidden">
+      <nav className="no-print fixed inset-x-0 bottom-0 z-30 flex border-t bg-background pb-[env(safe-area-inset-bottom)] md:hidden">
         {links.map((l) => (
-          <Link key={l.to} to={l.to} className="flex flex-1 flex-col items-center py-2 text-[11px] text-muted-foreground" activeProps={{ className: "text-gold" }}>
-            <l.icon className="h-5 w-5" />{l.label}
+          <Link
+            key={l.to}
+            to={l.to}
+            className="flex min-h-14 flex-1 touch-manipulation select-none flex-col items-center justify-center gap-0.5 py-2 text-[11px] transition-transform active:scale-90"
+            activeProps={{ className: "bg-muted font-semibold text-gold", "aria-current": "page" }}
+            inactiveProps={{ className: "text-muted-foreground" }}
+          >
+            <l.icon className="pointer-events-none h-5 w-5" />
+            <span className="pointer-events-none">{l.label}</span>
           </Link>
         ))}
       </nav>
