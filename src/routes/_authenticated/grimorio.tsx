@@ -30,7 +30,7 @@ function Grimorio() {
     queryKey: ["spells"],
     queryFn: async () => (await supabase.from("spells").select("*").order("name")).data ?? [],
   });
-  const activeId = (me as any)?.active_character_id as string | null | undefined;
+  const activeId = me?.profile?.active_character_id as string | null | undefined;
   const { data: active } = useQuery({
     queryKey: ["char-spells", activeId],
     enabled: !!activeId,
