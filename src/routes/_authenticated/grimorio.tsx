@@ -77,7 +77,7 @@ function Grimorio() {
           <Button key={s} size="sm" variant={school === s ? "default" : "outline"} onClick={() => setSchool(s)}>{s}</Button>
         ))}
       </div>
-      {me?.isMaster && <NewSpell />}
+      {me?.isMaster && <SpellForm />}
       <ul className="space-y-2">
         {list.slice(0, limit).map((s) => {
           const known = active?.known_spells?.includes(s.id);
