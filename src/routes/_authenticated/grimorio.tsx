@@ -93,9 +93,14 @@ function Grimorio() {
                   {s.requirements && <>Exigências: {s.requirements} · </>}Alcance: {s.range || "—"} · Duração: {s.duration || "—"}
                 </p>
                 <p className="mt-2 whitespace-pre-line text-sm">{s.description}</p>
-                <div className="mt-2 flex gap-2">
+                <div className="mt-2 flex flex-wrap gap-2">
                   <Button size="sm" disabled={known} onClick={() => learn(s.id)}>{known ? "Já aprendida" : "Aprender na ficha ativa"}</Button>
-                  {me?.isMaster && <Button size="sm" variant="destructive" onClick={() => remove(s.id)}>Apagar</Button>}
+                  {me?.isMaster && (
+                    <>
+                      <SpellForm spell={s} />
+                      <Button size="sm" variant="destructive" onClick={() => remove(s.id)}>Apagar</Button>
+                    </>
+                  )}
                 </div>
               </details>
             </li>
