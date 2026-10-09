@@ -46,11 +46,11 @@ function Grimorio() {
   }, [spells, q, school, maxPm]);
 
   async function learn(id: string) {
-    if (!active) return toast.error("Defina uma ficha ativa primeiro.");
+    if (!active) { toast.error("Defina uma ficha ativa primeiro."); return; }
     const known: string[] = active.known_spells ?? [];
     if (known.includes(id)) return;
     const { error } = await supabase.from("characters").update({ known_spells: [...known, id] }).eq("id", active.id);
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     toast.success(`Magia adicionada a ${active.name}`);
     qc.invalidateQueries({ queryKey: ["char-spells"] });
     qc.invalidateQueries({ queryKey: ["char", active.id] });
@@ -58,7 +58,7 @@ function Grimorio() {
   async function remove(id: string) {
     if (!confirm("Apagar esta magia do compêndio?")) return;
     const { error } = await supabase.from("spells").delete().eq("id", id);
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     qc.invalidateQueries({ queryKey: ["spells"] });
   }
 
@@ -124,7 +124,7 @@ function NewSpell() {
       <textarea className="mt-2 w-full rounded-md border bg-background p-2 text-sm" rows={4} placeholder="Descrição" value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} />
       <Button className="mt-2" disabled={!f.name} onClick={async () => {
         const { error } = await supabase.from("spells").insert({ ...f, source: "Homebrew" });
-        if (error) return toast.error(error.message);
+        if (error) { toast.error(error.message); return; }
         toast.success("Magia criada"); setF(empty); qc.invalidateQueries({ queryKey: ["spells"] });
       }}>Salvar magia</Button>
     </details>
