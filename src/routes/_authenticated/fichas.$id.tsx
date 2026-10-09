@@ -19,7 +19,7 @@ type Char = {
   id: string; owner_id: string; name: string; concept: string;
   f: number; h: number; r: number; a: number; pdf: number;
   pv_current: number; pm_current: number; pp_total: number; xp: number;
-  advantages: Trait[]; disadvantages: Trait[]; skills: Trait[]; notes: string;
+  advantages: Trait[]; disadvantages: Trait[]; skills: Trait[]; notes: string; known_spells: string[];
 };
 
 function Sheet() {
@@ -107,8 +107,12 @@ function Sheet() {
         <TabsList className="no-print w-full">
           <TabsTrigger value="traits" className="flex-1">Vantagens</TabsTrigger>
           <TabsTrigger value="inv" className="flex-1">Inventário</TabsTrigger>
+          <TabsTrigger value="spells" className="flex-1">Magias</TabsTrigger>
           <TabsTrigger value="notes" className="flex-1">Anotações</TabsTrigger>
         </TabsList>
+        <TabsContent value="spells">
+          <KnownSpells ids={c.known_spells ?? []} charId={c.id} onRemove={(sid) => set({ known_spells: (c.known_spells ?? []).filter((x) => x !== sid) })} onCast={(pm) => set({ pm_current: pm })} />
+        </TabsContent>
         <TabsContent value="traits" className="space-y-3">
           <TraitList title="Vantagens" items={c.advantages} onChange={(v) => set({ advantages: v })} />
           <TraitList title="Desvantagens" items={c.disadvantages} onChange={(v) => set({ disadvantages: v })} negative />
