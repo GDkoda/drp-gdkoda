@@ -24,6 +24,7 @@ export type Database = {
           f: number
           h: number
           id: string
+          known_spells: string[]
           name: string
           notes: string
           owner_id: string
@@ -45,6 +46,7 @@ export type Database = {
           f?: number
           h?: number
           id?: string
+          known_spells?: string[]
           name?: string
           notes?: string
           owner_id: string
@@ -66,6 +68,7 @@ export type Database = {
           f?: number
           h?: number
           id?: string
+          known_spells?: string[]
           name?: string
           notes?: string
           owner_id?: string
@@ -355,6 +358,48 @@ export type Database = {
         }
         Relationships: []
       }
+      spells: {
+        Row: {
+          cost: string
+          created_at: string
+          description: string
+          duration: string
+          id: string
+          name: string
+          pm_cost: number
+          range: string
+          requirements: string
+          school: string
+          source: string
+        }
+        Insert: {
+          cost?: string
+          created_at?: string
+          description?: string
+          duration?: string
+          id?: string
+          name: string
+          pm_cost?: number
+          range?: string
+          requirements?: string
+          school?: string
+          source?: string
+        }
+        Update: {
+          cost?: string
+          created_at?: string
+          description?: string
+          duration?: string
+          id?: string
+          name?: string
+          pm_cost?: number
+          range?: string
+          requirements?: string
+          school?: string
+          source?: string
+        }
+        Relationships: []
+      }
       transactions: {
         Row: {
           coins: number
@@ -418,6 +463,10 @@ export type Database = {
       }
       _spend_vigor: { Args: { _n: number }; Returns: undefined }
       buy_item: { Args: { _item: string }; Returns: undefined }
+      cast_spell: {
+        Args: { _char: string; _pm?: number; _spell: string }
+        Returns: number
+      }
       daily_checkin: { Args: never; Returns: number }
       equip_item: {
         Args: { _char: string; _chest: string }
