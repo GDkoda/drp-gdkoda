@@ -77,7 +77,7 @@ function Grimorio() {
           <Button key={s} size="sm" variant={school === s ? "default" : "outline"} onClick={() => setSchool(s)}>{s}</Button>
         ))}
       </div>
-      {me?.isMaster && <NewSpell />}
+      {me?.isMaster && <SpellForm />}
       <ul className="space-y-2">
         {list.slice(0, limit).map((s) => {
           const known = active?.known_spells?.includes(s.id);
@@ -93,9 +93,14 @@ function Grimorio() {
                   {s.requirements && <>Exigências: {s.requirements} · </>}Alcance: {s.range || "—"} · Duração: {s.duration || "—"}
                 </p>
                 <p className="mt-2 whitespace-pre-line text-sm">{s.description}</p>
-                <div className="mt-2 flex gap-2">
+                <div className="mt-2 flex flex-wrap gap-2">
                   <Button size="sm" disabled={known} onClick={() => learn(s.id)}>{known ? "Já aprendida" : "Aprender na ficha ativa"}</Button>
-                  {me?.isMaster && <Button size="sm" variant="destructive" onClick={() => remove(s.id)}>Apagar</Button>}
+                  {me?.isMaster && (
+                    <>
+                      <SpellForm spell={s} />
+                      <Button size="sm" variant="destructive" onClick={() => remove(s.id)}>Apagar</Button>
+                    </>
+                  )}
                 </div>
               </details>
             </li>
@@ -108,25 +113,38 @@ function Grimorio() {
   );
 }
 
-function NewSpell() {
+type SpellRow = { id: string; name: string; school: string; requirements: string; cost: string; pm_cost: number; range: string; duration: string; description: string };
+
+function SpellForm({ spell }: { spell?: SpellRow }) {
   const qc = useQueryClient();
   const empty = { name: "", school: "", cost: "", pm_cost: 0, range: "", duration: "", description: "", requirements: "" };
-  const [f, setF] = useState(empty);
+  const [f, setF] = useState(spell ? { name: spell.name, school: spell.school, requirements: spell.requirements, cost: spell.cost, pm_cost: spell.pm_cost, range: spell.range, duration: spell.duration, description: spell.description } : empty);
+  const editing = !!spell;
   return (
-    <details className="rounded-lg border bg-card p-3">
-      <summary className="cursor-pointer font-display text-gold">Mestre: criar magia</summary>
-      <div className="mt-2 grid gap-2 sm:grid-cols-2">
-        {(["name", "school", "requirements", "cost", "range", "duration"] as const).map((k) => (
-          <Input key={k} placeholder={{ name: "Nome", school: "Escola", requirements: "Exigências", cost: "Custo (texto)", range: "Alcance", duration: "Duração" }[k]} value={f[k]} onChange={(e) => setF({ ...f, [k]: e.target.value })} />
-        ))}
-        <Input type="number" placeholder="PM gastos ao conjurar" value={f.pm_cost} onChange={(e) => setF({ ...f, pm_cost: +e.target.value })} />
+    <details className={editing ? "contents" : "rounded-lg border bg-card p-3"}>
+      <summary className={editing ? "inline-flex h-8 cursor-pointer list-none items-center rounded-md border px-3 text-sm hover:bg-muted" : "cursor-pointer font-display text-gold"}>
+        {editing ? "Editar" : "Mestre: criar magia"}
+      </summary>
+      <div className={editing ? "mt-2 w-full rounded-lg border bg-muted/40 p-3" : "contents"}>
+        <div className="mt-2 grid gap-2 sm:grid-cols-2">
+          {(["name", "school", "requirements", "cost", "range", "duration"] as const).map((k) => (
+            <Input key={k} placeholder={{ name: "Nome", school: "Escola", requirements: "Exigências", cost: "Custo (texto)", range: "Alcance", duration: "Duração" }[k]} value={f[k]} onChange={(e) => setF({ ...f, [k]: e.target.value })} />
+          ))}
+          <Input type="number" placeholder="PM gastos ao conjurar" value={f.pm_cost} onChange={(e) => setF({ ...f, pm_cost: +e.target.value })} />
+        </div>
+        <textarea className="mt-2 w-full rounded-md border bg-background p-2 text-sm" rows={4} placeholder="Descrição" value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} />
+        <Button className="mt-2" disabled={!f.name} onClick={async (e) => {
+          const details = (e.currentTarget.closest("details"));
+          const { error } = editing
+            ? await supabase.from("spells").update(f).eq("id", spell.id)
+            : await supabase.from("spells").insert({ ...f, source: "Homebrew" });
+          if (error) { toast.error(error.message); return; }
+          toast.success(editing ? "Magia atualizada" : "Magia criada");
+          if (!editing) setF(empty);
+          if (details) details.open = false;
+          qc.invalidateQueries({ queryKey: ["spells"] });
+        }}>{editing ? "Salvar alterações" : "Salvar magia"}</Button>
       </div>
-      <textarea className="mt-2 w-full rounded-md border bg-background p-2 text-sm" rows={4} placeholder="Descrição" value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} />
-      <Button className="mt-2" disabled={!f.name} onClick={async () => {
-        const { error } = await supabase.from("spells").insert({ ...f, source: "Homebrew" });
-        if (error) { toast.error(error.message); return; }
-        toast.success("Magia criada"); setF(empty); qc.invalidateQueries({ queryKey: ["spells"] });
-      }}>Salvar magia</Button>
     </details>
   );
 }
