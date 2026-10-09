@@ -19,7 +19,7 @@ type Char = {
   id: string; owner_id: string; name: string; concept: string;
   f: number; h: number; r: number; a: number; pdf: number;
   pv_current: number; pm_current: number; pp_total: number; xp: number;
-  advantages: Trait[]; disadvantages: Trait[]; skills: Trait[]; notes: string;
+  advantages: Trait[]; disadvantages: Trait[]; skills: Trait[]; notes: string; known_spells: string[];
 };
 
 function Sheet() {
@@ -107,8 +107,12 @@ function Sheet() {
         <TabsList className="no-print w-full">
           <TabsTrigger value="traits" className="flex-1">Vantagens</TabsTrigger>
           <TabsTrigger value="inv" className="flex-1">Inventário</TabsTrigger>
+          <TabsTrigger value="spells" className="flex-1">Magias</TabsTrigger>
           <TabsTrigger value="notes" className="flex-1">Anotações</TabsTrigger>
         </TabsList>
+        <TabsContent value="spells">
+          <KnownSpells ids={c.known_spells ?? []} charId={c.id} onRemove={(sid) => set({ known_spells: (c.known_spells ?? []).filter((x) => x !== sid) })} onCast={(pm) => set({ pm_current: pm })} />
+        </TabsContent>
         <TabsContent value="traits" className="space-y-3">
           <TraitList title="Vantagens" items={c.advantages} onChange={(v) => set({ advantages: v })} />
           <TraitList title="Desvantagens" items={c.disadvantages} onChange={(v) => set({ disadvantages: v })} negative />
@@ -194,5 +198,36 @@ function TraitList({ title, items, onChange, negative }: { title: string; items:
         <Button size="sm" variant="outline" className="no-print" onClick={() => onChange([...items, { name: "", cost: 1 }])}><Plus className="h-4 w-4" />Adicionar</Button>
       </div>
     </details>
+  );
+}
+
+function KnownSpells({ ids, charId, onRemove, onCast }: { ids: string[]; charId: string; onRemove: (id: string) => void; onCast: (pm: number) => void }) {
+  const { data: spells } = useQuery({
+    queryKey: ["known-spells", ids.join(",")],
+    queryFn: async () => (ids.length ? (await supabase.from("spells").select("*").in("id", ids).order("name")).data ?? [] : []),
+  });
+  if (!ids.length) return <p className="py-2 text-sm text-muted-foreground">Nenhuma magia aprendida. Adicione pelo Grimório.</p>;
+  return (
+    <ul className="space-y-2">
+      {spells?.map((s) => (
+        <li key={s.id} className="rounded-lg border bg-card p-3">
+          <details>
+            <summary className="flex cursor-pointer items-center justify-between gap-2">
+              <span className="font-display">{s.name} <span className="text-xs text-mana">{s.pm_cost} PM</span></span>
+              <span className="no-print flex gap-1">
+                <Button size="sm" onClick={async (e) => {
+                  e.preventDefault();
+                  try { const pm = await rpc("cast_spell", { _char: charId, _spell: s.id }); onCast(pm as number); toast.success(`${s.name} conjurada! −${s.pm_cost} PM`); }
+                  catch { /* rpc já avisa */ }
+                }}>Conjurar</Button>
+                <Button size="icon" variant="ghost" onClick={(e) => { e.preventDefault(); onRemove(s.id); }}><Trash2 className="h-4 w-4" /></Button>
+              </span>
+            </summary>
+            <p className="mt-2 text-xs text-muted-foreground">{s.school} · Custo: {s.cost} · Alcance: {s.range} · Duração: {s.duration}</p>
+            <p className="mt-1 whitespace-pre-line text-sm">{s.description}</p>
+          </details>
+        </li>
+      ))}
+    </ul>
   );
 }

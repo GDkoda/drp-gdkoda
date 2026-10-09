@@ -2,7 +2,7 @@ import { createFileRoute, Link, Outlet, redirect, useNavigate } from "@tanstack/
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useMe } from "@/lib/game";
-import { Beer, ScrollText, Store, Package, Crown, LogOut, Coins, Swords } from "lucide-react";
+import { Beer, ScrollText, Store, Package, Crown, LogOut, Coins, Swords, BookOpen } from "lucide-react";
 import { useCustomization } from "@/lib/app-customization";
 
 export const Route = createFileRoute("/_authenticated")({
@@ -24,6 +24,7 @@ function Layout() {
     { to: "/taverna", label: text("nav_taverna"), icon: Beer },
     { to: "/fichas", label: text("nav_fichas"), icon: ScrollText },
     { to: "/jogos", label: text("nav_jogos"), icon: Swords },
+    { to: "/grimorio", label: "Grimório", icon: BookOpen },
     { to: "/loja", label: text("nav_loja"), icon: Store },
     { to: "/bau", label: text("nav_bau"), icon: Package },
     ...(me?.isMaster ? [{ to: "/mestre", label: text("nav_mestre"), icon: Crown }] : []),
