@@ -218,7 +218,7 @@ function KnownSpells({ ids, charId, onRemove, onCast }: { ids: string[]; charId:
                 <Button size="sm" onClick={async (e) => {
                   e.preventDefault();
                   try { const pm = await rpc("cast_spell", { _char: charId, _spell: s.id }); onCast(pm as number); toast.success(`${s.name} conjurada! −${s.pm_cost} PM`); }
-                  catch (err) { toast.error((err as Error).message); }
+                  catch { /* rpc já avisa */ }
                 }}>Conjurar</Button>
                 <Button size="icon" variant="ghost" onClick={(e) => { e.preventDefault(); onRemove(s.id); }}><Trash2 className="h-4 w-4" /></Button>
               </span>
