@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   bestScoringSelection,
+  createMachineStrategy,
   farkleProbability,
   hasScoringCombination,
   machineShouldBank,
@@ -79,5 +80,29 @@ describe("pontuação do Jogo de Dados", () => {
     expect(machineShouldBank({ machineTotal: 3_700, playerTotal: 3_500, turnPoints: 400, diceRemaining: 3 })).toBe(true);
     expect(machineShouldBank({ machineTotal: 900, playerTotal: 2_100, turnPoints: 500, diceRemaining: 5 })).toBe(false);
     expect(machineShouldBank({ machineTotal: 2_000, playerTotal: 1_700, turnPoints: 650, diceRemaining: 2 })).toBe(true);
+  });
+
+  it("a estratégia pesa o placar e o risco real dos dados antes de guardar", () => {
+    const leading = createMachineStrategy({ machineTotal: 1_950, playerTotal: 1_250 });
+    const trailing = createMachineStrategy({ machineTotal: 1_250, playerTotal: 1_950 });
+
+    expect(leading.shouldBank(200, 1, 4)).toBe(true);
+    expect(trailing.shouldBank(200, 1, 4)).toBe(false);
+  });
+
+  it("a máquina escolhe apenas dados pontuadores do lançamento atual", () => {
+    const strategy = createMachineStrategy({ machineTotal: 1_000, playerTotal: 1_200 });
+    const roll = [1, 1, 1, 2, 3, 4];
+    const choice = strategy.chooseSelection(roll, 300, 3);
+
+    expect(choice).not.toBeNull();
+    expect(choice?.score).toBe(scoreDiceSelection(choice?.faces ?? []));
+    expect(choice?.indices).toHaveLength(choice?.faces.length ?? 0);
+    expect(choice?.indices.every((index) => roll[index] === choice?.faces[choice.indices.indexOf(index)])).toBe(true);
+  });
+
+  it("a IA sempre guarda imediatamente quando já alcançou os 4.000 pontos", () => {
+    const strategy = createMachineStrategy({ machineTotal: 3_700, playerTotal: 3_600 });
+    expect(strategy.shouldBank(300, 6, 4)).toBe(true);
   });
 });
