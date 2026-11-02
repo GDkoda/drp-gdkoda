@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Swords, Coins, ScrollText, Store } from "lucide-react";
 import { useCustomization } from "@/lib/app-customization";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -24,20 +25,20 @@ function Index() {
     { icon: Swords, t: "Mini-jogos", d: "Combate, dados na taverna e enigmas." },
   ];
   return (
-    <main className="mx-auto flex min-h-screen max-w-3xl flex-col items-center justify-center px-5 py-16 text-center">
+    <main className="relative mx-auto flex min-h-screen max-w-5xl flex-col items-center justify-center px-4 pb-12 pt-24 text-center sm:px-6 sm:py-16">\n      <div className="absolute right-4 top-5 sm:right-6 sm:top-6"><ThemeToggle /></div>\n      <div className="mb-5 rounded-full border border-primary/25 bg-primary/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.22em] text-gold">Mesa de RPG • 3D&T Alpha</div>
       <p className="font-display text-sm uppercase tracking-[0.3em] text-muted-foreground">{text("home_eyebrow")}</p>
-      <h1 className="mt-3 text-4xl font-bold text-gold sm:text-6xl">{text("home_title")}</h1>
-      <p className="mt-4 max-w-lg text-lg text-muted-foreground">
+      <h1 className="mt-2 max-w-4xl text-4xl font-bold text-gold drop-shadow-sm sm:text-6xl lg:text-7xl">{text("home_title")}</h1>
+      <p className="mt-5 max-w-2xl text-base text-muted-foreground sm:text-xl">
         {text("home_description")}
       </p>
-      <Button asChild size="lg" className="mt-8 font-display">
+      <Button asChild size="lg" className="mt-8 min-h-12 rounded-xl px-7 font-display shadow-lg shadow-primary/15">
         <Link to="/auth">{text("home_enter")}</Link>
       </Button>
-      <div className="mt-14 grid w-full gap-3 sm:grid-cols-2">
+      <div className="mt-14 grid w-full gap-4 text-left sm:grid-cols-2 lg:grid-cols-4">
         {feats.map((f) => (
-          <div key={f.t} className="rounded-lg border bg-card p-4 text-left">
-            <f.icon className="h-5 w-5 text-gold" />
-            <h3 className="mt-2 text-base">{f.t}</h3>
+          <div key={f.t} className="group rounded-2xl border border-border/80 bg-card/90 p-5 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg">
+            <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-gold"><f.icon className="h-5 w-5" /></div>
+            <h3 className="mt-2 text-base font-semibold">{f.t}</h3>
             <p className="text-sm text-muted-foreground">{f.d}</p>
           </div>
         ))}
