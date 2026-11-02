@@ -73,6 +73,11 @@ begin
     );
   end if;
 
+  -- Uma nova partida encerra reservas antigas que ficaram abertas após uma saída/recarregamento.
+  update public.farkle_games
+    set status = 'lost', result_won = false, finished_at = now()
+    where user_id = auth.uid() and status = 'active';
+
   insert into public.farkle_games(user_id, wager)
   values (auth.uid(), v_wager)
   returning id into v_game_id;
@@ -85,6 +90,8 @@ revoke execute on function public.start_farkle_game_with_bet(integer) from publi
 grant execute on function public.start_farkle_game_with_bet(integer) to authenticated;
 
 -- A reserva só pode ser liquidada pelo dono e uma única vez.
+-- Atenção: o resultado (_won) ainda é informado pelo cliente, pois o duelo roda no navegador.
+-- Esta RPC protege saldo, propriedade da sessão e liquidação duplicada, mas não valida o histórico dos dados.
 -- Na vitória, o valor apostado é devolvido e soma-se 50% de lucro
 -- (arredondado para baixo quando a aposta é ímpar). Na derrota não há devolução.
 create or replace function public.finish_farkle_game(_game uuid, _won boolean)
