@@ -8,6 +8,13 @@
       "when": 1791509417914,
       "tag": "0000_spells",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1793594129201,
+      "tag": "0001_lore_library_and_farkle",
+      "breakpoints": true
     }
   ]
 }
