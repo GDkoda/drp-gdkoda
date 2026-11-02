@@ -45,3 +45,13 @@ export const COMBAT_ACTIONS: {
   { id: "defend", title: "Postura defensiva", description: "Abre mão do ataque e ganha +3 na defesa neste turno.", cost: "Sem custo de PM" },
   { id: "recover", title: "Recuperar fôlego", description: "Recupera até 3 PV e deixa o inimigo agir.", cost: "1 PM" },
 ];
+
+export function isCombatActionAvailable(
+  action: CombatAction,
+  state: Pick<CombatState, "status" | "heroPm" | "heroPv" | "heroMaxPv"> | null,
+): boolean {
+  if (!state || state.status !== "active") return false;
+  if ((action === "power" || action === "recover") && state.heroPm < 1) return false;
+  if (action === "recover" && state.heroPv >= state.heroMaxPv) return false;
+  return true;
+}
