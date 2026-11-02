@@ -58,6 +58,18 @@ function Combat({ onDone, hasActive, buttonLabel }: { onDone: () => void; hasAct
   }
 
   useEffect(() => {
+    let cancelled = false;
+    rpc("get_active_combat", {})
+      .then((state) => {
+        if (!cancelled && state) setRes(state as CombatState);
+      })
+      .catch(() => {
+        // A falha ao recuperar uma sessão não bloqueia iniciar um novo combate.
+      });
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
     if (done && !completed.current) {
       completed.current = true;
       onDone();
