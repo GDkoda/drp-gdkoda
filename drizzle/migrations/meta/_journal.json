@@ -15,6 +15,13 @@
       "when": 1793594129201,
       "tag": "0001_lore_library_and_farkle",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793594153675,
+      "tag": "0002_lore_groups_and_permissions",
+      "breakpoints": true
     }
   ]
 }

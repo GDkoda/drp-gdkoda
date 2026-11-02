@@ -278,6 +278,7 @@ export type Database = {
       }
       lore_entries: {
         Row: {
+          allowed_groups: string[]
           allowed_users: string[]
           category_id: string | null
           content: string
@@ -296,6 +297,7 @@ export type Database = {
           visibility: string
         }
         Insert: {
+          allowed_groups?: string[]
           allowed_users?: string[]
           category_id?: string | null
           content?: string
@@ -314,6 +316,7 @@ export type Database = {
           visibility?: string
         }
         Update: {
+          allowed_groups?: string[]
           allowed_users?: string[]
           category_id?: string | null
           content?: string
@@ -340,6 +343,60 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      lore_group_members: {
+        Row: {
+          created_at: string
+          group_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          group_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          group_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lore_group_members_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "lore_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lore_group_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lore_groups: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
       }
       monsters: {
         Row: {
