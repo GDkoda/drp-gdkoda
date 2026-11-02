@@ -166,6 +166,47 @@ export type Database = {
         }
         Relationships: []
       }
+      farkle_games: {
+        Row: {
+          created_at: string
+          finished_at: string | null
+          id: string
+          payout: number
+          result_won: boolean | null
+          status: string
+          user_id: string
+          wager: number
+        }
+        Insert: {
+          created_at?: string
+          finished_at?: string | null
+          id?: string
+          payout?: number
+          result_won?: boolean | null
+          status?: string
+          user_id: string
+          wager?: number
+        }
+        Update: {
+          created_at?: string
+          finished_at?: string | null
+          id?: string
+          payout?: number
+          result_won?: boolean | null
+          status?: string
+          user_id?: string
+          wager?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "farkle_games_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lore_attachments: {
         Row: {
           created_at: string
