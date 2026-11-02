@@ -166,7 +166,255 @@ export function farkleProbability(diceCount: number): number {
   return probability;
 }
 
-/** Risk-aware decision helper used by the machine. Its inputs make decisions testable. */
+/**
+ * Exact unordered-roll distributions let the machine reason about real odds
+ * instead of using a fixed points threshold. There are at most 462 distinct
+ * face-count patterns for six dice.
+ */
+type RollOption = { score: number; diceUsed: number };
+type RollPattern = { probability: number; options: RollOption[] };
+const rollPatternsCache = new Map<number, RollPattern[]>();
+const FACTORIAL = [1, 1, 2, 6, 24, 120, 720];
+
+function selectionOptionsForCounts(counts: number[]): RollOption[] {
+  const selected = [0, 0, 0, 0, 0, 0, 0];
+  const options = new Map<string, RollOption>();
+
+  const visit = (face: number) => {
+    if (face > 6) {
+      const faces: DieFace[] = [];
+      for (let value = 1; value <= 6; value += 1) {
+        for (let count = 0; count < selected[value]; count += 1) {
+          faces.push(value as DieFace);
+        }
+      }
+      if (!faces.length) return;
+      const score = scoreDiceSelection(faces);
+      if (!score) return;
+      const diceUsed = selected.reduce((sum, count) => sum + count, 0);
+      options.set(diceUsed + ":" + score, { score, diceUsed });
+      return;
+    }
+
+    for (let count = 0; count <= counts[face]; count += 1) {
+      selected[face] = count;
+      visit(face + 1);
+    }
+    selected[face] = 0;
+  };
+
+  visit(1);
+  return [...options.values()].sort((a, b) => b.score - a.score || b.diceUsed - a.diceUsed);
+}
+
+function getRollPatterns(diceCount: number): RollPattern[] {
+  const n = Math.max(1, Math.min(6, Math.floor(diceCount)));
+  const cached = rollPatternsCache.get(n);
+  if (cached) return cached;
+
+  const patterns: RollPattern[] = [];
+  const counts = [0, 0, 0, 0, 0, 0, 0];
+  const totalRolls = 6 ** n;
+
+  const visit = (face: number, remaining: number) => {
+    if (face === 6) {
+      counts[6] = remaining;
+      let arrangements = FACTORIAL[n];
+      for (let value = 1; value <= 6; value += 1) {
+        arrangements /= FACTORIAL[counts[value]];
+      }
+      patterns.push({
+        probability: arrangements / totalRolls,
+        options: selectionOptionsForCounts(counts),
+      });
+      counts[6] = 0;
+      return;
+    }
+
+    for (let count = 0; count <= remaining; count += 1) {
+      counts[face] = count;
+      visit(face + 1, remaining - count);
+    }
+    counts[face] = 0;
+  };
+
+  visit(1, n);
+  rollPatternsCache.set(n, patterns);
+  return patterns;
+}
+
+function diceAfterSelection(diceCount: number, selectedCount: number): number {
+  const remaining = diceCount - selectedCount;
+  return remaining > 0 ? remaining : 6;
+}
+
+export type MachineStrategyConfig = {
+  machineTotal: number;
+  playerTotal: number;
+  target?: number;
+  /** -1 is cautious, 0 is balanced, +1 is bold. */
+  riskTemperament?: number;
+};
+
+export type MachineStrategy = {
+  chooseSelection: (
+    values: number[],
+    turnPoints: number,
+    lookaheadRolls?: number,
+  ) => ScoringSelection | null;
+  shouldBank: (
+    turnPoints: number,
+    diceRemaining: number,
+    lookaheadRolls?: number,
+  ) => boolean;
+};
+
+/**
+ * Creates a strategy for one machine turn.
+ *
+ * It evaluates the exact probability of every unordered roll, searches up to
+ * four rolls ahead, and scores outcomes by estimated match-winning chance.
+ * The same engine is reused throughout the turn so the memoized evaluations
+ * are shared between selection and bank/risk decisions.
+ */
+export function createMachineStrategy({
+  machineTotal,
+  playerTotal,
+  target = 4_000,
+  riskTemperament = 0,
+}: MachineStrategyConfig): MachineStrategy {
+  const safeTarget = Math.max(1, target);
+  const temperament = Math.max(-1, Math.min(1, riskTemperament));
+  const memo = new Map<string, number>();
+  const MAX_LOOKAHEAD = 4;
+
+  const winUtility = (turnPoints: number): number => {
+    const projectedTotal = machineTotal + turnPoints;
+    if (projectedTotal >= safeTarget) return 1;
+    if (playerTotal >= safeTarget) return 0;
+
+    const progress = Math.max(projectedTotal, playerTotal) / safeTarget;
+    const scale = 680 - Math.max(0, Math.min(1, progress)) * 280;
+    const margin = projectedTotal - playerTotal;
+    return 1 / (1 + Math.exp(-margin / scale));
+  };
+
+  // A bold personality needs a slightly larger advantage from continuing;
+  // a cautious personality banks when the two choices are almost equivalent.
+  const riskBias = temperament * 0.004;
+
+  const stateUtility = (
+    turnPoints: number,
+    diceRemaining: number,
+    lookaheadRolls: number,
+  ): number => {
+    if (machineTotal + turnPoints >= safeTarget) return 1;
+    const depth = Math.max(0, Math.min(MAX_LOOKAHEAD, Math.floor(lookaheadRolls)));
+    if (depth === 0) return winUtility(turnPoints);
+
+    const key = String(turnPoints) + "|" + String(diceRemaining) + "|" + String(depth);
+    const cached = memo.get(key);
+    if (cached !== undefined) return cached;
+
+    const bankNow = winUtility(turnPoints);
+    const continueValue = expectedRollUtility(turnPoints, diceRemaining, depth) + riskBias;
+    const value = Math.max(bankNow, Math.min(1, continueValue));
+    memo.set(key, value);
+    return value;
+  };
+
+  const expectedRollUtility = (
+    turnPoints: number,
+    diceRemaining: number,
+    lookaheadRolls: number,
+  ): number => {
+    if (lookaheadRolls <= 0) return winUtility(turnPoints);
+
+    let expected = 0;
+    for (const pattern of getRollPatterns(diceRemaining)) {
+      if (!pattern.options.length) {
+        // A Farkle forfeits every point accumulated in this turn.
+        expected += pattern.probability * winUtility(0);
+        continue;
+      }
+
+      let bestAfterRoll = Number.NEGATIVE_INFINITY;
+      for (const option of pattern.options) {
+        const nextDice = diceAfterSelection(diceRemaining, option.diceUsed);
+        const value = stateUtility(
+          turnPoints + option.score,
+          nextDice,
+          lookaheadRolls - 1,
+        );
+        if (value > bestAfterRoll) bestAfterRoll = value;
+      }
+      expected += pattern.probability * bestAfterRoll;
+    }
+    return expected;
+  };
+
+  const chooseSelection: MachineStrategy["chooseSelection"] = (
+    values,
+    turnPoints,
+    lookaheadRolls = MAX_LOOKAHEAD,
+  ) => {
+    if (!values.length || values.length > 6 || values.some((value) => clampFace(value) === null)) {
+      return null;
+    }
+
+    const depth = Math.max(0, Math.min(MAX_LOOKAHEAD, Math.floor(lookaheadRolls)));
+    let best: ScoringSelection | null = null;
+    let bestValue = Number.NEGATIVE_INFINITY;
+    const combinations = 1 << values.length;
+
+    for (let mask = 1; mask < combinations; mask += 1) {
+      const indices: number[] = [];
+      const faces: DieFace[] = [];
+      for (let index = 0; index < values.length; index += 1) {
+        if (mask & (1 << index)) {
+          indices.push(index);
+          faces.push(values[index] as DieFace);
+        }
+      }
+
+      const score = scoreDiceSelection(faces);
+      if (!score) continue;
+
+      const nextDice = diceAfterSelection(values.length, indices.length);
+      const value = stateUtility(turnPoints + score, nextDice, depth);
+      const improves = value > bestValue + 1e-10;
+      const tieBreaks = Math.abs(value - bestValue) <= 1e-10
+        && (!best || score > best.score || (score === best.score && indices.length > best.indices.length));
+
+      if (improves || tieBreaks) {
+        best = { indices, faces, score };
+        bestValue = value;
+      }
+    }
+
+    return best;
+  };
+
+  const shouldBank: MachineStrategy["shouldBank"] = (
+    turnPoints,
+    diceRemaining,
+    lookaheadRolls = MAX_LOOKAHEAD,
+  ) => {
+    if (machineTotal + turnPoints >= safeTarget) return true;
+    if (turnPoints <= 0) return false;
+
+    const depth = Math.max(0, Math.min(MAX_LOOKAHEAD, Math.floor(lookaheadRolls)));
+    if (depth === 0) return true;
+
+    const bankNow = winUtility(turnPoints);
+    const rollValue = expectedRollUtility(turnPoints, diceRemaining, depth) + riskBias;
+    return bankNow >= rollValue;
+  };
+
+  return { chooseSelection, shouldBank };
+}
+
+/** Convenience wrapper retained for callers that only need a bank decision. */
 export function machineShouldBank({
   machineTotal,
   playerTotal,
@@ -180,24 +428,14 @@ export function machineShouldBank({
   turnPoints: number;
   diceRemaining: number;
   target?: number;
-  /** -1 is cautious, 0 is balanced, +1 is bold. */
   riskTemperament?: number;
 }): boolean {
-  if (machineTotal + turnPoints >= target) return true;
-  if (turnPoints <= 0) return false;
-
-  const deficitPressure = Math.max(-0.25, Math.min(0.65, (playerTotal - machineTotal) / 1_500));
-  const riskPressure = farkleProbability(diceRemaining);
-  let threshold = 470 + deficitPressure * 650 + riskTemperament * 150;
-
-  if (diceRemaining <= 2) threshold -= 95;
-  if (diceRemaining >= 5) threshold += 75;
-
-  // A machine far behind accepts more danger rather than banking a small lead-sized turn.
-  if (playerTotal - machineTotal > 850 && diceRemaining >= 3 && turnPoints < threshold + 240) {
-    return false;
-  }
-
-  const riskAdjustedThreshold = threshold * (1 + riskPressure * 0.22);
-  return turnPoints >= riskAdjustedThreshold;
+  return createMachineStrategy({
+    machineTotal,
+    playerTotal,
+    target,
+    riskTemperament,
+  }).shouldBank(turnPoints, diceRemaining, MAX_AI_LOOKAHEAD);
 }
+
+const MAX_AI_LOOKAHEAD = 4;
