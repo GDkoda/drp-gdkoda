@@ -67,7 +67,7 @@ function Layout() {
         </nav>
       </header>
       <main className="mx-auto w-full max-w-7xl px-3 py-5 sm:px-5 sm:py-7 lg:px-8"><Outlet /></main>
-      <nav aria-label="Navegação principal" className="no-print fixed inset-x-0 bottom-0 z-30 flex border-t border-border/80 bg-background/92 pb-[env(safe-area-inset-bottom)] shadow-[0_-10px_34px_rgb(0_0_0/0.16)] backdrop-blur-2xl md:hidden">
+      <nav aria-label="Navegação principal" className="mobile-bottom-nav no-print fixed inset-x-0 bottom-0 z-30 flex border-t border-border/80 bg-background/92 pb-[env(safe-area-inset-bottom)] shadow-[0_-10px_34px_rgb(0_0_0/0.16)] backdrop-blur-2xl md:hidden">
         {links.map((l) => (
           <Link
             key={l.to}
