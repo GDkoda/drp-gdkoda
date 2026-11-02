@@ -174,6 +174,7 @@ export function farkleProbability(diceCount: number): number {
 type RollOption = { score: number; diceUsed: number };
 type RollPattern = { probability: number; options: RollOption[] };
 const rollPatternsCache = new Map<number, RollPattern[]>();
+const MAX_AI_LOOKAHEAD = 4;
 const FACTORIAL = [1, 1, 2, 6, 24, 120, 720];
 
 function selectionOptionsForCounts(counts: number[]): RollOption[] {
@@ -303,11 +304,11 @@ export function createMachineStrategy({
   // a cautious personality banks when the two choices are almost equivalent.
   const riskBias = temperament * 0.004;
 
-  const stateUtility = (
+  function stateUtility(
     turnPoints: number,
     diceRemaining: number,
     lookaheadRolls: number,
-  ): number => {
+  ): number {
     if (machineTotal + turnPoints >= safeTarget) return 1;
     const depth = Math.max(0, Math.min(MAX_LOOKAHEAD, Math.floor(lookaheadRolls)));
     if (depth === 0) return winUtility(turnPoints);
@@ -321,13 +322,13 @@ export function createMachineStrategy({
     const value = Math.max(bankNow, Math.min(1, continueValue));
     memo.set(key, value);
     return value;
-  };
+  }
 
-  const expectedRollUtility = (
+  function expectedRollUtility(
     turnPoints: number,
     diceRemaining: number,
     lookaheadRolls: number,
-  ): number => {
+  ): number {
     if (lookaheadRolls <= 0) return winUtility(turnPoints);
 
     let expected = 0;
@@ -351,7 +352,7 @@ export function createMachineStrategy({
       expected += pattern.probability * bestAfterRoll;
     }
     return expected;
-  };
+  }
 
   const chooseSelection: MachineStrategy["chooseSelection"] = (
     values,
@@ -438,4 +439,3 @@ export function machineShouldBank({
   }).shouldBank(turnPoints, diceRemaining, MAX_AI_LOOKAHEAD);
 }
 
-const MAX_AI_LOOKAHEAD = 4;
