@@ -13,9 +13,16 @@ import type { DieFace } from "@/lib/farkle";
 import { isCombatActionAvailable } from "@/lib/combat";
 import type { CombatAction, CombatLogEntry, CombatState } from "@/lib/combat";
 
+function JogosRouteComponent() {
+  return <Jogos />;
+}
+
+// Named split export used by TanStack Router/Vite when loading this route as a split component.
+export const SplitComponent = JogosRouteComponent;
+
 export const Route = createFileRoute("/_authenticated/jogos")({
   head: () => ({ meta: [{ title: "Mini-jogos — Mesa 3D&T" }, { name: "description", content: "Combate, dados da taverna e enigmas." }] }),
-  component: Jogos,
+  component: JogosRouteComponent,
 });
 
 function StatBar({ label, value, max, color }: { label: string; value: number; max: number; color: string }) {
