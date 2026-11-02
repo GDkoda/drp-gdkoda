@@ -166,6 +166,238 @@ export type Database = {
         }
         Relationships: []
       }
+      lore_attachments: {
+        Row: {
+          created_at: string
+          entry_id: string
+          file_name: string
+          file_size: number
+          id: string
+          mime_type: string
+          storage_path: string
+        }
+        Insert: {
+          created_at?: string
+          entry_id: string
+          file_name: string
+          file_size?: number
+          id?: string
+          mime_type?: string
+          storage_path: string
+        }
+        Update: {
+          created_at?: string
+          entry_id?: string
+          file_name?: string
+          file_size?: number
+          id?: string
+          mime_type?: string
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lore_attachments_entry_id_fkey"
+            columns: ["entry_id"]
+            isOneToOne: false
+            referencedRelation: "lore_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lore_categories: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          name: string
+          slug: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string
+          id?: string
+          name: string
+          slug: string
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          name?: string
+          slug?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
+      lore_comments: {
+        Row: {
+          content: string
+          created_at: string
+          entry_id: string
+          id: string
+          pinned: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          entry_id: string
+          id?: string
+          pinned?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          entry_id?: string
+          id?: string
+          pinned?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lore_comments_entry_id_fkey"
+            columns: ["entry_id"]
+            isOneToOne: false
+            referencedRelation: "lore_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lore_comments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lore_entries: {
+        Row: {
+          allowed_groups: string[]
+          allowed_users: string[]
+          category_id: string | null
+          content: string
+          cover_image_url: string | null
+          created_at: string
+          created_by: string
+          id: string
+          published_at: string | null
+          related_ids: string[]
+          status: string
+          summary: string
+          tags: string[]
+          title: string
+          updated_at: string
+          updated_by: string | null
+          visibility: string
+        }
+        Insert: {
+          allowed_groups?: string[]
+          allowed_users?: string[]
+          category_id?: string | null
+          content?: string
+          cover_image_url?: string | null
+          created_at?: string
+          created_by: string
+          id?: string
+          published_at?: string | null
+          related_ids?: string[]
+          status?: string
+          summary?: string
+          tags?: string[]
+          title: string
+          updated_at?: string
+          updated_by?: string | null
+          visibility?: string
+        }
+        Update: {
+          allowed_groups?: string[]
+          allowed_users?: string[]
+          category_id?: string | null
+          content?: string
+          cover_image_url?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          published_at?: string | null
+          related_ids?: string[]
+          status?: string
+          summary?: string
+          tags?: string[]
+          title?: string
+          updated_at?: string
+          updated_by?: string | null
+          visibility?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lore_entries_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "lore_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lore_group_members: {
+        Row: {
+          created_at: string
+          group_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          group_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          group_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lore_group_members_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "lore_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lore_group_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lore_groups: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
       monsters: {
         Row: {
           a: number
@@ -463,6 +695,7 @@ export type Database = {
       }
       _spend_vigor: { Args: { _n: number }; Returns: undefined }
       buy_item: { Args: { _item: string }; Returns: undefined }
+      can_read_lore_entry: { Args: { _entry: string }; Returns: boolean }
       cast_spell: {
         Args: { _char: string; _pm?: number; _spell: string }
         Returns: number
@@ -496,7 +729,12 @@ export type Database = {
       play_combat: { Args: never; Returns: Json }
       play_dice: { Args: { _bet: number }; Returns: Json }
       restore_vigor: { Args: { _amount: number }; Returns: number }
+      set_lore_comment_pinned: {
+        Args: { _comment: string; _pinned: boolean }
+        Returns: undefined
+      }
       solve_puzzle: { Args: { _answer: string; _id: string }; Returns: Json }
+      start_farkle_game: { Args: never; Returns: number }
       start_puzzle: { Args: never; Returns: Json }
       transfer_coins: {
         Args: { _amount: number; _to: string }
