@@ -49,8 +49,11 @@ function Sheet() {
     timer.current = setTimeout(async () => {
       const { id: _i, owner_id: _o, ...rest } = c;
       const { error } = await supabase.from("characters").update({ ...rest, advantages: rest.advantages as any, disadvantages: rest.disadvantages as any, skills: rest.skills as any, updated_at: new Date().toISOString() }).eq("id", id);
-      if (error) toast.error(error.message);
+      if (error) toast.error(`Não foi possível salvar a ficha: ${error.message}`);
     }, 700);
+
+    // Cancela o salvamento pendente se a ficha mudar ou o componente desmontar.
+    return () => clearTimeout(timer.current);
   }, [c, id]);
 
   const b = useMemo(() => sumBonus(equipped ?? []), [equipped]);
