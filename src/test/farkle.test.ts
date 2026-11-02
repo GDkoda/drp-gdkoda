@@ -96,9 +96,11 @@ describe("pontuação do Jogo de Dados", () => {
     const choice = strategy.chooseSelection(roll, 300, 3);
 
     expect(choice).not.toBeNull();
-    expect(choice?.score).toBe(scoreDiceSelection(choice?.faces ?? []));
-    expect(choice?.indices).toHaveLength(choice?.faces.length ?? 0);
-    expect(choice?.indices.every((index) => roll[index] === choice?.faces[choice.indices.indexOf(index)])).toBe(true);
+    if (!choice) throw new Error("A IA deveria encontrar uma combinação pontuadora.");
+
+    expect(choice.score).toBe(scoreDiceSelection(choice.faces));
+    expect(choice.indices).toHaveLength(choice.faces.length);
+    expect(choice.indices.every((index, position) => roll[index] === choice.faces[position])).toBe(true);
   });
 
   it("a IA sempre guarda imediatamente quando já alcançou os 4.000 pontos", () => {
