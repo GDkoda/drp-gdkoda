@@ -511,7 +511,7 @@ function Farkle({ onDone, vigor, coins }: { onDone: () => void; vigor: number; c
               </div>
               <p className="text-[11px] text-amber-100/55">Seu saldo: {coins.toLocaleString("pt-BR")} moedas · Limite de aposta: 50% do saldo atual.</p>
               <div className="grid gap-2 sm:grid-cols-2"><p className="rounded-xl border border-emerald-200/15 bg-emerald-950/25 p-3 text-[11px] leading-relaxed text-emerald-100/75"><strong className="text-emerald-200">Se vencer:</strong> recebe a aposta de volta e mais 50% de lucro. Ex.: aposta de 100 → recebe 150 moedas no total.</p><p className="rounded-xl border border-rose-200/15 bg-rose-950/25 p-3 text-[11px] leading-relaxed text-rose-100/75"><strong className="text-rose-200">Se perder:</strong> perde todo o valor apostado. Sem aposta, suas moedas não mudam.</p></div>
-              <p className="text-[10px] leading-relaxed text-amber-100/40">A aposta é reservada ao iniciar. Se sair ou recarregar a página antes do fim da partida, ela será considerada perdida.</p>
+              <p className="text-[10px] leading-relaxed text-amber-100/40">A aposta é reservada ao iniciar. O lucro é arredondado para baixo quando a aposta for ímpar. Se sair ou recarregar a página antes do fim da partida, ela será considerada perdida.</p>
             </div>
             <p className="mt-2 text-xs text-amber-200/80">Com o vigor atual, você tem {Math.floor(vigor / 3)} partida(s) disponível(is) hoje.</p>
             <p className="text-xs text-amber-100/55">Você precisa selecionar ao menos uma combinação válida por lançamento. Dados guardados não voltam a rolar no mesmo turno. Um Farkle perde todos os pontos ainda não guardados. Ao usar os seis dados, você pode rolar os seis novamente.</p>
