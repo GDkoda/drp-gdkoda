@@ -1,10 +1,10 @@
 import { createFileRoute, Link, Outlet, redirect, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useMe } from "@/lib/game";
-import { Beer, ScrollText, Store, Package, Crown, LogOut, Coins, Swords, BookOpen, Moon, Sun } from "lucide-react";
+import { Beer, ScrollText, Store, Package, Crown, LogOut, Coins, Swords, BookOpen } from "lucide-react";
 import { useCustomization } from "@/lib/app-customization";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
@@ -21,15 +21,6 @@ function Layout() {
   const qc = useQueryClient();
   const nav = useNavigate();
   const { text } = useCustomization();
-  const [theme, setTheme] = useState<"dark" | "light">(() => {
-    if (typeof window === "undefined") return "dark";
-    return window.localStorage.getItem("mesa-theme") === "light" ? "light" : "dark";
-  });
-
-  useEffect(() => {
-    document.documentElement.dataset.theme = theme;
-    try { window.localStorage.setItem("mesa-theme", theme); } catch { /* armazenamento pode estar bloqueado pelo navegador */ }
-  }, [theme]);
   const links = [
     { to: "/taverna", label: text("nav_taverna"), icon: Beer },
     { to: "/fichas", label: text("nav_fichas"), icon: ScrollText },
