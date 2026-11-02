@@ -40,22 +40,30 @@ function Layout() {
 
   return (
     <div className="min-h-screen pb-20 md:pb-0">
-      <header className="no-print sticky top-0 z-30 border-b bg-background/90 backdrop-blur">
-        <div className="mx-auto flex max-w-5xl items-center gap-4 px-4 py-2">
-          <Link to="/taverna" className="font-display text-lg text-gold">{text("brand")}</Link>
-          <nav className="hidden gap-1 md:flex">
+      <header className="no-print sticky top-0 z-30 border-b border-border bg-background/90 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-7xl items-center gap-3 px-3 py-3 sm:px-5 lg:px-8">
+          <Link to="/taverna" className="shrink-0 rounded-md font-display text-lg font-bold tracking-wide text-gold sm:text-xl">{text("brand")}</Link>
+          <nav aria-label="Navegação principal" className="hidden flex-1 items-center justify-center gap-1 lg:flex">
             {links.map((l) => (
-              <Link key={l.to} to={l.to} className="rounded px-3 py-1 text-sm hover:bg-muted" activeProps={{ className: "bg-muted text-gold" }}>
+              <Link key={l.to} to={l.to} className="rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground" activeProps={{ className: "bg-muted font-semibold text-gold" }}>
                 {l.label}
               </Link>
             ))}
           </nav>
-          <div className="ml-auto flex items-center gap-3 text-sm">
-            <span className="flex items-center gap-1 text-gold"><Coins className="h-4 w-4" />{me?.profile?.coins ?? "…"}</span>
-            <span className="hidden text-muted-foreground sm:inline">{me?.profile?.display_name}</span>
-            <button onClick={signOut} aria-label="Sair" className="text-muted-foreground hover:text-foreground"><LogOut className="h-4 w-4" /></button>
+          <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
+            <ThemeToggle />
+            <span className="flex items-center gap-1.5 rounded-xl border border-primary/25 bg-primary/10 px-2.5 py-2 text-sm font-semibold tabular-nums text-gold sm:px-3"><Coins className="h-4 w-4" />{me?.profile?.coins ?? "…"}</span>
+            <span className="hidden max-w-36 truncate text-sm text-muted-foreground xl:inline">{me?.profile?.display_name}</span>
+            <button type="button" onClick={signOut} aria-label="Sair" title="Sair" className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground"><LogOut className="h-4 w-4" /></button>
           </div>
         </div>
+        <nav aria-label="Navegação secundária" className="mx-auto hidden max-w-7xl gap-1 overflow-x-auto px-3 pb-2 sm:px-5 md:flex lg:hidden">
+          {links.map((l) => (
+            <Link key={l.to} to={l.to} className="whitespace-nowrap rounded-lg px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground" activeProps={{ className: "bg-muted font-semibold text-gold" }}>
+              {l.label}
+            </Link>
+          ))}
+        </nav>
       </header>
       <main className="mx-auto w-full max-w-7xl px-3 py-5 sm:px-5 sm:py-7 lg:px-8"><Outlet /></main>
       <nav aria-label="Navegação principal" className="no-print fixed inset-x-0 bottom-0 z-30 flex border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_28px_rgb(0_0_0/0.12)] backdrop-blur-xl md:hidden">
