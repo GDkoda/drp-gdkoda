@@ -5,10 +5,10 @@ import { rpc, useRefresh, useMe } from "@/lib/game";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Zap, Swords, Dice5, Brain, Trophy, RotateCcw, Shield, BookOpen, Flame, Sparkles } from "lucide-react";
+import { Zap, Swords, Dice5, Brain, Trophy, RotateCcw, Shield, BookOpen, Flame, Sparkles, Coins } from "lucide-react";
 import { useCustomization } from "@/lib/app-customization";
 import { VigorRestore, useGameSettings } from "@/components/VigorRestore";
-import { createMachineStrategy, nextRollCount, scoreDiceSelection, hasScoringCombination, farkleProbability, type DieFace } from "@/lib/farkle";
+import { createMachineStrategy, maxFarkleWager, nextRollCount, scoreDiceSelection, hasScoringCombination, farkleProbability, type DieFace } from "@/lib/farkle";
 
 export const Route = createFileRoute("/_authenticated/jogos")({
   head: () => ({ meta: [{ title: "Mini-jogos — Mesa 3D&T" }, { name: "description", content: "Combate, dados da taverna e enigmas." }] }),
@@ -42,7 +42,7 @@ function Jogos() {
         </TabsList>
         <TabsContent value="combat"><Combat onDone={after} hasActive={!!me?.profile?.active_character_id} buttonLabel={text("jogos_fight")} /></TabsContent>
         <TabsContent value="dice"><Dice onDone={after} buttonLabel={text("jogos_roll")} /></TabsContent>
-        <TabsContent value="farkle"><Farkle onDone={after} vigor={Number(vigor ?? 0)} /></TabsContent>
+        <TabsContent value="farkle"><Farkle onDone={after} vigor={Number(vigor ?? 0)} coins={Number(me?.profile?.coins ?? 0)} /></TabsContent>
         <TabsContent value="puzzle"><Puzzle onDone={after} buttonLabel={text("jogos_new_puzzle")} /></TabsContent>
       </Tabs>
     </div>
@@ -197,7 +197,7 @@ function FarkleScoreGuide({ compact = false }: { compact?: boolean }) {
   );
 }
 
-function Farkle({ onDone, vigor }: { onDone: () => void; vigor: number }) {
+function Farkle({ onDone, vigor, coins }: { onDone: () => void; vigor: number; coins: number }) {
   const [phase, setPhase] = useState<"intro" | "player-roll" | "player-select" | "player-action" | "machine" | "farkle" | "finished">("intro");
   const [playerTotal, setPlayerTotal] = useState(0);
   const [machineTotal, setMachineTotal] = useState(0);
@@ -215,6 +215,17 @@ function Farkle({ onDone, vigor }: { onDone: () => void; vigor: number }) {
   const [busy, setBusy] = useState(false);
   const [riskTemperament, setRiskTemperament] = useState(0);
   const [farkleFlash, setFarkleFlash] = useState(false);
+  const [wager, setWager] = useState(0);
+  const [activeWager, setActiveWager] = useState(0);
+  const [activeGameId, setActiveGameId] = useState<string | null>(null);
+  const [settlement, setSettlement] = useState<{ wager: number; payout: number; profit: number; net: number } | null>(null);
+  const [settlementBusy, setSettlementBusy] = useState(false);
+  const [settlementError, setSettlementError] = useState(false);
+  const [settlementRetry, setSettlementRetry] = useState(0);
+  const settlementRequested = useRef(false);
+  const onDoneRef = useRef(onDone);
+  const maxWager = maxFarkleWager(coins);
+  const wagerPresets = [...new Set([10, 25, maxWager].filter((value) => value > 0 && value <= maxWager))];
   const timer = useRef<number | null>(null);
   const selectedFaces = selectedIndices.map((index) => dice[index]);
   const selectedScore = scoreDiceSelection(selectedFaces);
@@ -222,6 +233,10 @@ function Farkle({ onDone, vigor }: { onDone: () => void; vigor: number }) {
   const gameOver = phase === "finished";
   const playerProgress = Math.min(100, (playerTotal / 4_000) * 100);
   const machineProgress = Math.min(100, (machineTotal / 4_000) * 100);
+
+  useEffect(() => {
+    onDoneRef.current = onDone;
+  }, [onDone]);
 
   useEffect(() => () => {
     if (timer.current !== null) window.clearTimeout(timer.current);
@@ -241,7 +256,21 @@ function Farkle({ onDone, vigor }: { onDone: () => void; vigor: number }) {
   async function startGame() {
     setBusy(true);
     try {
-      await rpc("start_farkle_game", {}, "Entrada confirmada: 3 de vigor gastos.");
+      const sessionId = await rpc(
+        "start_farkle_game_with_bet",
+        { _wager: wager },
+        wager > 0
+          ? `Aposta de ${wager.toLocaleString("pt-BR")} moedas reservada. Partida iniciada por 3 de vigor.`
+          : "Partida iniciada sem aposta. 3 de vigor gastos.",
+      );
+      if (typeof sessionId !== "string") throw new Error("O servidor não retornou o identificador da partida.");
+      setActiveGameId(sessionId);
+      setActiveWager(wager);
+      setSettlement(null);
+      setSettlementBusy(false);
+      setSettlementError(false);
+      setSettlementRetry(0);
+      settlementRequested.current = false;
       onDone();
       setPlayerTotal(0);
       setMachineTotal(0);
@@ -424,6 +453,31 @@ function Farkle({ onDone, vigor }: { onDone: () => void; vigor: number }) {
   const playerWon = playerTotal >= 4_000;
   const machineWon = machineTotal >= 4_000;
 
+  useEffect(() => {
+    if (!gameOver || !activeGameId || settlement || settlementBusy || settlementRequested.current) return;
+    settlementRequested.current = true;
+    setSettlementBusy(true);
+    setSettlementError(false);
+    void (async () => {
+      try {
+        const result = await rpc("finish_farkle_game", { _game: activeGameId, _won: playerWon }) as {
+          wager?: number; payout?: number; profit?: number; net?: number;
+        };
+        setSettlement({
+          wager: Number(result.wager ?? activeWager),
+          payout: Number(result.payout ?? 0),
+          profit: Number(result.profit ?? 0),
+          net: Number(result.net ?? 0),
+        });
+        onDoneRef.current();
+      } catch {
+        setSettlementError(true);
+      } finally {
+        setSettlementBusy(false);
+      }
+    })();
+  }, [gameOver, activeGameId, playerWon, settlement, settlementBusy, settlementRetry, activeWager]);
+
   return (
     <section className="relative isolate overflow-hidden rounded-[1.75rem] border border-amber-200/20 bg-[#17100d] p-3 text-amber-50 shadow-[0_28px_80px_rgba(0,0,0,.38)] sm:p-6">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_8%_0%,rgba(180,116,45,.22),transparent_34%),radial-gradient(ellipse_at_92%_8%,rgba(117,62,34,.25),transparent_34%),linear-gradient(145deg,#241710_0%,#1a120e_52%,#100b09_100%)]" />
@@ -437,7 +491,7 @@ function Farkle({ onDone, vigor }: { onDone: () => void; vigor: number }) {
           </div>
           <div className="flex items-center gap-3 rounded-xl border border-amber-200/20 bg-black/25 px-4 py-3">
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-300/10 text-amber-300"><Flame className="h-5 w-5" /></span>
-            <div><p className="text-[9px] font-bold uppercase tracking-[0.2em] text-amber-100/55">Entrada por partida</p><p className="font-display text-xl leading-tight text-amber-200">3 vigor</p></div>
+            <div><p className="text-[9px] font-bold uppercase tracking-[0.2em] text-amber-100/55">Entrada por partida</p><p className="font-display text-xl leading-tight text-amber-200">3 vigor</p><p className="text-[10px] text-amber-100/55">{activeGameId ? `Aposta: ${activeWager.toLocaleString("pt-BR")} moedas` : "Aposta opcional"}</p></div>
           </div>
         </div>
 
@@ -446,9 +500,22 @@ function Farkle({ onDone, vigor }: { onDone: () => void; vigor: number }) {
             <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-3xl border-2 border-amber-100/25 bg-gradient-to-br from-amber-100 to-amber-400 text-6xl text-amber-950 shadow-[0_14px_28px_rgba(0,0,0,.4)]">⚄</div>
             <div><h3 className="font-display text-2xl text-amber-100">A sorte favorece os ousados?</h3><p className="mx-auto mt-2 max-w-xl text-sm leading-relaxed text-amber-100/70">Role seis dados, separe combinações pontuadoras e decida quando parar. Cada novo lançamento pode multiplicar seus ganhos — ou levar tudo embora num Farkle.</p></div>
             <FarkleScoreGuide />
+            <div className="space-y-3 rounded-2xl border border-amber-200/20 bg-[#211710]/85 p-4 text-left shadow-[0_12px_30px_rgba(0,0,0,.16)] sm:p-5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2"><span className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-300/10 text-amber-200"><Coins className="h-5 w-5" /></span><div><p className="font-display text-lg text-amber-100">Aposta opcional</p><p className="text-[11px] text-amber-100/55">Você também pode jogar sem apostar.</p></div></div>
+                <span className="rounded-full border border-amber-200/20 bg-amber-200/10 px-3 py-1 text-[10px] font-semibold text-amber-200">Máximo: {maxWager.toLocaleString("pt-BR")} moedas</span>
+              </div>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                <div className="min-w-0 flex-1 space-y-1.5"><label htmlFor="farkle-wager" className="text-xs font-semibold text-amber-100/80">Quanto deseja apostar?</label><Input id="farkle-wager" aria-label="Aposta opcional em moedas" type="number" min={0} max={maxWager} step={1} value={wager} disabled={busy || maxWager === 0} onChange={(event) => { const amount = Math.floor(Number(event.target.value) || 0); setWager(Math.max(0, Math.min(maxWager, amount))); }} className="border-amber-100/20 bg-black/25 text-amber-50 placeholder:text-amber-100/30" /></div>
+                <div className="flex flex-wrap gap-2"><Button type="button" size="sm" variant={wager === 0 ? "default" : "outline"} onClick={() => setWager(0)} disabled={busy}>Sem aposta</Button>{wagerPresets.map((amount) => <Button key={amount} type="button" size="sm" variant={wager === amount ? "default" : "outline"} onClick={() => setWager(amount)} disabled={busy}>{amount.toLocaleString("pt-BR")}</Button>)}</div>
+              </div>
+              <p className="text-[11px] text-amber-100/55">Seu saldo: {coins.toLocaleString("pt-BR")} moedas · Limite de aposta: 50% do saldo atual.</p>
+              <div className="grid gap-2 sm:grid-cols-2"><p className="rounded-xl border border-emerald-200/15 bg-emerald-950/25 p-3 text-[11px] leading-relaxed text-emerald-100/75"><strong className="text-emerald-200">Se vencer:</strong> recebe a aposta de volta e mais 50% de lucro. Ex.: aposta de 100 → recebe 150 moedas no total.</p><p className="rounded-xl border border-rose-200/15 bg-rose-950/25 p-3 text-[11px] leading-relaxed text-rose-100/75"><strong className="text-rose-200">Se perder:</strong> perde todo o valor apostado. Sem aposta, suas moedas não mudam.</p></div>
+              <p className="text-[10px] leading-relaxed text-amber-100/40">A aposta é reservada ao iniciar. Se sair ou recarregar a página antes do fim da partida, ela será considerada perdida.</p>
+            </div>
             <p className="mt-2 text-xs text-amber-200/80">Com o vigor atual, você tem {Math.floor(vigor / 3)} partida(s) disponível(is) hoje.</p>
             <p className="text-xs text-amber-100/55">Você precisa selecionar ao menos uma combinação válida por lançamento. Dados guardados não voltam a rolar no mesmo turno. Um Farkle perde todos os pontos ainda não guardados. Ao usar os seis dados, você pode rolar os seis novamente.</p>
-            <Button onClick={() => void startGame()} disabled={busy || vigor < 3} className="min-h-12 border border-amber-100/20 bg-amber-300 px-8 font-display text-amber-950 shadow-lg hover:bg-amber-200">{busy ? "Preparando a mesa…" : vigor < 3 ? "Vigor insuficiente · precisa 3" : "Jogar · gastar 3 de vigor"}</Button>
+            <Button onClick={() => void startGame()} disabled={busy || vigor < 3 || wager > maxWager} className="min-h-12 border border-amber-100/20 bg-amber-300 px-8 font-display text-amber-950 shadow-lg hover:bg-amber-200">{busy ? "Preparando a mesa…" : vigor < 3 ? "Vigor insuficiente · precisa 3" : wager > 0 ? `Jogar com aposta de ${wager.toLocaleString("pt-BR")} · 3 vigor` : "Jogar sem aposta · 3 vigor"}</Button>
           </div>
         ) : (
           <>
@@ -512,7 +579,12 @@ function Farkle({ onDone, vigor }: { onDone: () => void; vigor: number }) {
           </>
         )}
 
-        {gameOver && <div className="absolute inset-0 z-10 grid place-items-center rounded-[1.5rem] bg-black/80 p-4 backdrop-blur-md"><div className="w-full max-w-md space-y-4 rounded-3xl border border-amber-200/30 bg-[linear-gradient(145deg,#59402b,#2a1d15)] p-6 text-center shadow-[0_24px_80px_rgba(0,0,0,.5)]"><Trophy className="mx-auto h-12 w-12 text-amber-300" /><p className="text-xs font-bold uppercase tracking-[0.22em] text-amber-200/70">Fim da partida</p><h3 className="font-display text-3xl text-amber-100">{playerWon ? "Você venceu!" : "A máquina venceu"}</h3><div className="grid grid-cols-2 gap-3"><div className="rounded-xl bg-black/20 p-3"><p className="text-xs text-amber-100/60">Você</p><p className="font-display text-2xl text-amber-100">{playerTotal.toLocaleString("pt-BR")}</p></div><div className="rounded-xl bg-black/20 p-3"><p className="text-xs text-amber-100/60">Máquina</p><p className="font-display text-2xl text-amber-100">{machineTotal.toLocaleString("pt-BR")}</p></div></div><Button onClick={() => { setPhase("intro"); setStatus("Uma nova partida custa mais 3 de vigor."); }} className="w-full border border-amber-100/20 bg-amber-300 font-display text-amber-950 hover:bg-amber-200"><RotateCcw className="h-4 w-4" />Nova partida · 3 vigor</Button></div></div>}
+        {gameOver && <div className="absolute inset-0 z-10 grid place-items-center rounded-[1.5rem] bg-black/80 p-4 backdrop-blur-md"><div className="w-full max-w-md space-y-4 rounded-3xl border border-amber-200/30 bg-[linear-gradient(145deg,#59402b,#2a1d15)] p-6 text-center shadow-[0_24px_80px_rgba(0,0,0,.5)]"><Trophy className="mx-auto h-12 w-12 text-amber-300" /><p className="text-xs font-bold uppercase tracking-[0.22em] text-amber-200/70">Fim da partida</p><h3 className="font-display text-3xl text-amber-100">{playerWon ? "Você venceu!" : "A máquina venceu"}</h3><div className="grid grid-cols-2 gap-3"><div className="rounded-xl bg-black/20 p-3"><p className="text-xs text-amber-100/60">Você</p><p className="font-display text-2xl text-amber-100">{playerTotal.toLocaleString("pt-BR")}</p></div><div className="rounded-xl bg-black/20 p-3"><p className="text-xs text-amber-100/60">Máquina</p><p className="font-display text-2xl text-amber-100">{machineTotal.toLocaleString("pt-BR")}</p></div></div>
+          {settlementBusy && <p aria-live="polite" className="rounded-xl border border-amber-200/20 bg-black/25 p-3 text-sm text-amber-100/75">Conferindo o resultado e atualizando sua carteira…</p>}
+          {settlementError && <div className="space-y-2 rounded-xl border border-rose-200/25 bg-rose-950/30 p-3 text-sm text-rose-100"><p>Não foi possível confirmar a aposta. Tente novamente para concluir a liquidação.</p><Button type="button" variant="outline" className="w-full border-rose-100/30 bg-transparent text-rose-50 hover:bg-rose-100/10" onClick={() => { settlementRequested.current = false; setSettlementError(false); setSettlementRetry((value) => value + 1); }}>Tentar novamente</Button></div>}
+          {settlement && settlement.wager > 0 && <div className={`rounded-xl border p-3 text-sm ${playerWon ? "border-emerald-200/20 bg-emerald-950/30 text-emerald-100" : "border-rose-200/20 bg-rose-950/30 text-rose-100"}`}><p className="font-semibold">{playerWon ? "Aposta vencedora!" : "Aposta perdida"}</p><p className="mt-1 text-xs leading-relaxed">{playerWon ? `Sua aposta de ${settlement.wager.toLocaleString("pt-BR")} moedas foi devolvida, com ${settlement.profit.toLocaleString("pt-BR")} moedas de lucro. Crédito total: ${settlement.payout.toLocaleString("pt-BR")} moedas.` : `Você perdeu as ${settlement.wager.toLocaleString("pt-BR")} moedas apostadas.`}</p></div>}
+          {settlement && settlement.wager === 0 && <p className="rounded-xl border border-amber-100/10 bg-black/20 p-3 text-xs text-amber-100/60">Partida sem aposta. Nenhuma moeda foi debitada ou creditada.</p>}
+          <Button disabled={settlementBusy || settlementError || !settlement} onClick={() => { setPhase("intro"); setStatus("Uma nova partida custa mais 3 de vigor."); setWager(0); setActiveWager(0); setActiveGameId(null); setSettlement(null); setSettlementError(false); settlementRequested.current = false; }} className="w-full border border-amber-100/20 bg-amber-300 font-display text-amber-950 hover:bg-amber-200"><RotateCcw className="h-4 w-4" />Nova partida · 3 vigor</Button></div></div>}
       </div>
     </section>
   );
