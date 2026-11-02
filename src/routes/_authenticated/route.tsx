@@ -26,6 +26,7 @@ function Layout() {
     { to: "/fichas", label: text("nav_fichas"), icon: ScrollText },
     { to: "/jogos", label: text("nav_jogos"), icon: Swords },
     { to: "/grimorio", label: "Grimório", icon: BookOpen },
+    { to: "/lore", label: "Lore", icon: BookOpen },
     { to: "/loja", label: text("nav_loja"), icon: Store },
     { to: "/bau", label: text("nav_bau"), icon: Package },
     ...(me?.isMaster ? [{ to: "/mestre", label: text("nav_mestre"), icon: Crown }] : []),
