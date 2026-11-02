@@ -190,7 +190,7 @@ function FarkleScoreGuide({ compact = false }: { compact?: boolean }) {
         </div>
         <div className="grid gap-2 sm:grid-cols-2">
           <p className="rounded-xl border border-amber-100/10 bg-black/20 p-3 text-[11px] leading-relaxed text-amber-100/65"><strong className="text-amber-200">Regra dos iguais:</strong> cada dado adicional igual dobra o valor da trinca. Ex.: três 4 valem 400; quatro 4 valem 800.</p>
-          <p className="rounded-xl border border-amber-100/10 bg-black/20 p-3 text-[11px] leading-relaxed text-amber-100/65"><strong className="text-amber-200">Atenção:</strong> a combinação deve ser formada dentro do mesmo lançamento. Ao selecionar dados, todos os dados escolhidos precisam pontuar.</p>
+          <p className="rounded-xl border border-amber-100/10 bg-black/20 p-3 text-[11px] leading-relaxed text-amber-100/65"><strong className="text-amber-200">Atenção:</strong> padrões independentes do mesmo lançamento somam (⚀ + ⚄ = 150 pts). Pares e três pares não pontuam; dados escolhidos precisam pontuar juntos no lançamento atual.</p>
         </div>
       </div>
     </details>
