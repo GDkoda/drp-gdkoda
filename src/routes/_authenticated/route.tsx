@@ -43,7 +43,7 @@ function Layout() {
     <div className="min-h-screen pb-20 md:pb-0">
       <header className="no-print sticky top-0 z-30 border-b border-border/80 bg-background/85 backdrop-blur-2xl">
         <div className="mx-auto flex max-w-7xl items-center gap-2 px-2.5 py-2.5 sm:gap-3 sm:px-5 sm:py-3 lg:px-8">
-          <Link to="/taverna" className="flex min-w-0 max-w-[9.5rem] shrink items-center gap-1.5 rounded-lg font-display text-base font-bold tracking-wide text-gold sm:max-w-none sm:shrink-0 sm:gap-2 sm:text-xl"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-primary/30 bg-primary/10 text-sm sm:h-9 sm:w-9">✦</span>{text("brand")}</Link>
+          <Link to="/taverna" className="flex min-w-0 max-w-[9.5rem] shrink items-center gap-1.5 rounded-lg font-display text-base font-bold tracking-wide text-gold sm:max-w-none sm:shrink-0 sm:gap-2 sm:text-xl"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-primary/30 bg-primary/10 text-sm sm:h-9 sm:w-9">✦</span><span className="truncate">{text("brand")}</span></Link>
           <nav aria-label="Navegação principal" className="hidden flex-1 items-center justify-center gap-1 lg:flex">
             {links.map((l) => (
               <Link key={l.to} to={l.to} className="rounded-xl px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted/80 hover:text-foreground" activeProps={{ className: "bg-primary/10 font-semibold text-gold" }}>
