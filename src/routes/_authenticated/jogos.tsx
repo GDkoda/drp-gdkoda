@@ -15,73 +15,138 @@ export const Route = createFileRoute("/_authenticated/jogos")({
   component: Jogos,
 });
 
-type LogEntry = { turn: number; who: string; fa: number; fd: number; dmg: number; crit: boolean; hp: number };
+import type { CombatAction, CombatLogEntry, CombatState } from "@/lib/combat";
 
-function Jogos() {
-  const { text } = useCustomization();
-  const refresh = useRefresh();
-  const { data: me } = useMe();
-  const { data: vigor, refetch } = useQuery({ queryKey: ["vigor"], queryFn: () => rpc("get_vigor", {}) as Promise<number> });
-  const { data: settings } = useGameSettings();
-  const after = () => { refetch(); refresh(); };
-
+function StatBar({ label, value, max, color }: { label: string; value: number; max: number; color: string }) {
+  const pct = max > 0 ? Math.max(0, Math.min(100, (value / max) * 100)) : 0;
   return (
-    <div className="space-y-4">
-      <div className="page-heading">
-        <div><p className="page-eyebrow">Ações da mesa</p><h1 className="mt-1 text-3xl text-gold">{text("jogos_title")}</h1></div>
-        <span className="flex items-center gap-1 font-display text-mana"><Zap className="h-4 w-4" />{vigor ?? "…"}/{settings?.vigor_daily ?? 5} vigor</span>
-      </div>
-      <p className="text-sm text-muted-foreground">{text("jogos_help")}</p>
-      <VigorRestore vigor={vigor} />
-      <Tabs defaultValue="combat">
-        <TabsList className="w-full">
-          <TabsTrigger value="combat" className="flex-1"><Swords className="h-4 w-4" />{text("jogos_combat")}</TabsTrigger>
-          <TabsTrigger value="dice" className="flex-1"><Dice5 className="h-4 w-4" />{text("jogos_dice")}</TabsTrigger>
-          <TabsTrigger value="farkle" className="flex-1"><Trophy className="h-4 w-4" />Jogo de Dados</TabsTrigger>
-          <TabsTrigger value="puzzle" className="flex-1"><Brain className="h-4 w-4" />{text("jogos_puzzle")}</TabsTrigger>
-        </TabsList>
-        <TabsContent value="combat"><Combat onDone={after} hasActive={!!me?.profile?.active_character_id} buttonLabel={text("jogos_fight")} /></TabsContent>
-        <TabsContent value="dice"><Dice onDone={after} buttonLabel={text("jogos_roll")} /></TabsContent>
-        <TabsContent value="farkle"><Farkle onDone={after} vigor={Number(vigor ?? 0)} coins={Number(me?.profile?.coins ?? 0)} /></TabsContent>
-        <TabsContent value="puzzle"><Puzzle onDone={after} buttonLabel={text("jogos_new_puzzle")} /></TabsContent>
-      </Tabs>
+    <div className="space-y-1">
+      <div className="flex justify-between gap-2 text-xs"><span className="text-muted-foreground">{label}</span><span className="font-semibold tabular-nums">{value}/{max}</span></div>
+      <div className="h-2 overflow-hidden rounded-full bg-muted"><div className={`h-full rounded-full ${color} transition-all`} style={{ width: `${pct}%` }} /></div>
     </div>
   );
 }
 
 function Combat({ onDone, hasActive, buttonLabel }: { onDone: () => void; hasActive: boolean; buttonLabel: string }) {
-  const [res, setRes] = useState<{ monster: string; hero: string; won: boolean; reward: number; xp: number; log: LogEntry[] } | null>(null);
-  const [shown, setShown] = useState(0);
+  const [res, setRes] = useState<CombatState | null>(null);
   const [busy, setBusy] = useState(false);
   const completed = useRef(false);
-  async function fight() {
-    setBusy(true); completed.current = false;
-    try { const r = await rpc("play_combat", {}); setRes(r); setShown(0); }
-    finally { setBusy(false); }
+  const done = !!res && res.status !== "active";
+
+  async function startFight() {
+    setBusy(true);
+    completed.current = false;
+    try {
+      const state = await rpc("start_combat", {}) as CombatState;
+      setRes(state);
+    } finally {
+      setBusy(false);
+    }
   }
+
+  async function act(action: CombatAction) {
+    if (!res || res.status !== "active" || busy) return;
+    setBusy(true);
+    try {
+      const state = await rpc("perform_combat_action", {
+        _session_id: res.id,
+        _action: action,
+      }) as CombatState;
+      setRes(state);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   useEffect(() => {
-    if (!res || shown >= res.log.length) return;
-    const timer = window.setTimeout(() => setShown((current) => Math.min(current + 1, res.log.length)), 450);
-    return () => window.clearTimeout(timer);
-  }, [res, shown]);
-  const done = !!res && shown >= res.log.length;
-  useEffect(() => {
-    if (done && !completed.current) { completed.current = true; onDone(); }
+    if (done && !completed.current) {
+      completed.current = true;
+      onDone();
+    }
   }, [done, onDone]);
+
+  const actions: {
+    id: CombatAction;
+    title: string;
+    description: string;
+    cost: string;
+    icon: typeof Swords;
+    tone: string;
+    disabled?: boolean;
+  }[] = [
+    { id: "attack", title: "Ataque básico", description: "Ataque confiável usando F ou PdF.", cost: "Sem custo de PM", icon: Swords, tone: "text-gold" },
+    { id: "power", title: "Golpe poderoso", description: "+2 na força do ataque; crítico em 6.", cost: "1 PM", icon: Flame, tone: "text-blood", disabled: !res || res.heroPm < 1 },
+    { id: "defend", title: "Postura defensiva", description: "Abre mão do ataque e ganha +3 na defesa neste turno.", cost: "Sem custo de PM", icon: Shield, tone: "text-sky-400" },
+    { id: "recover", title: "Recuperar fôlego", description: "Recupera até 3 PV e deixa o inimigo agir.", cost: "1 PM", icon: Sparkles, tone: "text-mana", disabled: !res || res.heroPm < 1 || res.heroPv >= res.heroMaxPv },
+  ];
+  const entries = (res?.log ?? []).filter((entry: CombatLogEntry) => !entry.system);
+
   return (
-    <div className="space-y-4 rounded-2xl border bg-card p-5 sm:p-6">
-      <div className="flex items-start gap-3 rounded-xl bg-muted/50 p-3"><Swords className="mt-0.5 h-5 w-5 shrink-0 text-gold" /><p className="text-sm text-muted-foreground">Sua ficha ativa enfrenta um monstro. FA = F/PdF + H + 1d6 contra FD = A + H + 1d6. Um 6 no dado é crítico.</p></div>
+    <div className="space-y-4 rounded-2xl border bg-card p-4 sm:p-6">
+      <div className="flex items-start gap-3 rounded-xl bg-muted/50 p-3">
+        <Swords className="mt-0.5 h-5 w-5 shrink-0 text-gold" />
+        <div className="min-w-0">
+          <p className="font-semibold">Combate tático por turnos</p>
+          <p className="text-sm text-muted-foreground">Escolha uma ação. O inimigo responde automaticamente se continuar de pé. FA = F/PdF + H + 1d6; FD = A + H + 1d6.</p>
+        </div>
+      </div>
       {!hasActive && <p className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">Defina uma ficha ativa na tela de Fichas antes de iniciar um combate.</p>}
-      <Button className="w-full sm:w-auto" onClick={fight} disabled={busy || !hasActive || (!!res && !done)}>{busy ? "Preparando combate…" : done ? "Combater novamente" : buttonLabel}</Button>
+
+      {!res && (
+        <Button className="w-full sm:w-auto" onClick={startFight} disabled={busy || !hasActive}>
+          {busy ? "Preparando combate…" : buttonLabel}
+        </Button>
+      )}
+
       {res && (
         <div className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-background/50 p-4"><div><p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Encontro</p><h3 className="mt-1 font-display text-xl">{res.hero} <span className="text-muted-foreground">vs.</span> {res.monster}</h3></div><span className={`rounded-full px-3 py-1 text-xs font-bold ${done ? res.won ? "bg-emerald-500/15 text-emerald-500" : "bg-blood/10 text-blood" : "bg-primary/10 text-gold"}`}>{done ? res.won ? "VITÓRIA" : "DERROTA" : `Turno ${shown} de ${res.log.length}`}</span></div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-3 rounded-xl border bg-background/50 p-3 sm:p-4">
+              <div className="flex items-center gap-2"><span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10"><Swords className="h-5 w-5 text-gold" /></span><div className="min-w-0"><p className="text-xs uppercase tracking-wider text-muted-foreground">Herói</p><h3 className="truncate font-display text-lg">{res.hero}</h3></div></div>
+              <StatBar label="Pontos de Vida (PV)" value={res.heroPv} max={res.heroMaxPv} color="bg-emerald-500" />
+              <StatBar label="Pontos de Magia (PM)" value={res.heroPm} max={res.heroMaxPm} color="bg-sky-500" />
+            </div>
+            <div className="space-y-3 rounded-xl border border-blood/20 bg-blood/5 p-3 sm:p-4">
+              <div className="flex items-center gap-2"><span className="flex h-9 w-9 items-center justify-center rounded-lg bg-blood/10"><Shield className="h-5 w-5 text-blood" /></span><div className="min-w-0"><p className="text-xs uppercase tracking-wider text-muted-foreground">Adversário</p><h3 className="truncate font-display text-lg">{res.monster}</h3></div></div>
+              <StatBar label="Pontos de Vida (PV)" value={res.monsterPv} max={res.monsterMaxPv} color="bg-blood" />
+              <p className="text-xs text-muted-foreground">Turno {Math.max(1, res.turn - (done ? 1 : 0))}</p>
+            </div>
+          </div>
+
+          {res.status === "active" ? (
+            <div className="space-y-2">
+              <div className="flex flex-wrap items-end justify-between gap-2"><div><h3 className="font-display text-lg">Escolha sua ação</h3><p className="text-xs text-muted-foreground">Vigor gasto ao iniciar: 2 por combate.</p></div><span className="text-xs text-muted-foreground">{busy ? "Resolvendo turno…" : "Sua vez"}</span></div>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {actions.map((action) => {
+                  const Icon = action.icon;
+                  return (
+                    <button key={action.id} type="button" disabled={busy || !!action.disabled || done} onClick={() => act(action.id)} className="flex min-h-[112px] min-w-0 items-start gap-3 rounded-xl border bg-background p-3 text-left transition hover:border-primary/50 hover:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-45 sm:p-4">
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted"><Icon className={`h-5 w-5 ${action.tone}`} /></span>
+                      <span className="min-w-0 flex-1"><span className="block font-semibold">{action.title}</span><span className="mt-1 block text-sm leading-snug text-muted-foreground">{action.description}</span><span className="mt-2 block text-xs font-medium text-gold">{action.cost}</span></span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
+            <div aria-live="polite" className={`rounded-2xl border p-4 ${res.won ? "border-emerald-500/30 bg-emerald-500/10" : "border-blood/30 bg-blood/5"}`}>
+              <p className="font-display text-xl">{res.won ? "Vitória gloriosa!" : "O herói caiu…"}</p>
+              <p className="mt-1 text-sm">{res.won ? `Recompensa: +${res.reward} moedas e +${res.xp} XP` : `Recompensa de consolo: +${res.reward} moedas`}</p>
+              <Button className="mt-3 w-full sm:w-auto" onClick={() => { setRes(null); completed.current = false; }} variant="outline">Voltar à arena</Button>
+            </div>
+          )}
+
           <div className="space-y-2">
-            {res.log.slice(0, shown).map((l, i) => (
-              <div key={i} className={`flex items-start gap-3 rounded-xl border p-3 ${l.who === "herói" ? "border-primary/20 bg-primary/5" : "border-border bg-muted/30"}`}><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-background font-display text-sm">{l.turn}</span><div className="min-w-0 flex-1"><p className="font-semibold">{l.who === "herói" ? res.hero : l.who}</p><p className="text-sm text-muted-foreground">FA {l.fa} vs FD {l.fd} · {l.dmg} dano{l.crit ? " · CRÍTICO!" : ""}</p><p className="mt-1 text-xs text-muted-foreground">PV restantes do alvo: {l.hp}</p></div>{l.crit && <span className="rounded-lg bg-amber-500/15 px-2 py-1 text-xs font-bold text-amber-500">CRÍTICO</span>}</div>
+            <h3 className="font-display text-lg">Registro do combate</h3>
+            {entries.length === 0 && <p className="rounded-xl border border-dashed p-3 text-sm text-muted-foreground">O combate começou. Escolha sua primeira ação.</p>}
+            {entries.slice(-8).map((entry, index) => (
+              <div key={`${entry.turn ?? 0}-${index}`} className={`flex min-w-0 items-start gap-3 rounded-xl border p-3 ${entry.target === "monster" ? "border-primary/20 bg-primary/5" : "border-border bg-muted/30"}`}>
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-background font-display text-sm">{entry.turn ?? "•"}</span>
+                <div className="min-w-0 flex-1"><p className="break-words font-semibold">{entry.who}{entry.action ? ` · ${entry.action}` : ""}</p><p className="text-sm text-muted-foreground">FA {entry.fa ?? 0} vs FD {entry.fd ?? 0} · {entry.dmg ?? 0} dano{entry.crit ? " · CRÍTICO!" : ""}</p><p className="mt-1 text-xs text-muted-foreground">PV restantes do alvo: {entry.hp ?? 0}</p></div>
+                {entry.crit && <span className="shrink-0 rounded-lg bg-amber-500/15 px-2 py-1 text-xs font-bold text-amber-500">CRÍTICO</span>}
+              </div>
             ))}
           </div>
-          {done && <div aria-live="polite" className={`rounded-2xl border p-4 ${res.won ? "border-emerald-500/30 bg-emerald-500/10" : "border-blood/30 bg-blood/5"}`}><p className="font-display text-xl">{res.won ? "Vitória gloriosa!" : "O herói caiu…"}</p><p className="mt-1 text-sm">{res.won ? `Recompensa: +${res.reward} moedas e +${res.xp} XP` : `Recompensa de consolo: +${res.reward} moedas`}</p></div>}
         </div>
       )}
     </div>
