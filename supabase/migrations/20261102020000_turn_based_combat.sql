@@ -200,7 +200,7 @@ returns jsonb
 language plpgsql
 security definer
 set search_path = public
-as $
+as $$
 declare s public.combat_sessions;
 begin
   if auth.uid() is null then raise exception 'É necessário entrar na conta'; end if;
@@ -210,7 +210,7 @@ begin
   if not found then return null; end if;
   return public._combat_state(s);
 end;
-$;
+$$;
 
 create or replace function public.get_combat_state(_session_id uuid)
 returns jsonb
