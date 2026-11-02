@@ -9,13 +9,12 @@ import { Zap, Swords, Dice5, Brain, Trophy, RotateCcw, Shield, BookOpen, Flame, 
 import { useCustomization } from "@/lib/app-customization";
 import { VigorRestore, useGameSettings } from "@/components/VigorRestore";
 import { createMachineStrategy, maxFarkleWager, nextRollCount, scoreDiceSelection, hasScoringCombination, farkleProbability, type DieFace } from "@/lib/farkle";
+import type { CombatAction, CombatLogEntry, CombatState } from "@/lib/combat";
 
 export const Route = createFileRoute("/_authenticated/jogos")({
   head: () => ({ meta: [{ title: "Mini-jogos — Mesa 3D&T" }, { name: "description", content: "Combate, dados da taverna e enigmas." }] }),
   component: Jogos,
 });
-
-import type { CombatAction, CombatLogEntry, CombatState } from "@/lib/combat";
 
 function StatBar({ label, value, max, color }: { label: string; value: number; max: number; color: string }) {
   const pct = max > 0 ? Math.max(0, Math.min(100, (value / max) * 100)) : 0;
@@ -75,7 +74,7 @@ function Combat({ onDone, hasActive, buttonLabel }: { onDone: () => void; hasAct
     disabled?: boolean;
   }[] = [
     { id: "attack", title: "Ataque básico", description: "Ataque confiável usando F ou PdF.", cost: "Sem custo de PM", icon: Swords, tone: "text-gold" },
-    { id: "power", title: "Golpe poderoso", description: "+2 na força do ataque; crítico em 6.", cost: "1 PM", icon: Flame, tone: "text-blood", disabled: !res || res.heroPm < 1 },
+    { id: "power", title: "Golpe poderoso", description: "+2 na força do ataque; pode causar dano maior em crítico.", cost: "1 PM", icon: Flame, tone: "text-blood", disabled: !res || res.heroPm < 1 },
     { id: "defend", title: "Postura defensiva", description: "Abre mão do ataque e ganha +3 na defesa neste turno.", cost: "Sem custo de PM", icon: Shield, tone: "text-sky-400" },
     { id: "recover", title: "Recuperar fôlego", description: "Recupera até 3 PV e deixa o inimigo agir.", cost: "1 PM", icon: Sparkles, tone: "text-mana", disabled: !res || res.heroPm < 1 || res.heroPv >= res.heroMaxPv },
   ];
