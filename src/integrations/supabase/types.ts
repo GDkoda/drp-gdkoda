@@ -166,47 +166,6 @@ export type Database = {
         }
         Relationships: []
       }
-      farkle_games: {
-        Row: {
-          created_at: string
-          finished_at: string | null
-          id: string
-          payout: number
-          result_won: boolean | null
-          status: string
-          user_id: string
-          wager: number
-        }
-        Insert: {
-          created_at?: string
-          finished_at?: string | null
-          id?: string
-          payout?: number
-          result_won?: boolean | null
-          status?: string
-          user_id: string
-          wager?: number
-        }
-        Update: {
-          created_at?: string
-          finished_at?: string | null
-          id?: string
-          payout?: number
-          result_won?: boolean | null
-          status?: string
-          user_id?: string
-          wager?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "farkle_games_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       lore_attachments: {
         Row: {
           created_at: string
@@ -746,10 +705,6 @@ export type Database = {
         Args: { _char: string; _chest: string }
         Returns: undefined
       }
-      finish_farkle_game: {
-        Args: { _game: string; _won: boolean }
-        Returns: Json
-      }
       get_vigor: { Args: never; Returns: number }
       has_role: {
         Args: {
@@ -780,7 +735,6 @@ export type Database = {
       }
       solve_puzzle: { Args: { _answer: string; _id: string }; Returns: Json }
       start_farkle_game: { Args: never; Returns: number }
-      start_farkle_game_with_bet: { Args: { _wager: number }; Returns: string }
       start_puzzle: { Args: never; Returns: Json }
       transfer_coins: {
         Args: { _amount: number; _to: string }
