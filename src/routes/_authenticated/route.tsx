@@ -1,8 +1,9 @@
 import { createFileRoute, Link, Outlet, redirect, useNavigate } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useMe } from "@/lib/game";
-import { Beer, ScrollText, Store, Package, Crown, LogOut, Coins, Swords, BookOpen } from "lucide-react";
+import { Beer, ScrollText, Store, Package, Crown, LogOut, Coins, Swords, BookOpen, Moon, Sun } from "lucide-react";
 import { useCustomization } from "@/lib/app-customization";
 
 export const Route = createFileRoute("/_authenticated")({
@@ -20,6 +21,15 @@ function Layout() {
   const qc = useQueryClient();
   const nav = useNavigate();
   const { text } = useCustomization();
+  const [theme, setTheme] = useState<"dark" | "light">(() => {
+    if (typeof window === "undefined") return "dark";
+    return window.localStorage.getItem("mesa-theme") === "light" ? "light" : "dark";
+  });
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    try { window.localStorage.setItem("mesa-theme", theme); } catch { /* armazenamento pode estar bloqueado pelo navegador */ }
+  }, [theme]);
   const links = [
     { to: "/taverna", label: text("nav_taverna"), icon: Beer },
     { to: "/fichas", label: text("nav_fichas"), icon: ScrollText },
@@ -56,13 +66,13 @@ function Layout() {
           </div>
         </div>
       </header>
-      <main className="mx-auto max-w-5xl px-4 py-5"><Outlet /></main>
-      <nav className="no-print fixed inset-x-0 bottom-0 z-30 flex border-t bg-background pb-[env(safe-area-inset-bottom)] md:hidden">
+      <main className="mx-auto w-full max-w-7xl px-3 py-5 sm:px-5 sm:py-7 lg:px-8"><Outlet /></main>
+      <nav aria-label="Navegação principal" className="no-print fixed inset-x-0 bottom-0 z-30 flex border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_28px_rgb(0_0_0/0.12)] backdrop-blur-xl md:hidden">
         {links.map((l) => (
           <Link
             key={l.to}
             to={l.to}
-            className="flex min-h-14 flex-1 touch-manipulation select-none flex-col items-center justify-center gap-0.5 py-2 text-[11px] transition-transform active:scale-90"
+            className="flex min-h-14 min-w-0 flex-1 touch-manipulation select-none flex-col items-center justify-center gap-1 px-0.5 py-2 text-[10px] leading-tight transition-transform active:scale-95"
             activeProps={{ className: "bg-muted font-semibold text-gold", "aria-current": "page" }}
             inactiveProps={{ className: "text-muted-foreground" }}
           >
