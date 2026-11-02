@@ -33,8 +33,12 @@ function Fichas() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl text-gold">{me?.isMaster ? text("fichas_master_title") : text("fichas_title")}</h1>
+      <div className="page-heading">
+        <div>
+          <p className="page-eyebrow">Personagens e progresso</p>
+          <h1 className="mt-1 text-3xl text-gold">{me?.isMaster ? text("fichas_master_title") : text("fichas_title")}</h1>
+          <p className="mt-2 text-sm text-muted-foreground">Abra uma ficha para editar atributos, equipamentos e magias.</p>
+        </div>
         <Button onClick={create}><Plus className="h-4 w-4" />{text("fichas_new")}</Button>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">

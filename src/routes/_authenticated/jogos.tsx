@@ -82,7 +82,8 @@ function Combat({ onDone, hasActive, buttonLabel }: { onDone: () => void; hasAct
   );
 }
 
-function Dice({ onDone, buttonLabel }: { onDone: () => void; buttonLabel: string }) {\n  const { data: me } = useMe();
+function Dice({ onDone, buttonLabel }: { onDone: () => void; buttonLabel: string }) {
+  const { data: me } = useMe();
   const [bet, setBet] = useState(10);
   const [res, setRes] = useState<{ player: number[]; house: number[]; result: string; delta: number } | null>(null);
   const face = ["", "⚀", "⚁", "⚂", "⚃", "⚄", "⚅"];
