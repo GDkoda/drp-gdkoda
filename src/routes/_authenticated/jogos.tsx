@@ -5,7 +5,7 @@ import { rpc, useRefresh, useMe } from "@/lib/game";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Zap, Swords, Dice5, Brain, Trophy, RotateCcw, Shield } from "lucide-react";
+import { Zap, Swords, Dice5, Brain, Trophy, RotateCcw, Shield, BookOpen, Flame, Sparkles } from "lucide-react";
 import { useCustomization } from "@/lib/app-customization";
 import { VigorRestore, useGameSettings } from "@/components/VigorRestore";
 import { bestScoringSelection, machineShouldBank, nextRollCount, scoreDiceSelection, hasScoringCombination, farkleProbability, type DieFace } from "@/lib/farkle";
@@ -157,6 +157,46 @@ const DIE_GLYPHS = ["", "⚀", "⚁", "⚂", "⚃", "⚄", "⚅"];
 const rollFarkleDice = (count: number): DieFace[] =>
   Array.from({ length: count }, () => (1 + Math.floor(Math.random() * 6)) as DieFace);
 
+
+function FarkleScoreGuide({ compact = false }: { compact?: boolean }) {
+  const groupRows = [
+    { label: "3 iguais", values: ["1.000", "200", "300", "400", "500", "600"] },
+    { label: "4 iguais", values: ["2.000", "400", "600", "800", "1.000", "1.200"] },
+    { label: "5 iguais", values: ["4.000", "800", "1.200", "1.600", "2.000", "2.400"] },
+    { label: "6 iguais", values: ["8.000", "1.600", "2.400", "3.200", "4.000", "4.800"] },
+  ];
+
+  return (
+    <details open={!compact} className="group overflow-hidden rounded-2xl border border-amber-200/20 bg-[#211710]/85 shadow-[0_12px_30px_rgba(0,0,0,.16)]">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-4 transition-colors hover:bg-amber-100/[0.04] [&::-webkit-details-marker]:hidden">
+        <span className="flex min-w-0 items-center gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-amber-200/20 bg-amber-300/10 text-amber-200"><BookOpen className="h-5 w-5" /></span>
+          <span className="min-w-0"><span className="block font-display text-lg text-amber-100">Guia de pontuação</span><span className="mt-0.5 block text-xs text-amber-100/55">Consulte todas as combinações válidas e seus valores.</span></span>
+        </span>
+        <span className="shrink-0 rounded-full border border-amber-200/20 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-200 group-open:bg-amber-200/10">Tabela <span className="ml-1 inline-block transition-transform group-open:rotate-180">⌄</span></span>
+      </summary>
+      <div className="space-y-4 border-t border-amber-100/10 p-3 sm:p-4">
+        <div className="overflow-x-auto rounded-xl border border-amber-100/10">
+          <table className="w-full min-w-[440px] border-collapse text-center text-xs sm:text-sm">
+            <thead className="bg-amber-100/[0.07] text-amber-100/80">
+              <tr><th scope="col" className="px-3 py-3 text-left font-semibold">Combinação</th>{["⚀", "⚁", "⚂", "⚃", "⚄", "⚅"].map((face) => <th key={face} scope="col" className="px-2 py-3 text-lg">{face}</th>)}</tr>
+            </thead>
+            <tbody className="divide-y divide-amber-100/10 text-amber-50/85">
+              <tr className="bg-amber-300/[0.06]"><th scope="row" className="px-3 py-3 text-left font-semibold text-amber-100">Dado isolado</th><td colSpan={6} className="px-3 py-3 text-left">⚀ 100 pts <span className="mx-2 text-amber-100/30">•</span> ⚄ 50 pts <span className="ml-2 text-amber-100/45">(2, 3, 4 e 6 não pontuam sozinhos)</span></td></tr>
+              {groupRows.map((row) => <tr key={row.label} className="transition-colors hover:bg-amber-100/[0.04]"><th scope="row" className="whitespace-nowrap px-3 py-3 text-left font-semibold text-amber-100">{row.label}</th>{row.values.map((value, index) => <td key={index} className="px-2 py-3 tabular-nums">{value}</td>)}</tr>)}
+              <tr className="bg-amber-300/[0.06]"><th scope="row" className="px-3 py-3 text-left font-semibold text-amber-100">Sequências</th><td colSpan={6} className="px-3 py-3 text-left leading-relaxed">1–2–3–4–5 <strong className="text-amber-200">500 pts</strong><span className="mx-2 text-amber-100/25">•</span> 2–3–4–5–6 <strong className="text-amber-200">750 pts</strong><br />1–2–3–4–5–6 <strong className="text-amber-200">1.500 pts</strong></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div className="grid gap-2 sm:grid-cols-2">
+          <p className="rounded-xl border border-amber-100/10 bg-black/20 p-3 text-[11px] leading-relaxed text-amber-100/65"><strong className="text-amber-200">Regra dos iguais:</strong> cada dado adicional igual dobra o valor da trinca. Ex.: três 4 valem 400; quatro 4 valem 800.</p>
+          <p className="rounded-xl border border-amber-100/10 bg-black/20 p-3 text-[11px] leading-relaxed text-amber-100/65"><strong className="text-amber-200">Atenção:</strong> a combinação deve ser formada dentro do mesmo lançamento. Ao selecionar dados, todos os dados escolhidos precisam pontuar.</p>
+        </div>
+      </div>
+    </details>
+  );
+}
+
 function Farkle({ onDone, vigor }: { onDone: () => void; vigor: number }) {
   const [phase, setPhase] = useState<"intro" | "player-roll" | "player-select" | "player-action" | "machine" | "farkle" | "finished">("intro");
   const [playerTotal, setPlayerTotal] = useState(0);
@@ -180,6 +220,8 @@ function Farkle({ onDone, vigor }: { onDone: () => void; vigor: number }) {
   const selectedScore = scoreDiceSelection(selectedFaces);
   const selectionValid = selectedIndices.length > 0 && selectedScore > 0;
   const gameOver = phase === "finished";
+  const playerProgress = Math.min(100, (playerTotal / 4_000) * 100);
+  const machineProgress = Math.min(100, (machineTotal / 4_000) * 100);
 
   useEffect(() => () => {
     if (timer.current !== null) window.clearTimeout(timer.current);
@@ -382,46 +424,60 @@ function Farkle({ onDone, vigor }: { onDone: () => void; vigor: number }) {
   const machineWon = machineTotal >= 4_000;
 
   return (
-    <section className="relative overflow-hidden rounded-2xl border border-amber-900/40 bg-[radial-gradient(ellipse_at_top,#70502d_0%,#3a281d_45%,#211912_100%)] p-4 text-amber-50 shadow-2xl sm:p-6">
-      <div className="pointer-events-none absolute inset-0 opacity-[0.12]" style={{ backgroundImage: "repeating-linear-gradient(4deg,transparent 0px,transparent 9px,#d6a35a 10px,#d6a35a 11px,transparent 14px)" }} />
-      <div className="relative space-y-5">
-        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-amber-200/20 pb-4">
-          <div><p className="text-[10px] font-bold uppercase tracking-[0.24em] text-amber-200/70">Jogo de taberna • disputa contra a casa</p><h2 className="mt-1 flex items-center gap-2 font-display text-2xl text-amber-100 sm:text-3xl"><span aria-hidden="true">⚄</span> Jogo de Dados</h2><p className="mt-1 text-xs text-amber-100/65">Primeiro a guardar 4.000 pontos vence.</p></div>
-          <div className="rounded-xl border border-amber-200/20 bg-black/20 px-3 py-2 text-right"><p className="text-[10px] font-bold uppercase tracking-wider text-amber-100/60">Entrada</p><p className="font-display text-lg text-amber-200">3 vigor</p><p className="text-[10px] text-amber-100/50">por partida</p></div>
+    <section className="relative isolate overflow-hidden rounded-[1.75rem] border border-amber-200/20 bg-[#17100d] p-3 text-amber-50 shadow-[0_28px_80px_rgba(0,0,0,.38)] sm:p-6">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_8%_0%,rgba(180,116,45,.22),transparent_34%),radial-gradient(ellipse_at_92%_8%,rgba(117,62,34,.25),transparent_34%),linear-gradient(145deg,#241710_0%,#1a120e_52%,#100b09_100%)]" />
+      <div className="pointer-events-none absolute inset-0 opacity-[0.08]" style={{ backgroundImage: "repeating-linear-gradient(4deg,transparent 0px,transparent 9px,#e4b66d 10px,#e4b66d 11px,transparent 14px)" }} />
+      <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/70 to-transparent" />
+      <div className="relative space-y-5 sm:space-y-6">
+        <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-amber-100/15 bg-[#2a1b14]/75 p-4 shadow-[0_12px_32px_rgba(0,0,0,.18)] backdrop-blur-sm sm:p-5">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-amber-200/25 bg-gradient-to-br from-amber-200/20 to-amber-500/5 text-3xl text-amber-200 shadow-inner">⚄</div>
+            <div className="min-w-0"><p className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.24em] text-amber-200/70"><Sparkles className="h-3.5 w-3.5" /> Taverna • disputa contra a casa</p><h2 className="mt-1 font-display text-2xl text-amber-100 sm:text-3xl">Jogo de Dados</h2><p className="mt-1 text-xs text-amber-100/60">Acumule pontos, administre o risco e alcance 4.000 primeiro.</p></div>
+          </div>
+          <div className="flex items-center gap-3 rounded-xl border border-amber-200/20 bg-black/25 px-4 py-3">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-300/10 text-amber-300"><Flame className="h-5 w-5" /></span>
+            <div><p className="text-[9px] font-bold uppercase tracking-[0.2em] text-amber-100/55">Entrada por partida</p><p className="font-display text-xl leading-tight text-amber-200">3 vigor</p></div>
+          </div>
         </div>
 
         {phase === "intro" ? (
           <div className="mx-auto max-w-3xl space-y-5 py-4 text-center">
             <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-3xl border-2 border-amber-100/25 bg-gradient-to-br from-amber-100 to-amber-400 text-6xl text-amber-950 shadow-[0_14px_28px_rgba(0,0,0,.4)]">⚄</div>
             <div><h3 className="font-display text-2xl text-amber-100">A sorte favorece os ousados?</h3><p className="mx-auto mt-2 max-w-xl text-sm leading-relaxed text-amber-100/70">Role seis dados, separe combinações pontuadoras e decida quando parar. Cada novo lançamento pode multiplicar seus ganhos — ou levar tudo embora num Farkle.</p></div>
-            <div className="grid gap-3 text-left sm:grid-cols-3">
-              <div className="rounded-xl border border-amber-100/15 bg-black/20 p-3"><p className="font-display text-amber-200">1 e 5</p><p className="mt-1 text-sm text-amber-50/70">Um 1 vale 100; um 5 vale 50 pontos.</p></div>
-              <div className="rounded-xl border border-amber-100/15 bg-black/20 p-3"><p className="font-display text-amber-200">Trincas ou mais</p><p className="mt-1 text-sm text-amber-50/70">Trincas valem de 200 a 1.000. Cada dado extra igual dobra o valor.</p></div>
-              <div className="rounded-xl border border-amber-100/15 bg-black/20 p-3"><p className="font-display text-amber-200">Sequências</p><p className="mt-1 text-sm text-amber-50/70">1–5 vale 500; 2–6 vale 750; 1–6 vale 1.500.</p></div>
-            </div>
+            <FarkleScoreGuide />
             <p className="mt-2 text-xs text-amber-200/80">Com o vigor atual, você tem {Math.floor(vigor / 3)} partida(s) disponível(is) hoje.</p>
             <p className="text-xs text-amber-100/55">Você precisa selecionar ao menos uma combinação válida por lançamento. Dados guardados não voltam a rolar no mesmo turno. Um Farkle perde todos os pontos ainda não guardados. Ao usar os seis dados, você pode rolar os seis novamente.</p>
             <Button onClick={() => void startGame()} disabled={busy || vigor < 3} className="min-h-12 border border-amber-100/20 bg-amber-300 px-8 font-display text-amber-950 shadow-lg hover:bg-amber-200">{busy ? "Preparando a mesa…" : vigor < 3 ? "Vigor insuficiente · precisa 3" : "Jogar · gastar 3 de vigor"}</Button>
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-xl border border-amber-200/20 bg-black/25 p-3"><p className="text-xs uppercase tracking-wider text-amber-100/60">Você</p><p className="font-display text-3xl tabular-nums text-amber-100">{playerTotal.toLocaleString("pt-BR")}</p><p className="text-[11px] text-amber-100/60">Total guardado</p></div>
-              <div className="rounded-xl border border-amber-200/20 bg-black/25 p-3"><p className="text-xs uppercase tracking-wider text-amber-100/60">Máquina</p><p className="font-display text-3xl tabular-nums text-amber-100">{machineTotal.toLocaleString("pt-BR")}</p><p className="text-[11px] text-amber-100/60">Total guardado</p></div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="rounded-2xl border border-emerald-200/20 bg-gradient-to-br from-emerald-950/55 to-black/35 p-4 shadow-[0_12px_30px_rgba(0,0,0,.15)]">
+                <div className="flex items-center justify-between gap-3"><p className="text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-100/65">Seu placar</p><span className="rounded-full border border-emerald-200/20 bg-emerald-300/10 px-2.5 py-1 text-[10px] font-semibold text-emerald-200">Jogador</span></div>
+                <p className="mt-2 font-display text-4xl tabular-nums text-emerald-100">{playerTotal.toLocaleString("pt-BR")}<span className="ml-1 text-base text-emerald-100/45">/ 4.000</span></p>
+                <div className="mt-3 h-2 overflow-hidden rounded-full bg-black/35"><div className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-amber-200 transition-[width] duration-500" style={{ width: `${playerProgress}%` }} /></div>
+                <p className="mt-2 text-[10px] text-emerald-100/55">Pontos já protegidos no placar</p>
+              </div>
+              <div className="rounded-2xl border border-amber-200/20 bg-gradient-to-br from-amber-950/55 to-black/35 p-4 shadow-[0_12px_30px_rgba(0,0,0,.15)]">
+                <div className="flex items-center justify-between gap-3"><p className="text-[10px] font-bold uppercase tracking-[0.2em] text-amber-100/65">Placar da casa</p><span className="rounded-full border border-amber-200/20 bg-amber-300/10 px-2.5 py-1 text-[10px] font-semibold text-amber-200">Máquina</span></div>
+                <p className="mt-2 font-display text-4xl tabular-nums text-amber-100">{machineTotal.toLocaleString("pt-BR")}<span className="ml-1 text-base text-amber-100/45">/ 4.000</span></p>
+                <div className="mt-3 h-2 overflow-hidden rounded-full bg-black/35"><div className="h-full rounded-full bg-gradient-to-r from-amber-600 to-amber-200 transition-[width] duration-500" style={{ width: `${machineProgress}%` }} /></div>
+                <p className="mt-2 text-[10px] text-amber-100/55">Pontos guardados pela casa</p>
+              </div>
             </div>
 
             <div className="grid gap-3 lg:grid-cols-2">
-              <div className="rounded-xl border border-amber-200/20 bg-black/25 p-3">
+              <div className="rounded-2xl border border-rose-200/15 bg-gradient-to-br from-rose-950/35 to-black/30 p-4 shadow-inner">
                 <div className="flex items-center justify-between gap-2"><p className="text-xs font-bold uppercase tracking-wider text-amber-100/70">Sua rodada · em risco</p><span className="font-display text-xl tabular-nums text-amber-300">{playerTurnPoints.toLocaleString("pt-BR")}</span></div>
                 <p className="mt-1 text-[11px] text-amber-100/55">{phase === "player-roll" || phase === "player-select" || phase === "player-action" ? "Estes pontos só entram no total quando você encerra a rodada." : "Pontuação acumulada do turno do jogador."}</p>
               </div>
-              <div className="rounded-xl border border-amber-200/20 bg-black/25 p-3">
+              <div className="rounded-2xl border border-amber-200/15 bg-gradient-to-br from-amber-950/35 to-black/30 p-4 shadow-inner">
                 <div className="flex items-center justify-between gap-2"><p className="text-xs font-bold uppercase tracking-wider text-amber-100/70">Rodada da máquina</p><span className="font-display text-xl tabular-nums text-amber-300">{machineTurnPoints.toLocaleString("pt-BR")}</span></div>
                 <p className="mt-1 text-[11px] text-amber-100/55">{machineMessage}</p>
               </div>
             </div>
 
-            <div className="rounded-2xl border border-amber-100/20 bg-gradient-to-b from-[#4b3524] to-[#2d2118] p-3 shadow-inner sm:p-5">
+            <div className="rounded-[1.5rem] border border-amber-100/25 bg-[linear-gradient(145deg,#513821_0%,#352417_48%,#24180f_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,.07),0_18px_40px_rgba(0,0,0,.22)] sm:p-5">
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><div><p className="text-xs font-bold uppercase tracking-wider text-amber-200/80">Mesa de lançamento</p><p className="text-[11px] text-amber-100/55">Dados disponíveis: {phase === "player-select" ? dice.length : diceToRoll}</p></div><span className="rounded-full border border-amber-200/20 bg-black/25 px-3 py-1 text-xs font-semibold text-amber-200">{phase === "machine" ? "Vez da máquina" : phase === "finished" ? "Partida encerrada" : phase === "player-select" ? "Selecione os dados" : phase === "player-action" ? "Decida seu próximo passo" : phase === "farkle" ? "Farkle!" : "Sua vez"}</span></div>
               {farkleFlash && <div role="alert" className="mb-3 animate-pulse rounded-xl border border-red-300/50 bg-red-950/70 p-3 text-center font-display text-xl text-red-100">FARKLE! Pontos da rodada perdidos.</div>}
               <div className="flex min-h-28 flex-wrap items-center justify-center gap-2.5 py-3 sm:gap-4">
@@ -440,21 +496,22 @@ function Farkle({ onDone, vigor }: { onDone: () => void; vigor: number }) {
               </div>
             </div>
 
-            <div className="rounded-xl border border-amber-200/20 bg-black/20 p-3">
+            <div className="rounded-2xl border border-amber-200/15 bg-[#241811]/80 p-4 shadow-inner backdrop-blur-sm">
               <div className="flex items-center justify-between gap-2"><h3 className="font-display text-lg text-amber-100">Jogada da máquina</h3><span className="text-xs text-amber-100/55">{machineDice.length ? machineDice.length + " dados" : "Aguardando"}</span></div>
               <div className="mt-2 flex min-h-12 flex-wrap items-center gap-2">{machineDice.map((face, index) => <span key={index} className={`flex h-10 w-10 items-center justify-center rounded-lg border text-3xl leading-none ${machineSelected.includes(index) ? "border-emerald-200 bg-emerald-200 text-emerald-950" : "border-amber-100/20 bg-amber-50 text-amber-950"}`}>{DIE_GLYPHS[face]}</span>)}{!machineDice.length && <span className="text-xs text-amber-100/45">A máquina ainda não lançou os dados.</span>}</div>
               <p className="mt-2 text-xs text-amber-100/70">{machineMessage}</p>
             </div>
 
-            <div className="rounded-xl border border-amber-200/20 bg-black/20 p-3">
+            <div className="rounded-2xl border border-amber-200/15 bg-[#241811]/80 p-4 shadow-inner backdrop-blur-sm">
               <h3 className="mb-3 flex items-center gap-2 font-display text-lg text-amber-100"><Shield className="h-4 w-4 text-amber-300" />Histórico recente</h3>
               <div className="space-y-2">{history.map((item) => <div key={item.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-100/10 bg-black/15 px-3 py-2 text-xs"><div className="min-w-0"><p className="font-semibold text-amber-100">{item.who} <span className="font-normal text-amber-100/55">· {item.detail}</span></p><p className="mt-0.5 text-amber-100/65">Rolou {item.dice.map((face) => face).join(" · ")}{item.selected.length ? " | Guardou " + item.selected.join(" · ") : ""}</p></div><span className={`font-display text-base ${item.points ? "text-emerald-300" : "text-red-200"}`}>{item.points ? "+" + item.points.toLocaleString("pt-BR") : "0"}</span></div>)}{!history.length && <p className="text-xs text-amber-100/50">Os lançamentos e combinações aparecerão aqui.</p>}</div>
             </div>
-            <p aria-live="polite" className="text-center text-xs text-amber-100/65">{status}</p>
+            <FarkleScoreGuide compact />
+            <p aria-live="polite" className="rounded-xl border border-amber-100/10 bg-black/20 px-4 py-3 text-center text-xs text-amber-100/70">{status}</p>
           </>
         )}
 
-        {gameOver && <div className="absolute inset-0 z-10 grid place-items-center rounded-xl bg-black/75 p-4 backdrop-blur-sm"><div className="w-full max-w-md space-y-4 rounded-2xl border border-amber-200/30 bg-gradient-to-br from-[#59402b] to-[#2a1d15] p-6 text-center shadow-2xl"><Trophy className="mx-auto h-12 w-12 text-amber-300" /><p className="text-xs font-bold uppercase tracking-[0.22em] text-amber-200/70">Fim da partida</p><h3 className="font-display text-3xl text-amber-100">{playerWon ? "Você venceu!" : "A máquina venceu"}</h3><div className="grid grid-cols-2 gap-3"><div className="rounded-xl bg-black/20 p-3"><p className="text-xs text-amber-100/60">Você</p><p className="font-display text-2xl text-amber-100">{playerTotal.toLocaleString("pt-BR")}</p></div><div className="rounded-xl bg-black/20 p-3"><p className="text-xs text-amber-100/60">Máquina</p><p className="font-display text-2xl text-amber-100">{machineTotal.toLocaleString("pt-BR")}</p></div></div><Button onClick={() => { setPhase("intro"); setStatus("Uma nova partida custa mais 3 de vigor."); }} className="w-full border border-amber-100/20 bg-amber-300 font-display text-amber-950 hover:bg-amber-200"><RotateCcw className="h-4 w-4" />Nova partida · 3 vigor</Button></div></div>}
+        {gameOver && <div className="absolute inset-0 z-10 grid place-items-center rounded-[1.5rem] bg-black/80 p-4 backdrop-blur-md"><div className="w-full max-w-md space-y-4 rounded-3xl border border-amber-200/30 bg-[linear-gradient(145deg,#59402b,#2a1d15)] p-6 text-center shadow-[0_24px_80px_rgba(0,0,0,.5)]"><Trophy className="mx-auto h-12 w-12 text-amber-300" /><p className="text-xs font-bold uppercase tracking-[0.22em] text-amber-200/70">Fim da partida</p><h3 className="font-display text-3xl text-amber-100">{playerWon ? "Você venceu!" : "A máquina venceu"}</h3><div className="grid grid-cols-2 gap-3"><div className="rounded-xl bg-black/20 p-3"><p className="text-xs text-amber-100/60">Você</p><p className="font-display text-2xl text-amber-100">{playerTotal.toLocaleString("pt-BR")}</p></div><div className="rounded-xl bg-black/20 p-3"><p className="text-xs text-amber-100/60">Máquina</p><p className="font-display text-2xl text-amber-100">{machineTotal.toLocaleString("pt-BR")}</p></div></div><Button onClick={() => { setPhase("intro"); setStatus("Uma nova partida custa mais 3 de vigor."); }} className="w-full border border-amber-100/20 bg-amber-300 font-display text-amber-950 hover:bg-amber-200"><RotateCcw className="h-4 w-4" />Nova partida · 3 vigor</Button></div></div>}
       </div>
     </section>
   );
