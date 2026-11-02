@@ -9,7 +9,8 @@ import { Zap, Swords, Dice5, Brain, Trophy, RotateCcw, Shield, BookOpen, Flame, 
 import { useCustomization } from "@/lib/app-customization";
 import { VigorRestore, useGameSettings } from "@/components/VigorRestore";
 import { createMachineStrategy, maxFarkleWager, nextRollCount, scoreDiceSelection, hasScoringCombination, farkleProbability, type DieFace } from "@/lib/farkle";
-import { isCombatActionAvailable, type CombatAction, type CombatLogEntry, type CombatState } from "@/lib/combat";
+import { isCombatActionAvailable } from "@/lib/combat";
+import type { CombatAction, CombatLogEntry, CombatState } from "@/lib/combat";
 
 export const Route = createFileRoute("/_authenticated/jogos")({
   head: () => ({ meta: [{ title: "Mini-jogos — Mesa 3D&T" }, { name: "description", content: "Combate, dados da taverna e enigmas." }] }),
