@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   bestScoringSelection,
+  calculateFarkleSettlement,
   createMachineStrategy,
   farkleProbability,
+  maxFarkleWager,
   hasScoringCombination,
   machineShouldBank,
   nextRollCount,
@@ -107,4 +109,39 @@ describe("pontuação do Jogo de Dados", () => {
     const strategy = createMachineStrategy({ machineTotal: 3_700, playerTotal: 3_600 });
     expect(strategy.shouldBank(300, 6, 4)).toBe(true);
   });
+
+  it("limita a aposta opcional a metade do saldo atual", () => {
+    expect(maxFarkleWager(100)).toBe(50);
+    expect(maxFarkleWager(101)).toBe(50);
+    expect(maxFarkleWager(1)).toBe(0);
+    expect(maxFarkleWager(0)).toBe(0);
+    expect(maxFarkleWager(-40)).toBe(0);
+  });
+
+  it("devolve a aposta e paga 50% de lucro na vitória", () => {
+    expect(calculateFarkleSettlement(100, true)).toEqual({
+      payout: 150,
+      profit: 50,
+      net: 50,
+    });
+    expect(calculateFarkleSettlement(11, true)).toEqual({
+      payout: 16,
+      profit: 5,
+      net: 5,
+    });
+  });
+
+  it("perde toda a aposta na derrota e não altera moedas sem aposta", () => {
+    expect(calculateFarkleSettlement(100, false)).toEqual({
+      payout: 0,
+      profit: 0,
+      net: -100,
+    });
+    expect(calculateFarkleSettlement(0, true)).toEqual({
+      payout: 0,
+      profit: 0,
+      net: 0,
+    });
+  });
+
 });
