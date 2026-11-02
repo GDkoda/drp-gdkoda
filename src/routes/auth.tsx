@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { toEmail } from "@/lib/game";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -32,7 +31,7 @@ function AuthPage() {
     setBusy(true);
     try {
       if (mode === "in") {
-        const { error } = await supabase.auth.signInWithPassword({ email: toEmail(login), password });
+        const { error } = await supabase.auth.signInWithPassword({ email: login.trim().toLowerCase(), password });
         if (error) throw error;
       } else {
         if (!/^[a-zA-Z0-9_]{3,20}$/.test(username)) throw new Error("Nome de usuário: 3-20 letras, números ou _");
@@ -57,8 +56,8 @@ function AuthPage() {
       <form onSubmit={submit} className="w-full max-w-sm space-y-4 rounded-xl border bg-card p-6">
         <h1 className="text-center text-2xl text-gold">{mode === "in" ? "Entrar" : "Novo aventureiro"}</h1>
         <div className="space-y-1">
-          <Label>{mode === "in" ? "E-mail ou usuário" : "E-mail"}</Label>
-          <Input value={login} onChange={(e) => setLogin(e.target.value)} required type={mode === "up" ? "email" : "text"} />
+          <Label>E-mail</Label>
+          <Input value={login} onChange={(e) => setLogin(e.target.value)} required type="email" />
         </div>
         {mode === "up" && (
           <div className="space-y-1">
