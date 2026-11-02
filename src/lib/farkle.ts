@@ -439,3 +439,19 @@ export function machineShouldBank({
   }).shouldBank(turnPoints, diceRemaining, MAX_AI_LOOKAHEAD);
 }
 
+
+/** Optional wager is capped at half of the player's current coin balance. */
+export function maxFarkleWager(coins: number): number {
+  return Number.isFinite(coins) && coins > 0 ? Math.floor(coins / 2) : 0;
+}
+
+/** Gross amount credited after the stake has already been reserved at game start. */
+export function calculateFarkleSettlement(wager: number, won: boolean): {
+  payout: number;
+  profit: number;
+  net: number;
+} {
+  const safeWager = Number.isFinite(wager) ? Math.max(0, Math.floor(wager)) : 0;
+  const payout = won ? safeWager + Math.floor(safeWager / 2) : 0;
+  return { payout, profit: Math.max(0, payout - safeWager), net: payout - safeWager };
+}
