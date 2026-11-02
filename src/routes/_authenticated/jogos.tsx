@@ -8,7 +8,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Zap, Swords, Dice5, Brain, Trophy, RotateCcw, Shield, BookOpen, Flame, Sparkles, Coins } from "lucide-react";
 import { useCustomization } from "@/lib/app-customization";
 import { VigorRestore, useGameSettings } from "@/components/VigorRestore";
-import { createMachineStrategy, maxFarkleWager, nextRollCount, scoreDiceSelection, hasScoringCombination, farkleProbability, type DieFace } from "@/lib/farkle";
+import { createMachineStrategy, maxFarkleWager, nextRollCount, scoreDiceSelection, hasScoringCombination, farkleProbability } from "@/lib/farkle";
+import type { DieFace } from "@/lib/farkle";
 import { isCombatActionAvailable } from "@/lib/combat";
 import type { CombatAction, CombatLogEntry, CombatState } from "@/lib/combat";
 
