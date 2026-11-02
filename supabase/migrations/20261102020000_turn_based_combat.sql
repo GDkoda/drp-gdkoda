@@ -195,6 +195,23 @@ begin
 end;
 $$;
 
+create or replace function public.get_active_combat()
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $
+declare s public.combat_sessions;
+begin
+  if auth.uid() is null then raise exception 'É necessário entrar na conta'; end if;
+  select * into s from public.combat_sessions
+    where user_id=auth.uid() and status='active'
+    order by created_at desc limit 1;
+  if not found then return null; end if;
+  return public._combat_state(s);
+end;
+$;
+
 create or replace function public.get_combat_state(_session_id uuid)
 returns jsonb
 language plpgsql
@@ -214,6 +231,8 @@ revoke all on function public._combat_state(public.combat_sessions) from public,
 revoke all on function public.start_combat() from public, anon;
 revoke all on function public.perform_combat_action(uuid,text) from public, anon;
 revoke all on function public.get_combat_state(uuid) from public, anon;
+revoke all on function public.get_active_combat() from public, anon;
 grant execute on function public.start_combat() to authenticated;
 grant execute on function public.perform_combat_action(uuid,text) to authenticated;
 grant execute on function public.get_combat_state(uuid) to authenticated;
+grant execute on function public.get_active_combat() to authenticated;
