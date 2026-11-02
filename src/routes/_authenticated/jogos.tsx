@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Zap, Swords, Dice5, Brain, Trophy, RotateCcw, Shield, BookOpen, Flame, Sparkles } from "lucide-react";
 import { useCustomization } from "@/lib/app-customization";
 import { VigorRestore, useGameSettings } from "@/components/VigorRestore";
-import { bestScoringSelection, machineShouldBank, nextRollCount, scoreDiceSelection, hasScoringCombination, farkleProbability, type DieFace } from "@/lib/farkle";
+import { createMachineStrategy, nextRollCount, scoreDiceSelection, hasScoringCombination, farkleProbability, type DieFace } from "@/lib/farkle";
 
 export const Route = createFileRoute("/_authenticated/jogos")({
   head: () => ({ meta: [{ title: "Mini-jogos — Mesa 3D&T" }, { name: "description", content: "Combate, dados da taverna e enigmas." }] }),
@@ -277,6 +277,12 @@ function Farkle({ onDone, vigor }: { onDone: () => void; vigor: number }) {
     let usedInCycle = 0;
     let throws = 0;
     let remaining = 6;
+    const strategy = createMachineStrategy({
+      machineTotal: currentMachineTotal,
+      playerTotal: currentPlayerTotal,
+      target: 4_000,
+      riskTemperament: temperament,
+    });
 
     while (true) {
       setMachineMessage("A máquina está lançando " + remaining + (remaining === 1 ? " dado…" : " dados…"));
@@ -286,7 +292,8 @@ function Farkle({ onDone, vigor }: { onDone: () => void; vigor: number }) {
       setMachineDice(thrown);
       await pause(650);
 
-      const choice = bestScoringSelection(thrown);
+      const futureRolls = Math.min(4, 18 - throws);
+      const choice = strategy.chooseSelection(thrown, turnPoints, futureRolls);
       if (!choice) {
         setMachineMessage("FARKLE! A máquina perdeu os pontos desta rodada.");
         setMachineTurnPoints(0);
@@ -320,14 +327,8 @@ function Farkle({ onDone, vigor }: { onDone: () => void; vigor: number }) {
       remaining = nextRollCount(usedInCycle);
       if (usedInCycle >= 6) usedInCycle = 0;
 
-      if (throws >= 18 || machineShouldBank({
-        machineTotal: currentMachineTotal,
-        playerTotal: currentPlayerTotal,
-        turnPoints,
-        diceRemaining: remaining,
-        target: 4_000,
-        riskTemperament: temperament,
-      })) {
+      const nextLookahead = Math.min(4, 18 - throws);
+      if (throws >= 18 || strategy.shouldBank(turnPoints, remaining, nextLookahead)) {
         const newTotal = currentMachineTotal + turnPoints;
         setMachineTotal(newTotal);
         setMachineTurnPoints(0);
@@ -347,7 +348,7 @@ function Farkle({ onDone, vigor }: { onDone: () => void; vigor: number }) {
         return;
       }
 
-      setMachineMessage("A máquina decidiu arriscar! Risco estimado de Farkle: " + Math.round(farkleProbability(remaining) * 100) + "%.");
+      setMachineMessage("A máquina avaliou a próxima jogada: risco de Farkle de " + Math.round(farkleProbability(remaining) * 100) + "%. Ela decidiu continuar porque a chance calculada de melhorar o resultado compensa o risco.");
       await pause(650);
     }
   }
