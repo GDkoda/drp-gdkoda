@@ -147,7 +147,6 @@ function Puzzle({ onDone, buttonLabel }: { onDone: () => void; buttonLabel: stri
 }
 
 
-import { bestScoringSelection, machineShouldBank, nextRollCount, scoreDiceSelection, hasScoringCombination, type DieFace } from "@/lib/farkle";
 
 type FarkleLog = {
   id: number; who: "Você" | "Máquina"; dice: DieFace[]; selected: DieFace[];
