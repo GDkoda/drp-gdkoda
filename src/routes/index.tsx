@@ -25,12 +25,12 @@ function Index() {
     { icon: Swords, t: "Mini-jogos", d: "Combate, dados na taverna e enigmas." },
   ];
   return (
-    <main className="relative mx-auto flex min-h-screen max-w-5xl flex-col items-center justify-center px-4 pb-12 pt-24 text-center sm:px-6 sm:py-16">\n      <div className="absolute right-4 top-5 sm:right-6 sm:top-6"><ThemeToggle /></div>\n      <div className="mb-5 rounded-full border border-primary/25 bg-primary/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.22em] text-gold">Mesa de RPG • 3D&T Alpha</div>
+    <main className="relative mx-auto flex min-h-screen max-w-5xl flex-col items-center justify-center px-4 pb-12 pt-24 text-center sm:px-6 sm:py-16">
+      <div className="absolute right-4 top-5 sm:right-6 sm:top-6"><ThemeToggle /></div>
+      <div className="mb-5 rounded-full border border-primary/25 bg-primary/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.22em] text-gold">Mesa de RPG • 3D&T Alpha</div>
       <p className="font-display text-sm uppercase tracking-[0.3em] text-muted-foreground">{text("home_eyebrow")}</p>
       <h1 className="mt-2 max-w-4xl text-4xl font-bold text-gold drop-shadow-sm sm:text-6xl lg:text-7xl">{text("home_title")}</h1>
-      <p className="mt-5 max-w-2xl text-base text-muted-foreground sm:text-xl">
-        {text("home_description")}
-      </p>
+      <p className="mt-5 max-w-2xl text-base text-muted-foreground sm:text-xl">{text("home_description")}</p>
       <Button asChild size="lg" className="mt-8 min-h-12 rounded-xl px-7 font-display shadow-lg shadow-primary/15">
         <Link to="/auth">{text("home_enter")}</Link>
       </Button>
