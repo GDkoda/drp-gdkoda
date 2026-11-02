@@ -26,8 +26,8 @@ function Jogos() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl text-gold">{text("jogos_title")}</h1>
+      <div className="page-heading">
+        <div><p className="page-eyebrow">Ações da mesa</p><h1 className="mt-1 text-3xl text-gold">{text("jogos_title")}</h1></div>
         <span className="flex items-center gap-1 font-display text-mana"><Zap className="h-4 w-4" />{vigor ?? "…"}/{settings?.vigor_daily ?? 5} vigor</span>
       </div>
       <p className="text-sm text-muted-foreground">{text("jogos_help")}</p>
@@ -61,7 +61,7 @@ function Combat({ onDone, hasActive, buttonLabel }: { onDone: () => void; hasAct
   }
   const done = res && shown >= res.log.length;
   return (
-    <div className="space-y-3 rounded-lg border bg-card p-4">
+    <div className="space-y-4 rounded-2xl border bg-card p-5 sm:p-6">
       <p className="text-sm text-muted-foreground">Sua ficha ativa enfrenta um monstro. FA = F/PdF + H + 1d6 contra FD = A + H + 1d6. Um 6 no dado é crítico!</p>
       {!hasActive && <p className="text-sm text-destructive">Defina uma ficha ativa na tela de Fichas.</p>}
       <Button onClick={fight} disabled={busy || !hasActive || (!!res && !done)}>{buttonLabel}</Button>
@@ -82,16 +82,16 @@ function Combat({ onDone, hasActive, buttonLabel }: { onDone: () => void; hasAct
   );
 }
 
-function Dice({ onDone, buttonLabel }: { onDone: () => void; buttonLabel: string }) {
+function Dice({ onDone, buttonLabel }: { onDone: () => void; buttonLabel: string }) {\n  const { data: me } = useMe();
   const [bet, setBet] = useState(10);
   const [res, setRes] = useState<{ player: number[]; house: number[]; result: string; delta: number } | null>(null);
   const face = ["", "⚀", "⚁", "⚂", "⚃", "⚄", "⚅"];
   return (
-    <div className="space-y-3 rounded-lg border bg-card p-4">
+    <div className="space-y-4 rounded-2xl border bg-card p-5 sm:p-6">
       <p className="text-sm text-muted-foreground">Role 2d6 contra o taverneiro. Maior soma leva a aposta (o Mestre define o limite).</p>
       <div className="flex gap-2">
-        <Input type="number" min={1} value={bet} onChange={(e) => setBet(+e.target.value)} className="w-24" />
-        <Button onClick={async () => { setRes(await rpc("play_dice", { _bet: bet })); onDone(); }}>{buttonLabel}</Button>
+        <Input aria-label="Valor da aposta em moedas" type="number" min={1} max={me?.profile?.coins ?? 0} value={bet} onChange={(e) => setBet(Math.max(1, Number(e.target.value) || 1))} className="w-28" />
+        <Button disabled={bet < 1 || bet > (me?.profile?.coins ?? 0)} onClick={async () => { setRes(await rpc("play_dice", { _bet: bet })); onDone(); }}>{buttonLabel}</Button>
       </div>
       {res && (
         <div className="grid grid-cols-2 gap-3 text-center">
@@ -111,7 +111,7 @@ function Puzzle({ onDone, buttonLabel }: { onDone: () => void; buttonLabel: stri
   const [ans, setAns] = useState("");
   const [res, setRes] = useState<{ correct: boolean; answer: string; reward: number } | null>(null);
   return (
-    <div className="space-y-3 rounded-lg border bg-card p-4">
+    <div className="space-y-4 rounded-2xl border bg-card p-5 sm:p-6">
       <p className="text-sm text-muted-foreground">Uma tentativa por enigma, 10 minutos para responder. Acerto vale 15 moedas.</p>
       <Button onClick={async () => { setP(await rpc("start_puzzle", {})); setRes(null); setAns(""); onDone(); }}>{buttonLabel}</Button>
       {p && (

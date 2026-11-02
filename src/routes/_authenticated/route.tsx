@@ -40,12 +40,12 @@ function Layout() {
 
   return (
     <div className="min-h-screen pb-20 md:pb-0">
-      <header className="no-print sticky top-0 z-30 border-b border-border bg-background/90 backdrop-blur-xl">
+      <header className="no-print sticky top-0 z-30 border-b border-border/80 bg-background/85 backdrop-blur-2xl">
         <div className="mx-auto flex max-w-7xl items-center gap-3 px-3 py-3 sm:px-5 lg:px-8">
-          <Link to="/taverna" className="shrink-0 rounded-md font-display text-lg font-bold tracking-wide text-gold sm:text-xl">{text("brand")}</Link>
+          <Link to="/taverna" className="flex shrink-0 items-center gap-2 rounded-lg font-display text-lg font-bold tracking-wide text-gold sm:text-xl"><span className="flex h-9 w-9 items-center justify-center rounded-xl border border-primary/30 bg-primary/10 text-sm">✦</span>{text("brand")}</Link>
           <nav aria-label="Navegação principal" className="hidden flex-1 items-center justify-center gap-1 lg:flex">
             {links.map((l) => (
-              <Link key={l.to} to={l.to} className="rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground" activeProps={{ className: "bg-muted font-semibold text-gold" }}>
+              <Link key={l.to} to={l.to} className="rounded-xl px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted/80 hover:text-foreground" activeProps={{ className: "bg-primary/10 font-semibold text-gold" }}>
                 {l.label}
               </Link>
             ))}
@@ -59,14 +59,14 @@ function Layout() {
         </div>
         <nav aria-label="Navegação secundária" className="mx-auto hidden max-w-7xl gap-1 overflow-x-auto px-3 pb-2 sm:px-5 md:flex lg:hidden">
           {links.map((l) => (
-            <Link key={l.to} to={l.to} className="whitespace-nowrap rounded-lg px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground" activeProps={{ className: "bg-muted font-semibold text-gold" }}>
+            <Link key={l.to} to={l.to} className="whitespace-nowrap rounded-xl px-3 py-1.5 text-sm font-medium text-muted-foreground hover:bg-muted/80 hover:text-foreground" activeProps={{ className: "bg-primary/10 font-semibold text-gold" }}>
               {l.label}
             </Link>
           ))}
         </nav>
       </header>
       <main className="mx-auto w-full max-w-7xl px-3 py-5 sm:px-5 sm:py-7 lg:px-8"><Outlet /></main>
-      <nav aria-label="Navegação principal" className="no-print fixed inset-x-0 bottom-0 z-30 flex border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_28px_rgb(0_0_0/0.12)] backdrop-blur-xl md:hidden">
+      <nav aria-label="Navegação principal" className="no-print fixed inset-x-0 bottom-0 z-30 flex border-t border-border/80 bg-background/92 pb-[env(safe-area-inset-bottom)] shadow-[0_-10px_34px_rgb(0_0_0/0.16)] backdrop-blur-2xl md:hidden">
         {links.map((l) => (
           <Link
             key={l.to}

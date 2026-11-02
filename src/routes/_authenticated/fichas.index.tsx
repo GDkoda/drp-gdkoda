@@ -39,7 +39,7 @@ function Fichas() {
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         {chars?.map((c) => (
-          <Link key={c.id} to="/fichas/$id" params={{ id: c.id }} className="rounded-lg border bg-card p-4 hover:border-primary">
+          <Link key={c.id} to="/fichas/$id" params={{ id: c.id }} className="rounded-2xl border bg-card p-5 hover:border-primary">
             <div className="flex items-baseline justify-between">
               <h3 className="text-lg">{c.name}</h3>
               {me?.profile?.active_character_id === c.id && <span className="text-xs text-gold">ATIVA</span>}
@@ -48,7 +48,7 @@ function Fichas() {
             <p className="mt-2 font-display text-sm">F{c.f} H{c.h} R{c.r} A{c.a} PdF{c.pdf} · {c.xp} XP</p>
           </Link>
         ))}
-        {!chars?.length && <p className="text-muted-foreground">{text("fichas_empty")}</p>}
+        {!chars?.length && <div className="empty-state sm:col-span-2"><p className="font-display text-lg text-foreground">Sua aventura começa aqui</p><p className="text-sm">{text("fichas_empty")}</p><div className="mt-3"><Button variant="outline" onClick={create}><Plus className="h-4 w-4" />Criar primeira ficha</Button></div></div>}
       </div>
     </div>
   );

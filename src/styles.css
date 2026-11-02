@@ -166,9 +166,6 @@ html[data-theme="light"] {
     border-radius: var(--radius);
     box-shadow: var(--shadow-soft);
   }
-  main section, main > div > div.rounded-lg {
-    padding: calc(1rem * var(--app-item-scale));
-  }
   .no-print header, header.no-print {
     border-color: var(--border);
     box-shadow: 0 8px 30px rgb(0 0 0 / 8%);
@@ -198,4 +195,115 @@ html[data-theme="light"] {
   body { background: white !important; color: black !important; }
   .print-sheet * { color: black !important; background: white !important; border-color: #888 !important; }
   .print-sheet [data-state="inactive"] { display: block !important; }
+}
+
+
+/* Polimento visual: hierarquia, superfícies e interações consistentes. */
+@layer components {
+  .bg-card.border,
+  .rounded-lg.border.bg-card,
+  .rounded-2xl.border.bg-card {
+    border-color: color-mix(in oklab, var(--border) 82%, transparent);
+    box-shadow: 0 10px 28px rgb(0 0 0 / 7%);
+  }
+
+  .bg-card.border:has(> h2),
+  .rounded-lg.border.bg-card:has(> h2) {
+    background: linear-gradient(145deg, color-mix(in oklab, var(--card) 97%, var(--primary) 3%), var(--card));
+  }
+
+  [data-slot="tabs-list"] {
+    gap: .35rem;
+    padding: .35rem;
+    border: 1px solid var(--border);
+    border-radius: 1rem;
+    background: color-mix(in oklab, var(--muted) 68%, transparent);
+  }
+
+  [data-slot="tabs-trigger"] {
+    min-height: 2.65rem;
+    border-radius: .7rem;
+    font-weight: 600;
+    transition: background-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
+  }
+
+  [data-slot="tabs-trigger"][data-state="active"] {
+    background: var(--card);
+    color: var(--gold);
+    box-shadow: 0 2px 8px rgb(0 0 0 / 9%);
+  }
+
+  input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),
+  textarea,
+  select {
+    min-height: 2.75rem;
+    border-color: var(--input);
+    background-color: color-mix(in oklab, var(--card) 92%, transparent);
+    transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+  }
+
+  input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):hover,
+  textarea:hover,
+  select:hover {
+    border-color: color-mix(in oklab, var(--primary) 52%, var(--input));
+  }
+
+  summary {
+    text-underline-offset: .25em;
+  }
+
+  summary:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 4px;
+    border-radius: .4rem;
+  }
+
+  .page-eyebrow {
+    color: var(--muted-foreground);
+    font-size: .72rem;
+    font-weight: 700;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+  }
+
+  .page-heading {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: .85rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid color-mix(in oklab, var(--border) 76%, transparent);
+  }
+
+  .empty-state {
+    display: grid;
+    min-height: 9rem;
+    place-content: center;
+    gap: .35rem;
+    padding: 1.5rem;
+    border: 1px dashed var(--border);
+    border-radius: 1rem;
+    background: color-mix(in oklab, var(--card) 55%, transparent);
+    color: var(--muted-foreground);
+    text-align: center;
+  }
+}
+
+@media (hover: hover) {
+  a.rounded-lg.border.bg-card,
+  a.rounded-2xl.border.bg-card {
+    transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+  }
+  a.rounded-lg.border.bg-card:hover,
+  a.rounded-2xl.border.bg-card:hover {
+    transform: translateY(-2px);
+    border-color: color-mix(in oklab, var(--primary) 58%, var(--border));
+    box-shadow: 0 16px 34px rgb(0 0 0 / 12%);
+  }
+}
+
+@media (max-width: 640px) {
+  .page-heading { align-items: stretch; }
+  .page-heading > :last-child { max-width: 100%; }
 }
