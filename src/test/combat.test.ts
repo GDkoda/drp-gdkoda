@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { COMBAT_ACTIONS, isCombatActionAvailable, type CombatState } from "@/lib/combat";
+import {
+  COMBAT_ACTIONS,
+  combatEffectLabel,
+  isCombatAbilityAvailable,
+  isCombatActionAvailable,
+  type CombatAbility,
+  type CombatState,
+} from "@/lib/combat";
 
 const activeState = {
   status: "active",
@@ -8,20 +15,19 @@ const activeState = {
   heroMaxPv: 10,
 } as Pick<CombatState, "status" | "heroPm" | "heroPv" | "heroMaxPv">;
 
-describe("ações do combate por turnos", () => {
-  it("apresenta as quatro ações táticas", () => {
+describe("ações do combate estratégico 3D&T Alpha", () => {
+  it("apresenta seis ações universais", () => {
     expect(COMBAT_ACTIONS.map((action) => action.id)).toEqual([
-      "attack",
-      "power",
-      "defend",
-      "recover",
+      "attack", "power", "defend", "recover", "aim", "feint",
     ]);
   });
 
-  it("mantém ataques e defesa disponíveis sem PM", () => {
+  it("mantém ações sem custo disponíveis sem PM", () => {
     const state = { ...activeState, heroPm: 0 };
     expect(isCombatActionAvailable("attack", state)).toBe(true);
     expect(isCombatActionAvailable("defend", state)).toBe(true);
+    expect(isCombatActionAvailable("aim", state)).toBe(true);
+    expect(isCombatActionAvailable("feint", state)).toBe(true);
     expect(isCombatActionAvailable("power", state)).toBe(false);
     expect(isCombatActionAvailable("recover", state)).toBe(false);
   });
@@ -36,5 +42,17 @@ describe("ações do combate por turnos", () => {
     expect(isCombatActionAvailable("attack", null)).toBe(false);
     expect(isCombatActionAvailable("power", { ...activeState, status: "won" })).toBe(false);
     expect(isCombatActionAvailable("defend", { ...activeState, status: "lost" })).toBe(false);
+  });
+
+  it("valida magias aprendidas pelo PM disponível", () => {
+    const spell: Pick<CombatAbility, "pmCost"> = { pmCost: 2 };
+    expect(isCombatAbilityAvailable(spell, { status: "active", heroPm: 2 })).toBe(true);
+    expect(isCombatAbilityAvailable(spell, { status: "active", heroPm: 1 })).toBe(false);
+    expect(isCombatAbilityAvailable(spell, { status: "won", heroPm: 5 })).toBe(false);
+  });
+
+  it("traduz efeitos de magia para rótulos da interface", () => {
+    expect(combatEffectLabel("heal")).toBe("Cura");
+    expect(combatEffectLabel("weaken")).toBe("Enfraquecimento");
   });
 });
