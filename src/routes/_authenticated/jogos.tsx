@@ -10,7 +10,7 @@ import { useCustomization } from "@/lib/app-customization";
 import { VigorRestore, useGameSettings } from "@/components/VigorRestore";
 import { createMachineStrategy, maxFarkleWager, nextRollCount, scoreDiceSelection, hasScoringCombination, farkleProbability } from "@/lib/farkle";
 import type { DieFace } from "@/lib/farkle";
-import { isCombatActionAvailable } from "@/lib/combat";
+import { combatEffectLabel, isCombatAbilityAvailable, isCombatActionAvailable } from "@/lib/combat";
 import type { CombatAction, CombatLogEntry, CombatState } from "@/lib/combat";
 
 function JogosRouteComponent() {
@@ -82,13 +82,14 @@ function Combat({ onDone, hasActive, buttonLabel }: { onDone: () => void; hasAct
     }
   }
 
-  async function act(action: CombatAction) {
+  async function act(action: CombatAction, spellId?: string) {
     if (!res || res.status !== "active" || busy) return;
     setBusy(true);
     try {
       const state = await rpc("perform_combat_action", {
         _session_id: res.id,
         _action: action,
+        _spell_id: spellId ?? null,
       }) as CombatState;
       setRes(state);
     } finally {
@@ -116,7 +117,7 @@ function Combat({ onDone, hasActive, buttonLabel }: { onDone: () => void; hasAct
   }, [done, onDone]);
 
   const actions: {
-    id: CombatAction;
+    id: Exclude<CombatAction, "spell">;
     title: string;
     description: string;
     cost: string;
@@ -124,10 +125,12 @@ function Combat({ onDone, hasActive, buttonLabel }: { onDone: () => void; hasAct
     tone: string;
     disabled?: boolean;
   }[] = [
-    { id: "attack", title: "Ataque básico", description: "Ataque confiável usando F ou PdF.", cost: "Sem custo de PM", icon: Swords, tone: "text-gold" },
-    { id: "power", title: "Golpe poderoso", description: "+2 na força do ataque; pode causar dano maior em crítico.", cost: "1 PM", icon: Flame, tone: "text-blood", disabled: !isCombatActionAvailable("power", res) },
-    { id: "defend", title: "Postura defensiva", description: "Abre mão do ataque e ganha +3 na defesa neste turno.", cost: "Sem custo de PM", icon: Shield, tone: "text-sky-400" },
-    { id: "recover", title: "Recuperar fôlego", description: "Recupera até 3 PV e deixa o inimigo agir.", cost: "1 PM", icon: Sparkles, tone: "text-mana", disabled: !isCombatActionAvailable("recover", res) },
+    { id: "attack", title: "Ataque básico", description: "FA = maior entre F/PdF + H + 1d6.", cost: "Sem custo de PM", icon: Swords, tone: "text-gold" },
+    { id: "power", title: "Golpe poderoso", description: "+2 no atributo de ataque; crítico em 6.", cost: "1 PM", icon: Flame, tone: "text-blood", disabled: !isCombatActionAvailable("power", res) },
+    { id: "defend", title: "Postura defensiva", description: "+3 na FD contra o próximo ataque inimigo.", cost: "Sem custo de PM", icon: Shield, tone: "text-sky-400" },
+    { id: "recover", title: "Recuperar fôlego", description: "Recupera até 3 PV; o inimigo ainda age.", cost: "1 PM", icon: Sparkles, tone: "text-mana", disabled: !isCombatActionAvailable("recover", res) },
+    { id: "aim", title: "Preparar ataque", description: "Acumula +2 na próxima FA (máximo +4).", cost: "Sem custo de PM", icon: Target, tone: "text-violet-400" },
+    { id: "feint", title: "Finta", description: "+1 na FA; se causar dano, reduz o próximo ataque inimigo em 2.", cost: "Sem custo de PM", icon: Wind, tone: "text-amber-400" },
   ];
   const entries = (res?.log ?? []).filter((entry: CombatLogEntry) => !entry.system);
 
@@ -177,6 +180,29 @@ function Combat({ onDone, hasActive, buttonLabel }: { onDone: () => void; hasAct
                   );
                 })}
               </div>
+              {res.abilities && res.abilities.length > 0 && (
+                <div className="mt-4 space-y-2">
+                  <div className="flex flex-wrap items-end justify-between gap-2">
+                    <div><h4 className="font-display text-base">Habilidades da ficha</h4><p className="text-xs text-muted-foreground">Magias aprendidas no Grimório e configuradas pelo Mestre para combate.</p></div>
+                    <span className="text-xs text-mana">{res.abilities.length} disponíveis</span>
+                  </div>
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    {res.abilities.map((ability) => {
+                      const available = isCombatAbilityAvailable(ability, res);
+                      return (
+                        <button key={ability.id} type="button" disabled={busy || !available} onClick={() => act("spell", ability.id)} className="flex min-h-[112px] min-w-0 items-start gap-3 rounded-xl border border-mana/25 bg-mana/5 p-3 text-left transition hover:border-mana/50 hover:bg-mana/10 disabled:cursor-not-allowed disabled:opacity-45 sm:p-4">
+                          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-mana/10"><Sparkles className="h-5 w-5 text-mana" /></span>
+                          <span className="min-w-0 flex-1">
+                            <span className="flex flex-wrap items-center gap-2 font-semibold">{ability.name}<span className="text-xs font-normal text-mana">{ability.pmCost} PM</span></span>
+                            <span className="mt-1 block text-xs text-muted-foreground">{ability.school} · {combatEffectLabel(ability.effect)} · Potência {ability.power}</span>
+                            <span className="mt-1 block text-sm leading-snug text-muted-foreground">{ability.description}</span>
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <div aria-live="polite" className={`rounded-2xl border p-4 ${res.won ? "border-emerald-500/30 bg-emerald-500/10" : "border-blood/30 bg-blood/5"}`}>
@@ -192,7 +218,7 @@ function Combat({ onDone, hasActive, buttonLabel }: { onDone: () => void; hasAct
             {entries.slice(-8).map((entry, index) => (
               <div key={`${entry.turn ?? 0}-${index}`} className={`flex min-w-0 items-start gap-3 rounded-xl border p-3 ${entry.target === "monster" ? "border-primary/20 bg-primary/5" : "border-border bg-muted/30"}`}>
                 <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-background font-display text-sm">{entry.turn ?? "•"}</span>
-                <div className="min-w-0 flex-1"><p className="break-words font-semibold">{entry.who}{entry.action ? ` · ${entry.action}` : ""}</p><p className="text-sm text-muted-foreground">FA {entry.fa ?? 0} vs FD {entry.fd ?? 0} · {entry.dmg ?? 0} dano{entry.crit ? " · CRÍTICO!" : ""}</p><p className="mt-1 text-xs text-muted-foreground">PV restantes do alvo: {entry.hp ?? 0}</p></div>
+                <div className="min-w-0 flex-1"><p className="break-words font-semibold">{entry.who}{entry.action ? ` · ${entry.action}` : ""}</p><p className="text-sm text-muted-foreground">{entry.fa || entry.fd ? `FA ${entry.fa ?? 0} vs FD ${entry.fd ?? 0} · ${entry.dmg ?? 0} dano` : entry.effect === "heal" ? `Recuperou ${entry.amount ?? 0} PV` : entry.effect === "guard" ? `Proteção +${entry.amount ?? 0} na FD` : entry.effect === "weaken" ? `Ataque inimigo reduzido em ${entry.amount ?? 0}` : "Ação tática"}{entry.crit ? " · CRÍTICO!" : ""}</p><p className="mt-1 text-xs text-muted-foreground">PV restantes do alvo: {entry.hp ?? 0}</p></div>
                 {entry.crit && <span className="shrink-0 rounded-lg bg-amber-500/15 px-2 py-1 text-xs font-bold text-amber-500">CRÍTICO</span>}
               </div>
             ))}
