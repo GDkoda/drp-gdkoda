@@ -117,7 +117,7 @@ type SpellRow = { id: string; name: string; school: string; requirements: string
 
 function SpellForm({ spell }: { spell?: SpellRow }) {
   const qc = useQueryClient();
-  const empty = { name: "", school: "", cost: "", pm_cost: 0, range: "", duration: "", description: "", requirements: "", combat_effect: "damage" as const, combat_power: 2, combat_enabled: true };
+  const empty = { name: "", school: "", cost: "", pm_cost: 0, range: "", duration: "", description: "", requirements: "", combat_effect: "damage" as const, combat_power: 2, combat_enabled: false };
   const [f, setF] = useState(spell ? { name: spell.name, school: spell.school, requirements: spell.requirements, cost: spell.cost, pm_cost: spell.pm_cost, range: spell.range, duration: spell.duration, description: spell.description, combat_effect: spell.combat_effect ?? "damage", combat_power: spell.combat_power ?? 2, combat_enabled: spell.combat_enabled ?? true } : empty);
   const editing = !!spell;
   return (
