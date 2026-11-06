@@ -52,6 +52,10 @@ as $$
     'reward', case when _s.reward_paid then
       coalesce((_s.battle_log->-1->>'reward')::int, 0) else 0 end,
     'xp', case when _s.status = 'won' then _s.monster_xp else 0 end,
+    'attributes', jsonb_build_object(
+      'f', _s.hero_f, 'h', _s.hero_h, 'r', _s.hero_r,
+      'a', _s.hero_a, 'pdf', _s.hero_pdf
+    ),
     'heroTraits', _s.hero_traits,
     'monsterStrategy', _s.monster_strategy,
     'log', _s.battle_log,
