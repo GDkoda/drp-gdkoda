@@ -4,7 +4,7 @@
 alter table public.spells
   add column if not exists combat_effect text not null default 'damage',
   add column if not exists combat_power integer not null default 2,
-  add column if not exists combat_enabled boolean not null default true;
+  add column if not exists combat_enabled boolean not null default false;
 
 do $$
 begin
