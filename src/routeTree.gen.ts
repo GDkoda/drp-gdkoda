@@ -16,6 +16,7 @@ import { Route as AuthenticatedBauRouteImport } from './routes/_authenticated/ba
 import { Route as AuthenticatedGrimorioRouteImport } from './routes/_authenticated/grimorio'
 import { Route as AuthenticatedJogosRouteImport } from './routes/_authenticated/jogos'
 import { Route as AuthenticatedLojaRouteImport } from './routes/_authenticated/loja'
+import { Route as AuthenticatedLoreRouteImport } from './routes/_authenticated/lore'
 import { Route as AuthenticatedMestreRouteImport } from './routes/_authenticated/mestre'
 import { Route as AuthenticatedTavernaRouteImport } from './routes/_authenticated/taverna'
 import { Route as AuthenticatedFichasIndexRouteImport } from './routes/_authenticated/fichas.index'
@@ -55,6 +56,11 @@ const AuthenticatedLojaRoute = AuthenticatedLojaRouteImport.update({
   path: '/loja',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedLoreRoute = AuthenticatedLoreRouteImport.update({
+  id: '/lore',
+  path: '/lore',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedMestreRoute = AuthenticatedMestreRouteImport.update({
   id: '/mestre',
   path: '/mestre',
@@ -84,6 +90,7 @@ export interface FileRoutesByFullPath {
   '/grimorio': typeof AuthenticatedGrimorioRoute
   '/jogos': typeof AuthenticatedJogosRoute
   '/loja': typeof AuthenticatedLojaRoute
+  '/lore': typeof AuthenticatedLoreRoute
   '/mestre': typeof AuthenticatedMestreRoute
   '/taverna': typeof AuthenticatedTavernaRoute
   '/fichas/$id': typeof AuthenticatedFichasIdRoute
@@ -96,6 +103,7 @@ export interface FileRoutesByTo {
   '/grimorio': typeof AuthenticatedGrimorioRoute
   '/jogos': typeof AuthenticatedJogosRoute
   '/loja': typeof AuthenticatedLojaRoute
+  '/lore': typeof AuthenticatedLoreRoute
   '/mestre': typeof AuthenticatedMestreRoute
   '/taverna': typeof AuthenticatedTavernaRoute
   '/fichas/$id': typeof AuthenticatedFichasIdRoute
@@ -110,6 +118,7 @@ export interface FileRoutesById {
   '/_authenticated/grimorio': typeof AuthenticatedGrimorioRoute
   '/_authenticated/jogos': typeof AuthenticatedJogosRoute
   '/_authenticated/loja': typeof AuthenticatedLojaRoute
+  '/_authenticated/lore': typeof AuthenticatedLoreRoute
   '/_authenticated/mestre': typeof AuthenticatedMestreRoute
   '/_authenticated/taverna': typeof AuthenticatedTavernaRoute
   '/_authenticated/fichas/$id': typeof AuthenticatedFichasIdRoute
@@ -124,6 +133,7 @@ export interface FileRouteTypes {
     | '/grimorio'
     | '/jogos'
     | '/loja'
+    | '/lore'
     | '/mestre'
     | '/taverna'
     | '/fichas/$id'
@@ -136,6 +146,7 @@ export interface FileRouteTypes {
     | '/grimorio'
     | '/jogos'
     | '/loja'
+    | '/lore'
     | '/mestre'
     | '/taverna'
     | '/fichas/$id'
@@ -149,6 +160,7 @@ export interface FileRouteTypes {
     | '/_authenticated/grimorio'
     | '/_authenticated/jogos'
     | '/_authenticated/loja'
+    | '/_authenticated/lore'
     | '/_authenticated/mestre'
     | '/_authenticated/taverna'
     | '/_authenticated/fichas/$id'
@@ -212,6 +224,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedLojaRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/lore': {
+      id: '/_authenticated/lore'
+      path: '/lore'
+      fullPath: '/lore'
+      preLoaderRoute: typeof AuthenticatedLoreRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/mestre': {
       id: '/_authenticated/mestre'
       path: '/mestre'
@@ -248,6 +267,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedGrimorioRoute: typeof AuthenticatedGrimorioRoute
   AuthenticatedJogosRoute: typeof AuthenticatedJogosRoute
   AuthenticatedLojaRoute: typeof AuthenticatedLojaRoute
+  AuthenticatedLoreRoute: typeof AuthenticatedLoreRoute
   AuthenticatedMestreRoute: typeof AuthenticatedMestreRoute
   AuthenticatedTavernaRoute: typeof AuthenticatedTavernaRoute
   AuthenticatedFichasIdRoute: typeof AuthenticatedFichasIdRoute
@@ -259,6 +279,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedGrimorioRoute: AuthenticatedGrimorioRoute,
   AuthenticatedJogosRoute: AuthenticatedJogosRoute,
   AuthenticatedLojaRoute: AuthenticatedLojaRoute,
+  AuthenticatedLoreRoute: AuthenticatedLoreRoute,
   AuthenticatedMestreRoute: AuthenticatedMestreRoute,
   AuthenticatedTavernaRoute: AuthenticatedTavernaRoute,
   AuthenticatedFichasIdRoute: AuthenticatedFichasIdRoute,
