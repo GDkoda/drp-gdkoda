@@ -5,7 +5,7 @@ import { rpc, useRefresh, useMe } from "@/lib/game";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Zap, Swords, Dice5, Brain, Trophy, RotateCcw, Shield, BookOpen, Flame, Sparkles, Coins } from "lucide-react";
+import { Zap, Swords, Dice5, Brain, Trophy, RotateCcw, Shield, BookOpen, Flame, Sparkles, Coins, Target, Wind } from "lucide-react";
 import { useCustomization } from "@/lib/app-customization";
 import { VigorRestore, useGameSettings } from "@/components/VigorRestore";
 import { createMachineStrategy, maxFarkleWager, nextRollCount, scoreDiceSelection, hasScoringCombination, farkleProbability } from "@/lib/farkle";
@@ -140,7 +140,7 @@ function Combat({ onDone, hasActive, buttonLabel }: { onDone: () => void; hasAct
         <Swords className="mt-0.5 h-5 w-5 shrink-0 text-gold" />
         <div className="min-w-0">
           <p className="font-semibold">Combate tático por turnos</p>
-          <p className="text-sm text-muted-foreground">Escolha uma ação. O inimigo responde automaticamente se continuar de pé. FA = F/PdF + H + 1d6; FD = A + H + 1d6.</p>
+          <p className="text-sm text-muted-foreground">Escolha uma ação. O inimigo responde automaticamente se continuar de pé. FA = maior entre F/PdF + H + 1d6; FD = A + H + 1d6. Prepare ataques, use fintas e administre seus PMs.</p>
         </div>
       </div>
       {!hasActive && <p className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">Defina uma ficha ativa na tela de Fichas antes de iniciar um combate.</p>}
