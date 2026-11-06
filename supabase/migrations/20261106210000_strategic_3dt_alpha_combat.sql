@@ -84,7 +84,7 @@ declare
   cid uuid;
   bf int := 0; bh int := 0; br int := 0; ba int := 0; bp int := 0; bpm int := 0;
   maxpv int; maxpm int; sid uuid; s public.combat_sessions;
-  strategy text;
+  strategy text; hero_attack int; monster_hp int;
 begin
   if auth.uid() is null then raise exception 'É necessário entrar na conta'; end if;
 
@@ -130,6 +130,10 @@ begin
     when m.a >= m.f + 2 then 'defensive'
     else 'balanced'
   end;
+  hero_attack := greatest(ch.f+bf, ch.pdf+bp) + ch.h+bh;
+  -- Target roughly eight successful hero hits on average, while preserving
+  -- the monster's configured minimum durability and 3D&T attribute contest.
+  monster_hp := greatest(1, m.pv, greatest(1, hero_attack - (m.a+m.h)) * 8);
 
   insert into public.combat_sessions(
     user_id, character_id, hero_name, hero_f, hero_h, hero_a, hero_pdf,
@@ -144,7 +148,7 @@ begin
     greatest(0, ch.r + br),
     coalesce(ch.known_spells, '{}'::uuid[]),
     coalesce(ch.skills, '[]'::jsonb) || coalesce(ch.advantages, '[]'::jsonb),
-    m.name, m.f, m.h, m.a, m.pdf, greatest(1,m.pv), greatest(1,m.pv),
+    m.name, m.f, m.h, m.a, m.pdf, monster_hp, monster_hp,
     m.reward, greatest(0,coalesce(m.xp,1)), strategy
   ) returning id into sid;
 
