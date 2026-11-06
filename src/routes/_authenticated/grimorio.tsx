@@ -113,12 +113,12 @@ function Grimorio() {
   );
 }
 
-type SpellRow = { id: string; name: string; school: string; requirements: string; cost: string; pm_cost: number; range: string; duration: string; description: string };
+type SpellRow = { id: string; name: string; school: string; requirements: string; cost: string; pm_cost: number; range: string; duration: string; description: string; combat_effect: "damage" | "pierce" | "heal" | "guard" | "weaken"; combat_power: number; combat_enabled: boolean };
 
 function SpellForm({ spell }: { spell?: SpellRow }) {
   const qc = useQueryClient();
-  const empty = { name: "", school: "", cost: "", pm_cost: 0, range: "", duration: "", description: "", requirements: "" };
-  const [f, setF] = useState(spell ? { name: spell.name, school: spell.school, requirements: spell.requirements, cost: spell.cost, pm_cost: spell.pm_cost, range: spell.range, duration: spell.duration, description: spell.description } : empty);
+  const empty = { name: "", school: "", cost: "", pm_cost: 0, range: "", duration: "", description: "", requirements: "", combat_effect: "damage" as const, combat_power: 2, combat_enabled: false };
+  const [f, setF] = useState(spell ? { name: spell.name, school: spell.school, requirements: spell.requirements, cost: spell.cost, pm_cost: spell.pm_cost, range: spell.range, duration: spell.duration, description: spell.description, combat_effect: spell.combat_effect ?? "damage", combat_power: spell.combat_power ?? 2, combat_enabled: spell.combat_enabled ?? false } : empty);
   const editing = !!spell;
   return (
     <details className={editing ? "contents" : "rounded-lg border bg-card p-3"}>
@@ -130,14 +130,35 @@ function SpellForm({ spell }: { spell?: SpellRow }) {
           {(["name", "school", "requirements", "cost", "range", "duration"] as const).map((k) => (
             <Input key={k} placeholder={{ name: "Nome", school: "Escola", requirements: "Exigências", cost: "Custo (texto)", range: "Alcance", duration: "Duração" }[k]} value={f[k]} onChange={(e) => setF({ ...f, [k]: e.target.value })} />
           ))}
-          <Input type="number" placeholder="PM gastos ao conjurar" value={f.pm_cost} onChange={(e) => setF({ ...f, pm_cost: +e.target.value })} />
+          <Input type="number" min={0} placeholder="PM gastos ao conjurar" value={f.pm_cost} onChange={(e) => setF({ ...f, pm_cost: Math.max(0, +e.target.value) })} />
         </div>
+        <div className="mt-3 grid gap-2 sm:grid-cols-[1.3fr_1fr_auto] sm:items-end">
+          <label className="space-y-1 text-xs text-muted-foreground">
+            <span>Efeito mecânico no combate</span>
+            <select className="h-10 w-full rounded-md border bg-background px-3 text-sm text-foreground" value={f.combat_effect} onChange={(e) => setF({ ...f, combat_effect: e.target.value as typeof f.combat_effect })}>
+              <option value="damage">Dano mágico (FA normal + potência)</option>
+              <option value="pierce">Dano perfurante (ignora A)</option>
+              <option value="heal">Cura PV</option>
+              <option value="guard">Proteção (bônus na FD)</option>
+              <option value="weaken">Enfraquecer (reduz próxima FA inimiga)</option>
+            </select>
+          </label>
+          <label className="space-y-1 text-xs text-muted-foreground">
+            <span>Potência do efeito</span>
+            <Input type="number" min={0} max={10} value={f.combat_power} onChange={(e) => setF({ ...f, combat_power: Math.max(0, Math.min(10, +e.target.value)) })} />
+          </label>
+          <label className="flex min-h-10 items-center gap-2 text-sm">
+            <input type="checkbox" checked={f.combat_enabled} onChange={(e) => setF({ ...f, combat_enabled: e.target.checked })} />
+            Usar no combate
+          </label>
+        </div>
+        <p className="mt-2 text-xs text-muted-foreground">O Mestre define o efeito mecânico da magia. A descrição narrativa continua sendo a referência de interpretação na mesa.</p>
         <textarea className="mt-2 w-full rounded-md border bg-background p-2 text-sm" rows={4} placeholder="Descrição" value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} />
         <Button className="mt-2" disabled={!f.name} onClick={async (e) => {
           const details = (e.currentTarget.closest("details"));
           const { error } = editing
-            ? await supabase.from("spells").update(f).eq("id", spell.id)
-            : await supabase.from("spells").insert({ ...f, source: "Homebrew" });
+            ? await supabase.from("spells").update(f as any).eq("id", spell.id)
+            : await supabase.from("spells").insert({ ...f, source: "Homebrew" } as any);
           if (error) { toast.error(error.message); return; }
           toast.success(editing ? "Magia atualizada" : "Magia criada");
           if (!editing) setF(empty);
