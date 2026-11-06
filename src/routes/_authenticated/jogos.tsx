@@ -17,7 +17,6 @@ function JogosRouteComponent() {
   return <Jogos />;
 }
 
-// Named split export used by TanStack Router/Vite when loading this route as a split component.
 
 export const Route = createFileRoute("/_authenticated/jogos")({
   head: () => ({ meta: [{ title: "Mini-jogos — Mesa 3D&T" }, { name: "description", content: "Combate, dados da taverna e enigmas." }] }),
