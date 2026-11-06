@@ -23,6 +23,38 @@ export const Route = createFileRoute("/_authenticated/jogos")({
   component: JogosRouteComponent,
 });
 
+function Jogos() {
+  const { text } = useCustomization();
+  const refresh = useRefresh();
+  const { data: me } = useMe();
+  const { data: vigor, refetch } = useQuery({ queryKey: ["vigor"], queryFn: () => rpc("get_vigor", {}) as Promise<number> });
+  const { data: settings } = useGameSettings();
+  const after = () => { refetch(); refresh(); };
+
+  return (
+    <div className="space-y-4">
+      <div className="page-heading">
+        <div><p className="page-eyebrow">Ações da mesa</p><h1 className="mt-1 text-3xl text-gold">{text("jogos_title")}</h1></div>
+        <span className="flex items-center gap-1 font-display text-mana"><Zap className="h-4 w-4" />{vigor ?? "…"}/{settings?.vigor_daily ?? 5} vigor</span>
+      </div>
+      <p className="text-sm text-muted-foreground">{text("jogos_help")}</p>
+      <VigorRestore vigor={vigor} />
+      <Tabs defaultValue="combat">
+        <TabsList className="w-full">
+          <TabsTrigger value="combat" className="flex-1"><Swords className="h-4 w-4" />{text("jogos_combat")}</TabsTrigger>
+          <TabsTrigger value="dice" className="flex-1"><Dice5 className="h-4 w-4" />{text("jogos_dice")}</TabsTrigger>
+          <TabsTrigger value="farkle" className="flex-1"><Trophy className="h-4 w-4" />Jogo de Dados</TabsTrigger>
+          <TabsTrigger value="puzzle" className="flex-1"><Brain className="h-4 w-4" />{text("jogos_puzzle")}</TabsTrigger>
+        </TabsList>
+        <TabsContent value="combat"><Combat onDone={after} hasActive={!!me?.profile?.active_character_id} buttonLabel={text("jogos_fight")} /></TabsContent>
+        <TabsContent value="dice"><Dice onDone={after} buttonLabel={text("jogos_roll")} /></TabsContent>
+        <TabsContent value="farkle"><Farkle onDone={after} vigor={Number(vigor ?? 0)} coins={Number(me?.profile?.coins ?? 0)} /></TabsContent>
+        <TabsContent value="puzzle"><Puzzle onDone={after} buttonLabel={text("jogos_new_puzzle")} /></TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+
 function StatBar({ label, value, max, color }: { label: string; value: number; max: number; color: string }) {
   const pct = max > 0 ? Math.max(0, Math.min(100, (value / max) * 100)) : 0;
   return (
