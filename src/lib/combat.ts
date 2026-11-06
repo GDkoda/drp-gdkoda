@@ -51,6 +51,7 @@ export type CombatState = {
   won: boolean;
   reward: number;
   xp: number;
+  attributes?: { f: number; h: number; r: number; a: number; pdf: number };
   abilities?: CombatAbility[];
   heroTraits?: { name?: string; cost?: number; note?: string }[];
   monsterStrategy?: "aggressive" | "defensive" | "balanced";
