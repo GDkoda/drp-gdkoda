@@ -1,11 +1,12 @@
 -- Restore the character's PV and PM whenever a combat reaches a terminal state.
--- This is enforced at the database layer so wins, defeats, and future combat
--- termination paths all receive the same restoration without trusting the client.
+-- The combat RPC already runs as SECURITY DEFINER; this trigger function can
+-- remain SECURITY INVOKER and execute with that effective role.
+-- This avoids exposing another SECURITY DEFINER function in the public schema.
 
 create or replace function public._restore_character_after_combat()
 returns trigger
 language plpgsql
-security definer
+security invoker
 set search_path = public
 as $$
 begin
