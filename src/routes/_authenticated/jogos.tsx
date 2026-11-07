@@ -212,7 +212,7 @@ function Combat({ onDone, hasActive, buttonLabel }: { onDone: () => void; hasAct
               <div className="relative isolate flex min-h-[210px] items-center justify-center overflow-hidden rounded-xl border border-blood/20 bg-gradient-to-b from-[#211629] via-[#17121e] to-[#0c0b12] p-3">
                 <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(154,67,165,0.22),transparent_68%)]" />
                 <img
-                  key={visualEvents.filter((event) => event.target === "monster").at(-1)?.id ?? "monster-art"}
+                  key={visualEvents.filter((event) => event.target === "monster")[visualEvents.filter((event) => event.target === "monster").length - 1]?.id ?? "monster-art"}
                   src="/monsters/abyssal-beast.svg"
                   alt={`Ilustração de ${res.monster}`}
                   className={`relative z-10 h-[190px] w-full object-contain drop-shadow-[0_12px_18px_rgba(0,0,0,0.55)] ${visualEvents.some((event) => event.target === "monster" && event.kind === "damage") ? "jrpg-hit" : ""} ${visualEvents.some((event) => event.target === "monster" && event.kind === "heal") ? "jrpg-heal" : ""} `}
