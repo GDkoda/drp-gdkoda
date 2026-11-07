@@ -29,6 +29,13 @@
       "when": 1793595000000,
       "tag": "0003_farkle_optional_wagers",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1794010516240,
+      "tag": "0004_strategic_3dt_alpha_combat",
+      "breakpoints": true
     }
   ]
 }
