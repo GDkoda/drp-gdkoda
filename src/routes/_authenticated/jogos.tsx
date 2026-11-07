@@ -119,7 +119,7 @@ function Combat({ onDone, hasActive, buttonLabel }: { onDone: () => void; hasAct
     const fresh = log.slice(lastLogCount.current);
     lastLogCount.current = log.length;
     if (fresh.length) {
-      const events = fresh.flatMap((entry) => {
+      const events = fresh.slice(-2).flatMap((entry) => {
         const target = entry.target ?? "monster";
         if ((entry.dmg ?? 0) > 0) return [{ id: String(++visualSequence.current), target, kind: "damage" as const, amount: entry.dmg ?? 0, crit: !!entry.crit }];
         if (entry.effect === "heal" || entry.action === "Recuperar fôlego") return [{ id: String(++visualSequence.current), target, kind: "heal" as const, amount: entry.amount ?? 0 }];
@@ -162,6 +162,8 @@ function Combat({ onDone, hasActive, buttonLabel }: { onDone: () => void; hasAct
         @keyframes jrpg-heal { 0%,100% { filter: drop-shadow(0 0 0 rgba(74,222,128,0)); } 35%,70% { filter: sepia(.6) saturate(2) hue-rotate(75deg) brightness(1.35) drop-shadow(0 0 18px rgba(74,222,128,.9)); } }
         @keyframes jrpg-float { 0% { opacity: 0; transform: translate(-50%, 18px) scale(.72); } 12% { opacity: 1; transform: translate(-50%, 0) scale(1.08); } 78% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -75px) scale(1); } }
         @keyframes jrpg-guard { 0% { opacity: 0; transform: scale(.65); } 20%,75% { opacity: 1; transform: scale(1.08); } 100% { opacity: 0; transform: scale(1.2); } }
+        @keyframes jrpg-slash { 0% { opacity: 0; transform: rotate(-24deg) scaleX(.15); } 25% { opacity: .95; transform: rotate(-24deg) scaleX(1); } 100% { opacity: 0; transform: rotate(-24deg) scaleX(1.2); } }
+        .jrpg-slash { position: absolute; z-index: 20; left: 20%; top: 45%; width: 60%; height: 5px; border-radius: 999px; background: linear-gradient(90deg,transparent,#fff4cf,#ff5368,transparent); box-shadow: 0 0 18px #ff5368; animation: jrpg-slash .42s ease-out both; pointer-events: none; }
         .jrpg-hit { animation: jrpg-hit .48s ease-out; }
         .jrpg-heal { animation: jrpg-heal .8s ease-out; }
         .jrpg-number { position: absolute; z-index: 30; left: 50%; top: 40%; pointer-events: none; white-space: nowrap; font-family: Georgia,serif; font-size: clamp(1.3rem,4vw,2.15rem); font-weight: 900; letter-spacing: .02em; text-shadow: 0 3px 3px #000, 0 0 12px currentColor; animation: jrpg-float 1.15s cubic-bezier(.2,.75,.25,1) both; }
@@ -188,7 +190,12 @@ function Combat({ onDone, hasActive, buttonLabel }: { onDone: () => void; hasAct
       {res && (
         <div className="space-y-4">
           <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-3 rounded-xl border bg-background/50 p-3 sm:p-4">
+            <div className="relative space-y-3 rounded-xl border bg-background/50 p-3 sm:p-4">
+              {visualEvents.filter((event) => event.target === "hero").map((event) => (
+                <span key={event.id} className={`jrpg-number ${event.kind === "damage" ? "jrpg-number-damage" : event.kind === "heal" ? "jrpg-number-heal" : "jrpg-number-guard"}`}>
+                  {event.kind === "damage" ? `-${event.amount}${event.crit ? " CRÍTICO!" : ""}` : event.kind === "heal" ? `+${event.amount}` : "DEFESA!"}
+                </span>
+              ))}
               <div className="flex items-center gap-2"><span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10"><Swords className="h-5 w-5 text-gold" /></span><div className="min-w-0"><p className="text-xs uppercase tracking-wider text-muted-foreground">Herói</p><h3 className="truncate font-display text-lg">{res.hero}</h3></div></div>
               <StatBar label="Pontos de Vida (PV)" value={res.heroPv} max={res.heroMaxPv} color="bg-emerald-500" />
               <StatBar label="Pontos de Magia (PM)" value={res.heroPm} max={res.heroMaxPm} color="bg-sky-500" />
@@ -203,6 +210,8 @@ function Combat({ onDone, hasActive, buttonLabel }: { onDone: () => void; hasAct
                   alt={`Ilustração de ${res.monster}`}
                   className={`relative z-10 h-[190px] w-full object-contain drop-shadow-[0_12px_18px_rgba(0,0,0,0.55)] ${visualEvents.some((event) => event.target === "monster" && event.kind === "damage") ? "jrpg-hit" : ""} ${visualEvents.some((event) => event.target === "monster" && event.kind === "heal") ? "jrpg-heal" : ""} `}
                 />
+                {visualEvents.some((event) => event.target === "monster" && event.kind === "damage") && <span className="jrpg-slash" />}
+                {visualEvents.some((event) => event.target === "monster" && event.kind === "guard") && <span className="pointer-events-none absolute z-20 h-32 w-32 rounded-full border-[5px] border-sky-300/80 shadow-[0_0_30px_rgba(56,189,248,.75)]" />}
                 {visualEvents.filter((event) => event.target === "monster").map((event) => (
                   <span key={event.id} className={`jrpg-number ${event.kind === "damage" ? "jrpg-number-damage" : event.kind === "heal" ? "jrpg-number-heal" : "jrpg-number-guard"}`}>
                     {event.kind === "damage" ? `-${event.amount}${event.crit ? " CRÍTICO!" : ""}` : event.kind === "heal" ? `+${event.amount}` : "DEFESA!"}
