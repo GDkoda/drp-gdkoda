@@ -97,7 +97,7 @@ function Grimorio() {
                   <Button size="sm" disabled={known} onClick={() => learn(s.id)}>{known ? "Já aprendida" : "Aprender na ficha ativa"}</Button>
                   {me?.isMaster && (
                     <>
-                      <SpellForm spell={s} />
+                      <SpellForm spell={s as SpellRow} />
                       <Button size="sm" variant="destructive" onClick={() => remove(s.id)}>Apagar</Button>
                     </>
                   )}

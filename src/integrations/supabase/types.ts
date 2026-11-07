@@ -124,6 +124,172 @@ export type Database = {
           },
         ]
       }
+      combat_sessions: {
+        Row: {
+          battle_log: Json
+          character_id: string
+          created_at: string
+          hero_a: number
+          hero_aim_bonus: number
+          hero_f: number
+          hero_guard_bonus: number
+          hero_h: number
+          hero_known_spells: string[]
+          hero_max_pm: number
+          hero_max_pv: number
+          hero_name: string
+          hero_pdf: number
+          hero_pm: number
+          hero_pv: number
+          hero_r: number
+          hero_traits: Json
+          id: string
+          monster_a: number
+          monster_f: number
+          monster_guard_bonus: number
+          monster_guard_used: boolean
+          monster_h: number
+          monster_max_pv: number
+          monster_name: string
+          monster_pdf: number
+          monster_pv: number
+          monster_reward: number | null
+          monster_strategy: string
+          monster_weakened: number
+          monster_xp: number
+          reward_paid: boolean
+          status: string
+          turn_number: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          battle_log?: Json
+          character_id: string
+          created_at?: string
+          hero_a: number
+          hero_aim_bonus?: number
+          hero_f: number
+          hero_guard_bonus?: number
+          hero_h: number
+          hero_known_spells?: string[]
+          hero_max_pm: number
+          hero_max_pv: number
+          hero_name: string
+          hero_pdf: number
+          hero_pm: number
+          hero_pv: number
+          hero_r?: number
+          hero_traits?: Json
+          id?: string
+          monster_a: number
+          monster_f: number
+          monster_guard_bonus?: number
+          monster_guard_used?: boolean
+          monster_h: number
+          monster_max_pv: number
+          monster_name: string
+          monster_pdf: number
+          monster_pv: number
+          monster_reward?: number | null
+          monster_strategy?: string
+          monster_weakened?: number
+          monster_xp?: number
+          reward_paid?: boolean
+          status?: string
+          turn_number?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          battle_log?: Json
+          character_id?: string
+          created_at?: string
+          hero_a?: number
+          hero_aim_bonus?: number
+          hero_f?: number
+          hero_guard_bonus?: number
+          hero_h?: number
+          hero_known_spells?: string[]
+          hero_max_pm?: number
+          hero_max_pv?: number
+          hero_name?: string
+          hero_pdf?: number
+          hero_pm?: number
+          hero_pv?: number
+          hero_r?: number
+          hero_traits?: Json
+          id?: string
+          monster_a?: number
+          monster_f?: number
+          monster_guard_bonus?: number
+          monster_guard_used?: boolean
+          monster_h?: number
+          monster_max_pv?: number
+          monster_name?: string
+          monster_pdf?: number
+          monster_pv?: number
+          monster_reward?: number | null
+          monster_strategy?: string
+          monster_weakened?: number
+          monster_xp?: number
+          reward_paid?: boolean
+          status?: string
+          turn_number?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "combat_sessions_character_id_fkey"
+            columns: ["character_id"]
+            isOneToOne: false
+            referencedRelation: "characters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      farkle_games: {
+        Row: {
+          created_at: string
+          finished_at: string | null
+          id: string
+          payout: number
+          result_won: boolean | null
+          status: string
+          user_id: string
+          wager: number
+        }
+        Insert: {
+          created_at?: string
+          finished_at?: string | null
+          id?: string
+          payout?: number
+          result_won?: boolean | null
+          status?: string
+          user_id: string
+          wager?: number
+        }
+        Update: {
+          created_at?: string
+          finished_at?: string | null
+          id?: string
+          payout?: number
+          result_won?: boolean | null
+          status?: string
+          user_id?: string
+          wager?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "farkle_games_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       game_settings: {
         Row: {
           checkin_per_day: number
@@ -592,6 +758,9 @@ export type Database = {
       }
       spells: {
         Row: {
+          combat_effect: string
+          combat_enabled: boolean
+          combat_power: number
           cost: string
           created_at: string
           description: string
@@ -605,6 +774,9 @@ export type Database = {
           source: string
         }
         Insert: {
+          combat_effect?: string
+          combat_enabled?: boolean
+          combat_power?: number
           cost?: string
           created_at?: string
           description?: string
@@ -618,6 +790,9 @@ export type Database = {
           source?: string
         }
         Update: {
+          combat_effect?: string
+          combat_enabled?: boolean
+          combat_power?: number
           cost?: string
           created_at?: string
           description?: string
@@ -689,6 +864,10 @@ export type Database = {
     }
     Functions: {
       _br_today: { Args: never; Returns: string }
+      _combat_state: {
+        Args: { _s: Database["public"]["Tables"]["combat_sessions"]["Row"] }
+        Returns: Json
+      }
       _reward: {
         Args: { _coins: number; _kind: string; _note: string }
         Returns: undefined
@@ -705,6 +884,12 @@ export type Database = {
         Args: { _char: string; _chest: string }
         Returns: undefined
       }
+      finish_farkle_game: {
+        Args: { _game: string; _won: boolean }
+        Returns: Json
+      }
+      get_active_combat: { Args: never; Returns: Json }
+      get_combat_state: { Args: { _session_id: string }; Returns: Json }
       get_vigor: { Args: never; Returns: number }
       has_role: {
         Args: {
@@ -726,6 +911,10 @@ export type Database = {
         Returns: undefined
       }
       master_purge_user: { Args: { _user: string }; Returns: undefined }
+      perform_combat_action: {
+        Args: { _action: string; _session_id: string; _spell_id?: string }
+        Returns: Json
+      }
       play_combat: { Args: never; Returns: Json }
       play_dice: { Args: { _bet: number }; Returns: Json }
       restore_vigor: { Args: { _amount: number }; Returns: number }
@@ -734,7 +923,9 @@ export type Database = {
         Returns: undefined
       }
       solve_puzzle: { Args: { _answer: string; _id: string }; Returns: Json }
+      start_combat: { Args: never; Returns: Json }
       start_farkle_game: { Args: never; Returns: number }
+      start_farkle_game_with_bet: { Args: { _wager: number }; Returns: string }
       start_puzzle: { Args: never; Returns: Json }
       transfer_coins: {
         Args: { _amount: number; _to: string }
