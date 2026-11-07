@@ -68,6 +68,9 @@ function StatBar({ label, value, max, color }: { label: string; value: number; m
 function Combat({ onDone, hasActive, buttonLabel }: { onDone: () => void; hasActive: boolean; buttonLabel: string }) {
   const [res, setRes] = useState<CombatState | null>(null);
   const [busy, setBusy] = useState(false);
+  const [visualEvents, setVisualEvents] = useState<{ id: string; target: "hero" | "monster"; kind: "damage" | "heal" | "guard"; amount: number; crit?: boolean }[]>([]);
+  const lastLogCount = useRef(0);
+  const visualSequence = useRef(0);
   const completed = useRef(false);
   const done = !!res && res.status !== "active";
 
@@ -111,6 +114,23 @@ function Combat({ onDone, hasActive, buttonLabel }: { onDone: () => void; hasAct
   }, []);
 
   useEffect(() => {
+    if (!res) { lastLogCount.current = 0; return; }
+    const log = res.log ?? [];
+    const fresh = log.slice(lastLogCount.current);
+    lastLogCount.current = log.length;
+    if (fresh.length) {
+      const events = fresh.flatMap((entry) => {
+        const target = entry.target ?? "monster";
+        if ((entry.dmg ?? 0) > 0) return [{ id: String(++visualSequence.current), target, kind: "damage" as const, amount: entry.dmg ?? 0, crit: !!entry.crit }];
+        if (entry.effect === "heal" || entry.action === "Recuperar fôlego") return [{ id: String(++visualSequence.current), target, kind: "heal" as const, amount: entry.amount ?? 0 }];
+        if (entry.effect === "guard" || entry.action === "Postura defensiva" || entry.action?.includes("Guarda defensiva")) return [{ id: String(++visualSequence.current), target, kind: "guard" as const, amount: entry.amount ?? 0 }];
+        return [];
+      });
+      if (events.length) setVisualEvents(events);
+    }
+  }, [res]);
+
+  useEffect(() => {
     if (done && !completed.current) {
       completed.current = true;
       onDone();
@@ -137,6 +157,19 @@ function Combat({ onDone, hasActive, buttonLabel }: { onDone: () => void; hasAct
 
   return (
     <div className="space-y-4 rounded-2xl border bg-card p-4 sm:p-6">
+      <style>{`
+        @keyframes jrpg-hit { 0%,100% { filter: none; transform: translateX(0) scale(1); } 12%,38% { filter: sepia(1) saturate(7) hue-rotate(315deg) brightness(1.35); transform: translateX(-7px) scale(1.025); } 25%,50% { transform: translateX(7px) scale(1.015); } }
+        @keyframes jrpg-heal { 0%,100% { filter: drop-shadow(0 0 0 rgba(74,222,128,0)); } 35%,70% { filter: sepia(.6) saturate(2) hue-rotate(75deg) brightness(1.35) drop-shadow(0 0 18px rgba(74,222,128,.9)); } }
+        @keyframes jrpg-float { 0% { opacity: 0; transform: translate(-50%, 18px) scale(.72); } 12% { opacity: 1; transform: translate(-50%, 0) scale(1.08); } 78% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -75px) scale(1); } }
+        @keyframes jrpg-guard { 0% { opacity: 0; transform: scale(.65); } 20%,75% { opacity: 1; transform: scale(1.08); } 100% { opacity: 0; transform: scale(1.2); } }
+        .jrpg-hit { animation: jrpg-hit .48s ease-out; }
+        .jrpg-heal { animation: jrpg-heal .8s ease-out; }
+        .jrpg-number { position: absolute; z-index: 30; left: 50%; top: 40%; pointer-events: none; white-space: nowrap; font-family: Georgia,serif; font-size: clamp(1.3rem,4vw,2.15rem); font-weight: 900; letter-spacing: .02em; text-shadow: 0 3px 3px #000, 0 0 12px currentColor; animation: jrpg-float 1.15s cubic-bezier(.2,.75,.25,1) both; }
+        .jrpg-number-damage { color: #ff555d; }
+        .jrpg-number-heal { color: #65f39a; }
+        .jrpg-number-guard { color: #76caff; animation-name: jrpg-guard; }
+        @media (prefers-reduced-motion: reduce) { .jrpg-hit,.jrpg-heal,.jrpg-number { animation-duration: .01ms !important; } }
+      `}</style>
       <div className="flex items-start gap-3 rounded-xl bg-muted/50 p-3">
         <Swords className="mt-0.5 h-5 w-5 shrink-0 text-gold" />
         <div className="min-w-0">
@@ -163,6 +196,20 @@ function Combat({ onDone, hasActive, buttonLabel }: { onDone: () => void; hasAct
             </div>
             <div className="space-y-3 rounded-xl border border-blood/20 bg-blood/5 p-3 sm:p-4">
               <div className="flex items-center gap-2"><span className="flex h-9 w-9 items-center justify-center rounded-lg bg-blood/10"><Shield className="h-5 w-5 text-blood" /></span><div className="min-w-0"><p className="text-xs uppercase tracking-wider text-muted-foreground">Adversário</p><h3 className="truncate font-display text-lg">{res.monster}</h3></div></div>
+              <div className="relative isolate flex min-h-[210px] items-center justify-center overflow-hidden rounded-xl border border-blood/20 bg-gradient-to-b from-[#211629] via-[#17121e] to-[#0c0b12] p-3">
+                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(154,67,165,0.22),transparent_68%)]" />
+                <img
+                  src="/monsters/abyssal-beast.svg"
+                  alt={`Ilustração de ${res.monster}`}
+                  className={`relative z-10 h-[190px] w-full object-contain drop-shadow-[0_12px_18px_rgba(0,0,0,0.55)] ${visualEvents.some((event) => event.target === "monster" && event.kind === "damage") ? "jrpg-hit" : ""} ${visualEvents.some((event) => event.target === "monster" && event.kind === "heal") ? "jrpg-heal" : ""} `}
+                />
+                {visualEvents.filter((event) => event.target === "monster").map((event) => (
+                  <span key={event.id} className={`jrpg-number ${event.kind === "damage" ? "jrpg-number-damage" : event.kind === "heal" ? "jrpg-number-heal" : "jrpg-number-guard"}`}>
+                    {event.kind === "damage" ? `-${event.amount}${event.crit ? " CRÍTICO!" : ""}` : event.kind === "heal" ? `+${event.amount}` : "DEFESA!"}
+                  </span>
+                ))}
+                <span className="absolute bottom-2 left-3 z-20 rounded-full border border-white/10 bg-black/40 px-2 py-1 text-[10px] uppercase tracking-[0.2em] text-white/65">Inimigo</span>
+              </div>
               <StatBar label="Pontos de Vida (PV)" value={res.monsterPv} max={res.monsterMaxPv} color="bg-blood" />
               <p className="text-xs text-muted-foreground">Turno {Math.max(1, res.turn - (done ? 1 : 0))}</p>
             </div>
