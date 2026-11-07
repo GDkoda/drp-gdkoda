@@ -11,6 +11,7 @@ import { VigorRestore, useGameSettings } from "@/components/VigorRestore";
 import { createMachineStrategy, maxFarkleWager, nextRollCount, scoreDiceSelection, hasScoringCombination, farkleProbability } from "@/lib/farkle";
 import type { DieFace } from "@/lib/farkle";
 import { combatEffectLabel, isCombatAbilityAvailable, isCombatActionAvailable } from "@/lib/combat";
+import { getMonsterArtwork } from "@/lib/monster-art";
 import type { CombatAction, CombatLogEntry, CombatState } from "@/lib/combat";
 
 function JogosRouteComponent() {
@@ -68,8 +69,9 @@ function StatBar({ label, value, max, color }: { label: string; value: number; m
 function Combat({ onDone, hasActive, buttonLabel }: { onDone: () => void; hasActive: boolean; buttonLabel: string }) {
   const [res, setRes] = useState<CombatState | null>(null);
   const [busy, setBusy] = useState(false);
-  const [visualEvents, setVisualEvents] = useState<{ id: string; target: "hero" | "monster"; kind: "damage" | "heal" | "guard"; amount: number; crit?: boolean }[]>([]);
+  const [visualEvents, setVisualEvents] = useState<{ id: string; target: "hero" | "monster"; kind: "damage" | "heal" | "guard" | "aim" | "feint"; amount: number; crit?: boolean; sourceAction?: string }[]>([]);
   const lastLogCount = useRef(0);
+  const previousState = useRef<CombatState | null>(null);
   const visualSequence = useRef(0);
   const completed = useRef(false);
   const done = !!res && res.status !== "active";
@@ -80,6 +82,7 @@ function Combat({ onDone, hasActive, buttonLabel }: { onDone: () => void; hasAct
     try {
       const state = await rpc("start_combat", {}) as CombatState;
       lastLogCount.current = state.log?.length ?? 0;
+      previousState.current = state;
       setVisualEvents([]);
       setRes(state);
       onDone();
@@ -110,6 +113,7 @@ function Combat({ onDone, hasActive, buttonLabel }: { onDone: () => void; hasAct
         if (!cancelled && state) {
           const recovered = state as CombatState;
           lastLogCount.current = recovered.log?.length ?? 0;
+          previousState.current = recovered;
           setRes(recovered);
         }
       })
@@ -120,20 +124,36 @@ function Combat({ onDone, hasActive, buttonLabel }: { onDone: () => void; hasAct
   }, []);
 
   useEffect(() => {
-    if (!res) { lastLogCount.current = 0; return; }
+    if (!res) { lastLogCount.current = 0; previousState.current = null; setVisualEvents([]); return; }
     const log = res.log ?? [];
     const fresh = log.slice(lastLogCount.current);
+    const before = previousState.current;
     lastLogCount.current = log.length;
-    if (fresh.length) {
-      const events = fresh.slice(-2).flatMap((entry) => {
-        const target = entry.target ?? "monster";
-        if ((entry.dmg ?? 0) > 0) return [{ id: String(++visualSequence.current), target, kind: "damage" as const, amount: entry.dmg ?? 0, crit: !!entry.crit }];
-        if (entry.effect === "heal" || entry.action === "Recuperar fôlego") return [{ id: String(++visualSequence.current), target, kind: "heal" as const, amount: entry.amount ?? 0 }];
-        if (entry.effect === "guard" || entry.action === "Postura defensiva" || entry.action?.includes("Guarda defensiva")) return [{ id: String(++visualSequence.current), target, kind: "guard" as const, amount: entry.amount ?? 0 }];
-        return [];
-      });
-      if (events.length) setVisualEvents(events);
-    }
+    previousState.current = res;
+    const events: typeof visualEvents = [];
+
+    fresh.slice(-3).forEach((entry) => {
+      const target = entry.target ?? "monster";
+      const action = entry.action ?? "";
+      if ((entry.dmg ?? 0) > 0) {
+        events.push({ id: String(++visualSequence.current), target, kind: "damage", amount: entry.dmg ?? 0, crit: !!entry.crit, sourceAction: action });
+      }
+      if (entry.effect === "heal" || action === "Recuperar fôlego") {
+        const actualHeal = target === "hero" && before ? Math.max(0, res.heroPv - before.heroPv) : Math.max(0, entry.amount ?? 0);
+        if (actualHeal > 0) events.push({ id: String(++visualSequence.current), target: "hero", kind: "heal", amount: actualHeal, sourceAction: action });
+      }
+      if (entry.effect === "guard" || action === "Postura defensiva" || action.includes("Guarda defensiva")) {
+        events.push({ id: String(++visualSequence.current), target, kind: "guard", amount: entry.amount ?? 0, sourceAction: action });
+      }
+      if (action.toLocaleLowerCase().includes("preparar ataque") || action.toLocaleLowerCase().includes("mirar")) {
+        events.push({ id: String(++visualSequence.current), target: "hero", kind: "aim", amount: 0, sourceAction: action });
+      }
+      if (action === "Finta") {
+        events.push({ id: String(++visualSequence.current), target: "monster", kind: "feint", amount: 0, sourceAction: action });
+      }
+    });
+
+    setVisualEvents(events);
   }, [res]);
 
   useEffect(() => {
@@ -164,6 +184,15 @@ function Combat({ onDone, hasActive, buttonLabel }: { onDone: () => void; hasAct
   return (
     <div className="space-y-4 rounded-2xl border bg-card p-4 sm:p-6">
       <style>{`
+        @keyframes jrpg-hit-panel { 0%,100% { transform: translateX(0); box-shadow: inset 0 0 0 rgba(255,70,80,0); } 20%,55% { transform: translateX(-3px); box-shadow: inset 0 0 28px rgba(255,65,80,.2); border-color: rgba(255,75,85,.65); } 35% { transform: translateX(3px); } }
+        @keyframes jrpg-heal-panel { 0%,100% { box-shadow: inset 0 0 0 rgba(74,222,128,0); } 35%,75% { box-shadow: inset 0 0 35px rgba(74,222,128,.2); border-color: rgba(74,222,128,.7); } }
+        @keyframes jrpg-magic { 0%,100% { filter: drop-shadow(0 0 0 rgba(130,100,255,0)); transform: scale(1); } 35% { filter: drop-shadow(0 0 25px rgba(155,125,255,.95)) brightness(1.3); transform: scale(1.035); } }
+        @keyframes jrpg-burst { 0% { opacity: 0; transform: translate(-50%,-50%) scale(.2); } 35% { opacity: 1; transform: translate(-50%,-50%) scale(1.1); } 100% { opacity: 0; transform: translate(-50%,-50%) scale(1.5); } }
+        .jrpg-hit-panel { animation: jrpg-hit-panel .48s ease-out; }
+        .jrpg-heal-panel { animation: jrpg-heal-panel .8s ease-out; }
+        .jrpg-magic { animation: jrpg-magic .62s ease-out; }
+        .jrpg-magic-burst { position:absolute; z-index:20; left:50%; top:48%; width:110px; height:110px; border-radius:999px; border:5px solid rgba(190,165,255,.9); background:radial-gradient(circle,rgba(196,181,253,.6),rgba(124,58,237,.12) 60%,transparent 72%); box-shadow:0 0 28px rgba(167,139,250,.9); animation:jrpg-burst .6s ease-out both; pointer-events:none; }
+        .jrpg-feint { animation: jrpg-hit .38s ease-out; }
         @keyframes jrpg-hit { 0%,100% { filter: none; transform: translateX(0) scale(1); } 12%,38% { filter: sepia(1) saturate(7) hue-rotate(315deg) brightness(1.35); transform: translateX(-7px) scale(1.025); } 25%,50% { transform: translateX(7px) scale(1.015); } }
         @keyframes jrpg-heal { 0%,100% { filter: drop-shadow(0 0 0 rgba(74,222,128,0)); } 35%,70% { filter: sepia(.6) saturate(2) hue-rotate(75deg) brightness(1.35) drop-shadow(0 0 18px rgba(74,222,128,.9)); } }
         @keyframes jrpg-float { 0% { opacity: 0; transform: translate(-50%, 18px) scale(.72); } 12% { opacity: 1; transform: translate(-50%, 0) scale(1.08); } 78% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -75px) scale(1); } }
@@ -176,7 +205,7 @@ function Combat({ onDone, hasActive, buttonLabel }: { onDone: () => void; hasAct
         .jrpg-number-damage { color: #ff555d; }
         .jrpg-number-heal { color: #65f39a; }
         .jrpg-number-guard { color: #76caff; animation-name: jrpg-guard; }
-        @media (prefers-reduced-motion: reduce) { .jrpg-hit,.jrpg-heal,.jrpg-number { animation-duration: .01ms !important; } }
+        @media (prefers-reduced-motion: reduce) { .jrpg-hit,.jrpg-heal,.jrpg-number,.jrpg-hit-panel,.jrpg-heal-panel,.jrpg-magic,.jrpg-feint,.jrpg-magic-burst { animation-duration: .01ms !important; } }
       `}</style>
       <div className="flex items-start gap-3 rounded-xl bg-muted/50 p-3">
         <Swords className="mt-0.5 h-5 w-5 shrink-0 text-gold" />
@@ -196,10 +225,10 @@ function Combat({ onDone, hasActive, buttonLabel }: { onDone: () => void; hasAct
       {res && (
         <div className="space-y-4">
           <div className="grid gap-3 sm:grid-cols-2">
-            <div className="relative space-y-3 rounded-xl border bg-background/50 p-3 sm:p-4">
+            <div className={`relative space-y-3 rounded-xl border bg-background/50 p-3 sm:p-4 ${visualEvents.some((event) => event.target === "hero" && event.kind === "damage") ? "jrpg-hit-panel" : ""} ${visualEvents.some((event) => event.target === "hero" && event.kind === "heal") ? "jrpg-heal-panel" : ""}`}>
               {visualEvents.filter((event) => event.target === "hero").map((event) => (
                 <span key={event.id} className={`jrpg-number ${event.kind === "damage" ? "jrpg-number-damage" : event.kind === "heal" ? "jrpg-number-heal" : "jrpg-number-guard"}`}>
-                  {event.kind === "damage" ? `-${event.amount}${event.crit ? " CRÍTICO!" : ""}` : event.kind === "heal" ? `+${event.amount}` : "DEFESA!"}
+                  {event.kind === "damage" ? `-${event.amount}${event.crit ? " CRÍTICO!" : ""}` : event.kind === "heal" ? `+${event.amount}` : event.kind === "aim" ? "MIRA!" : event.kind === "feint" ? "FINTA!" : "DEFESA!"}
                 </span>
               ))}
               <div className="flex items-center gap-2"><span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10"><Swords className="h-5 w-5 text-gold" /></span><div className="min-w-0"><p className="text-xs uppercase tracking-wider text-muted-foreground">Herói</p><h3 className="truncate font-display text-lg">{res.hero}</h3></div></div>
@@ -213,15 +242,17 @@ function Combat({ onDone, hasActive, buttonLabel }: { onDone: () => void; hasAct
                 <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(154,67,165,0.22),transparent_68%)]" />
                 <img
                   key={visualEvents.filter((event) => event.target === "monster")[visualEvents.filter((event) => event.target === "monster").length - 1]?.id ?? "monster-art"}
-                  src="/monsters/abyssal-beast.svg"
-                  alt={`Ilustração de ${res.monster}`}
-                  className={`relative z-10 h-[190px] w-full object-contain drop-shadow-[0_12px_18px_rgba(0,0,0,0.55)] ${visualEvents.some((event) => event.target === "monster" && event.kind === "damage") ? "jrpg-hit" : ""} ${visualEvents.some((event) => event.target === "monster" && event.kind === "heal") ? "jrpg-heal" : ""} `}
+                  src={getMonsterArtwork(res.monster).src}
+                  alt={getMonsterArtwork(res.monster).alt}
+                  className={`relative z-10 h-[190px] w-full object-contain drop-shadow-[0_12px_18px_rgba(0,0,0,0.55)] ${visualEvents.some((event) => event.target === "monster" && event.kind === "damage") ? "jrpg-hit" : ""} ${visualEvents.some((event) => event.target === "monster" && event.kind === "heal") ? "jrpg-heal" : ""} ${visualEvents.some((event) => event.target === "monster" && event.kind === "feint") ? "jrpg-feint" : ""} ${visualEvents.some((event) => event.target === "monster" && event.kind === "damage" && event.sourceAction?.startsWith("Magia:")) ? "jrpg-magic" : ""} `}
                 />
-                {visualEvents.some((event) => event.target === "monster" && event.kind === "damage") && <span className="jrpg-slash" />}
+                {visualEvents.some((event) => event.target === "monster" && event.kind === "damage" && !event.sourceAction?.startsWith("Magia:")) && <span className="jrpg-slash" />}
+                {visualEvents.some((event) => event.target === "monster" && event.kind === "damage" && event.sourceAction?.startsWith("Magia:")) && <span className="jrpg-magic-burst" />}
+                {visualEvents.some((event) => event.target === "monster" && event.kind === "feint") && <span className="absolute inset-x-8 top-1/2 z-20 h-1 -rotate-12 rounded-full bg-gradient-to-r from-transparent via-amber-200 to-transparent shadow-[0_0_18px_rgba(251,191,36,.9)]" />}
                 {visualEvents.some((event) => event.target === "monster" && event.kind === "guard") && <span className="pointer-events-none absolute z-20 h-32 w-32 rounded-full border-[5px] border-sky-300/80 shadow-[0_0_30px_rgba(56,189,248,.75)]" />}
                 {visualEvents.filter((event) => event.target === "monster").map((event) => (
                   <span key={event.id} className={`jrpg-number ${event.kind === "damage" ? "jrpg-number-damage" : event.kind === "heal" ? "jrpg-number-heal" : "jrpg-number-guard"}`}>
-                    {event.kind === "damage" ? `-${event.amount}${event.crit ? " CRÍTICO!" : ""}` : event.kind === "heal" ? `+${event.amount}` : "DEFESA!"}
+                    {event.kind === "damage" ? `-${event.amount}${event.crit ? " CRÍTICO!" : ""}` : event.kind === "heal" ? `+${event.amount}` : event.kind === "aim" ? "MIRA!" : event.kind === "feint" ? "FINTA!" : "DEFESA!"}
                   </span>
                 ))}
                 <span className="absolute bottom-2 left-3 z-20 rounded-full border border-white/10 bg-black/40 px-2 py-1 text-[10px] uppercase tracking-[0.2em] text-white/65">Inimigo</span>
