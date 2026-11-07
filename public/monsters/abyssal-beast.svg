@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 560" role="img" aria-labelledby="title desc">
+<title id="title">Fera das sombras</title><desc id="desc">Criatura fantástica sombria com chifres, olhos brilhantes e garras.</desc>
+<defs>
+ <radialGradient id="bg"><stop stop-color="#43204c"/><stop offset="1" stop-color="#10101c" stop-opacity="0"/></radialGradient>
+ <linearGradient id="skin" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#8c6b9b"/><stop offset=".45" stop-color="#44304f"/><stop offset="1" stop-color="#171522"/></linearGradient>
+ <linearGradient id="horn" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#e4d8c2"/><stop offset="1" stop-color="#57495d"/></linearGradient>
+ <filter id="glow"><feGaussianBlur stdDeviation="8" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+</defs>
+<ellipse cx="320" cy="500" rx="210" ry="35" fill="#05050a" opacity=".65"/>
+<circle cx="320" cy="270" r="235" fill="url(#bg)"/>
+<path d="M205 176 Q135 80 95 55 Q105 170 190 226 M435 176 Q505 80 545 55 Q535 170 450 226" fill="#302439" stroke="#9a829e" stroke-width="13" stroke-linejoin="round"/>
+<path d="M240 190 Q185 105 160 80 Q176 180 230 230 M400 190 Q455 105 480 80 Q464 180 410 230" fill="url(#horn)" stroke="#c5b8c8" stroke-width="5"/>
+<path d="M180 230 Q180 150 255 135 L320 165 L385 135 Q460 150 460 230 L430 390 Q405 465 320 480 Q235 465 210 390Z" fill="url(#skin)" stroke="#a78eaa" stroke-width="8"/>
+<path d="M210 265 Q250 210 292 260 L275 292 Q245 280 220 300Z M430 265 Q390 210 348 260 L365 292 Q395 280 420 300Z" fill="#15111e"/>
+<path d="M225 270 L285 274 L270 293 L220 292Z M415 270 L355 274 L370 293 L420 292Z" fill="#ff3b59" filter="url(#glow)"/>
+<path d="M320 280 L290 360 L320 385 L350 360Z" fill="#241a2b" stroke="#b49ab4" stroke-width="5"/>
+<path d="M280 390 Q320 420 360 390 Q345 450 320 450 Q295 450 280 390Z" fill="#100e18"/>
+<path d="M290 395 L305 425 L315 399 L325 399 L335 425 L350 395" fill="#eee0d4"/>
+<path d="M220 370 Q145 395 125 465 L195 485 L265 445 M420 370 Q495 395 515 465 L445 485 L375 445" fill="#38283e" stroke="#8b718f" stroke-width="9"/>
+<path d="M170 450 L135 520 L190 500 L220 530 L245 460 M470 450 L505 520 L450 500 L420 530 L395 460" fill="#211a2a" stroke="#b9a1bd" stroke-width="8" stroke-linejoin="round"/>
+<path d="M270 170 L320 205 L370 170" fill="none" stroke="#b69ab8" stroke-width="7" opacity=".65"/>
+<path d="M245 330 L270 350 M395 330 L370 350" stroke="#c5a9c6" stroke-width="6" stroke-linecap="round" opacity=".55"/>
+</svg>

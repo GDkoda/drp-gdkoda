@@ -7,7 +7,7 @@ import { Zap } from "lucide-react";
 export function useGameSettings() {
   return useQuery({
     queryKey: ["settings"],
-    queryFn: async () => (await (supabase as any).from("game_settings").select("*").eq("id", 1).single()).data as { vigor_daily: number; vigor_cost_1: number; vigor_cost_5: number } | null,
+    queryFn: async () => (await (supabase as any).from("game_settings").select("*").eq("id", 1).single()).data as { vigor_daily: number; vigor_cost_1: number; vigor_cost_5: number; dice_max_bet: number } | null,
   });
 }
 

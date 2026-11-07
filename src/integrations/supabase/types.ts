@@ -124,6 +124,172 @@ export type Database = {
           },
         ]
       }
+      combat_sessions: {
+        Row: {
+          battle_log: Json
+          character_id: string
+          created_at: string
+          hero_a: number
+          hero_aim_bonus: number
+          hero_f: number
+          hero_guard_bonus: number
+          hero_h: number
+          hero_known_spells: string[]
+          hero_max_pm: number
+          hero_max_pv: number
+          hero_name: string
+          hero_pdf: number
+          hero_pm: number
+          hero_pv: number
+          hero_r: number
+          hero_traits: Json
+          id: string
+          monster_a: number
+          monster_f: number
+          monster_guard_bonus: number
+          monster_guard_used: boolean
+          monster_h: number
+          monster_max_pv: number
+          monster_name: string
+          monster_pdf: number
+          monster_pv: number
+          monster_reward: number | null
+          monster_strategy: string
+          monster_weakened: number
+          monster_xp: number
+          reward_paid: boolean
+          status: string
+          turn_number: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          battle_log?: Json
+          character_id: string
+          created_at?: string
+          hero_a: number
+          hero_aim_bonus?: number
+          hero_f: number
+          hero_guard_bonus?: number
+          hero_h: number
+          hero_known_spells?: string[]
+          hero_max_pm: number
+          hero_max_pv: number
+          hero_name: string
+          hero_pdf: number
+          hero_pm: number
+          hero_pv: number
+          hero_r?: number
+          hero_traits?: Json
+          id?: string
+          monster_a: number
+          monster_f: number
+          monster_guard_bonus?: number
+          monster_guard_used?: boolean
+          monster_h: number
+          monster_max_pv: number
+          monster_name: string
+          monster_pdf: number
+          monster_pv: number
+          monster_reward?: number | null
+          monster_strategy?: string
+          monster_weakened?: number
+          monster_xp?: number
+          reward_paid?: boolean
+          status?: string
+          turn_number?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          battle_log?: Json
+          character_id?: string
+          created_at?: string
+          hero_a?: number
+          hero_aim_bonus?: number
+          hero_f?: number
+          hero_guard_bonus?: number
+          hero_h?: number
+          hero_known_spells?: string[]
+          hero_max_pm?: number
+          hero_max_pv?: number
+          hero_name?: string
+          hero_pdf?: number
+          hero_pm?: number
+          hero_pv?: number
+          hero_r?: number
+          hero_traits?: Json
+          id?: string
+          monster_a?: number
+          monster_f?: number
+          monster_guard_bonus?: number
+          monster_guard_used?: boolean
+          monster_h?: number
+          monster_max_pv?: number
+          monster_name?: string
+          monster_pdf?: number
+          monster_pv?: number
+          monster_reward?: number | null
+          monster_strategy?: string
+          monster_weakened?: number
+          monster_xp?: number
+          reward_paid?: boolean
+          status?: string
+          turn_number?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "combat_sessions_character_id_fkey"
+            columns: ["character_id"]
+            isOneToOne: false
+            referencedRelation: "characters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      farkle_games: {
+        Row: {
+          created_at: string
+          finished_at: string | null
+          id: string
+          payout: number
+          result_won: boolean | null
+          status: string
+          user_id: string
+          wager: number
+        }
+        Insert: {
+          created_at?: string
+          finished_at?: string | null
+          id?: string
+          payout?: number
+          result_won?: boolean | null
+          status?: string
+          user_id: string
+          wager?: number
+        }
+        Update: {
+          created_at?: string
+          finished_at?: string | null
+          id?: string
+          payout?: number
+          result_won?: boolean | null
+          status?: string
+          user_id?: string
+          wager?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "farkle_games_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       game_settings: {
         Row: {
           checkin_per_day: number
@@ -163,6 +329,238 @@ export type Database = {
           vigor_cost_1?: number
           vigor_cost_5?: number
           vigor_daily?: number
+        }
+        Relationships: []
+      }
+      lore_attachments: {
+        Row: {
+          created_at: string
+          entry_id: string
+          file_name: string
+          file_size: number
+          id: string
+          mime_type: string
+          storage_path: string
+        }
+        Insert: {
+          created_at?: string
+          entry_id: string
+          file_name: string
+          file_size?: number
+          id?: string
+          mime_type?: string
+          storage_path: string
+        }
+        Update: {
+          created_at?: string
+          entry_id?: string
+          file_name?: string
+          file_size?: number
+          id?: string
+          mime_type?: string
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lore_attachments_entry_id_fkey"
+            columns: ["entry_id"]
+            isOneToOne: false
+            referencedRelation: "lore_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lore_categories: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          name: string
+          slug: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string
+          id?: string
+          name: string
+          slug: string
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          name?: string
+          slug?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
+      lore_comments: {
+        Row: {
+          content: string
+          created_at: string
+          entry_id: string
+          id: string
+          pinned: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          entry_id: string
+          id?: string
+          pinned?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          entry_id?: string
+          id?: string
+          pinned?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lore_comments_entry_id_fkey"
+            columns: ["entry_id"]
+            isOneToOne: false
+            referencedRelation: "lore_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lore_comments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lore_entries: {
+        Row: {
+          allowed_groups: string[]
+          allowed_users: string[]
+          category_id: string | null
+          content: string
+          cover_image_url: string | null
+          created_at: string
+          created_by: string
+          id: string
+          published_at: string | null
+          related_ids: string[]
+          status: string
+          summary: string
+          tags: string[]
+          title: string
+          updated_at: string
+          updated_by: string | null
+          visibility: string
+        }
+        Insert: {
+          allowed_groups?: string[]
+          allowed_users?: string[]
+          category_id?: string | null
+          content?: string
+          cover_image_url?: string | null
+          created_at?: string
+          created_by: string
+          id?: string
+          published_at?: string | null
+          related_ids?: string[]
+          status?: string
+          summary?: string
+          tags?: string[]
+          title: string
+          updated_at?: string
+          updated_by?: string | null
+          visibility?: string
+        }
+        Update: {
+          allowed_groups?: string[]
+          allowed_users?: string[]
+          category_id?: string | null
+          content?: string
+          cover_image_url?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          published_at?: string | null
+          related_ids?: string[]
+          status?: string
+          summary?: string
+          tags?: string[]
+          title?: string
+          updated_at?: string
+          updated_by?: string | null
+          visibility?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lore_entries_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "lore_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lore_group_members: {
+        Row: {
+          created_at: string
+          group_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          group_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          group_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lore_group_members_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "lore_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lore_group_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lore_groups: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          name?: string
         }
         Relationships: []
       }
@@ -360,6 +758,9 @@ export type Database = {
       }
       spells: {
         Row: {
+          combat_effect: string
+          combat_enabled: boolean
+          combat_power: number
           cost: string
           created_at: string
           description: string
@@ -373,6 +774,9 @@ export type Database = {
           source: string
         }
         Insert: {
+          combat_effect?: string
+          combat_enabled?: boolean
+          combat_power?: number
           cost?: string
           created_at?: string
           description?: string
@@ -386,6 +790,9 @@ export type Database = {
           source?: string
         }
         Update: {
+          combat_effect?: string
+          combat_enabled?: boolean
+          combat_power?: number
           cost?: string
           created_at?: string
           description?: string
@@ -457,12 +864,17 @@ export type Database = {
     }
     Functions: {
       _br_today: { Args: never; Returns: string }
+      _combat_state: {
+        Args: { _s: Database["public"]["Tables"]["combat_sessions"]["Row"] }
+        Returns: Json
+      }
       _reward: {
         Args: { _coins: number; _kind: string; _note: string }
         Returns: undefined
       }
       _spend_vigor: { Args: { _n: number }; Returns: undefined }
       buy_item: { Args: { _item: string }; Returns: undefined }
+      can_read_lore_entry: { Args: { _entry: string }; Returns: boolean }
       cast_spell: {
         Args: { _char: string; _pm?: number; _spell: string }
         Returns: number
@@ -472,6 +884,12 @@ export type Database = {
         Args: { _char: string; _chest: string }
         Returns: undefined
       }
+      finish_farkle_game: {
+        Args: { _game: string; _won: boolean }
+        Returns: Json
+      }
+      get_active_combat: { Args: never; Returns: Json }
+      get_combat_state: { Args: { _session_id: string }; Returns: Json }
       get_vigor: { Args: never; Returns: number }
       has_role: {
         Args: {
@@ -493,10 +911,21 @@ export type Database = {
         Returns: undefined
       }
       master_purge_user: { Args: { _user: string }; Returns: undefined }
+      perform_combat_action: {
+        Args: { _action: string; _session_id: string; _spell_id?: string }
+        Returns: Json
+      }
       play_combat: { Args: never; Returns: Json }
       play_dice: { Args: { _bet: number }; Returns: Json }
       restore_vigor: { Args: { _amount: number }; Returns: number }
+      set_lore_comment_pinned: {
+        Args: { _comment: string; _pinned: boolean }
+        Returns: undefined
+      }
       solve_puzzle: { Args: { _answer: string; _id: string }; Returns: Json }
+      start_combat: { Args: never; Returns: Json }
+      start_farkle_game: { Args: never; Returns: number }
+      start_farkle_game_with_bet: { Args: { _wager: number }; Returns: string }
       start_puzzle: { Args: never; Returns: Json }
       transfer_coins: {
         Args: { _amount: number; _to: string }
