@@ -139,7 +139,12 @@ function Combat({ onDone, hasActive, buttonLabel }: { onDone: () => void; hasAct
         events.push({ id: String(++visualSequence.current), target, kind: "damage", amount: entry.dmg ?? 0, crit: !!entry.crit, sourceAction: action });
       }
       if (entry.effect === "heal" || action === "Recuperar fôlego") {
-        const actualHeal = target === "hero" && before ? Math.max(0, res.heroPv - before.heroPv) : Math.max(0, entry.amount ?? 0);
+        // The recovery log's hp is captured before the enemy's response, so it
+        // preserves the exact heal even when the monster damages the hero later
+        // in the same turn.
+        const actualHeal = target === "hero" && before
+          ? Math.max(0, (entry.hp ?? res.heroPv) - before.heroPv)
+          : Math.max(0, entry.amount ?? 0);
         if (actualHeal > 0) events.push({ id: String(++visualSequence.current), target: "hero", kind: "heal", amount: actualHeal, sourceAction: action });
       }
       if (entry.effect === "guard" || action === "Postura defensiva" || action.includes("Guarda defensiva")) {
