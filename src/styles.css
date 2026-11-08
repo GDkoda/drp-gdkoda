@@ -520,7 +520,7 @@ html[data-palette="ousado"][data-theme="light"] {
 }
 html[data-palette="rico"][data-theme="dark"] {
   color-scheme:dark; --background:#241A12; --foreground:#F9EEDB; --card:#35271B; --card-foreground:#F9EEDB; --popover:#35271B; --popover-foreground:#F9EEDB;
-  --primary:#F4D9A0; --primary-foreground:#352315; --secondary:#493525; --secondary-foreground:#FFF4DF; --muted:#3D2D20; --muted-foreground:#D5C0A0;
+  --primary:#F4D9A0; --primary-foreground:#352315; --secondary:#5B4632; --secondary-foreground:#FFF4DF; --muted:#3D2D20; --muted-foreground:#D5C0A0;
   --accent:#C8792C; --accent-foreground:#1E1208; --destructive:#D65B4A; --destructive-foreground:#FFFFFF; --border:#624A33; --input:#59432F; --ring:#F4D9A0; --gold:#F4D9A0; --blood:#E47A5C; --mana:#9CBCEB;
   --texture-color:#F4D9A0; --texture-accent:#C8792C; --ambient-glow:radial-gradient(ellipse at 50% -18%,rgb(200 121 44 / 20%),transparent 58%); --surface-glass:rgb(53 39 27 / 92%); --shadow-soft:0 18px 48px rgb(0 0 0 / 28%);
 }
