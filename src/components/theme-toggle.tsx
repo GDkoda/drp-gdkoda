@@ -14,7 +14,7 @@ const palettes: { id: PaletteId; label: string; description: string; colors: [st
 ];
 
 function storedMode(): ThemeMode {
-  if (typeof window === "undefined") return "medieval";
+  if (typeof window === "undefined") return "dark";
   try { return window.localStorage.getItem("mesa-theme") === "light" ? "light" : "dark"; }
   catch { return "dark"; }
 }
