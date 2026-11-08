@@ -53,7 +53,7 @@ function Jogos() {
         <TabsContent value="combat"><Combat onDone={after} hasActive={!!me?.profile?.active_character_id} buttonLabel={text("jogos_fight")} /></TabsContent>
         <TabsContent value="twentyone"><TwentyOne onDone={after} coins={Number(me?.profile?.coins ?? 0)} vigor={Number(vigor ?? 0)} /></TabsContent>
         <TabsContent value="farkle" forceMount className="mt-2 data-[state=inactive]:hidden"><Farkle onDone={after} vigor={Number(vigor ?? 0)} coins={Number(me?.profile?.coins ?? 0)} /></TabsContent>
-        <TabsContent value="puzzle"><Puzzle onDone={after} buttonLabel={text("jogos_new_puzzle")} /></TabsContent>
+        <TabsContent value="puzzle" forceMount className="mt-2 data-[state=inactive]:hidden"><Puzzle onDone={after} buttonLabel={text("jogos_new_puzzle")} /></TabsContent>
       </Tabs>
     </div>
   );
