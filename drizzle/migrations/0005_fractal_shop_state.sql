@@ -171,7 +171,9 @@ begin
   where id=_run_id and user_id=auth.uid() for update;
   if not found then raise exception 'Expedição não encontrada'; end if;
   if r.status <> 'active' then raise exception 'Esta expedição já foi encerrada'; end if;
-  if _victory and now() < r.started_at + interval '11 minutes' then
+  select exists(select 1 from public.user_roles where user_id=auth.uid() and role::text='master')
+    into master_access;
+  if _victory and not master_access and now() < r.started_at + interval '11 minutes' then
     raise exception 'A expedição ainda não atingiu o tempo mínimo para validar o guardião';
   end if;
   update public.fractal_runs
@@ -180,8 +182,6 @@ begin
   insert into public.fractal_player_state(user_id)
   values (auth.uid()) on conflict (user_id) do nothing;
   select * into s from public.fractal_player_state where user_id=auth.uid() for update;
-  select exists(select 1 from public.user_roles where user_id=auth.uid() and role::text='master')
-    into master_access;
   if _victory then
     update public.fractal_player_state
       set completed_corruptions = array(select distinct unnest(completed_corruptions || r.corruption_level) order by 1),
