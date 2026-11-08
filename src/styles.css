@@ -467,3 +467,107 @@ html[data-palette="futurista"][data-theme="light"] {
  --accent:#F0E9D9; --accent-foreground:#263B38; --destructive:#B83232; --destructive-foreground:#FFFFFF; --border:#C5DCD7; --input:#BED7D2; --ring:#007C85; --gold:#007C85; --blood:#B83232; --mana:#315F9C;
  --texture-color:#007C85; --texture-accent:#B8AA8F; --ambient-glow:radial-gradient(ellipse at 50% -18%,rgb(0 174 187 / 12%),transparent 60%); --surface-glass:rgb(255 255 255 / 93%); --shadow-soft:0 18px 48px rgb(23 79 76 / 10%);
 }
+
+
+/* Quatro novas paletas — todas compatíveis com os modos claro e escuro. */
+html[data-palette="prata-grafite"][data-theme="dark"] {
+ color-scheme:dark; --background:#090A0C; --foreground:#ECEEF2; --card:#191C21; --card-foreground:#ECEEF2; --popover:#191C21; --popover-foreground:#ECEEF2;
+ --primary:#C7CCD4; --primary-foreground:#15171B; --secondary:#292D34; --secondary-foreground:#F1F2F4; --muted:#22262D; --muted-foreground:#AEB4BE;
+ --accent:#737B87; --accent-foreground:#FFFFFF; --destructive:#C94A55; --destructive-foreground:#FFFFFF; --border:#414751; --input:#343A43; --ring:#C7CCD4; --gold:#C7CCD4; --blood:#D85A64; --mana:#9CB8E8;
+ --texture-color:#C7CCD4; --texture-accent:#737B87; --ambient-glow:radial-gradient(ellipse at 50% -18%,rgb(199 204 212 / 15%),transparent 58%); --surface-glass:rgb(25 28 33 / 93%); --shadow-soft:0 18px 48px rgb(0 0 0 / 38%);
+}
+html[data-palette="prata-grafite"][data-theme="light"] {
+ color-scheme:light; --background:#F0F1F3; --foreground:#202329; --card:#FFFFFF; --card-foreground:#202329; --popover:#FFFFFF; --popover-foreground:#202329;
+ --primary:#555D68; --primary-foreground:#FFFFFF; --secondary:#DDE0E5; --secondary-foreground:#292D34; --muted:#E6E8EC; --muted-foreground:#646B76;
+ --accent:#C7CCD4; --accent-foreground:#202329; --destructive:#B8323E; --destructive-foreground:#FFFFFF; --border:#C9CDD4; --input:#C5CAD2; --ring:#626B78; --gold:#555D68; --blood:#B8323E; --mana:#315F9C;
+ --texture-color:#858D99; --texture-accent:#C7CCD4; --ambient-glow:radial-gradient(ellipse at 50% -18%,rgb(110 119 132 / 12%),transparent 60%); --surface-glass:rgb(255 255 255 / 94%); --shadow-soft:0 18px 48px rgb(30 35 44 / 10%);
+}
+html[data-palette="areia-vinho"][data-theme="dark"] {
+ color-scheme:dark; --background:#24231F; --foreground:#F0E2CF; --card:#302C26; --card-foreground:#F0E2CF; --popover:#302C26; --popover-foreground:#F0E2CF;
+ --primary:#E8D2B5; --primary-foreground:#3C201B; --secondary:#48443A; --secondary-foreground:#F5E8D7; --muted:#3A3831; --muted-foreground:#C6BBA9;
+ --accent:#590907; --accent-foreground:#FFF0E8; --destructive:#A62C2C; --destructive-foreground:#FFFFFF; --border:#62574A; --input:#51483D; --ring:#E8D2B5; --gold:#E8D2B5; --blood:#A62C2C; --mana:#9CB8E8;
+ --texture-color:#A5A79B; --texture-accent:#590907; --ambient-glow:radial-gradient(ellipse at 50% -18%,rgb(232 210 181 / 15%),transparent 58%); --surface-glass:rgb(48 44 38 / 93%); --shadow-soft:0 18px 48px rgb(0 0 0 / 28%);
+}
+html[data-palette="areia-vinho"][data-theme="light"] {
+ color-scheme:light; --background:#F3EBDD; --foreground:#35251F; --card:#FFF9EF; --card-foreground:#35251F; --popover:#FFF9EF; --popover-foreground:#35251F;
+ --primary:#590907; --primary-foreground:#FFF7EE; --secondary:#E8D2B5; --secondary-foreground:#432B23; --muted:#EAE0D1; --muted-foreground:#71675A;
+ --accent:#A5A79B; --accent-foreground:#292B26; --destructive:#8F2020; --destructive-foreground:#FFFFFF; --border:#D6C5AD; --input:#D2C1A9; --ring:#7B2923; --gold:#590907; --blood:#8F2020; --mana:#315F9C;
+ --texture-color:#A5A79B; --texture-accent:#590907; --ambient-glow:radial-gradient(ellipse at 50% -18%,rgb(165 167 155 / 20%),transparent 60%); --surface-glass:rgb(255 249 239 / 94%); --shadow-soft:0 18px 48px rgb(74 47 32 / 10%);
+}
+html[data-palette="sangue"][data-theme="dark"] {
+ color-scheme:dark; --background:#0A090A; --foreground:#F7F3F3; --card:#191416; --card-foreground:#F7F3F3; --popover:#191416; --popover-foreground:#F7F3F3;
+ --primary:#B51228; --primary-foreground:#FFFFFF; --secondary:#302226; --secondary-foreground:#F8EDEF; --muted:#251A1D; --muted-foreground:#CDBFC2;
+ --accent:#F5F5F5; --accent-foreground:#171315; --destructive:#E23B4D; --destructive-foreground:#FFFFFF; --border:#542A32; --input:#42232A; --ring:#E11D35; --gold:#F5F5F5; --blood:#F02D45; --mana:#A8C7F0;
+ --texture-color:#B51228; --texture-accent:#F5F5F5; --ambient-glow:radial-gradient(ellipse at 50% -18%,rgb(181 18 40 / 22%),transparent 58%); --surface-glass:rgb(25 20 22 / 93%); --shadow-soft:0 18px 48px rgb(0 0 0 / 36%);
+}
+html[data-palette="sangue"][data-theme="light"] {
+ color-scheme:light; --background:#F7F1F2; --foreground:#241719; --card:#FFFFFF; --card-foreground:#241719; --popover:#FFFFFF; --popover-foreground:#241719;
+ --primary:#A10D22; --primary-foreground:#FFFFFF; --secondary:#F0DDE1; --secondary-foreground:#401A22; --muted:#F1E6E8; --muted-foreground:#765D62;
+ --accent:#262124; --accent-foreground:#FFFFFF; --destructive:#B51228; --destructive-foreground:#FFFFFF; --border:#E0C7CD; --input:#DEC5CB; --ring:#A10D22; --gold:#A10D22; --blood:#B51228; --mana:#315F9C;
+ --texture-color:#B51228; --texture-accent:#262124; --ambient-glow:radial-gradient(ellipse at 50% -18%,rgb(181 18 40 / 12%),transparent 60%); --surface-glass:rgb(255 255 255 / 94%); --shadow-soft:0 18px 48px rgb(75 23 33 / 10%);
+}
+html[data-palette="fervor"][data-theme="dark"] {
+ color-scheme:dark; --background:#180B12; --foreground:#FFF0F3; --card:#29121C; --card-foreground:#FFF0F3; --popover:#29121C; --popover-foreground:#FFF0F3;
+ --primary:#FF1493; --primary-foreground:#260015; --secondary:#4A1724; --secondary-foreground:#FFEAF0; --muted:#351723; --muted-foreground:#E6B9C8;
+ --accent:#FF7A1A; --accent-foreground:#2A1000; --destructive:#D71920; --destructive-foreground:#FFFFFF; --border:#71304A; --input:#57263B; --ring:#FF1493; --gold:#FF7A1A; --blood:#FF3947; --mana:#A8C7F0;
+ --texture-color:#FF1493; --texture-accent:#FF7A1A; --ambient-glow:radial-gradient(ellipse at 50% -18%,rgb(255 20 147 / 22%),transparent 58%); --surface-glass:rgb(41 18 28 / 93%); --shadow-soft:0 18px 48px rgb(0 0 0 / 34%);
+}
+html[data-palette="fervor"][data-theme="light"] {
+ color-scheme:light; --background:#FFF0F5; --foreground:#391522; --card:#FFFFFF; --card-foreground:#391522; --popover:#FFFFFF; --popover-foreground:#391522;
+ --primary:#C90070; --primary-foreground:#FFFFFF; --secondary:#F8D9E8; --secondary-foreground:#4D1B34; --muted:#FBE5EE; --muted-foreground:#85566C;
+ --accent:#FF7A1A; --accent-foreground:#381400; --destructive:#C71927; --destructive-foreground:#FFFFFF; --border:#F0C4D8; --input:#EBC0D3; --ring:#C90070; --gold:#C90070; --blood:#C71927; --mana:#315F9C;
+ --texture-color:#D91682; --texture-accent:#FF7A1A; --ambient-glow:radial-gradient(ellipse at 50% -18%,rgb(255 20 147 / 12%),transparent 60%); --surface-glass:rgb(255 255 255 / 94%); --shadow-soft:0 18px 48px rgb(100 29 65 / 10%);
+}
+
+/* Repaginação transversal: superfícies mais limpas, foco claro e hierarquia consistente. */
+@layer components {
+  [data-slot="card"] { border: 1px solid color-mix(in oklab, var(--border) 82%, transparent); }
+  main > .rounded-2xl.border,
+  main > .rounded-xl.border { box-shadow: var(--shadow-soft); }
+  button:not([data-unstyled="true"]) { font-weight: 600; }
+  .auth-shell {
+    isolation: isolate;
+    background:
+      radial-gradient(ellipse at 12% 18%, color-mix(in oklab, var(--primary) 17%, transparent), transparent 34%),
+      radial-gradient(ellipse at 88% 82%, color-mix(in oklab, var(--accent) 15%, transparent), transparent 32%);
+  }
+  .auth-layout { box-shadow: 0 32px 100px rgb(0 0 0 / 22%); }
+  .auth-welcome {
+    background: linear-gradient(145deg, color-mix(in oklab, var(--primary) 72%, #15151a), color-mix(in oklab, var(--accent) 52%, #111116) 58%, #111116);
+  }
+  .auth-brand {
+    color: var(--primary-foreground);
+    background: linear-gradient(135deg, var(--primary), color-mix(in oklab, var(--primary) 65%, var(--accent)));
+    border-color: color-mix(in oklab, var(--primary) 50%, white);
+    letter-spacing: -.06em;
+  }
+  .auth-orb {
+    position: absolute;
+    width: 19rem; height: 19rem; border-radius: 9999px;
+    border: 1px solid rgb(255 255 255 / 13%);
+    background: radial-gradient(circle at 35% 30%, rgb(255 255 255 / 12%), transparent 65%);
+    pointer-events: none;
+  }
+  .auth-orb-one { right: -7rem; top: 16%; }
+  .auth-orb-two { left: -9rem; bottom: -10rem; width: 24rem; height: 24rem; }
+  .auth-input-wrap {
+    display: flex; align-items: center; gap: .75rem;
+    min-height: 3.25rem; padding: 0 .9rem;
+    border: 1px solid var(--input); border-radius: .9rem;
+    background: color-mix(in oklab, var(--card) 88%, transparent);
+    color: var(--muted-foreground);
+    transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+  }
+  .auth-input-wrap:focus-within {
+    border-color: var(--ring);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 18%, transparent);
+    background: var(--card);
+  }
+  .auth-input-wrap input { min-width: 0; width: 100%; color: var(--foreground); }
+  .auth-input-wrap input::placeholder { color: var(--muted-foreground); opacity: .8; }
+  .auth-submit { min-height: 3.25rem; }
+}
+@media (max-width: 640px) {
+  .auth-shell { align-items: flex-start; padding-top: 5.5rem; }
+  .auth-layout { border-radius: 1.4rem; }
+}
