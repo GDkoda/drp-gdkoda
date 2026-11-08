@@ -55,7 +55,7 @@ function Taverna() {
   const balance = p?.coins ?? 0;
   const nameOf = (id: string | null) => players?.find((x) => x.id === id)?.display_name ?? "jogador";
   const nextCheckinLabel = next?.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) ?? "";
-  const safeAmount = Math.min(Math.max(1, amount), Math.max(1, balance));
+  const safeAmount = Math.max(1, Math.floor(amount));
 
   async function doCheckin() {
     if (!canCheckin || checkingIn) return;
@@ -88,7 +88,7 @@ function Taverna() {
 
   function transactionTitle(kind: string) {
     const normalized = String(kind ?? "").toLowerCase();
-    return transactionNames[normalized] ?? normalized.replace(/[_-]+/g, " ").replace(/^./, (char) => char.toUpperCase()) || "Movimentação";
+    return (transactionNames[normalized] ?? normalized.replace(/[_-]+/g, " ").replace(/^./, (char) => char.toUpperCase())) || "Movimentação";
   }
 
   return (
