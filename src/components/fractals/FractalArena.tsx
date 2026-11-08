@@ -11,7 +11,7 @@ import { toast } from "sonner";
 type UpgradeId = "power" | "haste" | "vitality" | "swift" | "special_area" | "special_experience";
 type Upgrade = { id: UpgradeId; name: string; description: string; icon: typeof Zap; rarity?: "normal" | "rare" | "epic" };
 
-type Enemy = { x: number; y: number; hp: number; maxHp: number; speed: number; radius: number; damage: number; color: string; xp: number; type: "wraith" | "brute" | "charger" | "elite" | "boss"; attack: number; flash: number; windup: number; targetX: number; targetY: number; summonedAtHalf: boolean };
+type Enemy = { x: number; y: number; hp: number; maxHp: number; speed: number; radius: number; damage: number; color: string; xp: number; type: "wraith" | "brute" | "charger" | "elite" | "boss"; attack: number; flash: number; windup: number; targetX: number; targetY: number; dashTime: number; summonedAtHalf: boolean };
 type Shot = { x: number; y: number; vx: number; vy: number; damage: number; life: number };
 type Gem = { x: number; y: number; value: number; radius: number };
 type SpecialDrop = { x: number; y: number; kind: "area" | "experience"; radius: number };
@@ -78,10 +78,10 @@ function spawnEnemy(game: GameState, missionId: number, elapsed: number, corrupt
         : type === "charger"
           ? { hp: 36 * scale, speed: 105, radius: 11, damage: 10, color: "#e5a45b", xp: 2 }
           : { hp: 28 * scale, speed: 57, radius: 10, damage: 8, color: "#9b91b4", xp: 2 };
-  game.enemies.push({ x, y, ...stats, maxHp: stats.hp, type, attack: type === "boss" ? 2.2 : 0, flash: 0, windup: 0, targetX: x, targetY: y, summonedAtHalf: false });
+  game.enemies.push({ x, y, ...stats, maxHp: stats.hp, type, attack: type === "boss" ? 2.2 : 0, flash: 0, windup: 0, targetX: x, targetY: y, dashTime: 0, summonedAtHalf: false });
   // Spawn pressure is bounded. It affects encounter density, not enemy HP directly.
   if (!boss && pressure.enemySpawnScale > 1.25 && game.enemies.length < 48 && Math.random() < 0.18) {
-    game.enemies.push({ x: x + (Math.random() - 0.5) * 70, y: y + (Math.random() - 0.5) * 70, ...stats, maxHp: stats.hp, type, attack: 0, flash: 0, windup: 0, targetX: x, targetY: y, summonedAtHalf: false });
+    game.enemies.push({ x: x + (Math.random() - 0.5) * 70, y: y + (Math.random() - 0.5) * 70, ...stats, maxHp: stats.hp, type, attack: 0, flash: 0, windup: 0, targetX: x, targetY: y, dashTime: 0, summonedAtHalf: false });
   }
 }
 
@@ -154,6 +154,9 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
   game.enemies.forEach((enemy) => {
     ctx.save(); ctx.translate(enemy.x, enemy.y);
     if (enemy.type === "boss" && enemy.windup > 0) { ctx.save(); ctx.globalAlpha = 0.25 + Math.sin(game.elapsed * 18) * 0.08; ctx.strokeStyle = "#d8b5ff"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(enemy.targetX - enemy.x, enemy.targetY - enemy.y, 88, 0, Math.PI * 2); ctx.stroke(); ctx.fillStyle = "rgba(177,112,220,.12)"; ctx.beginPath(); ctx.arc(enemy.targetX - enemy.x, enemy.targetY - enemy.y, 88, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
+    if (enemy.type === "brute" && enemy.windup > 0) { ctx.save(); ctx.globalAlpha = .25 + Math.sin(game.elapsed * 20) * .2; ctx.strokeStyle = "#ffb36b"; ctx.lineWidth = 3; ctx.setLineDash([6, 5]); ctx.beginPath(); ctx.arc(0, 0, 78, 0, Math.PI * 2); ctx.stroke(); ctx.fillStyle = "rgba(255,150,75,.13)"; ctx.fill(); ctx.restore(); }
+    if (enemy.type === "charger" && enemy.windup > 0) { ctx.save(); ctx.rotate(Math.atan2(enemy.targetY - enemy.y, enemy.targetX - enemy.x)); ctx.globalAlpha = .55 + Math.sin(game.elapsed * 24) * .2; ctx.strokeStyle = "#ffc477"; ctx.lineWidth = 3; ctx.setLineDash([5, 4]); ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(125, 0); ctx.stroke(); ctx.restore(); }
+    if (enemy.type === "elite") { ctx.save(); ctx.globalAlpha = .18 + Math.sin(game.elapsed * 4) * .06; ctx.strokeStyle = "#d69cff"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, 0, 105, 0, Math.PI * 2); ctx.stroke(); ctx.restore(); }
     const hurt = enemy.flash > 0;
     if (enemy.type === "wraith") {
       ctx.shadowColor = enemy.color; ctx.shadowBlur = 13; ctx.fillStyle = hurt ? "#fff" : "#827394";
@@ -371,11 +374,41 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               enemy.summonedAtHalf = true;
               for (let i = 0; i < 3; i++) {
                 const angle = (Math.PI * 2 * i) / 3;
-                game.enemies.push({ x: enemy.x + Math.cos(angle) * 58, y: enemy.y + Math.sin(angle) * 58, hp: 34, maxHp: 34, speed: 62, radius: 10, damage: 8, color: "#9b91b4", xp: 2, type: "wraith", attack: 0, flash: 0, windup: 0, targetX: 0, targetY: 0, summonedAtHalf: false });
+                game.enemies.push({ x: enemy.x + Math.cos(angle) * 58, y: enemy.y + Math.sin(angle) * 58, hp: 34, maxHp: 34, speed: 62, radius: 10, damage: 8, color: "#9b91b4", xp: 2, type: "wraith", attack: 0, flash: 0, windup: 0, targetX: 0, targetY: 0, dashTime: 0, summonedAtHalf: false });
               }
             }
             enemy.x += ((game.player.x - enemy.x) / d) * enemy.speed * dt;
             enemy.y += ((game.player.y - enemy.y) / d) * enemy.speed * dt;
+          } else if (enemy.type === "charger") {
+            if (enemy.dashTime > 0) {
+              enemy.dashTime = Math.max(0, enemy.dashTime - dt);
+              enemy.x += enemy.targetX * 390 * dt; enemy.y += enemy.targetY * 390 * dt;
+              if (d < enemy.radius + 20 && game.player.invuln <= 0) { game.player.hp = Math.max(0, game.player.hp - enemy.damage); game.player.invuln = .65; enemy.dashTime = 0; }
+            } else if (enemy.windup > 0) {
+              enemy.windup = Math.max(0, enemy.windup - dt);
+              if (enemy.windup === 0) { enemy.dashTime = .34; enemy.attack = 2.25; }
+            } else if (enemy.attack <= 0 && d < 245) {
+              enemy.targetX = (game.player.x - enemy.x) / d; enemy.targetY = (game.player.y - enemy.y) / d;
+              enemy.windup = .52;
+            } else {
+              enemy.x += ((game.player.x - enemy.x) / d) * enemy.speed * dt;
+              enemy.y += ((game.player.y - enemy.y) / d) * enemy.speed * dt;
+              if (d < enemy.radius + 15 && enemy.attack <= 0 && game.player.invuln <= 0) { game.player.hp = Math.max(0, game.player.hp - enemy.damage); game.player.invuln = .65; enemy.attack = 1.1; }
+            }
+          } else if (enemy.type === "brute") {
+            if (enemy.windup > 0) {
+              enemy.windup = Math.max(0, enemy.windup - dt);
+              if (enemy.windup === 0) {
+                if (distance(game.player.x, game.player.y, enemy.x, enemy.y) < 78 + 12 && game.player.invuln <= 0) { game.player.hp = Math.max(0, game.player.hp - enemy.damage * 1.35); game.player.invuln = .8; }
+                for (let i=0;i<10;i++) { const a=i*Math.PI/5; game.particles.push({x:enemy.x,y:enemy.y,vx:Math.cos(a)*105,vy:Math.sin(a)*105,life:.35,color:"#e7a56d"}); }
+                enemy.attack = 2.7;
+              }
+            } else {
+              enemy.x += ((game.player.x - enemy.x) / d) * enemy.speed * dt;
+              enemy.y += ((game.player.y - enemy.y) / d) * enemy.speed * dt;
+              if (d < 112 && enemy.attack <= 0) enemy.windup = .72;
+              else if (d < enemy.radius + 15 && enemy.attack <= 0 && game.player.invuln <= 0) { game.player.hp = Math.max(0, game.player.hp - enemy.damage); game.player.invuln = .72; enemy.attack = 1.2; }
+            }
           } else {
             enemy.x += ((game.player.x - enemy.x) / d) * enemy.speed * dt;
             enemy.y += ((game.player.y - enemy.y) / d) * enemy.speed * dt;
@@ -383,7 +416,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               if (d < 105 && game.player.invuln <= 0) { game.player.hp = Math.max(0, game.player.hp - 7); game.player.invuln = 0.35; }
               enemy.attack = 1.7;
             }
-            if (enemy.type !== "elite" && d < enemy.radius + 15 && enemy.attack <= 0 && game.player.invuln <= 0) {
+            if (enemy.type === "wraith" && d < enemy.radius + 15 && enemy.attack <= 0 && game.player.invuln <= 0) {
               game.player.hp = Math.max(0, game.player.hp - enemy.damage); game.player.invuln = 0.72; enemy.attack = 0.8;
             }
           }
