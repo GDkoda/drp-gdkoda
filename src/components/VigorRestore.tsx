@@ -22,7 +22,10 @@ export function VigorRestore({ vigor }: { vigor: number | undefined }) {
     try {
       await rpc("restore_vigor", { _amount: amount }, "+" + amount + " vigor restaurado");
     } finally {
-      qc.invalidateQueries();
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["vigor"] }),
+        qc.invalidateQueries({ queryKey: ["me"] }),
+      ]);
     }
   };
   return (
