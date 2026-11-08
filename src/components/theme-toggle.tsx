@@ -27,6 +27,9 @@ function syncBrowserThemeColor() {
   document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]').forEach((meta) => {
     meta.setAttribute("content", color);
   });
+  document.querySelectorAll<HTMLMetaElement>('meta[name="apple-mobile-web-app-status-bar-style"]').forEach((meta) => {
+    meta.setAttribute("content", root.dataset.theme === "light" ? "default" : "black-translucent");
+  });
 
   // Favicon vetorial do navegador: o traço acompanha a cor primária do tema.
   const iconColor = primary || "#d7a83e";
