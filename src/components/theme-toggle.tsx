@@ -31,9 +31,9 @@ function syncBrowserThemeColor() {
     meta.setAttribute("content", root.dataset.theme === "light" ? "default" : "black-translucent");
   });
 
-  // Favicon vetorial do navegador: o traço acompanha a cor primária do tema.
+  // Favicon AION: D6 tridimensional, olho, coroa e face seis. A cor acompanha o tema.
   const iconColor = primary || "#d7a83e";
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><path d="M32 4 55 17v30L32 60 9 47V17L32 4Z" fill="${color}" stroke="${iconColor}" stroke-width="3"/><path d="m32 14 9 13-9 23-9-23 9-13Z" fill="${iconColor}" fill-opacity=".18" stroke="${iconColor}" stroke-width="2.5" stroke-linejoin="round"/><path d="M32 20v24M20 32h24" stroke="${iconColor}" stroke-width="2.5" stroke-linecap="round"/><circle cx="32" cy="32" r="4" fill="${iconColor}"/></svg>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none" stroke="${iconColor}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect width="128" height="128" rx="25" fill="${color}"/><g opacity=".25"><ellipse cx="64" cy="63" rx="58" ry="21" transform="rotate(-34 64 63)"/><ellipse cx="64" cy="63" rx="58" ry="21" transform="rotate(34 64 63)" stroke-dasharray="2 5"/></g><path d="M64 15 104 38V86L64 112 24 86V38Z" stroke-width="3.2"/><path d="M24 38 64 62 104 38M64 62V112" stroke-width="2.4"/><path d="M42 38.5Q64 19 86 38.5Q64 58 42 38.5Z" stroke-width="2.5"/><ellipse cx="64" cy="38.5" rx="5.1" ry="6.1" fill="${iconColor}" stroke="none"/><ellipse cx="64" cy="38.5" rx="2" ry="3.4" fill="${color}" stroke="none"/><path d="M30 61 36.5 66.5 42.5 57.5 48.5 73.5 55 68.5 58.5 82 31 66.5ZM31 66.5 58.5 82 57.5 89 31.5 74.2" stroke-width="2"/><path d="m44 72 4 3-4 3-4-3Z" fill="${iconColor}" stroke="none"/><g transform="matrix(.36 -.19 0 .44 64 62)"><path d="M83 24C62 18 42 34 42 60C42 85 55 102 75 102C95 102 108 88 108 69C108 50 94 39 77 39C60 39 49 51 49 68C49 81 58 90 73 90C87 90 96 82 96 69C96 58 88 51 77 51" stroke-width="8"/></g><g fill="${iconColor}" stroke="none"><circle cx="17" cy="24" r="2.5"/><circle cx="110" cy="96" r="2"/></g></svg>`;
   const favicon = `data:image/svg+xml,${encodeURIComponent(svg)}`;
   document.querySelectorAll<HTMLLinkElement>('link[rel="icon"]').forEach((link) => {
     link.setAttribute("href", favicon);
