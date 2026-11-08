@@ -181,7 +181,7 @@ function Sheet() {
         {roll && <div className="character-studio-roll-result" role="status">{roll}</div>}
       </section>
 
-      <section className="character-studio-core">
+      <section className="character-studio-core character-studio-identity-core">
         <div className="character-studio-section-heading">
           <div><span>01 · IDENTIDADE</span><h2>Seu herói</h2></div>
         </div>
@@ -194,6 +194,37 @@ function Sheet() {
             <span>Conceito / raça / classe</span>
             <Input value={c.concept} onChange={(event) => set({ concept: event.target.value })} placeholder="Ex.: Cavaleiro errante, elfo…" />
           </label>
+        </div>
+        <div className="character-identity-progress" aria-label="Progressão do personagem">
+          <div className="character-identity-progress-heading">
+            <span>PROGRESSÃO</span>
+            <small>{spent > c.pp_total ? "Pontos acima do limite" : (c.pp_total - spent) + " pontos livres"}</small>
+          </div>
+          <div className="character-identity-progress-grid">
+            <div className="character-identity-progress-card">
+              <span>Pontos gastos / total</span>
+              <div className="character-identity-points-value">
+                <strong className={spent > c.pp_total ? "text-destructive" : ""}>{spent}</strong>
+                <span>/</span>
+                <Input aria-label="Pontos totais da ficha" type="number" min={0} inputMode="numeric" value={c.pp_total} onChange={(event) => set({ pp_total: Number(event.target.value) || 0 })} />
+              </div>
+              <small>{c.pp_total - spent} pontos disponíveis</small>
+            </div>
+            <label className="character-identity-progress-card">
+              <span>Experiência</span>
+              <Input aria-label="Experiência do personagem" className="character-identity-progress-input" type="number" min={0} inputMode="numeric" value={c.xp} onChange={(event) => set({ xp: Number(event.target.value) || 0 })} />
+            </label>
+            <div className="character-identity-progress-card">
+              <span>Força de Ataque · FA</span>
+              <strong>{Math.max(F, P) + H}</strong>
+              <small>Melhor entre F/PdF + H</small>
+            </div>
+            <div className="character-identity-progress-card">
+              <span>Força de Defesa · FD</span>
+              <strong>{A + H}</strong>
+              <small>Armadura + Habilidade</small>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -220,20 +251,6 @@ function Sheet() {
       </section>
 
       <section className="character-studio-advanced">
-        <details className="character-studio-fold">
-          <summary>
-            <span className="character-fold-icon"><Sparkles className="h-4 w-4" /></span>
-            <span className="character-fold-label"><strong>Progressão</strong><small>Pontos, experiência e valores derivados</small></span>
-            <span className="character-fold-chevron"><ChevronDown className="h-4 w-4" /></span>
-          </summary>
-          <div className="character-fold-content character-progress-grid">
-            <Mini label="Pontos gastos" value={<span className={spent > c.pp_total ? "text-destructive" : ""}>{spent}</span>} />
-            <Mini label="Pontos totais" value={<Input type="number" inputMode="numeric" value={c.pp_total} onChange={(event) => set({ pp_total: Number(event.target.value) || 0 })} />} />
-            <Mini label="Experiência" value={<Input type="number" inputMode="numeric" value={c.xp} onChange={(event) => set({ xp: Number(event.target.value) || 0 })} />} />
-            <Mini label="FA / FD base" value={Math.max(F, P) + H + " / " + (A + H)} />
-          </div>
-        </details>
-
         <div className="character-studio-fold-grid">
           <TraitList title="Vantagens" subtitle="Características positivas" items={c.advantages ?? []} onChange={(value) => set({ advantages: value })} icon={<Sparkles className="h-4 w-4" />} />
           <TraitList title="Desvantagens" subtitle="Limitações e complicações" items={c.disadvantages ?? []} onChange={(value) => set({ disadvantages: value })} negative icon={<CircleDot className="h-4 w-4" />} />
@@ -299,10 +316,6 @@ function Bar({ label, shortLabel, cur, max, color, onChange }: {
       <div className="character-vital-track"><span className={color} style={{ width: percentage + "%" }} /></div>
     </div>
   );
-}
-
-function Mini({ label, value }: { label: string; value: ReactNode }) {
-  return <label className="character-progress-item"><span>{label}</span><div>{value}</div></label>;
 }
 
 function TraitList({ title, subtitle, items, onChange, negative, icon }: {

@@ -62,9 +62,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
       { title: "Mesa 3D&T Alpha" },
       { name: "description", content: "Mesa de RPG 3D&T Alpha: fichas, loja, baú e mini-jogos." },
-      { name: "theme-color", content: "#211b18" },
+      { name: "theme-color", content: "#000000" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
-      { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "black" },
       { name: "apple-mobile-web-app-title", content: "Mesa 3D&T" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -74,9 +74,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Crimson+Pro:wght@400;600&display=swap" },
-      { rel: "icon", href: "/aion.svg", type: "image/svg+xml" },
+      { rel: "icon", href: "/aion-gold.svg?v=2", type: "image/svg+xml" },
       { rel: "manifest", href: "/manifest.webmanifest" },
-      { rel: "apple-touch-icon", href: "/pwa-icon-192.png" },
+      { rel: "apple-touch-icon", href: "/aion-gold-192.png?v=2" },
     ],
   }),
   shellComponent: RootShell,
@@ -91,7 +91,7 @@ function RootShell({ children }: { children: ReactNode }) {
       <head>
         <script dangerouslySetInnerHTML={{ __html: `(function(){try{var m=localStorage.getItem("mesa-theme");var p=localStorage.getItem("mesa-palette");var valid=["ousado","eletrizante","destemido","futurista","prata-grafite","areia-vinho","sangue","fervor","taverna-zendikar","po-de-fada"];document.documentElement.dataset.theme=m==="light"?"light":"dark";document.documentElement.dataset.palette=valid.indexOf(p)>=0?p:"ousado";}catch(e){document.documentElement.dataset.theme="dark";document.documentElement.dataset.palette="ousado";}})();` }} />
         <HeadContent />
-        <script dangerouslySetInnerHTML={{ __html: `(function(){try{var m=document.querySelector('meta[name="theme-color"]');var c=getComputedStyle(document.documentElement).getPropertyValue("--background").trim();if(m&&c)m.setAttribute("content",c);}catch(e){}})();` }} />
+        <script dangerouslySetInnerHTML={{ __html: `(function(){try{var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute("content","#000000");var s=document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');if(s)s.setAttribute("content","black");}catch(e){}})();` }} />
       </head>
       <body>
         {children}

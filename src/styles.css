@@ -3923,6 +3923,98 @@ html, body { background-color: var(--background); }
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: .65rem;
 }
+
+.character-identity-progress {
+  margin-top: .75rem;
+  padding-top: .65rem;
+  border-top: 1px solid var(--border);
+}
+.character-identity-progress-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .6rem;
+  margin-bottom: .45rem;
+}
+.character-identity-progress-heading > span {
+  color: var(--muted-foreground);
+  font-size: .55rem;
+  font-weight: 800;
+  letter-spacing: .15em;
+}
+.character-identity-progress-heading > small {
+  color: var(--muted-foreground);
+  font-size: .58rem;
+}
+.character-identity-progress-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: .45rem;
+}
+.character-identity-progress-card {
+  display: flex;
+  min-width: 0;
+  min-height: 3.55rem;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: .25rem;
+  padding: .48rem .58rem;
+  border: 1px solid var(--border);
+  border-radius: .65rem;
+  background: color-mix(in oklab, var(--background) 70%, var(--card));
+}
+.character-identity-progress-card > span {
+  color: var(--muted-foreground);
+  font-size: .57rem;
+  font-weight: 650;
+  line-height: 1.2;
+}
+.character-identity-progress-card > strong {
+  color: var(--foreground);
+  font-family: var(--font-display);
+  font-size: .95rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+.character-identity-progress-card > small {
+  color: var(--muted-foreground);
+  font-size: .51rem;
+  line-height: 1.2;
+}
+.character-identity-points-value {
+  display: flex;
+  align-items: center;
+  gap: .3rem;
+}
+.character-identity-points-value > strong {
+  color: var(--foreground);
+  font-family: var(--font-display);
+  font-size: .95rem;
+  font-variant-numeric: tabular-nums;
+}
+.character-identity-points-value > span { color: var(--muted-foreground); font-size: .7rem; }
+.character-identity-points-value input {
+  width: 3.7rem;
+  min-width: 0;
+  height: 1.75rem;
+  padding-inline: .3rem;
+  font-size: .72rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.character-identity-progress-input {
+  width: 100%;
+  max-width: 7rem;
+  min-width: 0;
+  height: 1.75rem;
+  min-height: 1.75rem;
+  padding-inline: .4rem;
+  font-size: .76rem;
+  font-variant-numeric: tabular-nums;
+}
+
 .character-studio-field { display: grid; min-width: 0; gap: .28rem; }
 .character-studio-field > span {
   color: var(--muted-foreground);
@@ -4229,6 +4321,15 @@ html, body { background-color: var(--background); }
   .character-studio-section-heading h2 { font-size: .88rem; }
   .character-studio-section-heading > small { max-width: 45%; font-size: .56rem; }
   .character-studio-fields { grid-template-columns: minmax(0, 1fr); gap: .5rem; }
+  .character-identity-progress { margin-top: .6rem; padding-top: .55rem; }
+  .character-identity-progress-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .35rem; }
+  .character-identity-progress-card { min-height: 3.25rem; padding: .42rem .48rem; }
+  .character-identity-progress-card > span { font-size: .54rem; }
+  .character-identity-progress-card > strong,
+  .character-identity-points-value > strong { font-size: .88rem; }
+  .character-identity-progress-card > small { font-size: .48rem; }
+  .character-identity-progress-heading > small { font-size: .53rem; }
+
   .character-studio-field input { min-height: 2.7rem; font-size: .9rem; }
   .character-studio-attributes { gap: .3rem; }
   .character-studio-attribute { gap: .2rem; padding: .5rem .12rem .4rem; border-radius: .65rem; }
@@ -4271,3 +4372,7 @@ html, body { background-color: var(--background); }
   .character-active-toggle,
   .character-fold-chevron { transition: none; }
 }
+
+
+/* A área segura do navegador e os controles do sistema permanecem negros em todos os temas. */
+html { background-color: #000000; }

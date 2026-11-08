@@ -19,27 +19,14 @@ const palettes: { id: PaletteId; label: string; description: string; colors: [st
 ];
 
 function syncBrowserThemeColor() {
-  const root = document.documentElement;
-  const styles = getComputedStyle(root);
-  const background = styles.getPropertyValue("--background").trim();
-  const primary = styles.getPropertyValue("--primary").trim();
-  const color = background || (root.dataset.theme === "light" ? "#f5f0e6" : "#171717");
+  // A barra do navegador e do aplicativo instalado é sempre preta, independente da paleta.
   document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]').forEach((meta) => {
-    meta.setAttribute("content", color);
+    meta.setAttribute("content", "#000000");
   });
   document.querySelectorAll<HTMLMetaElement>('meta[name="apple-mobile-web-app-status-bar-style"]').forEach((meta) => {
-    meta.setAttribute("content", root.dataset.theme === "light" ? "default" : "black-translucent");
+    meta.setAttribute("content", "black");
   });
 
-  // Favicon AION: D6 tridimensional, olho, coroa e face seis. A cor acompanha o tema.
-  const iconColor = primary || "#d7a83e";
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none" stroke="${iconColor}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect width="128" height="128" rx="25" fill="${color}"/><g opacity=".25"><ellipse cx="64" cy="63" rx="58" ry="21" transform="rotate(-34 64 63)"/><ellipse cx="64" cy="63" rx="58" ry="21" transform="rotate(34 64 63)" stroke-dasharray="2 5"/></g><path d="M64 15 104 38V86L64 112 24 86V38Z" stroke-width="3.2"/><path d="M24 38 64 62 104 38M64 62V112" stroke-width="2.4"/><path d="M42 38.5Q64 19 86 38.5Q64 58 42 38.5Z" stroke-width="2.5"/><circle cx="64" cy="38.5" r="5.35" fill="${iconColor}" fill-opacity=".12" stroke="${iconColor}" stroke-width="1.35"/><path d="M64 34.1C61.6 36 61.6 41 64 42.9C66.4 41 66.4 36 64 34.1Z" fill="${color}" stroke="${iconColor}" stroke-width="1.05"/><path d="M30 61 36.5 66.5 42.5 57.5 48.5 73.5 55 68.5 58.5 82 31 66.5ZM31 66.5 58.5 82 57.5 89 31.5 74.2" stroke-width="2"/><path d="m44 72 4 3-4 3-4-3Z" fill="${iconColor}" stroke="none"/><path d="M94 69C83 69 75 78 73 89C71 101 79 106 88 103C97 101 101 92 97 84C94 78 86 77 81 81C76 85 76 92 80 96C84 100 91 99 94 94C97 89 94 84 88 83" stroke="${iconColor}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="62.9" cy="36.6" r="1" fill="#fff6da" stroke="none"/><g fill="${iconColor}" stroke="none"><circle cx="17" cy="24" r="2.5"/><circle cx="110" cy="96" r="2"/></g></svg>`;
-  const favicon = `data:image/svg+xml,${encodeURIComponent(svg)}`;
-  document.querySelectorAll<HTMLLinkElement>('link[rel="icon"]').forEach((link) => {
-    link.setAttribute("href", favicon);
-    link.setAttribute("type", "image/svg+xml");
-  });
-}
 
 function storedMode(): ThemeMode {
   if (typeof window === "undefined") return "dark";

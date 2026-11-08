@@ -7,14 +7,35 @@
   "start_url": "/?source=pwa",
   "scope": "/",
   "display": "standalone",
-  "display_override": ["standalone", "minimal-ui"],
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
   "orientation": "portrait-primary",
-  "background_color": "#211b18",
-  "theme_color": "#d7a83e",
-  "categories": ["games", "entertainment"],
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "categories": [
+    "games",
+    "entertainment"
+  ],
   "icons": [
-    { "src": "/aion.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
-    { "src": "/aion-maskable.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" },
-    { "src": "/pwa-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" }
+    {
+      "src": "/aion-gold-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/aion-gold.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/aion-gold-maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
   ]
 }
