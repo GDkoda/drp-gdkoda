@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Check, Download, ExternalLink, Share, Smartphone, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { AionEmblem } from "@/components/aion-emblem";
 
 type InstallChoice = { outcome: "accepted" | "dismissed"; platform: string };
 type InstallPromptEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<InstallChoice> };
@@ -135,7 +136,7 @@ export function PwaInstallProvider({ children }: { children: ReactNode }) {
         }}>
           <section className="pwa-install-dialog" role="dialog" aria-modal="true" aria-labelledby="pwa-install-title">
             <button type="button" className="pwa-install-close" aria-label="Fechar convite de instalação" onClick={dismissIntro}><X className="h-4 w-4" /></button>
-            <div className="pwa-install-emblem"><Smartphone className="h-7 w-7" /></div>
+            <div className="pwa-install-emblem"><AionEmblem className="h-9 w-9 text-primary" /></div>
             <p className="pwa-install-eyebrow">Sua mesa, sempre à mão</p>
             <h2 id="pwa-install-title">Leve a Taverna para o celular</h2>
             <p className="pwa-install-copy">Adicione a Mesa 3D&T à tela inicial e abra como um aplicativo, sem precisar procurar a página no navegador.</p>
