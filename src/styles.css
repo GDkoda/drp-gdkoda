@@ -4441,3 +4441,41 @@ html { background-color: #000000; }
   .character-custom-roll-attributes { grid-template-columns: 1fr 1fr; }
   .character-custom-roll-form .character-custom-roll-bonus { grid-column: 1 / -1; }
 }
+
+
+/* Dados configuráveis nas rolagens salvas. */
+.character-custom-roll-dice-config { display: grid; grid-template-columns: .8fr 1fr .8fr; gap: .4rem; grid-column: 1 / -1; }
+.character-custom-roll-dice-config label { display: grid; min-width: 0; gap: .2rem; }
+.character-custom-roll-dice-config label > span { color: var(--muted-foreground); font-size: .6rem; font-weight: 750; letter-spacing: .04em; text-transform: uppercase; }
+.character-custom-roll-form .character-custom-roll-dice-config select,
+.character-custom-roll-form .character-custom-roll-dice-config input { width: 100%; min-width: 0; height: 2.15rem; }
+.character-custom-roll-form .character-custom-roll-dice-config .character-custom-roll-bonus { grid-template-columns: 1fr; }
+.character-custom-roll-entry > span { flex: 1; }
+
+/* Testes temporários de atributo: o modificador só afeta a rolagem atual. */
+.character-studio-attribute-wrap { position: relative; display: grid; grid-template-columns: minmax(0,1fr) 2rem; align-items: center; gap: .25rem; min-width: 0; }
+.character-studio-attribute-wrap .character-studio-attribute { min-width: 0; }
+.character-attribute-test-trigger { width: 2rem; height: 2rem; align-self: center; color: var(--muted-foreground); }
+.character-attribute-test-trigger:hover { color: var(--primary); background: color-mix(in srgb, var(--primary) 12%, transparent); }
+.character-attribute-test-panel { display: grid; gap: .45rem; grid-column: 1 / -1; padding: .65rem; border: 1px solid var(--border); border-radius: .7rem; background: var(--card); box-shadow: 0 8px 22px rgb(0 0 0 / .10); }
+.character-attribute-test-heading { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: .2rem .5rem; }
+.character-attribute-test-heading strong { font-size: .72rem; }
+.character-attribute-test-heading small { color: var(--muted-foreground); font-size: .6rem; }
+.character-attribute-test-modifiers { display: grid; grid-template-columns: 1fr 1fr 4.5rem; gap: .3rem; align-items: end; }
+.character-attribute-test-modifiers button { min-height: 2rem; border: 1px solid var(--border); border-radius: .5rem; background: var(--background); color: var(--muted-foreground); font-size: .66rem; font-weight: 750; }
+.character-attribute-test-modifiers button.is-selected.is-gain { border-color: #3b9b70; background: rgb(59 155 112 / .12); color: #3b9b70; }
+.character-attribute-test-modifiers button.is-selected.is-loss { border-color: #c65a5a; background: rgb(198 90 90 / .12); color: #c65a5a; }
+.character-attribute-test-modifiers label { display: grid; gap: .15rem; }
+.character-attribute-test-modifiers label span { color: var(--muted-foreground); font-size: .58rem; }
+.character-attribute-test-modifiers input { height: 2rem; padding-inline: .35rem; font-size: .7rem; }
+.character-attribute-test-roll { width: 100%; min-height: 2rem; font-size: .68rem; }
+.character-attribute-test-result { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .2rem .5rem; padding: .4rem .5rem; border: 1px solid var(--border); border-radius: .5rem; font-size: .65rem; }
+.character-attribute-test-result strong { font-size: .75rem; }
+.character-attribute-test-result small { width: 100%; color: var(--muted-foreground); }
+.character-attribute-test-result.is-pass { border-color: rgb(59 155 112 / .5); background: rgb(59 155 112 / .10); }
+.character-attribute-test-result.is-fail { border-color: rgb(198 90 90 / .5); background: rgb(198 90 90 / .10); }
+@media(max-width:767px) {
+  .character-custom-roll-dice-config { grid-template-columns: .8fr 1fr .8fr; }
+  .character-custom-roll-form .character-custom-roll-dice-config { grid-column: 1 / -1; }
+  .character-attribute-test-modifiers { grid-template-columns: 1fr 1fr 3.8rem; }
+}
