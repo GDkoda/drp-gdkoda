@@ -1,8 +1,9 @@
+import { useState } from "react";
 import { createFileRoute, Link, Outlet, redirect, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useMe } from "@/lib/game";
-import { Beer, ScrollText, Store, Package, Crown, LogOut, Coins, Swords, BookOpen } from "lucide-react";
+import { Beer, ScrollText, Store, Package, Crown, LogOut, Coins, Swords, BookOpen, Menu, X } from "lucide-react";
 import { useCustomization } from "@/lib/app-customization";
 import { ThemeToggle } from "@/components/theme-toggle";
 
@@ -21,6 +22,7 @@ function Layout() {
   const qc = useQueryClient();
   const nav = useNavigate();
   const { text } = useCustomization();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const links = [
     { to: "/taverna", label: text("nav_taverna"), icon: Beer },
     { to: "/fichas", label: text("nav_fichas"), icon: ScrollText },
@@ -40,7 +42,7 @@ function Layout() {
   }
 
   return (
-    <div className="min-h-screen pb-32 md:pb-0">
+    <div className="min-h-screen pb-24 md:pb-0">
       <header className="no-print sticky top-0 z-30 border-b border-border/80 bg-background/85 backdrop-blur-2xl">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-3 gap-y-2 px-3 py-2.5 sm:flex-nowrap sm:px-5 sm:py-3 lg:px-8">
           <Link to="/taverna" className="flex min-w-0 max-w-[42%] shrink items-center gap-1.5 rounded-lg font-display text-sm font-bold tracking-wide text-gold sm:max-w-none sm:shrink-0 sm:gap-2 sm:text-xl"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-primary/30 bg-primary/10 text-sm sm:h-9 sm:w-9">✦</span><span className="truncate">{text("brand")}</span></Link>
@@ -66,21 +68,58 @@ function Layout() {
           ))}
         </nav>
       </header>
+
       <main className="mx-auto w-full max-w-7xl px-3 py-5 sm:px-5 sm:py-7 lg:px-8"><Outlet /></main>
-      <nav aria-label="Navegação principal" className="mobile-bottom-nav no-print fixed inset-x-0 bottom-0 z-30 flex flex-wrap items-stretch justify-center gap-1 border-t border-border/80 bg-background/95 px-1 pt-1 pb-[max(env(safe-area-inset-bottom),.25rem)] shadow-[0_-10px_34px_rgb(0_0_0/0.16)] backdrop-blur-2xl md:hidden">
-        {links.map((l) => (
-          <Link
-            key={l.to}
-            to={l.to}
-            className="flex min-h-[3.15rem] w-1/4 max-w-1/4 flex-none touch-manipulation select-none flex-col items-center justify-center gap-1 rounded-lg px-0.5 py-1.5 text-[9px] leading-tight transition-colors active:scale-95"
-            activeProps={{ className: "bg-muted font-semibold text-gold", "aria-current": "page" }}
-            inactiveProps={{ className: "text-muted-foreground" }}
-          >
-            <l.icon className="pointer-events-none h-[1.15rem] w-[1.15rem] shrink-0" />
-            <span className="pointer-events-none max-w-full truncate">{l.label}</span>
-          </Link>
-        ))}
-      </nav>
+
+      <div className="no-print fixed bottom-[max(env(safe-area-inset-bottom),.75rem)] right-3 z-50 md:hidden">
+        {mobileMenuOpen && (
+          <button
+            type="button"
+            aria-label="Fechar menu"
+            onClick={() => setMobileMenuOpen(false)}
+            className="fixed inset-0 z-40 cursor-default bg-background/35 backdrop-blur-[2px]"
+          />
+        )}
+        <div
+          id="mobile-navigation-panel"
+          aria-hidden={!mobileMenuOpen}
+          className={`absolute bottom-14 right-0 z-50 flex max-h-[min(70dvh,32rem)] w-[min(19rem,calc(100vw-1.5rem))] origin-bottom-right flex-col overflow-hidden rounded-2xl border border-border/80 bg-card/95 p-2 shadow-[0_18px_60px_rgb(0_0_0/0.3)] backdrop-blur-2xl transition-all duration-300 ease-out motion-reduce:transition-none ${mobileMenuOpen ? "visible translate-y-0 scale-100 opacity-100" : "invisible pointer-events-none translate-y-3 scale-95 opacity-0"}`}
+        >
+          <div className="flex items-center justify-between px-3 pb-2 pt-1">
+            <div>
+              <p className="font-display text-sm font-semibold text-foreground">Navegação</p>
+              <p className="text-[11px] text-muted-foreground">Para onde vamos?</p>
+            </div>
+            <span className="rounded-full border border-primary/20 bg-primary/10 px-2 py-1 text-[10px] font-semibold text-gold">MENU</span>
+          </div>
+          <nav aria-label="Menu principal mobile" className="min-h-0 space-y-1 overflow-y-auto overscroll-contain">
+            {links.map((l) => (
+              <Link
+                key={l.to}
+                to={l.to}
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-[.99]"
+                activeProps={{ className: "bg-primary/10 font-semibold text-gold" }}
+              >
+                <l.icon className="h-[1.1rem] w-[1.1rem] shrink-0" />
+                <span className="min-w-0 flex-1 truncate">{l.label}</span>
+                <span className="h-1.5 w-1.5 rounded-full bg-primary/0" />
+              </Link>
+            ))}
+          </nav>
+        </div>
+        <button
+          type="button"
+          onClick={() => setMobileMenuOpen((open) => !open)}
+          aria-label={mobileMenuOpen ? "Recolher menu" : "Abrir menu"}
+          aria-expanded={mobileMenuOpen}
+          aria-controls="mobile-navigation-panel"
+          className="relative z-50 inline-flex h-14 w-14 items-center justify-center rounded-full border border-primary/40 bg-primary text-primary-foreground shadow-[0_8px_28px_rgb(0_0_0/0.32)] transition-[transform,box-shadow,background-color] duration-300 hover:scale-105 hover:shadow-[0_12px_34px_rgb(0_0_0/0.38)] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background motion-reduce:transition-none"
+        >
+          <span className={`absolute transition-all duration-200 ${mobileMenuOpen ? "rotate-90 scale-0 opacity-0" : "rotate-0 scale-100 opacity-100"}`}><Menu className="h-6 w-6" /></span>
+          <span className={`absolute transition-all duration-200 ${mobileMenuOpen ? "rotate-0 scale-100 opacity-100" : "-rotate-90 scale-0 opacity-0"}`}><X className="h-6 w-6" /></span>
+        </button>
+      </div>
     </div>
   );
 }
