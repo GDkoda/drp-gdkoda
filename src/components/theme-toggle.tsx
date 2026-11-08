@@ -6,14 +6,14 @@ type ThemeMode = "dark" | "light";
 type PaletteId = "ousado" | "eletrizante" | "destemido" | "futurista" | "prata-grafite" | "areia-vinho" | "sangue" | "fervor";
 
 const palettes: { id: PaletteId; label: string; description: string; colors: [string, string, string] }[] = [
-  { id: "ousado", label: "OUSADO", description: "Amarelo elétrico, carvão e violeta", colors: ["#FFF21A", "#171717", "#A66BFF"] },
-  { id: "eletrizante", label: "ELETRIZANTE", description: "Azul intenso, noite e lima neon", colors: ["#030407", "#1558C9", "#D4FF24"] },
-  { id: "destemido", label: "DESTEMIDO", description: "Preto profundo, pink e lima neon", colors: ["#0B0B0B", "#FF2DAB", "#D4FF3F"] },
-  { id: "futurista", label: "FUTURISTA", description: "Verde petróleo, marfim e turquesa", colors: ["#031211", "#EBE4D3", "#00AEBB"] },
-  { id: "prata-grafite", label: "PRATA & GRAFITE", description: "Preto profundo, grafite e prata", colors: ["#08090B", "#34383F", "#C7CCD4"] },
-  { id: "areia-vinho", label: "AREIA & VINHO", description: "Sálvia, areia clara e vinho escuro", colors: ["#A5A79B", "#E8D2B5", "#590907"] },
-  { id: "sangue", label: "SANGUE", description: "Vermelho-sangue, preto e branco", colors: ["#8F0715", "#080808", "#F5F5F5"] },
-  { id: "fervor", label: "FERVOR", description: "Rosa-choque, vermelho e laranja", colors: ["#FF1493", "#D71920", "#FF7A1A"] },
+  { id: "ousado", label: "Brasa do Dragão", description: "Ouro vivo · carvão · ametista", colors: ["#FFF21A", "#171717", "#A66BFF"] },
+  { id: "eletrizante", label: "Tempestade Arcana", description: "Safira · noite · raio-lima", colors: ["#030407", "#1558C9", "#D4FF24"] },
+  { id: "destemido", label: "Juramento da Lâmina", description: "Ébano · rosa · verde-luz", colors: ["#0B0B0B", "#FF2DAB", "#D4FF3F"] },
+  { id: "futurista", label: "Oráculo Esmeralda", description: "Petróleo · marfim · turquesa", colors: ["#031211", "#EBE4D3", "#00AEBB"] },
+  { id: "prata-grafite", label: "Cavaleiro de Prata", description: "Ferro negro · grafite · prata", colors: ["#08090B", "#34383F", "#C7CCD4"] },
+  { id: "areia-vinho", label: "Crepúsculo de Vinho", description: "Sálvia · areia · rubi escuro", colors: ["#A5A79B", "#E8D2B5", "#590907"] },
+  { id: "sangue", label: "Pacto Rubro", description: "Sangue · ônix · neve", colors: ["#8F0715", "#080808", "#F5F5F5"] },
+  { id: "fervor", label: "Dança da Fênix", description: "Rosa ardente · carmim · fogo", colors: ["#FF1493", "#D71920", "#FF7A1A"] },
 ];
 
 function storedMode(): ThemeMode {
@@ -35,7 +35,6 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
   const [palette, setPalette] = useState<PaletteId>("ousado");
   const [open, setOpen] = useState(false);
 
-  // Restaura a preferência antes da primeira pintura para evitar o flash do tema padrão marrom.
   useLayoutEffect(() => {
     const savedMode = storedMode();
     const savedPalette = storedPalette();
@@ -54,7 +53,7 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
     try {
       window.localStorage.setItem("mesa-theme", mode);
       window.localStorage.setItem("mesa-palette", palette);
-    } catch { /* O tema segue funcionando sem armazenamento persistente. */ }
+    } catch { /* A aparência continua funcional sem persistência. */ }
   }, [mode, palette]);
 
   useEffect(() => {
@@ -82,7 +81,7 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
         aria-haspopup="dialog"
         aria-label={`Abrir aparência. Tema: ${active.label}, modo ${mode === "dark" ? "escuro" : "claro"}`}
         title={`Aparência: ${active.label} · ${mode === "dark" ? "Escuro" : "Claro"}`}
-        className="relative inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border bg-card text-foreground shadow-sm transition-all hover:border-primary/60 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="theme-trigger relative inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border bg-card text-foreground shadow-sm transition-all hover:border-primary/60 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <Palette className="h-[1.1rem] w-[1.1rem]" />
         <span className="absolute -bottom-1 -right-1 flex h-[1.05rem] w-[1.05rem] items-center justify-center rounded-full border border-card bg-primary text-primary-foreground">
@@ -91,88 +90,68 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
       </button>
 
       {open && createPortal(
-        <div className="fixed inset-0 z-[100] grid place-items-center p-3 sm:p-5">
-          <button
-            type="button"
-            aria-label="Fechar opções de aparência"
-            className="absolute inset-0 cursor-default bg-black/55 backdrop-blur-sm"
-            onClick={() => setOpen(false)}
-          />
-          <section
-            role="dialog"
-            aria-modal="true"
-            aria-label="Configurações de aparência"
-            className="relative z-10 flex max-h-[min(84dvh,42rem)] w-[min(25rem,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-[1.4rem] border border-border/80 bg-popover text-popover-foreground shadow-[0_24px_80px_rgb(0_0_0/0.42)]"
-          >
-            <header className="flex items-center justify-between gap-3 border-b border-border/70 px-4 py-4 sm:px-5">
-              <div className="flex min-w-0 items-center gap-3">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-primary/25 bg-primary/10 text-primary"><Palette className="h-5 w-5" /></span>
+        <div className="theme-dialog-backdrop fixed inset-0 z-[100] grid place-items-center p-3 sm:p-5">
+          <button type="button" aria-label="Fechar opções de aparência" className="absolute inset-0 cursor-default bg-black/60 backdrop-blur-md" onClick={() => setOpen(false)} />
+          <section role="dialog" aria-modal="true" aria-label="Configurações de aparência"
+            className="theme-dialog relative z-10 flex max-h-[min(78dvh,38rem)] w-[min(30rem,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-[1.35rem] border border-border/80 bg-popover text-popover-foreground shadow-[0_28px_90px_rgb(0_0_0/0.48)]">
+            <header className="flex items-center justify-between gap-3 border-b border-border/70 px-4 py-3.5">
+              <div className="flex min-w-0 items-center gap-2.5">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/12 text-primary"><Palette className="h-[1.05rem] w-[1.05rem]" /></span>
                 <div className="min-w-0">
-                  <h2 className="font-display text-base font-semibold leading-tight">Aparência</h2>
-                  <p className="mt-0.5 text-xs text-muted-foreground">Deixe a mesa com a sua cara</p>
+                  <h2 className="font-display text-[.98rem] font-bold leading-tight">Aparência da Mesa</h2>
+                  <p className="mt-0.5 text-[11px] text-muted-foreground">Escolha as cores da sua crônica</p>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                aria-label="Fechar janela de aparência"
-                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              ><X className="h-4 w-4" /></button>
+              <button type="button" onClick={() => setOpen(false)} aria-label="Fechar janela de aparência"
+                className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                <X className="h-4 w-4" />
+              </button>
             </header>
 
-            <div className="min-h-0 space-y-4 overflow-y-auto overscroll-contain p-4 sm:p-5">
+            <div className="min-h-0 space-y-4 overflow-y-auto overscroll-contain p-3.5 sm:p-4">
               <section aria-label="Modo de exibição">
                 <div className="mb-2 flex items-center justify-between">
-                  <p className="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Modo de exibição</p>
-                  <span className="text-[11px] text-muted-foreground">Atual: {mode === "dark" ? "Escuro" : "Claro"}</span>
+                  <p className="text-[10px] font-bold uppercase tracking-[.16em] text-muted-foreground">Iluminação</p>
+                  <span className="text-[10px] text-muted-foreground">{mode === "dark" ? "Salão das sombras" : "Luz do dia"}</span>
                 </div>
-                <div className="grid grid-cols-2 gap-2 rounded-2xl border border-border/70 bg-muted/60 p-1.5">
-                  <button
-                    type="button"
-                    onClick={() => setMode("dark")}
-                    aria-pressed={mode === "dark"}
-                    className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-3 text-sm font-semibold transition-all ${mode === "dark" ? "bg-card text-foreground shadow-sm ring-1 ring-border/70" : "text-muted-foreground hover:bg-background/60 hover:text-foreground"}`}
-                  ><Moon className="h-4 w-4" />Escuro</button>
-                  <button
-                    type="button"
-                    onClick={() => setMode("light")}
-                    aria-pressed={mode === "light"}
-                    className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-3 text-sm font-semibold transition-all ${mode === "light" ? "bg-card text-foreground shadow-sm ring-1 ring-border/70" : "text-muted-foreground hover:bg-background/60 hover:text-foreground"}`}
-                  ><Sun className="h-4 w-4" />Claro</button>
+                <div className="grid grid-cols-2 gap-1.5 rounded-xl border border-border/70 bg-muted/55 p-1">
+                  <button type="button" onClick={() => setMode("dark")} aria-pressed={mode === "dark"}
+                    className={`inline-flex min-h-9 items-center justify-center gap-2 rounded-lg px-3 text-xs font-semibold transition-all ${mode === "dark" ? "bg-card text-foreground shadow-sm ring-1 ring-border/70" : "text-muted-foreground hover:text-foreground"}`}>
+                    <Moon className="h-3.5 w-3.5" /> Noite
+                  </button>
+                  <button type="button" onClick={() => setMode("light")} aria-pressed={mode === "light"}
+                    className={`inline-flex min-h-9 items-center justify-center gap-2 rounded-lg px-3 text-xs font-semibold transition-all ${mode === "light" ? "bg-card text-foreground shadow-sm ring-1 ring-border/70" : "text-muted-foreground hover:text-foreground"}`}>
+                    <Sun className="h-3.5 w-3.5" /> Dia
+                  </button>
                 </div>
               </section>
 
-              <section aria-label="Paletas de cores">
+              <section aria-label="Temas">
                 <div className="mb-2 flex items-center justify-between">
-                  <p className="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Paletas de cores</p>
-                  <span className="text-[11px] text-muted-foreground">8 estilos</span>
+                  <p className="text-[10px] font-bold uppercase tracking-[.16em] text-muted-foreground">Crônicas de cor</p>
+                  <span className="text-[10px] tabular-nums text-muted-foreground">08 temas</span>
                 </div>
-                <div className="space-y-1.5">
+                <div className="grid grid-cols-1 gap-1.5 min-[420px]:grid-cols-2">
                   {palettes.map((item) => (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => setPalette(item.id)}
-                      aria-pressed={palette === item.id}
-                      className={`group flex w-full items-center gap-3 rounded-xl border p-2.5 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${palette === item.id ? "border-primary/50 bg-primary/10 shadow-sm" : "border-border/60 bg-card/40 hover:border-primary/30 hover:bg-muted/70"}`}
-                    >
-                      <span className="flex h-10 w-10 shrink-0 overflow-hidden rounded-lg border border-border/80 shadow-inner">
+                    <button key={item.id} type="button" onClick={() => setPalette(item.id)} aria-pressed={palette === item.id}
+                      className={`theme-palette-card group flex min-w-0 items-center gap-2.5 rounded-xl border px-2.5 py-2 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${palette === item.id ? "is-selected border-primary/60 bg-primary/10 shadow-sm" : "border-border/60 bg-card/45 hover:border-primary/35 hover:bg-muted/65"}`}>
+                      <span className="flex h-8 w-8 shrink-0 overflow-hidden rounded-lg border border-border/80 shadow-inner">
                         {item.colors.map((color, index) => <span key={index} className="h-full flex-1" style={{ backgroundColor: color }} />)}
                       </span>
                       <span className="min-w-0 flex-1">
-                        <span className="block text-sm font-semibold leading-tight">{item.label}</span>
-                        <span className="mt-0.5 block truncate text-xs text-muted-foreground">{item.description}</span>
+                        <span className="block truncate text-[12px] font-bold leading-tight">{item.label}</span>
+                        <span className="mt-0.5 block truncate text-[10px] leading-tight text-muted-foreground">{item.description}</span>
                       </span>
-                      <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full transition-colors ${palette === item.id ? "bg-primary text-primary-foreground" : "text-transparent group-hover:text-muted-foreground"}`}>
-                        {palette === item.id && <Check className="h-3.5 w-3.5" />}
+                      <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${palette === item.id ? "bg-primary text-primary-foreground" : "text-transparent"}`}>
+                        {palette === item.id && <Check className="h-3 w-3" />}
                       </span>
                     </button>
                   ))}
                 </div>
               </section>
             </div>
-            <footer className="border-t border-border/70 bg-muted/30 px-4 py-2.5 text-center sm:px-5">
-              <p className="text-[11px] text-muted-foreground">Sua escolha é salva automaticamente neste dispositivo.</p>
+            <footer className="border-t border-border/70 bg-muted/25 px-4 py-2 text-center">
+              <p className="text-[10px] text-muted-foreground">Sua escolha fica salva automaticamente neste dispositivo.</p>
             </footer>
           </section>
         </div>,
