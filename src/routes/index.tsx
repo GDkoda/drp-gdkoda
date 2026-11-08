@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Swords, Coins, ScrollText, Store } from "lucide-react";
 import { useCustomization } from "@/lib/app-customization";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { PwaInstallCard } from "@/components/PwaInstall";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -34,7 +35,8 @@ function Index() {
       <Button asChild size="lg" className="mt-8 min-h-12 rounded-xl px-7 font-display shadow-lg shadow-primary/15">
         <Link to="/auth">{text("home_enter")}</Link>
       </Button>
-      <div className="mt-14 grid w-full gap-4 text-left sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-5 w-full max-w-xl"><PwaInstallCard /></div>
+      <div className="mt-10 grid w-full gap-3 text-left sm:grid-cols-2 lg:grid-cols-4">
         {feats.map((f) => (
           <div key={f.t} className="group rounded-2xl border border-border/80 bg-card/90 p-5 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg">
             <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-gold"><f.icon className="h-5 w-5" /></div>
