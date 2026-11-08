@@ -6,6 +6,7 @@ import { useMe } from "@/lib/game";
 import { Beer, ScrollText, Store, Package, Crown, LogOut, Coins, Swords, BookOpen, Menu, X } from "lucide-react";
 import { useCustomization } from "@/lib/app-customization";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { AionEmblem } from "@/components/aion-emblem";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
@@ -45,7 +46,7 @@ function Layout() {
     <div className="min-h-screen pb-24 md:pb-0">
       <header className="app-top-chrome no-print sticky top-0 z-30 border-b border-border/80 bg-background/85 backdrop-blur-2xl">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-3 gap-y-2 px-3 py-2.5 sm:flex-nowrap sm:px-5 sm:py-3 lg:px-8">
-          <Link to="/taverna" className="flex min-w-0 max-w-[42%] shrink items-center gap-1.5 rounded-lg font-display text-sm font-bold tracking-wide text-gold sm:max-w-none sm:shrink-0 sm:gap-2 sm:text-xl"><span className="app-brand-sigil flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-primary/30 bg-primary/10 text-primary sm:h-9 sm:w-9" aria-hidden="true"><svg viewBox="0 0 32 32" className="h-6 w-6 sm:h-7 sm:w-7" fill="none"><path d="M16 2.8 27.4 9.4v13.2L16 29.2 4.6 22.6V9.4L16 2.8Z" stroke="currentColor" strokeWidth="1.35"/><path d="M16 7.2 20.2 13l-4.2 11.8L11.8 13 16 7.2Z" fill="currentColor" fillOpacity=".16" stroke="currentColor" strokeWidth="1.35" strokeLinejoin="round"/><path d="M16 10.4v11.2M10.6 16h10.8" stroke="currentColor" strokeWidth="1.15" strokeLinecap="round"/><circle cx="16" cy="16" r="2.1" fill="currentColor"/></svg></span><span className="truncate">{text("brand")}</span></Link>
+          <Link to="/taverna" className="flex min-w-0 max-w-[42%] shrink items-center gap-1.5 rounded-lg font-display text-sm font-bold tracking-wide text-gold sm:max-w-none sm:shrink-0 sm:gap-2 sm:text-xl"><span className="app-brand-sigil flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-primary/30 bg-primary/10 text-primary sm:h-9 sm:w-9" aria-hidden="true"><AionEmblem className="h-8 w-8" aria-hidden="true" /></span><span className="truncate">{text("brand")}</span></Link>
           <nav aria-label="Navegação principal" className="hidden min-w-0 flex-1 flex-wrap items-center justify-center gap-1 lg:flex">
             {links.map((l) => (
               <Link key={l.to} to={l.to} className="rounded-xl px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted/80 hover:text-foreground" activeProps={{ className: "bg-primary/10 font-semibold text-gold" }}>
