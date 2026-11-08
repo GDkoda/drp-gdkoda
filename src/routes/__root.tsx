@@ -108,6 +108,22 @@ function RootComponent() {
     });
     return () => data.subscription.unsubscribe();
   }, [router, queryClient]);
+
+  // O badge é injetado pelo runtime de publicação; esconda-o também se for recriado após a hidratação.
+  useEffect(() => {
+    const suppressBadge = () => {
+      const badge = document.getElementById("lovable-badge");
+      if (!badge) return;
+      badge.setAttribute("aria-hidden", "true");
+      badge.style.setProperty("display", "none", "important");
+      badge.style.setProperty("visibility", "hidden", "important");
+      badge.style.setProperty("pointer-events", "none", "important");
+    };
+    suppressBadge();
+    const observer = new MutationObserver(suppressBadge);
+    observer.observe(document.documentElement, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, []);
   return (
     <QueryClientProvider client={queryClient}>
       <AppCustomizationProvider>
