@@ -78,9 +78,9 @@ begin
     next_level := current_level + 1;
     if next_level > 3 then raise exception 'Esta melhoria já está no nível máximo'; end if;
     price := case _upgrade
-      when 'area' then (array[30,60,100])[next_level]
-      when 'experience' then (array[25,50,90])[next_level]
-      else (array[40,80,140])[next_level]
+      when 'area' then (array[300,600,1000])[next_level]
+      when 'experience' then (array[250,500,900])[next_level]
+      else (array[400,800,1400])[next_level]
     end;
     if s.fractals < price and not master_access then raise exception 'Fractais insuficientes'; end if;
     update public.fractal_player_state
@@ -95,7 +95,7 @@ begin
     if _upgrade = 'speed_3x' and not coalesce((upgrades->>'speed_2x')::boolean,false) and not master_access then
       raise exception 'Compre primeiro a velocidade 2x';
     end if;
-    price := case when _upgrade='speed_2x' then 100 else 200 end;
+    price := case when _upgrade='speed_2x' then 1000 else 2000 end;
     if s.fractals < price and not master_access then raise exception 'Fractais insuficientes'; end if;
     update public.fractal_player_state
       set fractals = case when master_access then fractals else fractals - price end,
