@@ -72,7 +72,7 @@
   --blood: #c95748;
   --mana: #7a9de8;
   --ambient-glow: radial-gradient(ellipse at 50% -18%, rgb(171 113 45 / 18%), transparent 58%);
-  --texture-color: #9dd8ff;
+  --texture-color: #FFF21A;\n  --texture-accent: #A66BFF;
   --surface-glass: color-mix(in oklab, var(--card) 90%, transparent);
   --shadow-soft: 0 18px 48px rgb(0 0 0 / 18%);
 }
@@ -113,7 +113,7 @@ html[data-theme="light"] {
   body {
     min-height: 100vh;
     background-color: var(--background);
-    background-image: repeating-linear-gradient(135deg, transparent 0 22px, color-mix(in srgb, var(--texture-color) 10%, transparent) 23px 24px, transparent 25px 46px), radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--texture-color) 13%, transparent) 1px, transparent 1.6px), var(--ambient-glow);
+    background-image: repeating-linear-gradient(135deg, transparent 0 22px, color-mix(in srgb, var(--texture-color) 11%, transparent) 23px 24px, transparent 25px 46px), radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--texture-accent, var(--texture-color)) 16%, transparent) 1px, transparent 1.6px), radial-gradient(ellipse at 92% 12%, color-mix(in srgb, var(--texture-accent, var(--texture-color)) 8%, transparent), transparent 34%), var(--ambient-glow);
     background-size: 100% 100%, 18px 18px, 100% 100%;
     background-attachment: fixed;
     color: var(--foreground);
@@ -502,4 +502,79 @@ html[data-palette="ocean"][data-theme="light"] {
   --border:#bfd6e8; --input:#bfd6e8; --ring:#368bc5; --gold:#176fae; --blood:#b93842; --mana:#2369a8;
   --ambient-glow:radial-gradient(ellipse at 50% -18%,rgb(56 160 230 / 14%),transparent 60%); --texture-color:#c28b51;
   --surface-glass:rgb(251 253 255 / 93%); --shadow-soft:0 18px 48px rgb(35 75 110 / 10%);
+}
+
+
+/* Paletas Teste das cores — contraste semântico e texturas com as três cores. */
+html[data-palette="ousado"][data-theme="dark"] {
+  color-scheme:dark; --background:#171717; --foreground:#F7F3E5; --card:#242321; --card-foreground:#F7F3E5; --popover:#242321; --popover-foreground:#F7F3E5;
+  --primary:#FFF21A; --primary-foreground:#171717; --secondary:#302A3B; --secondary-foreground:#F5EFFF; --muted:#29262E; --muted-foreground:#C7C0D0;
+  --accent:#A66BFF; --accent-foreground:#180D27; --destructive:#FF6B6B; --destructive-foreground:#210B0B; --border:#49404F; --input:#393440; --ring:#FFF21A; --gold:#FFF21A; --blood:#FF7474; --mana:#A66BFF;
+  --texture-color:#FFF21A; --texture-accent:#A66BFF; --ambient-glow:radial-gradient(ellipse at 50% -18%,rgb(166 107 255 / 18%),transparent 58%); --surface-glass:rgb(36 35 33 / 92%); --shadow-soft:0 18px 48px rgb(0 0 0 / 28%);
+}
+html[data-palette="ousado"][data-theme="light"] {
+  color-scheme:light; --background:#FFFDE8; --foreground:#272318; --card:#FFFFFF; --card-foreground:#272318; --popover:#FFFFFF; --popover-foreground:#272318;
+  --primary:#776600; --primary-foreground:#FFFFFF; --secondary:#F1EBD0; --secondary-foreground:#302A1C; --muted:#F4F0DF; --muted-foreground:#625B47;
+  --accent:#E9D9FF; --accent-foreground:#3A1B65; --destructive:#B83232; --destructive-foreground:#FFFFFF; --border:#DED5B5; --input:#D8CFB1; --ring:#806D00; --gold:#776600; --blood:#B83232; --mana:#7040B5;
+  --texture-color:#B69A00; --texture-accent:#A66BFF; --ambient-glow:radial-gradient(ellipse at 50% -18%,rgb(166 107 255 / 10%),transparent 60%); --surface-glass:rgb(255 255 255 / 93%); --shadow-soft:0 18px 48px rgb(72 58 20 / 10%);
+}
+html[data-palette="rico"][data-theme="dark"] {
+  color-scheme:dark; --background:#241A12; --foreground:#F9EEDB; --card:#35271B; --card-foreground:#F9EEDB; --popover:#35271B; --popover-foreground:#F9EEDB;
+  --primary:#F4D9A0; --primary-foreground:#352315; --secondary:#493525; --secondary-foreground:#FFF4DF; --muted:#3D2D20; --muted-foreground:#D5C0A0;
+  --accent:#C8792C; --accent-foreground:#1E1208; --destructive:#D65B4A; --destructive-foreground:#FFFFFF; --border:#624A33; --input:#59432F; --ring:#F4D9A0; --gold:#F4D9A0; --blood:#E47A5C; --mana:#9CBCEB;
+  --texture-color:#F4D9A0; --texture-accent:#C8792C; --ambient-glow:radial-gradient(ellipse at 50% -18%,rgb(200 121 44 / 20%),transparent 58%); --surface-glass:rgb(53 39 27 / 92%); --shadow-soft:0 18px 48px rgb(0 0 0 / 28%);
+}
+html[data-palette="rico"][data-theme="light"] {
+  color-scheme:light; --background:#FFF7E8; --foreground:#352719; --card:#FFFCF5; --card-foreground:#352719; --popover:#FFFCF5; --popover-foreground:#352719;
+  --primary:#76502E; --primary-foreground:#FFFFFF; --secondary:#F2E2C5; --secondary-foreground:#49331F; --muted:#F5EAD5; --muted-foreground:#75634D;
+  --accent:#F3D0A8; --accent-foreground:#57300E; --destructive:#B83C30; --destructive-foreground:#FFFFFF; --border:#E4D1B2; --input:#DCC8A8; --ring:#8B5B2D; --gold:#76502E; --blood:#B83C30; --mana:#315F9C;
+  --texture-color:#A87542; --texture-accent:#C8792C; --ambient-glow:radial-gradient(ellipse at 50% -18%,rgb(200 121 44 / 12%),transparent 60%); --surface-glass:rgb(255 252 245 / 93%); --shadow-soft:0 18px 48px rgb(85 58 28 / 10%);
+}
+html[data-palette="eletrizante"][data-theme="dark"] {
+  color-scheme:dark; --background:#030407; --foreground:#F1F5FF; --card:#101522; --card-foreground:#F1F5FF; --popover:#101522; --popover-foreground:#F1F5FF;
+  --primary:#4B8CFF; --primary-foreground:#06132A; --secondary:#172642; --secondary-foreground:#EAF1FF; --muted:#111D32; --muted-foreground:#B0C0DB;
+  --accent:#D4FF24; --accent-foreground:#202900; --destructive:#FF6565; --destructive-foreground:#260909; --border:#263A5C; --input:#203452; --ring:#D4FF24; --gold:#D4FF24; --blood:#FF6D6D; --mana:#75B9FF;
+  --texture-color:#1558C9; --texture-accent:#D4FF24; --ambient-glow:radial-gradient(ellipse at 50% -18%,rgb(21 88 201 / 24%),transparent 58%); --surface-glass:rgb(16 21 34 / 92%); --shadow-soft:0 18px 48px rgb(0 0 0 / 32%);
+}
+html[data-palette="eletrizante"][data-theme="light"] {
+  color-scheme:light; --background:#F1F5FF; --foreground:#101A2C; --card:#FFFFFF; --card-foreground:#101A2C; --popover:#FFFFFF; --popover-foreground:#101A2C;
+  --primary:#1558C9; --primary-foreground:#FFFFFF; --secondary:#DDE8FF; --secondary-foreground:#19365F; --muted:#E7EEFC; --muted-foreground:#526785;
+  --accent:#EAF8A5; --accent-foreground:#344500; --destructive:#B83232; --destructive-foreground:#FFFFFF; --border:#C7D5F0; --input:#C4D2ED; --ring:#1558C9; --gold:#1558C9; --blood:#B83232; --mana:#245FA8;
+  --texture-color:#1558C9; --texture-accent:#8AAE00; --ambient-glow:radial-gradient(ellipse at 50% -18%,rgb(21 88 201 / 12%),transparent 60%); --surface-glass:rgb(255 255 255 / 93%); --shadow-soft:0 18px 48px rgb(27 54 100 / 10%);
+}
+html[data-palette="destemido"][data-theme="dark"] {
+  color-scheme:dark; --background:#260D2C; --foreground:#FFF0FA; --card:#400849; --card-foreground:#FFF0FA; --popover:#400849; --popover-foreground:#FFF0FA;
+  --primary:#E7B0DE; --primary-foreground:#32102D; --secondary:#57205D; --secondary-foreground:#FFEFFF; --muted:#4B1852; --muted-foreground:#E2B9DE;
+  --accent:#FF7A35; --accent-foreground:#351306; --destructive:#FF7777; --destructive-foreground:#2B0909; --border:#713C76; --input:#63316A; --ring:#E7B0DE; --gold:#F0B9E7; --blood:#FF7A35; --mana:#A9C9FF;
+  --texture-color:#E7B0DE; --texture-accent:#FF5A0A; --ambient-glow:radial-gradient(ellipse at 50% -18%,rgb(255 90 10 / 18%),transparent 58%); --surface-glass:rgb(64 8 73 / 92%); --shadow-soft:0 18px 48px rgb(0 0 0 / 30%);
+}
+html[data-palette="destemido"][data-theme="light"] {
+  color-scheme:light; --background:#FFF2FC; --foreground:#32152F; --card:#FFFFFF; --card-foreground:#32152F; --popover:#FFFFFF; --popover-foreground:#32152F;
+  --primary:#71336D; --primary-foreground:#FFFFFF; --secondary:#F2DDF0; --secondary-foreground:#472344; --muted:#F6E8F4; --muted-foreground:#795D76;
+  --accent:#FFE0CF; --accent-foreground:#6A2606; --destructive:#B83232; --destructive-foreground:#FFFFFF; --border:#E4C8E0; --input:#DFC1DA; --ring:#8B4785; --gold:#71336D; --blood:#B83232; --mana:#315F9C;
+  --texture-color:#A95A9D; --texture-accent:#E85A18; --ambient-glow:radial-gradient(ellipse at 50% -18%,rgb(255 90 10 / 10%),transparent 60%); --surface-glass:rgb(255 255 255 / 93%); --shadow-soft:0 18px 48px rgb(88 40 82 / 10%);
+}
+html[data-palette="moderno"][data-theme="dark"] {
+  color-scheme:dark; --background:#090D0A; --foreground:#EDF6EE; --card:#171F19; --card-foreground:#EDF6EE; --popover:#171F19; --popover-foreground:#EDF6EE;
+  --primary:#8EB486; --primary-foreground:#142016; --secondary:#29392B; --secondary-foreground:#F0FFF0; --muted:#202C22; --muted-foreground:#B7C9B7;
+  --accent:#39FF88; --accent-foreground:#062A16; --destructive:#FF6B6B; --destructive-foreground:#250909; --border:#3A5140; --input:#304435; --ring:#39FF88; --gold:#A6D39C; --blood:#FF7777; --mana:#8CC8FF;
+  --texture-color:#6D8F63; --texture-accent:#39FF88; --ambient-glow:radial-gradient(ellipse at 50% -18%,rgb(57 255 136 / 15%),transparent 58%); --surface-glass:rgb(23 31 25 / 92%); --shadow-soft:0 18px 48px rgb(0 0 0 / 30%);
+}
+html[data-palette="moderno"][data-theme="light"] {
+  color-scheme:light; --background:#F1F7F0; --foreground:#17251A; --card:#FFFFFF; --card-foreground:#17251A; --popover:#FFFFFF; --popover-foreground:#17251A;
+  --primary:#426B3E; --primary-foreground:#FFFFFF; --secondary:#DFEBDD; --secondary-foreground:#29442A; --muted:#E8F0E6; --muted-foreground:#5D735C;
+  --accent:#D6F8E2; --accent-foreground:#15552F; --destructive:#B83232; --destructive-foreground:#FFFFFF; --border:#C9D9C6; --input:#C5D6C2; --ring:#397A4C; --gold:#426B3E; --blood:#B83232; --mana:#315F9C;
+  --texture-color:#6D8F63; --texture-accent:#208A50; --ambient-glow:radial-gradient(ellipse at 50% -18%,rgb(57 180 100 / 12%),transparent 60%); --surface-glass:rgb(255 255 255 / 93%); --shadow-soft:0 18px 48px rgb(40 75 43 / 10%);
+}
+html[data-palette="futurista"][data-theme="dark"] {
+  color-scheme:dark; --background:#050A09; --foreground:#E9FFF7; --card:#111C19; --card-foreground:#E9FFF7; --popover:#111C19; --popover-foreground:#E9FFF7;
+  --primary:#39F0AE; --primary-foreground:#05251B; --secondary:#1A302A; --secondary-foreground:#E9FFF7; --muted:#152722; --muted-foreground:#A9D6C8;
+  --accent:#FF4545; --accent-foreground:#310707; --destructive:#FF7777; --destructive-foreground:#2A0909; --border:#31594D; --input:#294A40; --ring:#39F0AE; --gold:#39F0AE; --blood:#FF4545; --mana:#85BFFF;
+  --texture-color:#39F0AE; --texture-accent:#FF0000; --ambient-glow:radial-gradient(ellipse at 50% -18%,rgb(57 240 174 / 18%),transparent 58%); --surface-glass:rgb(17 28 25 / 92%); --shadow-soft:0 18px 48px rgb(0 0 0 / 30%);
+}
+html[data-palette="futurista"][data-theme="light"] {
+  color-scheme:light; --background:#ECFFF8; --foreground:#102A22; --card:#FFFFFF; --card-foreground:#102A22; --popover:#FFFFFF; --popover-foreground:#102A22;
+  --primary:#087A58; --primary-foreground:#FFFFFF; --secondary:#D7F4E9; --secondary-foreground:#174536; --muted:#E1F7EF; --muted-foreground:#52766A;
+  --accent:#FFE0E0; --accent-foreground:#6A1111; --destructive:#B83232; --destructive-foreground:#FFFFFF; --border:#BFE5D7; --input:#B8DFD0; --ring:#087A58; --gold:#087A58; --blood:#B83232; --mana:#315F9C;
+  --texture-color:#159C75; --texture-accent:#D92D2D; --ambient-glow:radial-gradient(ellipse at 50% -18%,rgb(57 240 174 / 12%),transparent 60%); --surface-glass:rgb(255 255 255 / 93%); --shadow-soft:0 18px 48px rgb(22 84 66 / 10%);
 }
