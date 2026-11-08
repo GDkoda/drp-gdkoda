@@ -5,7 +5,7 @@ import { rpc, useRefresh, useMe } from "@/lib/game";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Zap, Swords, Dice5, Brain, Trophy, RotateCcw, Shield, BookOpen, Flame, Sparkles, Coins, Target, Wind } from "lucide-react";
+import { Zap, Swords, Dice5, Brain, Trophy, RotateCcw, Shield, BookOpen, Flame, Sparkles, Coins, Wind } from "lucide-react";
 import { useCustomization } from "@/lib/app-customization";
 import { supabase } from "@/integrations/supabase/client";
 import { VigorRestore, useGameSettings } from "@/components/VigorRestore";
@@ -441,7 +441,7 @@ function FarkleScoreGuide({ compact = false }: { compact?: boolean }) {
             </thead>
             <tbody className="divide-y divide-border text-foreground">
               <tr className="bg-muted/70"><th scope="row" className="px-3 py-3 text-left font-semibold text-foreground">Dado isolado</th><td colSpan={6} className="px-1.5 py-2 text-left leading-snug sm:px-3 sm:py-3">⚀ 100 pts <span className="mx-2 text-muted-foreground/60">•</span> ⚄ 50 pts <span className="ml-2 text-muted-foreground">(2, 3, 4 e 6 não pontuam sozinhos)</span></td></tr>
-              {groupRows.map((row) => <tr key={row.label} className="transition-colors hover:bg-amber-100/[0.04]"><th scope="row" className="whitespace-nowrap px-3 py-3 text-left font-semibold text-amber-100">{row.label}</th>{row.values.map((value, index) => <td key={index} className="px-1 py-2 tabular-nums sm:px-2 sm:py-3">{value}</td>)}</tr>)}
+              {groupRows.map((row) => <tr key={row.label} className="transition-colors hover:bg-amber-100/[0.04]"><th scope="row" className="whitespace-nowrap px-1.5 py-2 text-left font-semibold text-foreground sm:px-3 sm:py-3">{row.label}</th>{row.values.map((value, index) => <td key={index} className="px-1 py-2 tabular-nums sm:px-2 sm:py-3">{value}</td>)}</tr>)}
               <tr className="bg-amber-300/[0.06]"><th scope="row" className="px-3 py-3 text-left font-semibold text-foreground">Sequências</th><td colSpan={6} className="px-3 py-3 text-left leading-relaxed">1–2–3–4–5 <strong className="text-amber-200">500 pts</strong><span className="mx-2 text-muted-foreground/50">•</span> 2–3–4–5–6 <strong className="text-amber-200">750 pts</strong><br />1–2–3–4–5–6 <strong className="text-amber-200">1.500 pts</strong></td></tr>
             </tbody>
           </table>
@@ -520,7 +520,7 @@ function Farkle({ onDone, vigor, coins }: { onDone: () => void; vigor: number; c
         { _wager: wager },
         wager > 0
           ? `Aposta de ${wager.toLocaleString("pt-BR")} moedas reservada. Partida iniciada por 3 de vigor.`
-          : "Partida iniciada sem aposta. 3 de vigor gastos.",
+          : "Partida iniciada sem aposta. 1 de vigor gasto.",
       );
       if (typeof sessionId !== "string") throw new Error("O servidor não retornou o identificador da partida.");
       setActiveGameId(sessionId);
