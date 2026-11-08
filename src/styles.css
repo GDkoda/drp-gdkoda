@@ -2583,3 +2583,324 @@ html[data-palette="po-de-fada"][data-theme="light"] {
 @media (prefers-reduced-motion: reduce) {
   .puzzle-rune { animation: none !important; }
 }
+
+
+/* ============================================================
+   Lobby de combate — identidade visual temática
+   ============================================================ */
+@layer components {
+  .combat-lobby {
+    position: relative;
+    isolation: isolate;
+    display: grid;
+    grid-template-columns: minmax(8rem, .72fr) minmax(0, 1.5fr);
+    align-items: center;
+    gap: 1rem 1.25rem;
+    overflow: hidden;
+    border: 1px solid color-mix(in oklab, var(--primary) 38%, var(--border));
+    border-radius: 1.25rem;
+    padding: clamp(1rem, 2.4vw, 1.6rem);
+    background:
+      radial-gradient(ellipse at 8% 15%, color-mix(in oklab, var(--primary) 22%, transparent), transparent 38%),
+      radial-gradient(ellipse at 96% 95%, color-mix(in oklab, var(--accent) 16%, transparent), transparent 42%),
+      linear-gradient(135deg, color-mix(in oklab, var(--card) 92%, var(--primary) 8%), var(--card));
+    color: var(--foreground);
+    box-shadow: var(--shadow-soft), inset 0 1px 0 rgb(255 255 255 / 7%);
+  }
+  .combat-lobby::before {
+    position: absolute;
+    z-index: -1;
+    inset: 0;
+    pointer-events: none;
+    content: "";
+    opacity: .22;
+    background-image:
+      linear-gradient(30deg, transparent 49.5%, color-mix(in oklab, var(--primary) 24%, transparent) 50%, transparent 50.5%),
+      linear-gradient(150deg, transparent 49.5%, color-mix(in oklab, var(--accent) 22%, transparent) 50%, transparent 50.5%);
+    background-size: 2.2rem 2.2rem;
+    mask-image: linear-gradient(90deg, black, transparent 70%);
+  }
+  .combat-lobby-art {
+    position: relative;
+    display: grid;
+    min-height: 12rem;
+    place-items: center;
+    overflow: hidden;
+    border: 1px solid color-mix(in oklab, var(--primary) 28%, var(--border));
+    border-radius: 1.1rem;
+    background:
+      radial-gradient(circle at center, color-mix(in oklab, var(--primary) 20%, transparent), transparent 62%),
+      color-mix(in oklab, var(--background) 72%, var(--card));
+  }
+  .combat-lobby-sigil {
+    position: relative;
+    z-index: 2;
+    display: grid;
+    width: 6.5rem;
+    height: 6.5rem;
+    place-items: center;
+    border: 1px solid color-mix(in oklab, var(--primary) 54%, var(--border));
+    border-radius: 1.8rem;
+    background: linear-gradient(145deg, color-mix(in oklab, var(--primary) 24%, var(--card)), var(--card));
+    color: var(--primary);
+    box-shadow:
+      0 0 0 .45rem color-mix(in oklab, var(--primary) 7%, transparent),
+      0 0 2.4rem color-mix(in oklab, var(--primary) 22%, transparent),
+      inset 0 1px 0 rgb(255 255 255 / 12%);
+    transform: rotate(-7deg);
+  }
+  .combat-lobby-sigil span {
+    position: absolute;
+    right: -.45rem;
+    bottom: -.45rem;
+    display: grid;
+    width: 2rem;
+    height: 2rem;
+    place-items: center;
+    border: 1px solid var(--border);
+    border-radius: .7rem;
+    background: var(--card);
+    color: var(--accent-foreground);
+    font-size: 1.25rem;
+    transform: rotate(7deg);
+  }
+  .combat-lobby-orbit {
+    position: absolute;
+    width: 10rem;
+    height: 10rem;
+    border: 1px solid color-mix(in oklab, var(--primary) 28%, transparent);
+    border-radius: 50%;
+    transform: rotate(-25deg) scaleY(.55);
+  }
+  .combat-lobby-orbit-one { width: 13rem; height: 13rem; }
+  .combat-lobby-orbit-two { width: 9rem; height: 9rem; border-style: dashed; transform: rotate(35deg) scaleY(.72); }
+  .combat-lobby-spark { position: absolute; z-index: 1; color: var(--primary); font-style: normal; text-shadow: 0 0 1rem color-mix(in oklab, var(--primary) 42%, transparent); }
+  .combat-lobby-spark-one { top: 17%; right: 19%; font-size: 1.15rem; }
+  .combat-lobby-spark-two { bottom: 17%; left: 18%; font-size: .9rem; color: var(--accent-foreground); }
+  .combat-lobby-copy { min-width: 0; align-self: center; }
+  .combat-lobby-eyebrow {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    color: var(--primary);
+    font-size: .63rem;
+    font-weight: 800;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+  }
+  .combat-lobby-copy h2 {
+    max-width: 38rem;
+    margin-top: .5rem;
+    color: var(--foreground);
+    font-family: var(--font-display);
+    font-size: clamp(1.35rem, 3vw, 2.2rem);
+    font-weight: 800;
+    line-height: 1.12;
+  }
+  .combat-lobby-copy > p:last-child {
+    max-width: 42rem;
+    margin-top: .65rem;
+    color: var(--muted-foreground);
+    font-size: .86rem;
+    line-height: 1.55;
+  }
+  .combat-lobby-info {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: minmax(0,1fr) 1px minmax(0,1fr);
+    align-items: center;
+    gap: .85rem;
+    border: 1px solid color-mix(in oklab, var(--border) 80%, transparent);
+    border-radius: .9rem;
+    padding: .75rem .9rem;
+    background: color-mix(in oklab, var(--background) 76%, var(--card));
+  }
+  .combat-lobby-cost, .combat-lobby-character { display: flex; min-width: 0; align-items: center; gap: .65rem; }
+  .combat-lobby-info-icon {
+    display: grid;
+    width: 2.25rem;
+    height: 2.25rem;
+    flex: 0 0 auto;
+    place-items: center;
+    border: 1px solid color-mix(in oklab, var(--primary) 28%, var(--border));
+    border-radius: .7rem;
+    background: color-mix(in oklab, var(--primary) 10%, var(--card));
+    color: var(--primary);
+  }
+  .combat-lobby-info small, .combat-lobby-info strong { display: block; }
+  .combat-lobby-info small { color: var(--muted-foreground); font-size: .62rem; }
+  .combat-lobby-info strong { margin-top: .08rem; color: var(--foreground); font-size: .8rem; font-weight: 750; }
+  .combat-lobby-character.is-missing .combat-lobby-info-icon { border-color: color-mix(in oklab, var(--destructive) 30%, var(--border)); color: var(--destructive); }
+  .combat-lobby-separator { width: 1px; height: 2.1rem; background: var(--border); }
+  .combat-lobby-footer {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .8rem 1rem;
+    flex-wrap: wrap;
+  }
+  .combat-lobby-rules { display: flex; align-items: center; gap: .45rem .85rem; flex-wrap: wrap; }
+  .combat-lobby-rules span { display: inline-flex; align-items: center; gap: .3rem; color: var(--muted-foreground); font-size: .64rem; }
+  .combat-lobby-rules svg { color: var(--primary); }
+  .combat-lobby-warning { flex-basis: 100%; margin-top: -.25rem; color: var(--destructive); font-size: .7rem; }
+  .combat-lobby-start {
+    border: 1px solid color-mix(in oklab, var(--primary) 48%, var(--border));
+    background: linear-gradient(130deg, var(--primary), color-mix(in oklab, var(--primary) 76%, var(--accent)));
+    color: var(--primary-foreground);
+    box-shadow: 0 8px 22px color-mix(in oklab, var(--primary) 21%, transparent), inset 0 1px 0 rgb(255 255 255 / 15%);
+  }
+  .combat-lobby-start:hover { background: linear-gradient(130deg, color-mix(in oklab, var(--primary) 88%, white), var(--primary)); }
+  .combat-lobby-start:disabled { opacity: .55; box-shadow: none; }
+}
+@media (max-width: 640px) {
+  .combat-lobby { grid-template-columns: minmax(0,1fr); gap: .7rem; padding: .75rem; border-radius: .95rem; }
+  .combat-lobby-art { min-height: 7.5rem; }
+  .combat-lobby-sigil { width: 4.25rem; height: 4.25rem; border-radius: 1.2rem; }
+  .combat-lobby-sigil > svg { width: 1.8rem; height: 1.8rem; }
+  .combat-lobby-sigil span { width: 1.6rem; height: 1.6rem; border-radius: .5rem; font-size: 1rem; }
+  .combat-lobby-orbit-one { width: 9rem; height: 9rem; }
+  .combat-lobby-orbit-two { width: 6.3rem; height: 6.3rem; }
+  .combat-lobby-copy h2 { margin-top: .3rem; font-size: 1.28rem; }
+  .combat-lobby-copy > p:last-child { margin-top: .4rem; font-size: .73rem; }
+  .combat-lobby-info { gap: .55rem; padding: .6rem; }
+  .combat-lobby-info-icon { width: 1.85rem; height: 1.85rem; }
+  .combat-lobby-info strong { font-size: .68rem; }
+  .combat-lobby-footer { align-items: stretch; }
+  .combat-lobby-rules { gap: .35rem .65rem; }
+  .combat-lobby-rules span { font-size: .58rem; }
+}
+
+/* ============================================================
+   Todos os jogos usam as variáveis da paleta ativa.
+   Cores fixas antigas eram a origem de texto claro em superfícies claras.
+   ============================================================ */
+
+/* Jogo 21: mesa, painéis, regras e controles acompanham a paleta. */
+.twentyone-window {
+  border-color: color-mix(in oklab, var(--primary) 38%, var(--border)) !important;
+  background:
+    radial-gradient(ellipse at 50% -12%, color-mix(in oklab, var(--primary) 18%, transparent), transparent 52%),
+    linear-gradient(155deg, color-mix(in oklab, var(--card) 92%, var(--primary) 8%), var(--background)) !important;
+  color: var(--foreground) !important;
+}
+.twentyone-window-header { border-color: var(--border) !important; background: color-mix(in oklab, var(--card) 90%, var(--primary) 10%) !important; }
+.twentyone-brand-mark { border-color: color-mix(in oklab, var(--primary) 45%, var(--border)) !important; background: color-mix(in oklab, var(--primary) 18%, var(--card)) !important; color: var(--primary) !important; }
+.twentyone-brand-mark small { border-color: var(--border) !important; background: var(--primary) !important; color: var(--primary-foreground) !important; }
+.twentyone-wallet { border-color: var(--border) !important; background: var(--muted) !important; color: var(--primary) !important; }
+.twentyone-close { border-color: var(--border) !important; background: var(--muted) !important; color: var(--foreground) !important; }
+.twentyone-window-footer { border-color: var(--border) !important; color: var(--muted-foreground) !important; }
+.twentyone-lobby-illustration {
+  border-color: color-mix(in oklab, var(--primary) 32%, var(--border)) !important;
+  background:
+    radial-gradient(ellipse at 50% 90%, color-mix(in oklab, var(--primary) 24%, transparent), transparent 58%),
+    linear-gradient(135deg, color-mix(in oklab, var(--card) 88%, var(--primary) 12%), var(--background)) !important;
+}
+.twentyone-lobby-glow { color: var(--primary) !important; text-shadow: 0 0 2rem color-mix(in oklab, var(--primary) 35%, transparent) !important; }
+.twentyone-lobby-copy h3 { color: var(--foreground) !important; }
+.twentyone-bet-panel, .twentyone-controls {
+  border-color: var(--border) !important;
+  background: color-mix(in oklab, var(--card) 88%, var(--primary) 12%) !important;
+  color: var(--foreground) !important;
+}
+.twentyone-payout-note { border-color: var(--border) !important; background: color-mix(in oklab, var(--background) 75%, var(--card)) !important; }
+.twentyone-payout-note span, .twentyone-payout-note small { color: var(--muted-foreground) !important; }
+.twentyone-payout-note b { color: var(--primary) !important; }
+.twentyone-rules { border-color: var(--border) !important; background: color-mix(in oklab, var(--card) 88%, var(--primary) 12%) !important; color: var(--foreground) !important; }
+.twentyone-rules-content { border-color: var(--border) !important; }
+.twentyone-rules-content p { color: var(--muted-foreground) !important; }
+.twentyone-rules-content b { color: var(--primary) !important; }
+.twentyone-table-status { border-color: var(--border) !important; background: color-mix(in oklab, var(--card) 88%, var(--primary) 12%) !important; color: var(--foreground) !important; }
+.twentyone-status-dot { background: var(--primary) !important; box-shadow: 0 0 0 4px color-mix(in oklab, var(--primary) 15%, transparent) !important; }
+.twentyone-felt {
+  border-color: color-mix(in oklab, var(--primary) 30%, var(--border)) !important;
+  background:
+    radial-gradient(ellipse at 50% 40%, color-mix(in oklab, var(--primary) 20%, transparent), transparent 60%),
+    radial-gradient(ellipse at 50% 50%, transparent 38%, color-mix(in oklab, var(--background) 50%, transparent) 100%),
+    linear-gradient(145deg, color-mix(in oklab, var(--card) 75%, var(--primary) 25%), var(--background)) !important;
+}
+.twentyone-hand-heading h3 { color: var(--foreground) !important; }
+.twentyone-hand-label, .twentyone-hand-hint { color: var(--muted-foreground) !important; }
+.twentyone-total-pill { border-color: var(--border) !important; background: color-mix(in oklab, var(--card) 80%, transparent) !important; color: var(--foreground) !important; }
+.twentyone-total-pill.is-perfect { border-color: color-mix(in oklab, var(--primary) 55%, var(--border)) !important; background: color-mix(in oklab, var(--primary) 16%, var(--card)) !important; color: var(--primary) !important; }
+.twentyone-total-pill.is-bust { border-color: color-mix(in oklab, var(--destructive) 50%, var(--border)) !important; background: color-mix(in oklab, var(--destructive) 12%, var(--card)) !important; color: var(--destructive) !important; }
+.twentyone-table-divider { color: var(--muted-foreground) !important; }
+.twentyone-table-divider::before, .twentyone-table-divider::after { background: linear-gradient(90deg, transparent, color-mix(in oklab, var(--primary) 34%, transparent), transparent) !important; }
+.twentyone-table-divider i { color: var(--primary) !important; }
+.twentyone-turn-copy { color: var(--foreground) !important; }
+.twentyone-result-banner { border-color: var(--border) !important; background: color-mix(in oklab, var(--card) 82%, var(--primary) 18%) !important; color: var(--foreground) !important; }
+.twentyone-result-banner.is-win { border-color: color-mix(in oklab, var(--primary) 55%, var(--border)) !important; background: color-mix(in oklab, var(--primary) 15%, var(--card)) !important; }
+.twentyone-result-banner.is-push { border-color: var(--border) !important; background: color-mix(in oklab, var(--accent) 22%, var(--card)) !important; }
+.twentyone-result-banner.is-loss { border-color: color-mix(in oklab, var(--destructive) 50%, var(--border)) !important; background: color-mix(in oklab, var(--destructive) 10%, var(--card)) !important; }
+.twentyone-result-banner h3, .twentyone-result-payout b, .twentyone-result-net b { color: var(--primary) !important; }
+.twentyone-result-eyebrow, .twentyone-result-payout small, .twentyone-result-net { color: var(--muted-foreground) !important; }
+.twentyone-result-icon { background: color-mix(in oklab, var(--primary) 12%, var(--card)) !important; color: var(--primary) !important; }
+.twentyone-loading { color: var(--foreground) !important; }
+
+/* Utilities amber usadas no JSX do 21 recebem contraste coerente com a paleta. */
+.twentyone-window [class*="text-amber-50"],
+.twentyone-window [class*="text-amber-100"] { color: var(--foreground) !important; }
+.twentyone-window [class*="text-amber-200"],
+.twentyone-window [class*="text-amber-300"] { color: var(--primary) !important; }
+.twentyone-window [class*="text-amber-950"] { color: var(--primary-foreground) !important; }
+.twentyone-window [class*="border-amber-"] { border-color: color-mix(in oklab, var(--primary) 30%, var(--border)) !important; }
+.twentyone-window [class*="bg-amber-300"],
+.twentyone-window [class*="bg-amber-400"] { background: var(--primary) !important; color: var(--primary-foreground) !important; }
+.twentyone-window [class*="bg-black/"] { background-color: color-mix(in oklab, var(--background) 78%, var(--card)) !important; }
+.twentyone-window [class*="bg-white/"] { background-color: color-mix(in oklab, var(--primary) 8%, var(--card)) !important; }
+.twentyone-window .twentyone-card.is-back {
+  border-color: color-mix(in oklab, var(--primary) 50%, var(--border)) !important;
+  background:
+    repeating-linear-gradient(45deg, transparent 0 6px, color-mix(in oklab, var(--primary) 14%, transparent) 6px 8px),
+    linear-gradient(135deg, color-mix(in oklab, var(--primary) 58%, var(--card)), color-mix(in oklab, var(--background) 72%, var(--primary))) !important;
+  box-shadow: 0 10px 20px rgb(0 0 0 / 25%), inset 0 0 0 3px color-mix(in oklab, var(--background) 55%, transparent), inset 0 0 0 5px color-mix(in oklab, var(--primary) 45%, var(--border)) !important;
+  color: var(--primary-foreground) !important;
+}
+
+/* Oráculo dos enigmas: elimina o roxo fixo e usa a paleta em toda a câmara. */
+.puzzle-room {
+  border-color: color-mix(in oklab, var(--primary) 28%, var(--border)) !important;
+  background:
+    radial-gradient(ellipse at 8% 0%, color-mix(in oklab, var(--primary) 13%, transparent), transparent 40%),
+    radial-gradient(ellipse at 100% 100%, color-mix(in oklab, var(--accent) 12%, transparent), transparent 44%),
+    var(--card) !important;
+  color: var(--foreground) !important;
+}
+.puzzle-hero {
+  border-color: color-mix(in oklab, var(--primary) 36%, var(--border)) !important;
+  background:
+    radial-gradient(circle at 84% 50%, color-mix(in oklab, var(--accent) 22%, transparent), transparent 38%),
+    linear-gradient(115deg, color-mix(in oklab, var(--primary) 14%, var(--card)), color-mix(in oklab, var(--card) 90%, var(--accent) 10%)) !important;
+  color: var(--foreground) !important;
+}
+.puzzle-hero::after { background-image: linear-gradient(120deg, transparent 48%, color-mix(in oklab, var(--primary) 12%, transparent) 49%, transparent 50%) !important; }
+.puzzle-hero-emblem { border-color: color-mix(in oklab, var(--primary) 36%, var(--border)) !important; background: color-mix(in oklab, var(--primary) 12%, var(--card)) !important; color: var(--primary) !important; }
+.puzzle-eyebrow, .puzzle-section-kicker, .puzzle-question-kicker { color: var(--primary) !important; }
+.puzzle-hero-copy h2, .puzzle-panel-heading h3, .puzzle-empty-state h3, .puzzle-question-text, .puzzle-rules-card h3 { color: var(--foreground) !important; }
+.puzzle-hero-copy > p:last-child, .puzzle-empty-state > p:not(.puzzle-question-kicker), .puzzle-rule-row small, .puzzle-motto-card span { color: var(--muted-foreground) !important; }
+.puzzle-time-seal { border-color: color-mix(in oklab, var(--primary) 45%, var(--border)) !important; background: color-mix(in oklab, var(--primary) 10%, var(--card)) !important; color: var(--primary) !important; }
+.puzzle-challenge-panel, .puzzle-rules-card, .puzzle-motto-card { border-color: var(--border) !important; background: color-mix(in oklab, var(--card) 92%, var(--primary) 8%) !important; }
+.puzzle-panel-heading { border-color: var(--border) !important; }
+.puzzle-state-pill { border-color: var(--border) !important; background: var(--muted) !important; color: var(--muted-foreground) !important; }
+.puzzle-state-pill.is-active { border-color: color-mix(in oklab, var(--primary) 40%, var(--border)) !important; background: color-mix(in oklab, var(--primary) 12%, var(--card)) !important; color: var(--primary) !important; }
+.puzzle-rune { border-color: color-mix(in oklab, var(--primary) 38%, var(--border)) !important; background: color-mix(in oklab, var(--primary) 12%, var(--card)) !important; color: var(--primary) !important; box-shadow: 0 0 34px color-mix(in oklab, var(--primary) 13%, transparent) !important; }
+.puzzle-main-button { border-color: color-mix(in oklab, var(--primary) 40%, var(--border)) !important; background: var(--primary) !important; color: var(--primary-foreground) !important; }
+.puzzle-main-button:hover { background: color-mix(in oklab, var(--primary) 86%, var(--accent)) !important; color: var(--primary-foreground) !important; }
+.puzzle-question-ornament { color: var(--primary) !important; }
+.puzzle-answer-input { border-color: color-mix(in oklab, var(--primary) 34%, var(--border)) !important; background: var(--background) !important; color: var(--foreground) !important; }
+.puzzle-answer-input::placeholder { color: var(--muted-foreground) !important; }
+.puzzle-rule-icon { border-color: color-mix(in oklab, var(--primary) 26%, var(--border)) !important; background: color-mix(in oklab, var(--primary) 10%, var(--card)) !important; color: var(--primary) !important; }
+.puzzle-motto-card { background: color-mix(in oklab, var(--primary) 7%, var(--card)) !important; color: var(--primary) !important; }
+.puzzle-motto-card p { color: var(--foreground) !important; }
+
+/* Estados de combate: o palco do inimigo também recebe a cor da crônica. */
+.combat-monster-stage {
+  border-color: color-mix(in oklab, var(--blood) 32%, var(--border)) !important;
+  background:
+    radial-gradient(ellipse at center, color-mix(in oklab, var(--accent) 20%, transparent), transparent 70%),
+    linear-gradient(160deg, color-mix(in oklab, var(--card) 90%, var(--accent) 10%), var(--background)) !important;
+}
+.combat-status-card { color: var(--foreground); }
+.combat-action-card { border-color: var(--border); background: color-mix(in oklab, var(--card) 92%, var(--primary) 8%); color: var(--foreground); }
+.combat-action-card:hover { border-color: color-mix(in oklab, var(--primary) 55%, var(--border)); background: color-mix(in oklab, var(--primary) 9%, var(--card)); }
+.combat-action-icon { background: color-mix(in oklab, var(--primary) 10%, var(--muted)) !important; }
