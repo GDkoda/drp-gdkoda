@@ -12,9 +12,9 @@ export const FRACTAL_RARITY_TIERS = [
 
 export const FRACTAL_SHOP = {
   area: [
-    { level: 1, cost: 300, bonus: 0.12, label: "Área I" },
-    { level: 2, cost: 600, bonus: 0.24, label: "Área II" },
-    { level: 3, cost: 1000, bonus: 0.36, label: "Área III" },
+    { level: 1, cost: 300, bonus: 0.10, label: "Área I" },
+    { level: 2, cost: 600, bonus: 0.20, label: "Área II" },
+    { level: 3, cost: 1000, bonus: 0.30, label: "Área III" },
   ],
   experience: [
     { level: 1, cost: 250, bonus: 0.10, label: "Afinidade I" },
