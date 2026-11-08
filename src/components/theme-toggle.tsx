@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { Check, Moon, Palette, Sun, X } from "lucide-react";
 
 type ThemeMode = "dark" | "light";
-type PaletteId = "ousado" | "eletrizante" | "destemido" | "futurista" | "prata-grafite" | "areia-vinho" | "sangue" | "fervor";
+type PaletteId = "ousado" | "eletrizante" | "destemido" | "futurista" | "prata-grafite" | "areia-vinho" | "sangue" | "fervor" | "taverna-zendikar" | "po-de-fada";
 
 const palettes: { id: PaletteId; label: string; description: string; colors: [string, string, string] }[] = [
   { id: "ousado", label: "Brasa do Dragão", description: "Ouro vivo · carvão · ametista", colors: ["#FFF21A", "#171717", "#A66BFF"] },
@@ -14,6 +14,8 @@ const palettes: { id: PaletteId; label: string; description: string; colors: [st
   { id: "areia-vinho", label: "Crepúsculo de Vinho", description: "Sálvia · areia · rubi escuro", colors: ["#A5A79B", "#E8D2B5", "#590907"] },
   { id: "sangue", label: "Pacto Rubro", description: "Sangue · ônix · neve", colors: ["#8F0715", "#080808", "#F5F5F5"] },
   { id: "fervor", label: "Dança da Fênix", description: "Rosa ardente · carmim · fogo", colors: ["#FF1493", "#D71920", "#FF7A1A"] },
+  { id: "taverna-zendikar", label: "Taverna do Zendikar", description: "Marrom · bege claro · amarelo", colors: ["#70452B", "#F1DFC0", "#E9B83F"] },
+  { id: "po-de-fada", label: "Pó de Fada", description: "Azul-claro · rosa · lavanda", colors: ["#A9D8FF", "#F3A9D5", "#B9A7F5"] },
 ];
 
 function storedMode(): ThemeMode {
@@ -129,7 +131,7 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
               <section aria-label="Temas">
                 <div className="mb-2 flex items-center justify-between">
                   <p className="text-[10px] font-bold uppercase tracking-[.16em] text-muted-foreground">Crônicas de cor</p>
-                  <span className="text-[10px] tabular-nums text-muted-foreground">08 temas</span>
+                  <span className="text-[10px] tabular-nums text-muted-foreground">10 temas</span>
                 </div>
                 <div className="grid grid-cols-1 gap-1.5 min-[420px]:grid-cols-2">
                   {palettes.map((item) => (
