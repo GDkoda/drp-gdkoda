@@ -270,7 +270,7 @@ export function FractalArena() {
     joystickRef.current = { x: clamp((event.clientX - rect.left - (gameRef.current?.player.x ?? rect.width / 2)) / 55, -1, 1), y: clamp((event.clientY - rect.top - (gameRef.current?.player.y ?? rect.height / 2)) / 55, -1, 1) };
     event.currentTarget.setPointerCapture(event.pointerId);
   };
-  const pointerMove = (event: React.PointerEvent<HTMLCanvasElement>) => {
+  const pointerMove = (event: PointerEvent<HTMLCanvasElement>) => {
     if (!joystickRef.current) return;
     const rect = event.currentTarget.getBoundingClientRect();
     joystickRef.current = { x: clamp((event.clientX - rect.left - (gameRef.current?.player.x ?? rect.width / 2)) / 55, -1, 1), y: clamp((event.clientY - rect.top - (gameRef.current?.player.y ?? rect.height / 2)) / 55, -1, 1) };
