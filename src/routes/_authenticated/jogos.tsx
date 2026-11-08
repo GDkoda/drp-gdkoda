@@ -16,6 +16,7 @@ import { maxTwentyOneWager, cardRank, cardSuit, type TwentyOneSuit } from "@/lib
 import { toast } from "sonner";
 import { createMachineStrategy, maxFarkleWager, nextRollCount, scoreDiceSelection, hasScoringCombination, farkleProbability } from "@/lib/farkle";
 import type { DieFace } from "@/lib/farkle";
+import { FractalArena } from "@/components/fractals/FractalArena";
 
 function JogosRouteComponent() {
   return <Jogos />;
@@ -41,19 +42,21 @@ function Jogos() {
         <div><p className="page-eyebrow">Ações da mesa</p><h1 className="mt-1 text-3xl text-gold">{text("jogos_title")}</h1></div>
         <span className="flex items-center gap-1 font-display text-mana"><Zap className="h-4 w-4" />{vigor ?? "…"}/{settings?.vigor_daily ?? 5} vigor</span>
       </div>
-      <p className="text-sm text-muted-foreground">Combate tático, 21 com cartas, Farkle e enigmas para desafiar sua sorte e estratégia.</p>
+      <p className="text-sm text-muted-foreground">Combate tático, 21 com cartas, Farkle, enigmas e sobrevivência roguelike.</p>
       <VigorRestore vigor={vigor} />
       <Tabs defaultValue="combat">
-        <TabsList className="grid h-auto w-full grid-cols-2 gap-1.5 rounded-xl sm:grid-cols-4 border border-border bg-muted/70 p-1.5">
+        <TabsList className="grid h-auto w-full grid-cols-2 gap-1.5 rounded-xl sm:grid-cols-5 border border-border bg-muted/70 p-1.5">
           <TabsTrigger value="combat" className="min-w-0 gap-1.5 px-2 py-2 text-xs sm:text-sm"><Swords className="h-4 w-4" />{text("jogos_combat")}</TabsTrigger>
           <TabsTrigger value="twentyone" className="min-w-0 gap-1.5 px-2 py-2 text-xs sm:text-sm"><Spade className="h-4 w-4" />21</TabsTrigger>
           <TabsTrigger value="farkle" className="min-w-0 gap-1.5 px-2 py-2 text-xs sm:text-sm"><Dice5 className="h-4 w-4" />Farkle</TabsTrigger>
           <TabsTrigger value="puzzle" className="min-w-0 gap-1.5 px-2 py-2 text-xs sm:text-sm"><Brain className="h-4 w-4" />{text("jogos_puzzle")}</TabsTrigger>
+          <TabsTrigger value="fractals" className="min-w-0 gap-1.5 px-2 py-2 text-xs sm:text-sm"><Sparkles className="h-4 w-4" />Fractais</TabsTrigger>
         </TabsList>
         <TabsContent value="combat"><Combat onDone={after} hasActive={!!me?.profile?.active_character_id} buttonLabel={text("jogos_fight")} /></TabsContent>
         <TabsContent value="twentyone"><TwentyOne onDone={after} coins={Number(me?.profile?.coins ?? 0)} vigor={Number(vigor ?? 0)} /></TabsContent>
         <TabsContent value="farkle" forceMount className="mt-2 data-[state=inactive]:hidden"><Farkle onDone={after} vigor={Number(vigor ?? 0)} coins={Number(me?.profile?.coins ?? 0)} /></TabsContent>
         <TabsContent value="puzzle" forceMount className="mt-2 data-[state=inactive]:hidden"><Puzzle onDone={after} buttonLabel={text("jogos_new_puzzle")} /></TabsContent>
+        <TabsContent value="fractals" className="mt-2"><FractalArena /></TabsContent>
       </Tabs>
     </div>
   );
