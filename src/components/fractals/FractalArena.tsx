@@ -170,15 +170,18 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
     finally { setShopBusy(false); }
   };
 
-  const start = useCallback(() => {
+  const start = useCallback(async () => {
+    const { data: newRunId, error: runError } = await (supabase.rpc as any)("start_fractal_run", { _corruption: corruption });
+    if (runError) { toast.error(runError.message); return; }
+    setRunId(newRunId);
     const rect = canvasRef.current?.getBoundingClientRect();
     const width = Math.max(320, rect?.width ?? 760);
     const height = Math.max(380, rect?.height ?? 520);
-    const game = makeGame(width, height);
+    const game = makeGame(width, height, purchases.area, purchases.experience);
     gameRef.current = game;
     setHud({ hp: 100, maxHp: 100, xp: 0, nextXp: 12, level: 1, kills: 0, elapsed: 0, phase: "Exploração", pressure: 0 });
     setLevelChoices([]); setPaused(false); setResult(null); setBossMessage(false); setRunning(true);
-  }, []);
+  }, [corruption, purchases.area, purchases.experience]);
 
   const chooseUpgrade = useCallback((upgrade: Upgrade) => {
     const game = gameRef.current;
@@ -294,7 +297,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               if (enemy.hp <= 0) {
                 game.kills += 1;
                 if (enemy.type !== "boss") game.gems.push({ x: enemy.x, y: enemy.y, value: enemy.xp, radius: 5 });
-                else { game.ended = true; setResult("victory"); }
+                else { game.ended = true; setResult("victory"); if (runId) void (supabase.rpc as any)("finish_fractal_run", { _run_id: runId, _victory: true }).then(({ data, error }: any) => { if (error) toast.error(error.message); else { setFractalBalance(Number(data?.fractals ?? 0)); setUnlockedCorruption(Number(data?.corruptionUnlocked ?? 0)); setCompletedCorruptions(Array.isArray(data?.completedCorruptions) ? data.completedCorruptions : []); toast.success("Corrupção concluída. O próximo nível foi liberado."); } }); }
                 for (let i = 0; i < 5; i++) game.particles.push({ x: enemy.x, y: enemy.y, vx: (Math.random() - 0.5) * 100, vy: (Math.random() - 0.5) * 100, life: 0.45, color: enemy.color });
               }
               break;
@@ -304,9 +307,9 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         game.enemies = game.enemies.filter((enemy) => enemy.hp > 0);
         game.gems.forEach((gem) => {
           const d = distance(game.player.x, game.player.y, gem.x, gem.y);
-          if (d < 85) { gem.x += ((game.player.x - gem.x) / Math.max(1, d)) * 260 * dt; gem.y += ((game.player.y - gem.y) / Math.max(1, d)) * 260 * dt; }
+          if (d < game.player.pickupRadius) { gem.x += ((game.player.x - gem.x) / Math.max(1, d)) * 260 * dt; gem.y += ((game.player.y - gem.y) / Math.max(1, d)) * 260 * dt; }
           if (d < 17) {
-            game.player.xp += gem.value; gem.value = 0;
+            game.player.xp += gem.value * game.player.xpMultiplier; gem.value = 0;
           }
         });
         game.gems = game.gems.filter((gem) => gem.value > 0);
@@ -317,7 +320,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           
           setLevelChoices([...UPGRADES].sort(() => Math.random() - 0.5).slice(0, 3));
         }
-        if (game.player.hp <= 0 && !game.ended) { game.ended = true; setResult("defeat"); }
+        if (game.player.hp <= 0 && !game.ended) { game.ended = true; setResult("defeat"); if (runId) void (supabase.rpc as any)("finish_fractal_run", { _run_id: runId, _victory: false }).then(({ error }: any) => { if (error) toast.error(error.message); }); }
         if (game.elapsed >= RUN_DURATION_SECONDS && !game.ended && !game.bossSpawned) { spawnEnemy(game, missionId, game.elapsed, corruption, true); game.bossSpawned = true; }
         if (now - lastHud > 100) {
           lastHud = now;
@@ -329,7 +332,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
     };
     frame = requestAnimationFrame(tick);
     return () => { cancelAnimationFrame(frame); window.removeEventListener("resize", resize); window.removeEventListener("keydown", onKeyDown); window.removeEventListener("keyup", onKeyUp); };
-  }, [running, paused, levelChoices.length, missionId, corruption, speedMultiplier]);
+  }, [running, paused, levelChoices.length, missionId, corruption, speedMultiplier, runId]);
 
   const pointerStart = (event: PointerEvent<HTMLCanvasElement>) => {
     const rect = event.currentTarget.getBoundingClientRect();
