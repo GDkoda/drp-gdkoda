@@ -162,6 +162,12 @@ function Combat({ onDone, hasActive, buttonLabel }: { onDone: () => void; hasAct
   }, [res]);
 
   useEffect(() => {
+    if (!visualEvents.length) return;
+    const timeout = window.setTimeout(() => setVisualEvents([]), 1650);
+    return () => window.clearTimeout(timeout);
+  }, [visualEvents]);
+
+  useEffect(() => {
     if (done && !completed.current) {
       completed.current = true;
       onDone();
@@ -190,30 +196,7 @@ function Combat({ onDone, hasActive, buttonLabel }: { onDone: () => void; hasAct
 
   return (
     <div className="space-y-4 rounded-2xl border bg-card p-4 sm:p-6">
-      <style>{`
-        @keyframes jrpg-hit-panel { 0%,100% { transform: translateX(0); box-shadow: inset 0 0 0 rgba(255,70,80,0); } 20%,55% { transform: translateX(-3px); box-shadow: inset 0 0 28px rgba(255,65,80,.2); border-color: rgba(255,75,85,.65); } 35% { transform: translateX(3px); } }
-        @keyframes jrpg-heal-panel { 0%,100% { box-shadow: inset 0 0 0 rgba(74,222,128,0); } 35%,75% { box-shadow: inset 0 0 35px rgba(74,222,128,.2); border-color: rgba(74,222,128,.7); } }
-        @keyframes jrpg-magic { 0%,100% { filter: drop-shadow(0 0 0 rgba(130,100,255,0)); transform: scale(1); } 35% { filter: drop-shadow(0 0 25px rgba(155,125,255,.95)) brightness(1.3); transform: scale(1.035); } }
-        @keyframes jrpg-burst { 0% { opacity: 0; transform: translate(-50%,-50%) scale(.2); } 35% { opacity: 1; transform: translate(-50%,-50%) scale(1.1); } 100% { opacity: 0; transform: translate(-50%,-50%) scale(1.5); } }
-        .jrpg-hit-panel { animation: jrpg-hit-panel .48s ease-out; }
-        .jrpg-heal-panel { animation: jrpg-heal-panel .8s ease-out; }
-        .jrpg-magic { animation: jrpg-magic .62s ease-out; }
-        .jrpg-magic-burst { position:absolute; z-index:20; left:50%; top:48%; width:110px; height:110px; border-radius:999px; border:5px solid rgba(190,165,255,.9); background:radial-gradient(circle,rgba(196,181,253,.6),rgba(124,58,237,.12) 60%,transparent 72%); box-shadow:0 0 28px rgba(167,139,250,.9); animation:jrpg-burst .6s ease-out both; pointer-events:none; }
-        .jrpg-feint { animation: jrpg-hit .38s ease-out; }
-        @keyframes jrpg-hit { 0%,100% { filter: none; transform: translateX(0) scale(1); } 12%,38% { filter: sepia(1) saturate(7) hue-rotate(315deg) brightness(1.35); transform: translateX(-7px) scale(1.025); } 25%,50% { transform: translateX(7px) scale(1.015); } }
-        @keyframes jrpg-heal { 0%,100% { filter: drop-shadow(0 0 0 rgba(74,222,128,0)); } 35%,70% { filter: sepia(.6) saturate(2) hue-rotate(75deg) brightness(1.35) drop-shadow(0 0 18px rgba(74,222,128,.9)); } }
-        @keyframes jrpg-float { 0% { opacity: 0; transform: translate(-50%, 18px) scale(.72); } 12% { opacity: 1; transform: translate(-50%, 0) scale(1.08); } 78% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -75px) scale(1); } }
-        @keyframes jrpg-guard { 0% { opacity: 0; transform: scale(.65); } 20%,75% { opacity: 1; transform: scale(1.08); } 100% { opacity: 0; transform: scale(1.2); } }
-        @keyframes jrpg-slash { 0% { opacity: 0; transform: rotate(-24deg) scaleX(.15); } 25% { opacity: .95; transform: rotate(-24deg) scaleX(1); } 100% { opacity: 0; transform: rotate(-24deg) scaleX(1.2); } }
-        .jrpg-slash { position: absolute; z-index: 20; left: 20%; top: 45%; width: 60%; height: 5px; border-radius: 999px; background: linear-gradient(90deg,transparent,#fff4cf,#ff5368,transparent); box-shadow: 0 0 18px #ff5368; animation: jrpg-slash .42s ease-out both; pointer-events: none; }
-        .jrpg-hit { animation: jrpg-hit .48s ease-out; }
-        .jrpg-heal { animation: jrpg-heal .8s ease-out; }
-        .jrpg-number { position: absolute; z-index: 30; left: 50%; top: 40%; pointer-events: none; white-space: nowrap; font-family: Georgia,serif; font-size: clamp(1.3rem,4vw,2.15rem); font-weight: 900; letter-spacing: .02em; text-shadow: 0 3px 3px #000, 0 0 12px currentColor; animation: jrpg-float 1.15s cubic-bezier(.2,.75,.25,1) both; }
-        .jrpg-number-damage { color: #ff555d; }
-        .jrpg-number-heal { color: #65f39a; }
-        .jrpg-number-guard { color: #76caff; animation-name: jrpg-guard; }
-        @media (prefers-reduced-motion: reduce) { .jrpg-hit,.jrpg-heal,.jrpg-number,.jrpg-hit-panel,.jrpg-heal-panel,.jrpg-magic,.jrpg-feint,.jrpg-magic-burst { animation-duration: .01ms !important; } }
-      `}</style>
+
       <div className="flex items-start gap-3 rounded-xl bg-muted/50 p-3">
         <Swords className="mt-0.5 h-5 w-5 shrink-0 text-gold" />
         <div className="min-w-0">
