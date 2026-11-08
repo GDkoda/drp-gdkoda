@@ -7,8 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
-  BookOpen, BookMarked, Search, Sparkles, WandSparkles, Flame, Shield,
-  HeartPulse, Sword, ChevronDown, Plus, LibraryBig, Stars, CircleHelp,
+  BookOpen, BookMarked, Search, Sparkles, WandSparkles, HeartPulse, Sword,
+  ChevronDown, Plus, LibraryBig, Stars, CircleHelp,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/grimorio")({
@@ -51,11 +51,12 @@ function Grimorio() {
     },
     staleTime: 30_000,
   });
-  const knownIds: string[] = active?.known_spells ?? [];
+  const knownIds: string[] = useMemo(() => active?.known_spells ?? [], [active?.known_spells]);
   const knownCount = knownIds.length;
   const list = useMemo(() => {
     const term = q.trim().toLocaleLowerCase("pt-BR");
-    const pm = maxPm.trim() === "" ? Infinity : Math.max(0, Number(maxPm));
+    const parsedPm = Number(maxPm);
+    const pm = maxPm.trim() === "" || !Number.isFinite(parsedPm) ? Infinity : Math.max(0, parsedPm);
     return (spells ?? []).filter((spell) => {
       const schoolName = String(spell.school ?? "");
       const searchable = [
