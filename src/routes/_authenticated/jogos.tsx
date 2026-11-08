@@ -1118,7 +1118,7 @@ function Farkle({ onDone, vigor, coins }: { onDone: () => void; vigor: number; c
         </div>
         <div className="min-w-0 flex-1">
           <p className="farkle-launch-eyebrow"><Trophy className="h-3.5 w-3.5" /> Desafio da taverna</p>
-          <h2 className="mt-1 font-display text-xl text-gold sm:text-2xl">Farkle · Farkle</h2>
+          <h2 className="mt-1 font-display text-xl text-gold sm:text-2xl">Farkle · Jogo de Dados</h2>
           <p className="mt-1 max-w-2xl text-sm text-muted-foreground">Enfrente a máquina, combine dados, calcule riscos e alcance 4.000 pontos antes dela. A sorte ajuda — mas estratégia decide.</p>
           <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-muted-foreground">
             <span className="farkle-feature-pill"><Sparkles className="h-3 w-3" /> IA estratégica</span>
