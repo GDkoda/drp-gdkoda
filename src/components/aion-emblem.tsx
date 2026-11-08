@@ -54,22 +54,9 @@ export function AionEmblem(props: SVGProps<SVGSVGElement>) {
         <circle cx="55" cy="68.5" r="1.6" fill="currentColor" stroke="none" />
       </g>
 
-      {/* Face direita — numeral seis desenhado e inclinado com a perspectiva. */}
-      <g transform="matrix(.36 -.19 0 .44 64 62)">
-        <path
-          d="M83 24
-             C62 18 42 34 42 60
-             C42 85 55 102 75 102
-             C95 102 108 88 108 69
-             C108 50 94 39 77 39
-             C60 39 49 51 49 68
-             C49 81 58 90 73 90
-             C87 90 96 82 96 69
-             C96 58 88 51 77 51"
-          strokeWidth="7"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
+      {/* Face direita — número 6 gravado no plano em perspectiva do D6. */}
+      <g>
+        <path d="M94 69C83 69 75 78 73 89C71 101 79 106 88 103C97 101 101 92 97 84C94 78 86 77 81 81C76 85 76 92 80 96C84 100 91 99 94 94C97 89 94 84 88 83" stroke="currentColor" strokeWidth="3.6" strokeLinecap="round" strokeLinejoin="round" />
       </g>
 
       {/* Estrelas e marcas de orientação fora do dado. */}
