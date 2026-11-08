@@ -228,6 +228,7 @@ revoke all on function public.start_puzzle() from public, anon;
 revoke all on function public.solve_puzzle(uuid, text) from public, anon;
 revoke all on function public.expire_puzzle(uuid) from public, anon;
 
+grant execute on function public.get_puzzle_time_limit_seconds() to authenticated;
 grant execute on function public.start_puzzle() to authenticated;
 grant execute on function public.solve_puzzle(uuid, text) to authenticated;
 grant execute on function public.expire_puzzle(uuid) to authenticated;
