@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Zap, Swords, Dice5, Brain, Trophy, RotateCcw, Shield, BookOpen, Flame, Sparkles, Coins, Target, Wind } from "lucide-react";
-import { useCustomization } from "@/lib/app-customization";\nimport { supabase } from "@/integrations/supabase/client";
+import { useCustomization } from "@/lib/app-customization";
+import { supabase } from "@/integrations/supabase/client";
 import { VigorRestore, useGameSettings } from "@/components/VigorRestore";
 import { createMachineStrategy, maxFarkleWager, nextRollCount, scoreDiceSelection, hasScoringCombination, farkleProbability } from "@/lib/farkle";
 import type { DieFace } from "@/lib/farkle";
@@ -74,7 +75,8 @@ function Combat({ onDone, hasActive, buttonLabel }: { onDone: () => void; hasAct
   const previousState = useRef<CombatState | null>(null);
   const visualSequence = useRef(0);
   const completed = useRef(false);
-  const done = !!res && res.status !== "active";\n  const { data: monsterArtworkUrl } = useQuery({ queryKey: ["combat-monster-art", res?.monster], enabled: !!res?.monster, queryFn: async () => { const { data } = await (supabase as any).from("monsters").select("image_url").eq("name", res!.monster).maybeSingle(); return data?.image_url as string | null; } });
+  const done = !!res && res.status !== "active";
+  const { data: monsterArtworkUrl } = useQuery({ queryKey: ["combat-monster-art", res?.monster], enabled: !!res?.monster, queryFn: async () => { const { data } = await (supabase as any).from("monsters").select("image_url").eq("name", res!.monster).maybeSingle(); return data?.image_url as string | null; } });
 
   async function startFight() {
     setBusy(true);
@@ -179,12 +181,14 @@ function Combat({ onDone, hasActive, buttonLabel }: { onDone: () => void; hasAct
   }[] = [
     { id: "attack", title: "Ataque básico", description: "FA = maior entre F/PdF + H + 1d6.", cost: "Sem custo de PM", icon: Swords, tone: "text-gold" },
     { id: "power", title: "Golpe poderoso", description: "+2 no atributo de ataque; crítico em 6.", cost: "1 PM", icon: Flame, tone: "text-blood", disabled: !isCombatActionAvailable("power", res) },
-    { id: "defend", title: "Postura defensiva", description: "+3 na FD contra o próximo ataque inimigo.", cost: "Sem custo de PM", icon: Shield, tone: "text-sky-400" },
     { id: "recover", title: "Recuperar fôlego", description: "Recupera até 3 PV; o inimigo ainda age.", cost: "1 PM", icon: Sparkles, tone: "text-mana", disabled: !isCombatActionAvailable("recover", res) },
-    { id: "aim", title: "Preparar ataque", description: "Acumula +2 na próxima FA (máximo +4).", cost: "Sem custo de PM", icon: Target, tone: "text-violet-400" },
     { id: "feint", title: "Finta", description: "+1 na FA; se causar dano, reduz o próximo ataque inimigo em 2.", cost: "Sem custo de PM", icon: Wind, tone: "text-amber-400" },
   ];
-  const entries = (res?.log ?? []).filter((entry: CombatLogEntry) => !entry.system);\n  const latestTurn = entries.reduce((max, entry) => Math.max(max, entry.turn ?? 0), 0);\n  const latestTurnEntries = entries.filter((entry) => (entry.turn ?? 0) === latestTurn);\n  const heroDamageTaken = latestTurnEntries.filter((entry) => entry.target === "hero").reduce((sum, entry) => sum + (entry.dmg ?? 0), 0);\n  const monsterDamageTaken = latestTurnEntries.filter((entry) => entry.target === "monster").reduce((sum, entry) => sum + (entry.dmg ?? 0), 0);
+  const entries = (res?.log ?? []).filter((entry: CombatLogEntry) => !entry.system);
+  const latestTurn = entries.reduce((max, entry) => Math.max(max, entry.turn ?? 0), 0);
+  const latestTurnEntries = entries.filter((entry) => (entry.turn ?? 0) === latestTurn);
+  const heroDamageTaken = latestTurnEntries.filter((entry) => entry.target === "hero").reduce((sum, entry) => sum + (entry.dmg ?? 0), 0);
+  const monsterDamageTaken = latestTurnEntries.filter((entry) => entry.target === "monster").reduce((sum, entry) => sum + (entry.dmg ?? 0), 0);
 
   return (
     <div className="space-y-4 rounded-2xl border bg-card p-4 sm:p-6">
@@ -479,7 +483,8 @@ function Farkle({ onDone, vigor, coins }: { onDone: () => void; vigor: number; c
   const settlementRequested = useRef(false);
   const onDoneRef = useRef(onDone);
   const maxWager = maxFarkleWager(coins);
-  const wagerPresets = [...new Set([10, 25, maxWager].filter((value) => value > 0 && value <= maxWager))];\n  const vigorCost = wager > 0 ? 3 : 1;
+  const wagerPresets = [...new Set([10, 25, maxWager].filter((value) => value > 0 && value <= maxWager))];
+  const vigorCost = wager > 0 ? 3 : 1;
   const timer = useRef<number | null>(null);
   const selectedFaces = selectedIndices.map((index) => dice[index]);
   const selectedScore = scoreDiceSelection(selectedFaces);
