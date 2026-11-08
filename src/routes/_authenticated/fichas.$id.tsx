@@ -27,7 +27,8 @@ type Char = {
   notes: string; known_spells: string[];
 };
 
-type CustomRoll = { id: string; name: string; kind: "FA-F" | "FA-PdF" | "FD"; dice: number; sides: number; bonus: number };
+type RollAttribute = "f" | "h" | "r" | "a" | "pdf";
+type CustomRoll = { id: string; name: string; kind: "FA" | "FD" | "FA-F" | "FA-PdF"; attr1?: RollAttribute; attr2?: RollAttribute; bonus: number; dice?: number; sides?: number };
 
 function Sheet() {
   const { id } = Route.useParams();
@@ -54,9 +55,10 @@ function Sheet() {
   const [c, setC] = useState<Char | null>(null);
   const [roll, setRoll] = useState<string | null>(null);
   const [customName, setCustomName] = useState("");
-  const [customKind, setCustomKind] = useState<CustomRoll["kind"]>("FA-F");
-  const [customDice, setCustomDice] = useState(1);
-  const [customSides, setCustomSides] = useState(6);
+  const [customKind, setCustomKind] = useState<"FA" | "FD">("FA");
+  const [customAttr1, setCustomAttr1] = useState<RollAttribute>("f");
+  const [customAttr2, setCustomAttr2] = useState<RollAttribute>("h");
+  const [customResults, setCustomResults] = useState<Record<string, number>>({});
   const [customBonus, setCustomBonus] = useState(0);
   const [customMenuOpen, setCustomMenuOpen] = useState(false);
   const [customCreateOpen, setCustomCreateOpen] = useState(false);
@@ -143,20 +145,24 @@ function Sheet() {
     const total = base + manual + die;
     setRoll("FD: " + base + (manual ? " + bônus " + manual : "") + " + 1d6[" + die + "] = " + total);
   };
+  const attributeValues: Record<RollAttribute, number> = { f: F, h: H, r: R, a: A, pdf: P };
+  const attributeLabels: Record<RollAttribute, string> = { f: "Força", h: "Habilidade", r: "Resistência", a: "Armadura", pdf: "Poder de Fogo" };
   const runCustomRoll = (item: CustomRoll) => {
-    const base = item.kind === "FA-F" ? F + H : item.kind === "FA-PdF" ? P + H : A + H;
-    const manual = item.kind === "FD" ? Number(c.fd_bonus) || 0 : Number(c.fa_bonus) || 0;
-    const dice = Array.from({ length: Math.max(1, Math.min(10, item.dice)) }, () => Math.floor(Math.random() * Math.max(2, Math.min(100, item.sides))) + 1);
-    const diceTotal = dice.reduce((sum, value) => sum + value, 0);
-    const total = base + manual + (Number(item.bonus) || 0) + diceTotal;
-    setRoll(item.name + " · " + item.kind + ": " + base + (manual ? " + bônus FA/FD " + manual : "") + (item.bonus ? " + bônus próprio " + item.bonus : "") + " + " + dice.length + "d" + item.sides + " [" + dice.join(", ") + "] = " + total);
+    // Compatibilidade com rolagens antigas salvas antes desta reformulação.
+    const first = item.attr1 ?? (item.kind === "FA-PdF" ? "pdf" : item.kind === "FD" ? "a" : "f");
+    const second = item.attr2 ?? "h";
+    const die = d6();
+    const total = attributeValues[first] + attributeValues[second] + (Number(item.bonus) || 0) + die;
+    setCustomResults((current) => ({ ...current, [item.id]: total }));
+    setRoll(item.name + " · " + total + " (" + attributeLabels[first] + " + " + attributeLabels[second] + " + 1d6" + (item.bonus ? " + bônus " + item.bonus : "") + ")");
   };
   const addCustomRoll = () => {
     const name = customName.trim();
     if (!name) { toast.error("Dê um nome para a rolagem personalizada."); return; }
-    const item: CustomRoll = { id: crypto.randomUUID(), name, kind: customKind, dice: Math.max(1, Math.min(10, Number(customDice) || 1)), sides: Math.max(2, Math.min(100, Number(customSides) || 6)), bonus: Number(customBonus) || 0 };
+    const item: CustomRoll = { id: crypto.randomUUID(), name, kind: customKind, attr1: customAttr1, attr2: customAttr2, bonus: Number(customBonus) || 0 };
     set({ custom_rolls: [...(c.custom_rolls ?? []), item] });
     setCustomName("");
+    setCustomBonus(0);
     toast.success("Rolagem personalizada adicionada.");
   };
 
@@ -222,17 +228,24 @@ function Sheet() {
             {customMenuOpen && <div className="character-custom-roll-menu">
               <div className="character-roll-heading"><strong>Suas rolagens</strong><small>{(c.custom_rolls ?? []).length} salvas</small></div>
               {(c.custom_rolls ?? []).length > 0
-                ? <div className="character-custom-roll-list">{c.custom_rolls.map((item) => <div key={item.id}><span><strong>{item.name}</strong><small>{item.kind} · {item.dice}d{item.sides} · bônus {item.bonus >= 0 ? "+" : ""}{item.bonus}</small></span><Button size="sm" variant="secondary" onClick={() => runCustomRoll(item)}><Dice6 className="h-3.5 w-3.5" />Rolar</Button><Button size="icon" variant="ghost" aria-label={"Excluir " + item.name} onClick={() => set({ custom_rolls: c.custom_rolls.filter((entry) => entry.id !== item.id) })}><X className="h-3.5 w-3.5" /></Button></div>)}</div>
+                ? <div className="character-custom-roll-list">{c.custom_rolls.map((item) => <div key={item.id} className="character-custom-roll-entry"><span><strong>{item.name}</strong><small>{item.kind === "FD" ? "Força de Defesa" : "Força de Ataque"} · {(item.attr1 ?? (item.kind === "FA-PdF" ? "pdf" : item.kind === "FD" ? "a" : "f")).toUpperCase()} + {(item.attr2 ?? "h").toUpperCase()} · bônus {item.bonus >= 0 ? "+" : ""}{item.bonus}</small></span><Button size="sm" variant="secondary" className="character-custom-roll-die" onClick={() => runCustomRoll(item)}><Dice6 className="h-3.5 w-3.5" /><span>Rolar</span></Button>{customResults[item.id] !== undefined && <strong className="character-custom-roll-value" aria-live="polite">{customResults[item.id]}</strong>}<Button size="icon" variant="ghost" aria-label={"Excluir " + item.name} onClick={() => set({ custom_rolls: c.custom_rolls.filter((entry) => entry.id !== item.id) })}><X className="h-3.5 w-3.5" /></Button></div>)}</div>
                 : <p className="character-fold-empty">Nenhuma rolagem criada ainda.</p>}
               {!customCreateOpen ? <Button type="button" size="sm" className="character-custom-roll-new" onClick={() => setCustomCreateOpen(true)}><Plus className="h-3.5 w-3.5" />Nova rolagem</Button>
                 : <div className="character-custom-roll-form">
-                  <Input aria-label="Nome da rolagem personalizada" placeholder="Nome" value={customName} onChange={(event) => setCustomName(event.target.value)} />
-                  <select aria-label="Base da rolagem" value={customKind} onChange={(event) => setCustomKind(event.target.value as CustomRoll["kind"])}>
-                    <option value="FA-F">FA por F</option><option value="FA-PdF">FA por PdF</option><option value="FD">FD por A</option>
-                  </select>
-                  <label>Dados <Input aria-label="Quantidade de dados" type="number" min={1} max={10} value={customDice} onChange={(event) => setCustomDice(Number(event.target.value) || 1)} /></label>
-                  <label>Lados <Input aria-label="Lados do dado" type="number" min={2} max={100} value={customSides} onChange={(event) => setCustomSides(Number(event.target.value) || 6)} /></label>
-                  <label>Bônus <Input aria-label="Bônus da rolagem personalizada" type="number" value={customBonus} onChange={(event) => setCustomBonus(Number(event.target.value) || 0)} /></label>
+                  <Input aria-label="Nome da rolagem personalizada" placeholder="Nome da rolagem" value={customName} onChange={(event) => setCustomName(event.target.value)} />
+                  <div className="character-custom-roll-kind" role="group" aria-label="Tipo de rolagem">
+                    <button type="button" className={customKind === "FA" ? "is-selected" : ""} aria-pressed={customKind === "FA"} onClick={() => setCustomKind("FA")}>⚔ FA</button>
+                    <button type="button" className={customKind === "FD" ? "is-selected" : ""} aria-pressed={customKind === "FD"} onClick={() => setCustomKind("FD")}>🛡 FD</button>
+                  </div>
+                  <div className="character-custom-roll-attributes">
+                    <label><span>Atributo I</span><select aria-label="Primeiro atributo" value={customAttr1} onChange={(event) => setCustomAttr1(event.target.value as RollAttribute)}>
+                      <option value="f">Força</option><option value="h">Habilidade</option><option value="r">Resistência</option><option value="a">Armadura</option><option value="pdf">Poder de Fogo</option>
+                    </select></label>
+                    <label><span>Atributo II</span><select aria-label="Segundo atributo" value={customAttr2} onChange={(event) => setCustomAttr2(event.target.value as RollAttribute)}>
+                      <option value="f">Força</option><option value="h">Habilidade</option><option value="r">Resistência</option><option value="a">Armadura</option><option value="pdf">Poder de Fogo</option>
+                    </select></label>
+                  </div>
+                  <label className="character-custom-roll-bonus"><span>Bônus adicional</span><Input aria-label="Bônus da rolagem personalizada" type="number" value={customBonus} onChange={(event) => setCustomBonus(Number(event.target.value) || 0)} /></label>
                   <div className="character-custom-roll-form-actions"><Button type="button" size="sm" onClick={() => { addCustomRoll(); setCustomCreateOpen(false); }}><Plus className="h-3.5 w-3.5" />Salvar</Button><Button type="button" size="sm" variant="ghost" onClick={() => setCustomCreateOpen(false)}>Cancelar</Button></div>
                 </div>}
             </div>}
