@@ -572,6 +572,7 @@ export type Database = {
           f: number
           h: number
           id: string
+          image_url: string | null
           name: string
           pdf: number
           pv: number
@@ -585,6 +586,7 @@ export type Database = {
           f?: number
           h?: number
           id?: string
+          image_url?: string | null
           name: string
           pdf?: number
           pv?: number
@@ -598,6 +600,7 @@ export type Database = {
           f?: number
           h?: number
           id?: string
+          image_url?: string | null
           name?: string
           pdf?: number
           pv?: number
