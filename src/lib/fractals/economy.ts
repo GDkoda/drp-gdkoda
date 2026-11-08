@@ -3,11 +3,11 @@
  * Currency writes and unlocks must be performed by server-side RPCs; these
  * constants are display/game-design configuration, not an authority boundary.
  */
-export const FRACTAL_RARITY_CHANCES = {
-  normal: 70,
-  rare: 23,
-  epic: 7,
-} as const;
+export const FRACTAL_RARITY_TIERS = [
+  { tier: 1, normal: 100, rare: 0, epic: 0, label: "Normal" },
+  { tier: 2, normal: 85, rare: 15, epic: 0, label: "Rara" },
+  { tier: 3, normal: 70, rare: 23, epic: 7, label: "Épica" },
+] as const;
 
 export const FRACTAL_SHOP = {
   area: [
@@ -21,9 +21,9 @@ export const FRACTAL_SHOP = {
     { level: 3, cost: 90, bonus: 0.30, label: "Afinidade III" },
   ],
   rarity: [
-    { level: 1, cost: 40, rare: 18, epic: 0, label: "Ressonância rara" },
-    { level: 2, cost: 80, rare: 25, epic: 7, label: "Ressonância épica" },
-    { level: 3, cost: 140, rare: 30, epic: 12, label: "Ressonância superior" },
+    { level: 1, cost: 40, tier: 1, label: "Acesso raro" },
+    { level: 2, cost: 80, tier: 2, label: "Acesso épico" },
+    { level: 3, cost: 140, tier: 3, label: "Ressonância superior" },
   ],
   speed: {
     double: { cost: 100, multiplier: 2 },
