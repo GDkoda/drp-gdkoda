@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { Check, Moon, Palette, Sun, X } from "lucide-react";
 
 type ThemeMode = "dark" | "light";
@@ -43,11 +44,16 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
 
   useEffect(() => {
     if (!open) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") setOpen(false);
     };
     window.addEventListener("keydown", closeOnEscape);
-    return () => window.removeEventListener("keydown", closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", closeOnEscape);
+    };
   }, [open]);
 
   const active = palettes.find((item) => item.id === palette) ?? palettes[0];
@@ -69,12 +75,12 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
         </span>
       </button>
 
-      {open && (
-        <div className="fixed inset-0 z-[60] grid place-items-center p-3 sm:p-5">
+      {open && createPortal(
+        <div className="fixed inset-0 z-[100] grid place-items-center p-3 sm:p-5">
           <button
             type="button"
             aria-label="Fechar opções de aparência"
-            className="absolute inset-0 cursor-default bg-black/50 backdrop-blur-sm"
+            className="absolute inset-0 cursor-default bg-black/55 backdrop-blur-sm"
             onClick={() => setOpen(false)}
           />
           <section
@@ -154,7 +160,8 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
               <p className="text-[11px] text-muted-foreground">Sua escolha é salva automaticamente neste dispositivo.</p>
             </footer>
           </section>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );
