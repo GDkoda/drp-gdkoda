@@ -18,6 +18,15 @@ const palettes: { id: PaletteId; label: string; description: string; colors: [st
   { id: "po-de-fada", label: "Pó de Fada", description: "Azul-claro · rosa · lavanda", colors: ["#A9D8FF", "#F3A9D5", "#B9A7F5"] },
 ];
 
+function syncBrowserThemeColor() {
+  const root = document.documentElement;
+  const background = getComputedStyle(root).getPropertyValue("--background").trim();
+  const color = background || (root.dataset.theme === "light" ? "#f5f0e6" : "#171717");
+  document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]').forEach((meta) => {
+    meta.setAttribute("content", color);
+  });
+}
+
 function storedMode(): ThemeMode {
   if (typeof window === "undefined") return "dark";
   try { return window.localStorage.getItem("mesa-theme") === "light" ? "light" : "dark"; }
@@ -44,11 +53,13 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
     setPalette(savedPalette);
     document.documentElement.dataset.theme = savedMode;
     document.documentElement.dataset.palette = savedPalette;
+    syncBrowserThemeColor();
   }, []);
 
   useLayoutEffect(() => {
     document.documentElement.dataset.theme = mode;
     document.documentElement.dataset.palette = palette;
+    syncBrowserThemeColor();
   }, [mode, palette]);
 
   useEffect(() => {
