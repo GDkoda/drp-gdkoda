@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { AlertTriangle, ArrowUp, Flame, Heart, Move, Pause, Play, RotateCcw, Shield, Skull, Sparkles, Swords, Zap } from "lucide-react";
+import { useCallback, useEffect, useRef, useState, type PointerEvent } from "react";
+import { AlertTriangle, Heart, Move, Pause, Play, RotateCcw, Shield, Skull, Sparkles, Swords, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { getDifficultySnapshot } from "@/lib/fractals/difficulty";
@@ -16,7 +16,7 @@ type Particle = { x: number; y: number; vx: number; vy: number; life: number; co
 type GameState = {
   width: number; height: number; last: number; elapsed: number; spawnTimer: number; shotTimer: number; bossSpawned: boolean;
   player: { x: number; y: number; hp: number; maxHp: number; speed: number; damage: number; fireRate: number; invuln: number; xp: number; nextXp: number; level: number };
-  enemies: Enemy[]; shots: Shot[]; gems: Gem[]; particles: Particle[]; kills: number; paused: boolean; ended: boolean;
+  enemies: Enemy[]; shots: Shot[]; gems: Gem[]; particles: Particle[]; kills: number; ended: boolean;
 };
 
 const UPGRADES: Upgrade[] = [
@@ -33,7 +33,7 @@ function makeGame(width: number, height: number): GameState {
   return {
     width, height, last: 0, elapsed: 0, spawnTimer: 0.4, shotTimer: 0.25, bossSpawned: false,
     player: { x: width / 2, y: height / 2, hp: 100, maxHp: 100, speed: 205, damage: 22, fireRate: 0.72, invuln: 0, xp: 0, nextXp: 12, level: 1 },
-    enemies: [], shots: [], gems: [], particles: [], kills: 0, paused: false, ended: false,
+    enemies: [], shots: [], gems: [], particles: [], kills: 0, ended: false,
   };
 }
 
@@ -128,11 +128,9 @@ export function FractalArena() {
   const [bossMessage, setBossMessage] = useState(false);
 
   const start = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    const width = Math.max(320, rect.width);
-    const height = Math.max(380, rect.height);
+    const rect = canvasRef.current?.getBoundingClientRect();
+    const width = Math.max(320, rect?.width ?? 760);
+    const height = Math.max(380, rect?.height ?? 520);
     const game = makeGame(width, height);
     gameRef.current = game;
     setHud({ hp: 100, maxHp: 100, xp: 0, nextXp: 12, level: 1, kills: 0, elapsed: 0, phase: "Exploração", pressure: 0 });
@@ -146,7 +144,6 @@ export function FractalArena() {
     if (upgrade.id === "haste") game.player.fireRate *= 0.82;
     if (upgrade.id === "vitality") { game.player.maxHp *= 1.15; game.player.hp = Math.min(game.player.maxHp, game.player.hp + game.player.maxHp * 0.25); }
     if (upgrade.id === "swift") game.player.speed *= 1.12;
-    game.paused = false;
     setLevelChoices([]);
   }, []);
 
@@ -179,7 +176,7 @@ export function FractalArena() {
       if (!game.last) game.last = now;
       const dt = Math.min(0.033, (now - game.last) / 1000);
       game.last = now;
-      if (!game.paused && !game.ended && !paused && levelChoices.length === 0) {
+      if (!game.ended && !paused && levelChoices.length === 0) {
         game.elapsed += dt;
         game.player.invuln = Math.max(0, game.player.invuln - dt);
         const keys = keysRef.current;
@@ -251,7 +248,7 @@ export function FractalArena() {
         game.particles = game.particles.filter((p) => p.life > 0);
         if (game.player.xp >= game.player.nextXp && !game.ended) {
           game.player.xp -= game.player.nextXp; game.player.level += 1; game.player.nextXp = Math.floor(game.player.nextXp * 1.32 + 5);
-          game.paused = true;
+          
           setLevelChoices([...UPGRADES].sort(() => Math.random() - 0.5).slice(0, 3));
         }
         if (game.player.hp <= 0 && !game.ended) { game.ended = true; setResult("defeat"); }
@@ -268,7 +265,7 @@ export function FractalArena() {
     return () => { cancelAnimationFrame(frame); window.removeEventListener("resize", resize); window.removeEventListener("keydown", onKeyDown); window.removeEventListener("keyup", onKeyUp); };
   }, [running, paused, levelChoices.length, missionId, corruption]);
 
-  const pointerStart = (event: React.PointerEvent<HTMLCanvasElement>) => {
+  const pointerStart = (event: PointerEvent<HTMLCanvasElement>) => {
     const rect = event.currentTarget.getBoundingClientRect();
     joystickRef.current = { x: clamp((event.clientX - rect.left - (gameRef.current?.player.x ?? rect.width / 2)) / 55, -1, 1), y: clamp((event.clientY - rect.top - (gameRef.current?.player.y ?? rect.height / 2)) / 55, -1, 1) };
     event.currentTarget.setPointerCapture(event.pointerId);
@@ -322,7 +319,7 @@ export function FractalArena() {
         <Card className="overflow-hidden border-border/70 bg-[#11111a] text-white">
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 px-3 py-2.5 sm:px-4">
             <div className="min-w-0"><p className="truncate text-sm font-semibold">{mission.name}</p><p className="text-[11px] text-white/55">{mission.pathName} · Corrupção {corruption} — {CORRUPTION_LEVELS[corruption].name}</p></div>
-            <div className="flex items-center gap-2"><span className="text-xs tabular-nums text-white/70">{formatTime(hud.elapsed)} / 12:00</span>{!result && <Button size="sm" variant="outline" className="h-8 border-white/15 bg-white/5 text-white hover:bg-white/10" onClick={() => { setPaused((v) => !v); if (gameRef.current) gameRef.current.paused = !gameRef.current.paused; }}><Pause className="mr-1 h-3.5 w-3.5" />{paused ? "Continuar" : "Pausar"}</Button>}</div>
+            <div className="flex items-center gap-2"><span className="text-xs tabular-nums text-white/70">{formatTime(hud.elapsed)} / 12:00</span>{!result && <Button size="sm" variant="outline" className="h-8 border-white/15 bg-white/5 text-white hover:bg-white/10" onClick={() => { setPaused((v) => !v) }}><Pause className="mr-1 h-3.5 w-3.5" />{paused ? "Continuar" : "Pausar"}</Button>}</div>
           </div>
           <div className="grid grid-cols-3 gap-2 px-3 py-2.5 sm:px-4">
             <div><div className="mb-1 flex items-center gap-1 text-[11px] text-white/65"><Heart className="h-3 w-3 text-rose-300"/> Vida</div><div className="h-1.5 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-rose-400 transition-all" style={{width:`${hud.hp / hud.maxHp * 100}%`}}/></div><p className="mt-1 text-xs tabular-nums">{Math.ceil(hud.hp)} / {Math.ceil(hud.maxHp)}</p></div>
@@ -333,7 +330,7 @@ export function FractalArena() {
             <canvas ref={canvasRef} className="block h-[min(64vh,560px)] min-h-[390px] w-full touch-none" onPointerDown={pointerStart} onPointerMove={pointerMove} onPointerUp={pointerEnd} onPointerCancel={pointerEnd} aria-label="Arena de sobrevivência. Use WASD, setas ou arraste o dedo para mover." />
             <div className="pointer-events-none absolute left-3 top-3 rounded-lg border border-white/10 bg-black/45 px-2.5 py-1.5 text-[11px] text-white/75"><span className="font-semibold text-white">{hud.phase}</span><span className="mx-1.5">·</span>Movimento: WASD / setas / toque</div>
             {bossMessage && !result && <div className="pointer-events-none absolute inset-x-0 top-14 text-center"><span className="rounded-full border border-violet-300/40 bg-violet-950/80 px-4 py-2 text-xs font-semibold tracking-wider text-violet-100">O GUARDIÃO CORROMPIDO DESPERTOU</span></div>}
-            {paused && !result && levelChoices.length === 0 && <div className="absolute inset-0 grid place-items-center bg-black/65 p-4"><div className="text-center"><Pause className="mx-auto mb-2 h-8 w-8 text-amber-200"/><p className="font-display text-xl">Expedição pausada</p><Button className="mt-3" onClick={() => {setPaused(false); if(gameRef.current) gameRef.current.paused=false;}}>Continuar</Button></div></div>}
+            {paused && !result && levelChoices.length === 0 && <div className="absolute inset-0 grid place-items-center bg-black/65 p-4"><div className="text-center"><Pause className="mx-auto mb-2 h-8 w-8 text-amber-200"/><p className="font-display text-xl">Expedição pausada</p><Button className="mt-3" onClick={() => {setPaused(false)}}>Continuar</Button></div></div>}
             {levelChoices.length > 0 && <div className="absolute inset-0 grid place-items-center bg-black/80 p-3 sm:p-6"><div className="w-full max-w-2xl space-y-3"><div className="text-center"><p className="text-xs uppercase tracking-[.22em] text-violet-200">A energia do fractal responde</p><h3 className="font-display text-2xl">Escolha uma dádiva</h3></div><div className="grid gap-2 sm:grid-cols-3">{levelChoices.map((upgrade) => {const Icon=upgrade.icon;return <button key={upgrade.id} onClick={()=>chooseUpgrade(upgrade)} className="rounded-xl border border-violet-200/20 bg-white/5 p-3 text-left transition hover:border-violet-200/60 hover:bg-violet-500/15"><Icon className="mb-2 h-5 w-5 text-amber-200"/><p className="text-sm font-semibold">{upgrade.name}</p><p className="mt-1 text-xs leading-relaxed text-white/65">{upgrade.description}</p></button>;})}</div></div></div>}
             {result && <div className="absolute inset-0 grid place-items-center bg-black/80 p-4"><div className="max-w-sm text-center"><div className="mx-auto mb-3 grid h-14 w-14 place-items-center rounded-2xl border border-violet-200/20 bg-violet-400/10">{result==="victory"?<Sparkles className="h-7 w-7 text-amber-200"/>:<Skull className="h-7 w-7 text-rose-300"/>}</div><p className="text-xs uppercase tracking-[.22em] text-violet-200">{result==="victory"?"Guardião derrotado":"Expedição encerrada"}</p><h3 className="mt-1 font-display text-2xl">{result==="victory"?"O fractal silenciou":"O Vazio prevaleceu"}</h3><p className="mt-2 text-sm text-white/65">Nível {hud.level} · {hud.kills} criaturas derrotadas · {formatTime(hud.elapsed)}</p><p className="mt-2 text-xs text-amber-100/80">Recompensas e fractais ainda não são creditados neste protótipo; serão conectados após a validação segura no servidor.</p><Button className="mt-4 gap-2" onClick={()=>{setRunning(false);setResult(null);setBossMessage(false);gameRef.current=null;}}><RotateCcw className="h-4 w-4"/> Voltar à expedição</Button></div></div>}
           </div>
