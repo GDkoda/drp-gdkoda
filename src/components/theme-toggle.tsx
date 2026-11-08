@@ -59,9 +59,9 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
         <>
           <button type="button" aria-label="Fechar opções de aparência" className="fixed inset-0 z-40 cursor-default bg-black/20 backdrop-blur-[2px]" onClick={() => setOpen(false)} />
           <div role="dialog" aria-modal="true" aria-label="Configurações de aparência" className="fixed left-1/2 top-1/2 z-50 flex max-h-[calc(100dvh-1.5rem)] w-[min(22rem,calc(100vw-1.5rem))] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-border bg-popover p-3 text-popover-foreground shadow-2xl sm:p-4">
-            <div className="flex items-start justify-between gap-3 px-2 pb-3">
-              <div><p className="font-display text-base">Aparência</p><p className="text-xs text-muted-foreground">Escolha a paleta e o modo de exibição.</p></div>
-              <Palette className="mt-1 h-4 w-4 text-primary" />
+            <div className="flex items-start justify-between gap-3 px-1 pb-2">
+              <div><p className="font-display text-base">Aparência</p><p className="text-xs text-muted-foreground">Paleta e modo de exibição</p></div>
+              <button type="button" onClick={() => setOpen(false)} aria-label="Fechar janela de aparência" className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"><X className="h-4 w-4" /></button>
             </div>
             <div className="mb-3 grid grid-cols-2 gap-2 rounded-xl bg-muted p-1">
               <button type="button" onClick={() => setMode("dark")} aria-pressed={mode === "dark"} className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-2 text-sm font-semibold transition-colors ${mode === "dark" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}><Moon className="h-4 w-4" />Escuro</button>
