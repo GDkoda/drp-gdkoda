@@ -72,3 +72,33 @@ Corruption and time pressure must never make attacks unreadable or remove all re
 - Whether corruption levels unlock by progression or are selectable from the start.
 - Whether higher corruption grants bonus fractals, and the exact bonus.
 - Entry vigor cost, if any.
+
+## Balance inicial aprovado para a loja
+
+Valores iniciais centralizados em `src/lib/fractals/economy.ts` para facilitar ajustes:
+
+| Compra permanente | Níveis / custo |
+| --- | --- |
+| Área de coleta | +12%, +24%, +36% — 30 / 60 / 100 fractais |
+| Afinidade de experiência | +10%, +20%, +30% — 25 / 50 / 90 fractais |
+| Raridade | Normal (100%); Rara (85% normal / 15% rara); Épica (70% normal / 23% rara / 7% épica) — 40 / 80 / 140 fractais |
+| Velocidade 2x | 100 fractais |
+| Velocidade 3x | 200 fractais |
+
+Evoluções de armas são sempre Lendárias e não entram no sorteio de raridade.
+
+### Fórmula inicial de recompensa
+
+A recompensa usa até 65% do teto pela sobrevivência proporcional, 25% por derrotar o chefe e até 10% por abates (atingindo o bônus máximo em 120 abates). O resultado é arredondado para baixo e limitado ao teto da missão. A fórmula está em `calculateFractalReward`.
+
+### Implementação em andamento
+
+- [x] Tela de pausa com painel de atributos da partida.
+- [x] Alternância de tela cheia.
+- [x] Simulação acelerada real em 2x/3x para a conta com papel `master`.
+- [x] Valores iniciais de custos, raridades e recompensa centralizados.
+- [ ] Compra persistente da loja, saldo de fractais e concessão de recompensas por RPC no banco.
+- [ ] Persistência e validação server-side da progressão de corrupção (0 libera 1, e assim sucessivamente após vitória).
+- [ ] Aplicação dos bônus permanentes de área e experiência no jogo.
+
+A interface de aceleração já bloqueia 2x/3x para contas comuns; esses modos serão liberados após compra quando a loja persistente estiver conectada. Não creditar fractais a partir de uma vitória informada apenas pelo navegador: o protótipo de combate é client-side e ainda precisa de uma camada de validação adequada.
