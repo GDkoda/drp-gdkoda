@@ -4522,3 +4522,41 @@ html { background-color: #000000; }
   .character-studio-attribute { padding-inline: .3rem; }
   .character-studio-attribute > span { font-size: .72rem; }
 }
+
+
+/* Refinamento compacto dos atributos e testes: hierarquia leve, sem cartões altos. */
+.character-studio-attribute-wrap { display:flex; min-width:0; flex-direction:column; align-items:center; gap:.12rem; }
+.character-studio-attribute-wrap .character-studio-attribute { width:100%; min-width:0; gap:.22rem; padding:.48rem .28rem .38rem; border-radius:.7rem; background:color-mix(in oklab,var(--card) 82%,var(--background)); }
+.character-studio-attribute-wrap .character-studio-attribute > span { font-size:.7rem; line-height:1.15; font-weight:750; text-align:center; }
+.character-studio-attribute-wrap .character-studio-attribute input { width:100%; max-width:4.2rem; height:2.25rem; padding-inline:.2rem; font-size:1.05rem; font-weight:750; text-align:center; }
+.character-studio-attribute-wrap .character-studio-attribute > small { min-height:.85rem; font-size:.52rem; line-height:1.1; text-align:center; }
+.character-attribute-test-trigger { width:1.8rem; height:1.55rem; min-height:1.55rem; margin:0; padding:0; border:0; border-radius:.4rem; background:transparent; color:var(--muted-foreground); opacity:.8; }
+.character-attribute-test-trigger svg { width:.85rem; height:.85rem; }
+.character-attribute-test-trigger:hover { background:color-mix(in srgb,var(--primary) 10%,transparent); color:var(--primary); opacity:1; }
+.character-attribute-test-panel { width:100%; gap:.4rem; padding:.5rem; border-radius:.6rem; box-shadow:0 4px 14px rgb(0 0 0 / .07); }
+.character-attribute-test-heading strong { font-size:.66rem; }
+.character-attribute-test-heading small { font-size:.55rem; }
+.character-attribute-test-modifiers { grid-template-columns:1fr 1fr 3.8rem; gap:.25rem; }
+.character-attribute-test-modifiers button { min-height:1.85rem; font-size:.61rem; }
+.character-attribute-test-modifiers input { height:1.85rem; }
+.character-attribute-test-roll { min-height:1.85rem; }
+.character-attribute-test-result { padding:.35rem .4rem; font-size:.6rem; }
+@media (max-width:767px) {
+  .character-studio-attributes { grid-template-columns:repeat(2,minmax(0,1fr)); gap:.4rem; }
+  .character-studio-attribute-wrap { gap:.08rem; }
+  .character-studio-attribute-wrap .character-studio-attribute { min-height:4.65rem; justify-content:center; padding:.42rem .3rem .32rem; }
+  .character-studio-attribute-wrap .character-studio-attribute > span { font-size:.72rem; }
+  .character-studio-attribute-wrap .character-studio-attribute input { max-width:3.7rem; height:2.05rem; font-size:1rem; }
+  .character-studio-attribute-wrap .character-studio-attribute > small { min-height:.65rem; font-size:.49rem; }
+  .character-attribute-test-trigger { width:1.7rem; height:1.4rem; min-height:1.4rem; }
+  .character-attribute-test-panel { padding:.45rem; }
+  .character-attribute-test-modifiers { grid-template-columns:1fr 1fr; }
+  .character-attribute-test-modifiers label { grid-column:1 / -1; grid-template-columns:auto minmax(0,1fr); align-items:center; }
+  .character-attribute-test-modifiers label span { font-size:.56rem; }
+}
+@media (max-width:360px) {
+  .character-studio-attributes { gap:.3rem; }
+  .character-studio-attribute-wrap .character-studio-attribute { min-height:4.4rem; }
+  .character-studio-attribute-wrap .character-studio-attribute > span { font-size:.67rem; }
+  .character-studio-attribute-wrap .character-studio-attribute > small { font-size:.46rem; }
+}
