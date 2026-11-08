@@ -9,8 +9,9 @@
   <path d="M24 38 64 62 104 38M64 62V112" stroke-width="2.2"/>
   <path d="M42 38.5Q64 19 86 38.5Q64 58 42 38.5Z" stroke-width="2.3"/>
   <path d="M64 26V22M53 38.5H49M79 38.5H75M58 31.5 55 28M70 31.5 73 28" stroke-width="1.35"/>
-  <ellipse cx="64" cy="38.5" rx="5.1" ry="6.1" fill="#D8BB7B" stroke="none"/>
-  <ellipse cx="64" cy="38.5" rx="2" ry="3.4" fill="#111521" stroke="none"/><circle cx="62.8" cy="36.8" r="1.05" fill="#fff6da" stroke="none"/>
+  <circle cx="64" cy="38.5" r="5.35" fill="#D8BB7B" fill-opacity=".12" stroke="#D8BB7B" stroke-width="1.35"/>
+  <path d="M64 34.1C61.6 36 61.6 41 64 42.9C66.4 41 66.4 36 64 34.1Z" fill="#111521" stroke="#D8BB7B" stroke-width="1.05"/>
+  <circle cx="62.9" cy="36.6" r="1" fill="#fff6da" stroke="none"/>
   <path d="M30 61 36.5 66.5 42.5 57.5 48.5 73.5 55 68.5 58.5 82 31 66.5Z" stroke-width="1.9" fill="#D8BB7B" fill-opacity=".07"/>
   <path d="M31 66.5 58.5 82 57.5 89 31.5 74.2ZM31 66.5 57.5 82M36.5 69.8 37.5 76.5M48.5 76.5 48 83" stroke-width="1.6"/>
   <path d="m44 72 4 3-4 3-4-3Z" fill="#D8BB7B" stroke="none"/>
