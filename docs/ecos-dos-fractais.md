@@ -115,3 +115,20 @@ A interface de aceleração bloqueia 2x/3x para contas comuns até a compra perm
 **Limitação de segurança ainda existente:** o jogo e a morte/derrota do chefe são processados no cliente. O banco aplica uma barreira de tempo e controla o desbloqueio, mas ainda não consegue provar criptograficamente que o chefe foi derrotado. Não há concessão de fractais por vitória nesta etapa; isso fica bloqueado até a simulação/recompensa ser autoritativa no servidor. As probabilidades de raridade já são sorteadas nas ofertas de melhoria de nível. Ainda não existe sistema de evolução de armas; quando for criado, suas evoluções serão sempre lendárias.
 
 **SQL:** executar a migração `drizzle/migrations/0005_fractal_shop_state.sql` no editor SQL do Supabase. Se a versão anterior já foi aplicada, execute o arquivo atualizado inteiro para substituir as funções e criar a tabela de expedições.
+
+
+## Coletáveis Especiais — balanceamento aprovado
+
+Área de coleta e Experiência não concedem mais atributos permanentes ao iniciar uma expedição. A loja desbloqueia os coletáveis:
+
+- Nível 1: o coletável correspondente pode aparecer nas escolhas ao subir de nível (18% de chance de uma das opções ser especial por nível; no máximo uma opção especial por oferta).
+- Nível 2: monstros fortes (Brutos e Elites) têm 1% de chance de derrubar um coletável especial.
+- Nível 3: a chance de queda sobe para 3%.
+- Área: cada coleta aumenta o raio em 10%, com limite de +50%.
+- Experiência: cada coleta aumenta XP recebida em 5%, com limite de +30%.
+- Os efeitos duram somente até o fim da expedição. Ao atingir o limite, o coletável correspondente deixa de aparecer e não pode ser desperdiçado.
+- A chance de queda é compartilhada pela categoria e usa o maior nível desbloqueado entre os coletáveis especiais; a queda escolhe aleatoriamente entre os tipos elegíveis.
+
+## Ajuste das raridades
+
+Bônus normal = 100% do valor-base; rara = 125%; épica = 150%. Evoluções permanecem sempre lendárias.
