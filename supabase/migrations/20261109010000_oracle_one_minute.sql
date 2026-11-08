@@ -22,9 +22,7 @@ language sql
 stable
 security definer
 set search_path = public
-as $
-  select 60;
-$;
+as 'select 60;';
 
 revoke all on function public.get_puzzle_time_limit_seconds() from public, anon;
 grant execute on function public.get_puzzle_time_limit_seconds() to authenticated;
