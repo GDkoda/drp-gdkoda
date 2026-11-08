@@ -88,16 +88,51 @@ function spawnEnemy(game: GameState, missionId: number, elapsed: number, corrupt
 function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: number, missionId: number) {
   const { width, height, player } = game;
   ctx.clearRect(0, 0, width, height);
-  const bg = ctx.createRadialGradient(width / 2, height / 2, 20, width / 2, height / 2, Math.max(width, height) * 0.72);
-  bg.addColorStop(0, "#20202c"); bg.addColorStop(1, "#101018");
+  // Ruínas de Último Silêncio: piso de lajes, rachaduras, pilares e cristais.
+  const bg = ctx.createLinearGradient(0, 0, width, height);
+  bg.addColorStop(0, "#171522"); bg.addColorStop(0.52, "#242032"); bg.addColorStop(1, "#100f1a");
   ctx.fillStyle = bg; ctx.fillRect(0, 0, width, height);
-
-  ctx.save();
-  ctx.strokeStyle = "rgba(211,190,255,0.055)"; ctx.lineWidth = 1;
-  const grid = 44;
-  for (let x = (width % grid) / 2; x < width; x += grid) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke(); }
-  for (let y = (height % grid) / 2; y < height; y += grid) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke(); }
-  ctx.restore();
+  const tile = 48;
+  const hash = (x: number, y: number) => { const n = Math.sin(x * 127.1 + y * 311.7) * 43758.5453; return n - Math.floor(n); };
+  for (let row = -1; row < Math.ceil(height / tile) + 1; row++) {
+    for (let col = -1; col < Math.ceil(width / tile) + 1; col++) {
+      const x = col * tile + (row % 2) * tile / 2;
+      const y = row * tile;
+      const shade = Math.floor(hash(col, row) * 13);
+      ctx.fillStyle = `rgb(${35 + shade},${32 + shade},${48 + shade})`;
+      ctx.strokeStyle = "rgba(9,8,16,.62)"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(x, y - tile / 2); ctx.lineTo(x + tile / 2, y); ctx.lineTo(x, y + tile / 2); ctx.lineTo(x - tile / 2, y); ctx.closePath(); ctx.fill(); ctx.stroke();
+      if (hash(col + 17, row - 9) > 0.79) {
+        ctx.strokeStyle = "rgba(8,7,15,.72)"; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(x - 7, y - 4); ctx.lineTo(x + 2, y + 1); ctx.lineTo(x + 8, y + 11); ctx.stroke();
+      }
+      if (hash(col - 5, row + 21) > 0.965) {
+        ctx.fillStyle = "rgba(129,79,176,.12)"; ctx.beginPath(); ctx.arc(x, y, 11, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+  }
+  const drawPillar = (x: number, y: number, scale = 1) => {
+    ctx.save(); ctx.translate(x, y); ctx.scale(scale, scale);
+    ctx.fillStyle = "rgba(0,0,0,.45)"; ctx.beginPath(); ctx.ellipse(2, 13, 19, 9, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#171522"; ctx.strokeStyle = "#554365"; ctx.lineWidth = 2;
+    ctx.fillRect(-12, -26, 24, 38); ctx.strokeRect(-12, -26, 24, 38);
+    ctx.fillStyle = "#383047"; ctx.fillRect(-16, -31, 32, 7); ctx.fillRect(-15, 10, 30, 6);
+    ctx.fillStyle = "rgba(181,105,255,.22)"; ctx.fillRect(-3, -22, 6, 28);
+    ctx.restore();
+  };
+  const drawCrystal = (x: number, y: number, size: number, color: string) => {
+    ctx.save(); ctx.translate(x, y); ctx.shadowColor = color; ctx.shadowBlur = 18;
+    ctx.fillStyle = color; ctx.strokeStyle = "rgba(245,225,255,.8)"; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.moveTo(0, -size); ctx.lineTo(size * .48, -size * .25); ctx.lineTo(size * .32, size * .72); ctx.lineTo(-size * .3, size * .72); ctx.lineTo(-size * .48, -size * .25); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = "rgba(255,255,255,.28)"; ctx.beginPath(); ctx.moveTo(0, -size); ctx.lineTo(0, size * .65); ctx.lineTo(-size * .3, size * .72); ctx.closePath(); ctx.fill(); ctx.restore();
+  };
+  drawPillar(28, 45, .85); drawPillar(width - 32, 52, .9); drawPillar(38, height - 42, 1.1); drawPillar(width - 42, height - 38, 1.05);
+  drawPillar(width * .18, height * .16, .65); drawPillar(width * .82, height * .18, .7);
+  drawCrystal(width * .12, height * .28, 16, "#a75bff"); drawCrystal(width * .88, height * .72, 19, "#a75bff");
+  drawCrystal(width * .76, height * .12, 12, "#6b9cff");
+  const vignette = ctx.createRadialGradient(width / 2, height / 2, Math.min(width, height) * .22, width / 2, height / 2, Math.max(width, height) * .72);
+  vignette.addColorStop(0, "rgba(8,5,18,0)"); vignette.addColorStop(1, "rgba(5,3,12,.62)");
+  ctx.fillStyle = vignette; ctx.fillRect(0, 0, width, height);
 
   game.gems.forEach((gem) => {
     ctx.save(); ctx.translate(gem.x, gem.y); ctx.rotate(Math.PI / 4);
@@ -119,12 +154,34 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
   game.enemies.forEach((enemy) => {
     ctx.save(); ctx.translate(enemy.x, enemy.y);
     if (enemy.type === "boss" && enemy.windup > 0) { ctx.save(); ctx.globalAlpha = 0.25 + Math.sin(game.elapsed * 18) * 0.08; ctx.strokeStyle = "#d8b5ff"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(enemy.targetX - enemy.x, enemy.targetY - enemy.y, 88, 0, Math.PI * 2); ctx.stroke(); ctx.fillStyle = "rgba(177,112,220,.12)"; ctx.beginPath(); ctx.arc(enemy.targetX - enemy.x, enemy.targetY - enemy.y, 88, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
-    if (enemy.type === "elite") { ctx.strokeStyle = "rgba(210,170,230,.38)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, 0, enemy.radius + 7, 0, Math.PI * 2); ctx.stroke(); }
-    ctx.fillStyle = enemy.flash > 0 ? "#ffffff" : enemy.color; ctx.shadowColor = enemy.color; ctx.shadowBlur = enemy.type === "boss" ? 25 : 10;
-    ctx.beginPath(); ctx.arc(0, 0, enemy.radius, 0, Math.PI * 2); ctx.fill();
-    ctx.shadowBlur = 0; ctx.strokeStyle = enemy.type === "boss" ? "#eadcff" : enemy.type === "elite" ? "#f0d5ff" : "rgba(255,255,255,.35)"; ctx.lineWidth = enemy.type === "boss" || enemy.type === "elite" ? 3 : 1.5;
-    ctx.beginPath(); ctx.arc(0, 0, enemy.radius * 0.62, 0, Math.PI * 2); ctx.stroke();
-    ctx.fillStyle = "#d8c6ff"; ctx.beginPath(); ctx.moveTo(0, -enemy.radius * 0.5); ctx.lineTo(enemy.radius * 0.23, 0); ctx.lineTo(0, enemy.radius * 0.5); ctx.lineTo(-enemy.radius * 0.23, 0); ctx.closePath(); ctx.fill();
+    const hurt = enemy.flash > 0;
+    if (enemy.type === "wraith") {
+      ctx.shadowColor = enemy.color; ctx.shadowBlur = 13; ctx.fillStyle = hurt ? "#fff" : "#827394";
+      ctx.beginPath(); ctx.moveTo(-enemy.radius, 3); ctx.quadraticCurveTo(-enemy.radius * 1.2, -enemy.radius, 0, -enemy.radius * 1.1); ctx.quadraticCurveTo(enemy.radius * 1.2, -enemy.radius, enemy.radius, 3); ctx.lineTo(enemy.radius * .55, enemy.radius * .45); ctx.lineTo(0, enemy.radius * .12); ctx.lineTo(-enemy.radius * .55, enemy.radius * .45); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = "#d9b8ff"; ctx.fillRect(-4, -3, 3, 4); ctx.fillRect(2, -3, 3, 4);
+    } else if (enemy.type === "charger") {
+      ctx.rotate(Math.atan2(enemy.targetY - enemy.y, enemy.targetX - enemy.x));
+      ctx.shadowColor = "#f0a75d"; ctx.shadowBlur = 12; ctx.fillStyle = hurt ? "#fff" : "#b46f42";
+      ctx.beginPath(); ctx.moveTo(enemy.radius * 1.35, 0); ctx.lineTo(-enemy.radius * .8, -enemy.radius * .85); ctx.lineTo(-enemy.radius * .4, 0); ctx.lineTo(-enemy.radius * .8, enemy.radius * .85); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = "#ffe0a1"; ctx.fillRect(enemy.radius * .25, -2, 4, 4);
+    } else if (enemy.type === "brute") {
+      ctx.shadowColor = "#a8a6b7"; ctx.shadowBlur = 10; ctx.fillStyle = hurt ? "#fff" : "#57586b";
+      ctx.beginPath(); ctx.moveTo(-enemy.radius, -enemy.radius * .55); ctx.lineTo(-enemy.radius * .55, -enemy.radius); ctx.lineTo(enemy.radius * .65, -enemy.radius * .9); ctx.lineTo(enemy.radius, -enemy.radius * .2); ctx.lineTo(enemy.radius * .8, enemy.radius); ctx.lineTo(-enemy.radius * .8, enemy.radius); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = "#b4a8c9"; ctx.lineWidth = 2; ctx.stroke();
+      ctx.fillStyle = "#e0a5ff"; ctx.fillRect(-4, -4, 8, 6);
+    } else if (enemy.type === "elite") {
+      ctx.rotate(game.elapsed * .35); ctx.shadowColor = "#d69cff"; ctx.shadowBlur = 20; ctx.fillStyle = hurt ? "#fff" : "#6f4c8c";
+      ctx.beginPath(); for (let i=0;i<8;i++){const a=i*Math.PI/4;const rr=i%2===0?enemy.radius*1.2:enemy.radius*.72;ctx.lineTo(Math.cos(a)*rr,Math.sin(a)*rr);} ctx.closePath();ctx.fill();
+      ctx.strokeStyle="#e5c5ff";ctx.lineWidth=2;ctx.stroke();ctx.fillStyle="#fff0ff";ctx.beginPath();ctx.arc(0,0,4,0,Math.PI*2);ctx.fill();
+    } else {
+      ctx.shadowColor = "#b78bff"; ctx.shadowBlur = 28; ctx.fillStyle = hurt ? "#fff" : "#33233f";
+      ctx.beginPath(); ctx.moveTo(-enemy.radius*.9, enemy.radius*.65); ctx.lineTo(-enemy.radius*.8,-enemy.radius*.7); ctx.lineTo(-enemy.radius*.35,-enemy.radius*1.15); ctx.lineTo(enemy.radius*.35,-enemy.radius*1.15); ctx.lineTo(enemy.radius*.8,-enemy.radius*.7); ctx.lineTo(enemy.radius*.9,enemy.radius*.65); ctx.lineTo(0,enemy.radius*1.05); ctx.closePath();ctx.fill();
+      ctx.strokeStyle="#d7b5ff";ctx.lineWidth=3;ctx.stroke();
+      ctx.fillStyle="#08060d";ctx.beginPath();ctx.ellipse(0,-enemy.radius*.15,enemy.radius*.42,enemy.radius*.55,0,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle="#caa1ff";ctx.shadowColor="#c17cff";ctx.shadowBlur=18;ctx.fillRect(-enemy.radius*.25,-enemy.radius*.2,enemy.radius*.16,4);ctx.fillRect(enemy.radius*.1,-enemy.radius*.2,enemy.radius*.16,4);
+      ctx.strokeStyle="rgba(211,166,255,.65)";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-enemy.radius*.7,enemy.radius*.6);ctx.lineTo(-enemy.radius*1.3,enemy.radius*1.3);ctx.moveTo(enemy.radius*.7,enemy.radius*.6);ctx.lineTo(enemy.radius*1.3,enemy.radius*1.3);ctx.stroke();
+    }
+    ctx.shadowBlur = 0;
     if (enemy.type === "boss" || enemy.hp < enemy.maxHp) {
       const barW = enemy.type === "boss" ? 86 : 30;
       ctx.fillStyle = "rgba(0,0,0,.55)"; ctx.fillRect(-barW / 2, -enemy.radius - 10, barW, 4);
@@ -135,12 +192,23 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
   game.particles.forEach((p) => { ctx.globalAlpha = clamp(p.life * 2, 0, 1); ctx.fillStyle = p.color; ctx.fillRect(p.x, p.y, 3, 3); });
   ctx.globalAlpha = 1;
 
+  // Protagonista: viajante encapuzado, manto dividido e foco cristalino.
   ctx.save(); ctx.translate(player.x, player.y);
-  ctx.shadowColor = "#f1d18a"; ctx.shadowBlur = player.invuln > 0 ? 24 : 15;
-  ctx.fillStyle = player.invuln > 0 && Math.floor(game.elapsed * 14) % 2 === 0 ? "#ffffff" : "#e8c98b";
-  ctx.beginPath(); ctx.arc(0, 0, 13, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0;
-  ctx.strokeStyle = "#fff1c8"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, 0, 18, 0, Math.PI * 2); ctx.stroke();
-  ctx.fillStyle = "#292334"; ctx.beginPath(); ctx.arc(0, 0, 4, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+  const bob = Math.sin(game.elapsed * 7) * 1.7;
+  ctx.fillStyle = "rgba(0,0,0,.42)"; ctx.beginPath(); ctx.ellipse(0, 13, 17, 7, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.translate(0, bob);
+  ctx.shadowColor = player.invuln > 0 ? "#ffffff" : "#a75cff"; ctx.shadowBlur = player.invuln > 0 ? 28 : 17;
+  ctx.fillStyle = "#292039"; ctx.beginPath(); ctx.moveTo(-12, -3); ctx.lineTo(-9, -13); ctx.lineTo(0, -19); ctx.lineTo(9, -13); ctx.lineTo(13, 8); ctx.lineTo(7, 14); ctx.lineTo(-9, 12); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = "#8d65b5"; ctx.lineWidth = 1.5; ctx.stroke();
+  ctx.fillStyle = "#4a315e"; ctx.beginPath(); ctx.moveTo(-10,-7);ctx.lineTo(-5,-17);ctx.lineTo(2,-20);ctx.lineTo(10,-12);ctx.lineTo(7,1);ctx.lineTo(0,9);ctx.lineTo(-8,2);ctx.closePath();ctx.fill();
+  ctx.fillStyle = player.invuln > 0 && Math.floor(game.elapsed * 14) % 2 === 0 ? "#fff" : "#e5c9a0";
+  ctx.beginPath(); ctx.ellipse(0,-7,6.5,8,0,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle="#17121f";ctx.beginPath();ctx.moveTo(-8,-9);ctx.lineTo(0,-20);ctx.lineTo(9,-10);ctx.lineTo(4,-8);ctx.lineTo(-5,-7);ctx.closePath();ctx.fill();
+  ctx.fillStyle="#d9c4ff";ctx.fillRect(-4,-7,2.5,2);ctx.fillRect(2,-7,2.5,2);
+  ctx.strokeStyle="#d7b5ff";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(8,-1);ctx.lineTo(17,-12);ctx.stroke();
+  ctx.fillStyle="#d5a7ff";ctx.shadowColor="#bd7cff";ctx.shadowBlur=16;ctx.beginPath();ctx.arc(18,-13,3.5,0,Math.PI*2);ctx.fill();
+  ctx.shadowBlur=0;ctx.strokeStyle="#f2d6ff";ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(0,0,19+Math.sin(game.elapsed*4)*1.2,0,Math.PI*2);ctx.stroke();
+  ctx.restore();
 
   if (corruption > 0) {
     ctx.fillStyle = `rgba(139, 76, 190, ${0.025 + corruption * 0.012})`;
