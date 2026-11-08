@@ -3,13 +3,17 @@ import { createPortal } from "react-dom";
 import { Check, Moon, Palette, Sun, X } from "lucide-react";
 
 type ThemeMode = "dark" | "light";
-type PaletteId = "ousado" | "eletrizante" | "destemido" | "futurista";
+type PaletteId = "ousado" | "eletrizante" | "destemido" | "futurista" | "prata-grafite" | "areia-vinho" | "sangue" | "fervor";
 
 const palettes: { id: PaletteId; label: string; description: string; colors: [string, string, string] }[] = [
   { id: "ousado", label: "OUSADO", description: "Amarelo elétrico, carvão e violeta", colors: ["#FFF21A", "#171717", "#A66BFF"] },
   { id: "eletrizante", label: "ELETRIZANTE", description: "Azul intenso, noite e lima neon", colors: ["#030407", "#1558C9", "#D4FF24"] },
   { id: "destemido", label: "DESTEMIDO", description: "Preto profundo, pink e lima neon", colors: ["#0B0B0B", "#FF2DAB", "#D4FF3F"] },
   { id: "futurista", label: "FUTURISTA", description: "Verde petróleo, marfim e turquesa", colors: ["#031211", "#EBE4D3", "#00AEBB"] },
+  { id: "prata-grafite", label: "PRATA & GRAFITE", description: "Preto profundo, grafite e prata", colors: ["#08090B", "#34383F", "#C7CCD4"] },
+  { id: "areia-vinho", label: "AREIA & VINHO", description: "Sálvia, areia clara e vinho escuro", colors: ["#A5A79B", "#E8D2B5", "#590907"] },
+  { id: "sangue", label: "SANGUE", description: "Vermelho-sangue, preto e branco", colors: ["#8F0715", "#080808", "#F5F5F5"] },
+  { id: "fervor", label: "FERVOR", description: "Rosa-choque, vermelho e laranja", colors: ["#FF1493", "#D71920", "#FF7A1A"] },
 ];
 
 function storedMode(): ThemeMode {
@@ -141,7 +145,7 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
               <section aria-label="Paletas de cores">
                 <div className="mb-2 flex items-center justify-between">
                   <p className="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Paletas de cores</p>
-                  <span className="text-[11px] text-muted-foreground">4 estilos</span>
+                  <span className="text-[11px] text-muted-foreground">8 estilos</span>
                 </div>
                 <div className="space-y-1.5">
                   {palettes.map((item) => (
