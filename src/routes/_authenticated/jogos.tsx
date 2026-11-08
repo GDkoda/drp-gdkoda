@@ -425,7 +425,7 @@ function FarkleScoreGuide({ compact = false }: { compact?: boolean }) {
   ];
 
   return (
-    <details open={!compact} className="group overflow-hidden rounded-2xl border border-amber-300/40 bg-card text-card-foreground shadow-[0_12px_30px_rgba(0,0,0,.16)]">
+    <details open={!compact} className="farkle-score-guide group overflow-hidden rounded-2xl border border-amber-300/40 bg-card text-card-foreground shadow-[0_12px_30px_rgba(0,0,0,.16)]">
       <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-4 transition-colors hover:bg-amber-100/[0.04] [&::-webkit-details-marker]:hidden">
         <span className="flex min-w-0 items-center gap-3">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-amber-200/20 bg-amber-300/10 text-gold"><BookOpen className="h-5 w-5" /></span>
