@@ -4,6 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { getDifficultySnapshot } from "@/lib/fractals/difficulty";
 import { CORRUPTION_LEVELS, FRACTAL_MISSIONS, RUN_DURATION_SECONDS } from "@/lib/fractals/config";
+import { FRACTAL_SHOP } from "@/lib/fractals/economy";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 type UpgradeId = "power" | "haste" | "vitality" | "swift";
 type Upgrade = { id: UpgradeId; name: string; description: string; icon: typeof Zap };
@@ -15,7 +18,7 @@ type Particle = { x: number; y: number; vx: number; vy: number; life: number; co
 
 type GameState = {
   width: number; height: number; last: number; elapsed: number; spawnTimer: number; shotTimer: number; bossSpawned: boolean;
-  player: { x: number; y: number; hp: number; maxHp: number; speed: number; damage: number; fireRate: number; invuln: number; xp: number; nextXp: number; level: number };
+  player: { x: number; y: number; hp: number; maxHp: number; speed: number; damage: number; fireRate: number; invuln: number; xp: number; nextXp: number; level: number; pickupRadius: number; xpMultiplier: number };
   enemies: Enemy[]; shots: Shot[]; gems: Gem[]; particles: Particle[]; kills: number; ended: boolean;
 };
 
@@ -29,10 +32,10 @@ const UPGRADES: Upgrade[] = [
 const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(max, n));
 const distance = (ax: number, ay: number, bx: number, by: number) => Math.hypot(ax - bx, ay - by);
 
-function makeGame(width: number, height: number): GameState {
+function makeGame(width: number, height: number, areaLevel = 0, experienceLevel = 0): GameState {
   return {
     width, height, last: 0, elapsed: 0, spawnTimer: 0.4, shotTimer: 0.25, bossSpawned: false,
-    player: { x: width / 2, y: height / 2, hp: 100, maxHp: 100, speed: 205, damage: 22, fireRate: 0.72, invuln: 0, xp: 0, nextXp: 12, level: 1 },
+    player: { x: width / 2, y: height / 2, hp: 100, maxHp: 100, speed: 205, damage: 22, fireRate: 0.72, invuln: 0, xp: 0, nextXp: 12, level: 1, pickupRadius: 85 * (1 + [0, 0.12, 0.24, 0.36][areaLevel]), xpMultiplier: 1 + [0, 0.10, 0.20, 0.30][experienceLevel] },
     enemies: [], shots: [], gems: [], particles: [], kills: 0, ended: false,
   };
 }
@@ -133,6 +136,39 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
   const [bossMessage, setBossMessage] = useState(false);
   const [pausePanel, setPausePanel] = useState<"main" | "attributes">("main");
   const [speedMultiplier, setSpeedMultiplier] = useState<1 | 2 | 3>(1);
+  const [fractalBalance, setFractalBalance] = useState(0);
+  const [unlockedCorruption, setUnlockedCorruption] = useState(0);
+  const [completedCorruptions, setCompletedCorruptions] = useState<number[]>([]);
+  const [purchases, setPurchases] = useState({ area: 0, experience: 0, rarity: 0, speed_2x: false, speed_3x: false });
+  const [runId, setRunId] = useState<string | null>(null);
+  const [shopBusy, setShopBusy] = useState(false);
+  const [shopOpen, setShopOpen] = useState(false);
+  const [shopError, setShopError] = useState<string | null>(null);
+
+  const refreshFractalState = useCallback(async () => {
+    const { data, error } = await (supabase.rpc as any)("get_fractal_state");
+    if (error) { setShopError("Aplique a migração SQL 0005 para ativar loja e progressão."); return; }
+    setFractalBalance(Number(data?.fractals ?? 0));
+    setUnlockedCorruption(Number(data?.corruptionUnlocked ?? 0));
+    setCompletedCorruptions(Array.isArray(data?.completedCorruptions) ? data.completedCorruptions : []);
+    const owned = data?.purchasedUpgrades ?? {};
+    setPurchases({ area: Number(owned.area ?? 0), experience: Number(owned.experience ?? 0), rarity: Number(owned.rarity ?? 0), speed_2x: !!owned.speed_2x, speed_3x: !!owned.speed_3x });
+  }, []);
+
+  useEffect(() => { void refreshFractalState(); }, [refreshFractalState]);
+
+  const purchaseUpgrade = async (upgrade: string) => {
+    setShopBusy(true);
+    try {
+      const { data, error } = await (supabase.rpc as any)("purchase_fractal_upgrade", { _upgrade: upgrade });
+      if (error) throw error;
+      setFractalBalance(Number(data?.fractals ?? 0));
+      const owned = data?.purchasedUpgrades ?? {};
+      setPurchases({ area: Number(owned.area ?? 0), experience: Number(owned.experience ?? 0), rarity: Number(owned.rarity ?? 0), speed_2x: !!owned.speed_2x, speed_3x: !!owned.speed_3x });
+      toast.success("Melhoria comprada permanentemente.");
+    } catch (error: any) { toast.error(error?.message ?? "Não foi possível comprar."); }
+    finally { setShopBusy(false); }
+  };
 
   const start = useCallback(() => {
     const rect = canvasRef.current?.getBoundingClientRect();
