@@ -59,7 +59,7 @@ function spawnEnemy(game: GameState, missionId: number, elapsed: number, corrupt
   game.enemies.push({ x, y, ...stats, maxHp: stats.hp, type, attack: type === "boss" ? 2.2 : 0, flash: 0, windup: 0, targetX: x, targetY: y, summonedAtHalf: false });
   // Spawn pressure is bounded. It affects encounter density, not enemy HP directly.
   if (!boss && pressure.enemySpawnScale > 1.25 && game.enemies.length < 48 && Math.random() < 0.18) {
-    game.enemies.push({ x: x + (Math.random() - 0.5) * 70, y: y + (Math.random() - 0.5) * 70, ...stats, maxHp: stats.hp, type, attack: 0, flash: 0 });
+    game.enemies.push({ x: x + (Math.random() - 0.5) * 70, y: y + (Math.random() - 0.5) * 70, ...stats, maxHp: stats.hp, type, attack: 0, flash: 0, windup: 0, targetX: x, targetY: y, summonedAtHalf: false });
   }
 }
 
@@ -88,7 +88,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
   });
   game.enemies.forEach((enemy) => {
     ctx.save(); ctx.translate(enemy.x, enemy.y);
-    if (enemy.type === "boss" && enemy.windup > 0) { ctx.save(); ctx.globalAlpha = 0.25 + Math.sin(game.elapsed * 18) * 0.08; ctx.strokeStyle = "#d8b5ff"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(enemy.targetX, enemy.targetY, 88, 0, Math.PI * 2); ctx.stroke(); ctx.fillStyle = "rgba(177,112,220,.12)"; ctx.beginPath(); ctx.arc(enemy.targetX, enemy.targetY, 88, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
+    if (enemy.type === "boss" && enemy.windup > 0) { ctx.save(); ctx.globalAlpha = 0.25 + Math.sin(game.elapsed * 18) * 0.08; ctx.strokeStyle = "#d8b5ff"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(enemy.targetX - enemy.x, enemy.targetY - enemy.y, 88, 0, Math.PI * 2); ctx.stroke(); ctx.fillStyle = "rgba(177,112,220,.12)"; ctx.beginPath(); ctx.arc(enemy.targetX - enemy.x, enemy.targetY - enemy.y, 88, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
     if (enemy.type === "elite") { ctx.strokeStyle = "rgba(210,170,230,.38)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, 0, enemy.radius + 7, 0, Math.PI * 2); ctx.stroke(); }
     ctx.fillStyle = enemy.flash > 0 ? "#ffffff" : enemy.color; ctx.shadowColor = enemy.color; ctx.shadowBlur = enemy.type === "boss" ? 25 : 10;
     ctx.beginPath(); ctx.arc(0, 0, enemy.radius, 0, Math.PI * 2); ctx.fill();
@@ -279,7 +279,7 @@ export function FractalArena() {
           setLevelChoices([...UPGRADES].sort(() => Math.random() - 0.5).slice(0, 3));
         }
         if (game.player.hp <= 0 && !game.ended) { game.ended = true; setResult("defeat"); }
-        if (game.elapsed >= RUN_DURATION_SECONDS && !game.ended && !game.bossSpawned) { spawnEnemy(game, missionId, game.elapsed, true); game.bossSpawned = true; }
+        if (game.elapsed >= RUN_DURATION_SECONDS && !game.ended && !game.bossSpawned) { spawnEnemy(game, missionId, game.elapsed, corruption, true); game.bossSpawned = true; }
         if (now - lastHud > 100) {
           lastHud = now;
           setHud({ hp: game.player.hp, maxHp: game.player.maxHp, xp: game.player.xp, nextXp: game.player.nextXp, level: game.player.level, kills: game.kills, elapsed: game.elapsed, phase: snapshot.phaseLabel, pressure: snapshot.totalPressure });
