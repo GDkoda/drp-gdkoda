@@ -5,7 +5,7 @@ create table if not exists public.fractal_player_state (
   user_id uuid primary key references public.profiles(id) on delete cascade,
   fractals integer not null default 0 check (fractals >= 0),
   corruption_unlocked integer not null default 0 check (corruption_unlocked between 0 and 5),
-  purchased_upgrades jsonb not null default '{"area":0,"experience":0,"rarity":1,"speed_2x":false,"speed_3x":false}'::jsonb,
+  purchased_upgrades jsonb not null default '{"area":0,"experience":0,"rarity":0,"speed_2x":false,"speed_3x":false}'::jsonb,
   completed_corruptions integer[] not null default '{}',
   updated_at timestamptz not null default now()
 );
@@ -14,8 +14,8 @@ alter table public.fractal_player_state enable row level security;
 drop policy if exists "fractal state own read" on public.fractal_player_state;
 create policy "fractal state own read" on public.fractal_player_state
   for select to authenticated using (user_id = auth.uid());
-grant select on public.fractal_player_state to authenticated;
 revoke all on public.fractal_player_state from anon, authenticated;
+grant select on public.fractal_player_state to authenticated;
 
 create or replace function public.get_fractal_state()
 returns jsonb
@@ -74,7 +74,7 @@ begin
   upgrades := s.purchased_upgrades;
 
   if _upgrade in ('area','experience','rarity') then
-    current_level := coalesce((upgrades->>_upgrade)::integer, case when _upgrade='rarity' then 1 else 0 end);
+    current_level := coalesce((upgrades->>_upgrade)::integer, 0);
     next_level := current_level + 1;
     if next_level > 3 then raise exception 'Esta melhoria já está no nível máximo'; end if;
     price := case _upgrade
@@ -82,11 +82,6 @@ begin
       when 'experience' then (array[25,50,90])[next_level]
       else (array[40,80,140])[next_level]
     end;
-    if _upgrade = 'rarity' and next_level = 1 then
-      -- Tier 1 is the normal baseline and is already owned.
-      next_level := 2;
-      price := 40;
-    end if;
     if s.fractals < price and not master_access then raise exception 'Fractais insuficientes'; end if;
     update public.fractal_player_state
       set fractals = case when master_access then fractals else fractals - price end,
