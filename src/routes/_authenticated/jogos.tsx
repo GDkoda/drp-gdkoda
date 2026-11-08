@@ -996,7 +996,7 @@ function FarkleGame({ onDone, onClose, vigor, coins }: { onDone: () => void; onC
         <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-amber-100/15 bg-[#2a1b14]/75 p-4 shadow-[0_12px_32px_rgba(0,0,0,.18)] backdrop-blur-sm sm:p-5">
           <div className="flex min-w-0 items-center gap-3">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-amber-200/25 bg-gradient-to-br from-amber-200/20 to-amber-500/5 text-3xl text-amber-200 shadow-inner">⚄</div>
-            <div className="min-w-0"><p className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.24em] text-amber-200/70"><Sparkles className="h-3.5 w-3.5" /> Jogo de Dados • disputa contra a máquina</p><h2 className="mt-1 font-display text-2xl text-amber-100 sm:text-3xl">Jogo de Dados</h2><p className="mt-1 text-xs text-amber-100/60">Acumule pontos, administre o risco e alcance 4.000 primeiro.</p></div>
+            <div className="min-w-0"><p className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.24em] text-amber-200/70"><Sparkles className="h-3.5 w-3.5" /> FARKLE • disputa contra a máquina</p><h2 className="mt-1 font-display text-2xl text-amber-100 sm:text-3xl">Farkle</h2><p className="mt-1 text-xs text-amber-100/60">Acumule pontos, administre o risco e alcance 4.000 primeiro.</p></div>
           </div>
           <div className="flex items-center gap-3 rounded-xl border border-amber-200/20 bg-black/25 px-4 py-3">
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-300/10 text-amber-300"><Flame className="h-5 w-5" /></span>
@@ -1021,7 +1021,7 @@ function FarkleGame({ onDone, onClose, vigor, coins }: { onDone: () => void; onC
               <p className="text-[11px] text-amber-100/55">Seu saldo: {coins.toLocaleString("pt-BR")} moedas · Limite de aposta: 50% do saldo atual.</p>
               <div className="grid gap-2 sm:grid-cols-2"><p className="rounded-xl border border-emerald-200/15 bg-emerald-950/25 p-3 text-[11px] leading-relaxed text-emerald-100/75"><strong className="text-emerald-200">Se vencer:</strong> recebe a aposta de volta e mais 50% de lucro. Ex.: aposta de 100 → recebe 150 moedas no total.</p><p className="rounded-xl border border-rose-200/15 bg-rose-950/25 p-3 text-[11px] leading-relaxed text-rose-100/75"><strong className="text-rose-200">Se perder:</strong> perde todo o valor apostado. Sem aposta, suas moedas não mudam.</p></div>
               <p className="text-[10px] leading-relaxed text-amber-100/40">A aposta é reservada ao iniciar. O lucro é arredondado para baixo quando a aposta for ímpar. Se sair ou recarregar a página antes do fim da partida, ela será considerada perdida.</p>
-              <p className="text-[10px] leading-relaxed text-amber-100/35">A partida ainda é executada no navegador; o servidor registra a reserva e a liquidação, mas não revalida os lançamentos realizados.</p>
+              <p className="text-[10px] leading-relaxed text-amber-100/35">Os dados e a estratégia da partida rodam nesta mesa; a reserva e a liquidação da aposta são registradas no servidor.</p>
             </div>
             <p className="mt-2 text-xs text-amber-200/80">Com o vigor atual, você tem {Math.floor(vigor / vigorCost)} partida(s) disponível(is) hoje.</p>
             <p className="text-xs text-amber-100/55">Você precisa selecionar ao menos uma combinação válida por lançamento. Dados guardados não voltam a rolar no mesmo turno. Um Farkle perde todos os pontos ainda não guardados. Ao usar os seis dados, você pode rolar os seis novamente.</p>
@@ -1118,7 +1118,7 @@ function Farkle({ onDone, vigor, coins }: { onDone: () => void; vigor: number; c
         </div>
         <div className="min-w-0 flex-1">
           <p className="farkle-launch-eyebrow"><Trophy className="h-3.5 w-3.5" /> Desafio da taverna</p>
-          <h2 className="mt-1 font-display text-xl text-gold sm:text-2xl">Farkle · Jogo de Dados</h2>
+          <h2 className="mt-1 font-display text-xl text-gold sm:text-2xl">Farkle · Farkle</h2>
           <p className="mt-1 max-w-2xl text-sm text-muted-foreground">Enfrente a máquina, combine dados, calcule riscos e alcance 4.000 pontos antes dela. A sorte ajuda — mas estratégia decide.</p>
           <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-muted-foreground">
             <span className="farkle-feature-pill"><Sparkles className="h-3 w-3" /> IA estratégica</span>
