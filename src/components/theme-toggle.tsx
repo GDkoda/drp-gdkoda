@@ -3,15 +3,15 @@ import { createPortal } from "react-dom";
 import { Check, Moon, Palette, Sun, X } from "lucide-react";
 
 type ThemeMode = "dark" | "light";
-type PaletteId = "medieval" | "arcane" | "forest" | "crimson" | "obsidian" | "ocean";
+type PaletteId = "ousado" | "rico" | "eletrizante" | "destemido" | "moderno" | "futurista";
 
 const palettes: { id: PaletteId; label: string; description: string; colors: [string, string, string] }[] = [
-  { id: "medieval", label: "Taverna", description: "Ouro antigo e madeira acolhedora", colors: ["#d7a83e", "#302721", "#211b18"] },
-  { id: "arcane", label: "Arcano", description: "Violeta místico e azul etéreo", colors: ["#a78bfa", "#252039", "#171522"] },
-  { id: "forest", label: "Floresta", description: "Verde esmeralda e tons naturais", colors: ["#4fbd91", "#20352e", "#14221d"] },
-  { id: "crimson", label: "Sangue & aço", description: "Carmesim intenso e grafite", colors: ["#fb7185", "#38232b", "#21171d"] },
-  { id: "obsidian", label: "Obsidiana", description: "Preto profundo, grafite e prata", colors: ["#c4cbd5", "#292d34", "#111318"] },
-  { id: "ocean", label: "Abismo", description: "Azul-marinho e azul luminoso", colors: ["#60b8f5", "#203c5c", "#0d1c30"] },
+  { id: "ousado", label: "OUSADO", description: "Amarelo elétrico, carvão e violeta", colors: ["#FFF21A", "#171717", "#A66BFF"] },
+  { id: "rico", label: "RICO", description: "Madeira, creme e cobre", colors: ["#5B4632", "#F4D9A0", "#C8792C"] },
+  { id: "eletrizante", label: "ELETRIZANTE", description: "Azul intenso, noite e lima neon", colors: ["#030407", "#1558C9", "#D4FF24"] },
+  { id: "destemido", label: "DESTEMIDO", description: "Rosa vibrante, ameixa e laranja", colors: ["#E7B0DE", "#400849", "#FF5A0A"] },
+  { id: "moderno", label: "MODERNO", description: "Preto, sálvia e verde luminoso", colors: ["#000000", "#6D8F63", "#39FF88"] },
+  { id: "futurista", label: "FUTURISTA", description: "Menta tecnológica, preto e vermelho", colors: ["#39F0AE", "#000000", "#FF0000"] },
 ];
 
 function storedMode(): ThemeMode {
@@ -21,10 +21,10 @@ function storedMode(): ThemeMode {
 }
 
 function storedPalette(): PaletteId {
-  if (typeof window === "undefined") return "medieval";
+  if (typeof window === "undefined") return "ousado";
   try {
     const value = window.localStorage.getItem("mesa-palette");
-    return palettes.some((palette) => palette.id === value) ? value as PaletteId : "medieval";
+    return palettes.some((palette) => palette.id === value) ? value as PaletteId : "ousado";
   } catch { return "medieval"; }
 }
 
