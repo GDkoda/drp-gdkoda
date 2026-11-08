@@ -27,6 +27,7 @@ function syncBrowserThemeColor() {
     meta.setAttribute("content", "black");
   });
 
+}
 
 function storedMode(): ThemeMode {
   if (typeof window === "undefined") return "dark";
