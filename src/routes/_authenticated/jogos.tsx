@@ -387,7 +387,7 @@ function Puzzle({ onDone, buttonLabel }: { onDone: () => void; buttonLabel: stri
 
   const timeLabel = `00:${String(remainingSeconds).padStart(2, "0")}`;
 
-  function showDefeat(expired: boolean) {
+  function showDefeat() {
     setCurseLine(puzzleCurseLines[Math.floor(Math.random() * puzzleCurseLines.length)]);
     setRemainingSeconds(0);
   }
@@ -438,7 +438,7 @@ function Puzzle({ onDone, buttonLabel }: { onDone: () => void; buttonLabel: stri
         expired?: boolean;
       };
       setRes(result);
-      if (!result.correct) showDefeat(!!result.expired);
+      if (!result.correct) showDefeat();
       onDone();
     } catch (error) {
       finalizing.current = false;
@@ -467,7 +467,7 @@ function Puzzle({ onDone, buttonLabel }: { onDone: () => void; buttonLabel: stri
           const result = value as { expired: boolean; expiresAt?: string; serverNow?: string };
           if (result.expired) {
             setRes({ correct: false, answer: "", reward: 0, expired: true });
-            showDefeat(true);
+            showDefeat();
             onDone();
             return;
           }
@@ -1242,15 +1242,32 @@ function FarkleGame({ onDone, onClose, vigor, coins }: { onDone: () => void; onC
         .farkle-hud [class*="text-amber-200"],
         .farkle-hud [class*="text-amber-300"] { color: var(--primary) !important; }
         .farkle-hud [class*="border-amber-"] { border-color: var(--border) !important; }
-        .farkle-hud [class*="bg-amber-"] { background-color: var(--primary) !important; color: var(--primary-foreground) !important; }
+        /* Transparent amber surfaces must stay tinted, not become solid primary-colored. */
+        .farkle-hud [class*="bg-amber-"][class*="/"] {
+          background-color: color-mix(in oklab, var(--primary) 12%, var(--card)) !important;
+          color: var(--primary) !important;
+        }
+        .farkle-hud [class~="bg-amber-300"],
+        .farkle-hud [class~="bg-amber-400"],
+        .farkle-hud [class~="bg-amber-500"] {
+          background-color: var(--primary) !important;
+          color: var(--primary-foreground) !important;
+        }
+        .farkle-hud [class*="text-amber-950"] { color: var(--primary-foreground) !important; }
         .farkle-hud [class*="bg-[#"],
         .farkle-hud [class*="bg-[linear-gradient"],
         .farkle-hud [class*="bg-[radial-gradient"] {
-          background: var(--card) !important;
+          background: color-mix(in oklab, var(--card) 92%, var(--primary) 8%) !important;
           background-image: none !important;
         }
-        .farkle-hud [class*="from-amber-"] { --tw-gradient-from: var(--primary) !important; }
-        .farkle-hud [class*="to-amber-"] { --tw-gradient-to: color-mix(in oklab, var(--primary) 8%, transparent) !important; }
+        .farkle-hud [class*="from-amber-"],
+        .farkle-hud [class*="from-emerald-"] {
+          --tw-gradient-from: color-mix(in oklab, var(--primary) 18%, var(--card)) !important;
+        }
+        .farkle-hud [class*="to-amber-"],
+        .farkle-hud [class*="to-emerald-"] {
+          --tw-gradient-to: color-mix(in oklab, var(--primary) 4%, var(--card)) !important;
+        }
         .farkle-hud .farkle-theme-panel { background: color-mix(in oklab, var(--card) 88%, var(--primary) 12%) !important; }
         .farkle-hud [class*="text-emerald-"] { color: var(--primary) !important; }
         .farkle-hud [class*="text-rose-"] { color: var(--destructive) !important; }
