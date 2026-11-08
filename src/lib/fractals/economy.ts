@@ -12,23 +12,23 @@ export const FRACTAL_RARITY_TIERS = [
 
 export const FRACTAL_SHOP = {
   area: [
-    { level: 1, cost: 30, bonus: 0.12, label: "Área I" },
-    { level: 2, cost: 60, bonus: 0.24, label: "Área II" },
-    { level: 3, cost: 100, bonus: 0.36, label: "Área III" },
+    { level: 1, cost: 300, bonus: 0.12, label: "Área I" },
+    { level: 2, cost: 600, bonus: 0.24, label: "Área II" },
+    { level: 3, cost: 1000, bonus: 0.36, label: "Área III" },
   ],
   experience: [
-    { level: 1, cost: 25, bonus: 0.10, label: "Afinidade I" },
-    { level: 2, cost: 50, bonus: 0.20, label: "Afinidade II" },
-    { level: 3, cost: 90, bonus: 0.30, label: "Afinidade III" },
+    { level: 1, cost: 250, bonus: 0.10, label: "Afinidade I" },
+    { level: 2, cost: 500, bonus: 0.20, label: "Afinidade II" },
+    { level: 3, cost: 900, bonus: 0.30, label: "Afinidade III" },
   ],
   rarity: [
-    { level: 1, cost: 40, tier: 1, label: "Acesso raro" },
-    { level: 2, cost: 80, tier: 2, label: "Acesso épico" },
-    { level: 3, cost: 140, tier: 3, label: "Ressonância superior" },
+    { level: 1, cost: 400, tier: 1, label: "Acesso raro" },
+    { level: 2, cost: 800, tier: 2, label: "Acesso épico" },
+    { level: 3, cost: 1400, tier: 3, label: "Ressonância superior" },
   ],
   speed: {
-    double: { cost: 100, multiplier: 2 },
-    triple: { cost: 200, multiplier: 3 },
+    double: { cost: 1000, multiplier: 2 },
+    triple: { cost: 2000, multiplier: 3 },
   },
 } as const;
 
