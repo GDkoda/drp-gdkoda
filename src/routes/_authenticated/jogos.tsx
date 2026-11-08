@@ -385,7 +385,7 @@ function Puzzle({ onDone, buttonLabel }: { onDone: () => void; buttonLabel: stri
   const [curseLine, setCurseLine] = useState("");
   const finalizing = useRef(false);
 
-  const timeLabel = `00:${String(remainingSeconds).padStart(2, "0")}`;
+  const timeLabel = `${String(Math.floor(remainingSeconds / 60)).padStart(2, "0")}:${String(remainingSeconds % 60).padStart(2, "0")}`;
 
   function showDefeat() {
     setCurseLine(puzzleCurseLines[Math.floor(Math.random() * puzzleCurseLines.length)]);
