@@ -97,11 +97,11 @@ A recompensa usa até 65% do teto pela sobrevivência proporcional, 25% por derr
 - [x] Alternância de tela cheia.
 - [x] Simulação acelerada real em 2x/3x para a conta com papel `master`.
 - [x] Valores iniciais de custos, raridades e recompensa centralizados.
-- [ ] Compra persistente da loja, saldo de fractais e concessão de recompensas por RPC no banco.
-- [ ] Persistência e validação server-side da progressão de corrupção (0 libera 1, e assim sucessivamente após vitória).
-- [ ] Aplicação dos bônus permanentes de área e experiência no jogo.
+- [x] Compra persistente da loja e leitura do saldo via RPC; a concessão de recompensas continua bloqueada até haver combate autoritativo no servidor.
+- [x] Persistência da progressão de corrupção via RPC; há bloqueio por tempo mínimo, mas a confirmação do chefe ainda depende do cliente.
+- [x] Aplicação dos bônus permanentes de área de coleta e experiência.
 
-A interface de aceleração já bloqueia 2x/3x para contas comuns; esses modos serão liberados após compra quando a loja persistente estiver conectada. Não creditar fractais a partir de uma vitória informada apenas pelo navegador: o protótipo de combate é client-side e ainda precisa de uma camada de validação adequada.
+A interface de aceleração bloqueia 2x/3x para contas comuns até a compra permanente. A loja persistente já está conectada. Não creditar fractais a partir de uma vitória informada apenas pelo navegador: o protótipo de combate é client-side e ainda precisa de uma camada de validação adequada.
 
 
 ### Continuação implementada
@@ -112,6 +112,6 @@ A interface de aceleração já bloqueia 2x/3x para contas comuns; esses modos s
 - [x] Seleção de corrupção bloqueia níveis acima do desbloqueado; vitória no nível atual registra conclusão e libera o seguinte.
 - [x] Início e encerramento de expedição registrados no banco. A RPC exige 11 minutos de tempo real para vitória em contas comuns; a conta mestre pode testar sem essa espera.
 
-**Limitação de segurança ainda existente:** o jogo e a morte/derrota do chefe são processados no cliente. O banco aplica uma barreira de tempo e controla o desbloqueio, mas ainda não consegue provar criptograficamente que o chefe foi derrotado. Não há concessão de fractais por vitória nesta etapa; isso fica bloqueado até a simulação/recompensa ser autoritativa no servidor. As probabilidades de raridade estão configuradas, mas ainda precisam ser aplicadas às cartas de evolução de armas.
+**Limitação de segurança ainda existente:** o jogo e a morte/derrota do chefe são processados no cliente. O banco aplica uma barreira de tempo e controla o desbloqueio, mas ainda não consegue provar criptograficamente que o chefe foi derrotado. Não há concessão de fractais por vitória nesta etapa; isso fica bloqueado até a simulação/recompensa ser autoritativa no servidor. As probabilidades de raridade já são sorteadas nas ofertas de melhoria de nível. Ainda não existe sistema de evolução de armas; quando for criado, suas evoluções serão sempre lendárias.
 
 **SQL:** executar a migração `drizzle/migrations/0005_fractal_shop_state.sql` no editor SQL do Supabase. Se a versão anterior já foi aplicada, execute o arquivo atualizado inteiro para substituir as funções e criar a tabela de expedições.
