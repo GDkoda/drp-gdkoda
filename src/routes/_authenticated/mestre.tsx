@@ -12,37 +12,97 @@ import { useServerFn } from "@tanstack/react-start";
 import { deleteAccount } from "@/lib/admin.functions";
 import { defaultAppearance, defaultTexts, useCustomization, type Appearance, type Customization, type TextKey } from "@/lib/app-customization";
 import { Slider } from "@/components/ui/slider";
-import { ImageUp, RotateCcw, Save } from "lucide-react";
+import { ImageUp, RotateCcw, Save, LayoutDashboard, Users, ShoppingBag, SlidersHorizontal, Skull, Puzzle, Palette, ScrollText, Search, Coins, ArrowUpRight, ShieldAlert } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/mestre")({
   head: () => ({ meta: [{ title: "Painel do Mestre — Mesa 3D&T" }, { name: "description", content: "Gerencie jogadores, loja e tesouros." }] }),
   component: Mestre,
 });
 
+const masterSections = [
+  { value: "overview", label: "Visão geral", icon: LayoutDashboard },
+  { value: "players", label: "Jogadores", icon: Users },
+  { value: "shop", label: "Loja", icon: ShoppingBag },
+  { value: "rules", label: "Regras", icon: SlidersHorizontal },
+  { value: "monsters", label: "Monstros", icon: Skull },
+  { value: "puzzles", label: "Enigmas", icon: Puzzle },
+  { value: "appearance", label: "Personalização", icon: Palette },
+  { value: "log", label: "Registro", icon: ScrollText },
+] as const;
+
 function Mestre() {
   const { data: me } = useMe();
   const { text } = useCustomization();
-  if (me && !me.isMaster) return <p>Apenas o Mestre pode ver esta página.</p>;
+  const [section, setSection] = useState("overview");
+  const { data: overview } = useQuery({
+    queryKey: ["master-overview"],
+    queryFn: async () => {
+      const [players, shop, monsters, puzzles, transactions] = await Promise.all([
+        (supabase as any).from("profiles").select("id", { count: "exact", head: true }),
+        (supabase as any).from("shop_items").select("id", { count: "exact", head: true }),
+        (supabase as any).from("monsters").select("id", { count: "exact", head: true }).eq("active", true),
+        (supabase as any).from("puzzles").select("id", { count: "exact", head: true }).eq("active", true),
+        (supabase as any).from("transactions").select("id", { count: "exact", head: true }),
+      ]);
+      return { players: players.count ?? 0, shop: shop.count ?? 0, monsters: monsters.count ?? 0, puzzles: puzzles.count ?? 0, transactions: transactions.count ?? 0 };
+    },
+    enabled: !!me?.isMaster,
+    staleTime: 30_000,
+  });
+  if (me && !me.isMaster) return <p className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-destructive">Apenas o Mestre pode ver esta página.</p>;
+  const goTo = (value: string) => setSection(value);
   return (
-    <div className="space-y-4">
-      <h1 className="text-2xl text-gold">{text("mestre_title")}</h1>
-      <Tabs defaultValue="players">
-        <TabsList className="flex h-auto w-full flex-wrap">
-          <TabsTrigger value="players" className="flex-1">{text("mestre_players")}</TabsTrigger>
-          <TabsTrigger value="shop" className="flex-1">{text("mestre_shop")}</TabsTrigger>
-          <TabsTrigger value="rules" className="flex-1">{text("mestre_rules")}</TabsTrigger>
-          <TabsTrigger value="monsters" className="flex-1">{text("mestre_monsters")}</TabsTrigger>
-          <TabsTrigger value="puzzles" className="flex-1">{text("mestre_puzzles")}</TabsTrigger>
-          <TabsTrigger value="appearance" className="flex-1">{text("mestre_appearance")}</TabsTrigger>
-          <TabsTrigger value="log" className="flex-1">{text("mestre_log")}</TabsTrigger>
+    <div className="space-y-5">
+      <div className="page-heading">
+        <div><p className="page-eyebrow">Administração da campanha</p><h1 className="mt-1 text-3xl text-gold">{text("mestre_title")}</h1><p className="mt-2 max-w-2xl text-sm text-muted-foreground">Gerencie a mesa, equilibre recompensas e acompanhe as atividades sem sair deste painel.</p></div>
+        <span className="inline-flex items-center gap-2 rounded-xl border border-primary/25 bg-primary/10 px-3 py-2 text-xs font-semibold text-gold"><ShieldAlert className="h-4 w-4" />Acesso do Mestre</span>
+      </div>
+      <Tabs value={section} onValueChange={setSection}>
+        <TabsList className="flex h-auto w-full flex-nowrap justify-start overflow-x-auto">
+          {masterSections.map(({ value, label, icon: Icon }) => (
+            <TabsTrigger key={value} value={value} className="min-w-max flex-1 gap-2 px-3"><Icon className="h-4 w-4" />{value === "players" ? text("mestre_players") : value === "shop" ? text("mestre_shop") : value === "rules" ? text("mestre_rules") : value === "monsters" ? text("mestre_monsters") : value === "puzzles" ? text("mestre_puzzles") : value === "appearance" ? text("mestre_appearance") : value === "log" ? text("mestre_log") : label}</TabsTrigger>
+          ))}
         </TabsList>
-        <TabsContent value="players"><Players /></TabsContent>
-        <TabsContent value="shop"><ShopAdmin /></TabsContent>
-        <TabsContent value="rules"><Rules /></TabsContent>
-        <TabsContent value="monsters"><Monsters /></TabsContent>
-        <TabsContent value="puzzles"><Puzzles /></TabsContent>
-        <TabsContent value="appearance"><AppearanceEditor /></TabsContent>
-        <TabsContent value="log"><Log /></TabsContent>
+        <TabsContent value="overview" className="space-y-5">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+            {[
+              { label: "Jogadores", value: overview?.players, icon: Users, target: "players", detail: "Contas da mesa" },
+              { label: "Itens na loja", value: overview?.shop, icon: ShoppingBag, target: "shop", detail: "Catálogo de itens" },
+              { label: "Monstros ativos", value: overview?.monsters, icon: Skull, target: "monsters", detail: "Encontros disponíveis" },
+              { label: "Enigmas ativos", value: overview?.puzzles, icon: Puzzle, target: "puzzles", detail: "Desafios publicados" },
+              { label: "Movimentações", value: overview?.transactions, icon: ScrollText, target: "log", detail: "Histórico financeiro" },
+            ].map(({ label, value, icon: Icon, target, detail }) => (
+              <button key={target} type="button" onClick={() => goTo(target)} className="group rounded-2xl border bg-card p-4 text-left transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-lg">
+                <div className="flex items-center justify-between gap-2"><span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{label}</span><Icon className="h-4 w-4 text-gold" /></div>
+                <p className="mt-3 font-display text-3xl tabular-nums">{value ?? "—"}</p>
+                <span className="mt-1 flex items-center justify-between text-xs text-muted-foreground">{detail}<ArrowUpRight className="h-3.5 w-3.5 opacity-0 transition-opacity group-hover:opacity-100" /></span>
+              </button>
+            ))}
+          </div>
+          <section className="rounded-2xl border bg-card p-5 sm:p-6">
+            <div className="mb-4"><h2 className="font-display text-xl">Atalhos de administração</h2><p className="text-sm text-muted-foreground">Vá direto para as tarefas mais comuns.</p></div>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {[
+                { title: "Gerenciar jogadores", desc: "Ajustar moedas, vigor, XP e itens.", target: "players", icon: Users },
+                { title: "Equilibrar a campanha", desc: "Recompensas, custos e vigor diário.", target: "rules", icon: SlidersHorizontal },
+                { title: "Preparar encontros", desc: "Cadastrar monstros e desafios.", target: "monsters", icon: Skull },
+                { title: "Atualizar a loja", desc: "Editar preços e disponibilidade.", target: "shop", icon: ShoppingBag },
+                { title: "Personalizar a mesa", desc: "Cores, textos e aparência geral.", target: "appearance", icon: Palette },
+                { title: "Auditar movimentações", desc: "Conferir as últimas transações.", target: "log", icon: ScrollText },
+              ].map(({ title, desc, target, icon: Icon }) => (
+                <button key={target} type="button" onClick={() => goTo(target)} className="flex items-start gap-3 rounded-xl border border-border/80 p-4 text-left hover:border-primary/50 hover:bg-muted/40">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-gold"><Icon className="h-5 w-5" /></span>
+                  <span className="min-w-0 flex-1"><span className="block font-semibold">{title}</span><span className="mt-1 block text-sm text-muted-foreground">{desc}</span></span>
+                  <ArrowUpRight className="mt-1 h-4 w-4 shrink-0 text-muted-foreground" />
+                </button>
+              ))}
+            </div>
+          </section>
+          <section className="rounded-2xl border border-amber-500/25 bg-amber-500/5 p-4">
+            <div className="flex items-start gap-3"><ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-amber-500" /><div><h2 className="font-semibold">Ações sensíveis</h2><p className="text-sm text-muted-foreground">Distribuição em massa e exclusão de contas alteram dados de vários jogadores. Confirme os valores e revise o alvo antes de executar.</p></div></div>
+          </section>
+        </TabsContent>
+        <TabsContent value="players"><Players /></TabsContent><TabsContent value="shop"><ShopAdmin /></TabsContent><TabsContent value="rules"><Rules /></TabsContent><TabsContent value="monsters"><Monsters /></TabsContent><TabsContent value="puzzles"><Puzzles /></TabsContent><TabsContent value="appearance"><AppearanceEditor /></TabsContent><TabsContent value="log"><Log /></TabsContent>
       </Tabs>
     </div>
   );
@@ -164,34 +224,41 @@ function Players() {
   const { data: players } = usePlayers();
   const { data: shop } = useQuery({ queryKey: ["shop-all"], queryFn: async () => (await supabase.from("shop_items").select("*").order("name")).data ?? [] });
   const [mass, setMass] = useState({ coins: 0, xp: 0 });
+  const [search, setSearch] = useState("");
   const [deltas, setDeltas] = useState<Record<string, number>>({});
   const [vdeltas, setVdeltas] = useState<Record<string, number>>({});
   const del = useServerFn(deleteAccount);
 
   async function distribute() {
-    if (!players) return;
-    for (const p of players) {
-      if (mass.coins) await rpc("master_adjust_coins", { _user: p.id, _delta: mass.coins, _note: "Tesouro em massa" });
-    }
-    if (mass.xp) {
-      const { data: chars } = await supabase.from("characters").select("id, xp");
-      for (const c of chars ?? []) await supabase.from("characters").update({ xp: c.xp + mass.xp }).eq("id", c.id);
-    }
-    toast.success("Tesouro distribuído!");
-    refresh();
+    if (!players || (!mass.coins && !mass.xp)) return;
+    const summary = [mass.coins ? `${mass.coins > 0 ? "+" : ""}${mass.coins} moedas por jogador` : "", mass.xp ? `${mass.xp > 0 ? "+" : ""}${mass.xp} XP por ficha` : ""].filter(Boolean).join(" e ");
+    if (!confirm(`Aplicar ${summary} para ${players.length} jogadores? Esta ação altera dados em massa.`)) return;
+    try {
+      if (mass.coins) await Promise.all(players.map((p) => rpc("master_adjust_coins", { _user: p.id, _delta: mass.coins, _note: "Tesouro em massa" })));
+      if (mass.xp) {
+        const { data: chars, error } = await supabase.from("characters").select("id, xp");
+        if (error) throw error;
+        const updates = await Promise.all((chars ?? []).map((c) => supabase.from("characters").update({ xp: c.xp + mass.xp }).eq("id", c.id)));
+        const failed = updates.find((result) => result.error);
+        if (failed?.error) throw failed.error;
+      }
+      toast.success("Tesouro distribuído!"); setMass({ coins: 0, xp: 0 }); refresh();
+    } catch (error) { toast.error(`A distribuição pode ter sido parcial: ${(error as Error).message}`); refresh(); }
   }
 
   return (
     <div className="space-y-4">
       <section className="rounded-lg border bg-card p-4">
-        <h2 className="text-lg">Distribuir tesouro para todos</h2>
+        <div className="flex items-start gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-gold"><Coins className="h-5 w-5" /></span><div><h2 className="font-display text-lg">Distribuir tesouro para todos</h2><p className="text-sm text-muted-foreground">A distribuição é confirmada antes de alterar os saldos e fichas.</p></div></div>
         <div className="mt-2 flex flex-wrap gap-2">
           <label className="text-sm">Moedas <Input type="number" className="w-28" value={mass.coins} onChange={(e) => setMass({ ...mass, coins: +e.target.value })} /></label>
           <label className="text-sm">XP (todas as fichas) <Input type="number" className="w-28" value={mass.xp} onChange={(e) => setMass({ ...mass, xp: +e.target.value })} /></label>
-          <Button className="self-end" onClick={distribute}>Distribuir</Button>
+          <Button className="self-end" disabled={!mass.coins && !mass.xp} onClick={distribute}>Distribuir tesouro</Button>
         </div>
       </section>
-      {players?.map((p) => (
+      <div className="relative"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar jogador por nome ou usuário…" aria-label="Buscar jogador" /></div>
+      <p className="text-xs text-muted-foreground">{players?.filter((p) => `${p.display_name} ${p.username}`.toLowerCase().includes(search.trim().toLowerCase())).length ?? 0} jogador(es) encontrados</p>
+      {players?.filter((p) => `${p.display_name} ${p.username}`.toLowerCase().includes(search.trim().toLowerCase())).map((p) => (
         <div key={p.id} className="rounded-lg border bg-card p-4">
           <div className="flex justify-between">
             <h3>{p.display_name} <span className="text-sm text-muted-foreground">@{p.username}</span></h3>
@@ -199,7 +266,7 @@ function Players() {
           </div>
           <div className="mt-2 flex flex-col gap-2 sm:flex-row">
             <Input type="number" placeholder="+/- moedas" className="sm:w-32" value={deltas[p.id] ?? ""} onChange={(e) => setDeltas({ ...deltas, [p.id]: +e.target.value })} />
-            <Button size="sm" variant="secondary" onClick={async () => { await rpc("master_adjust_coins", { _user: p.id, _delta: deltas[p.id] ?? 0, _note: "Ajuste manual" }, "Saldo ajustado"); refresh(); }}>Ajustar</Button>
+            <Button size="sm" variant="secondary" disabled={!deltas[p.id]} onClick={async () => { await rpc("master_adjust_coins", { _user: p.id, _delta: deltas[p.id] ?? 0, _note: "Ajuste manual" }, "Saldo ajustado"); setDeltas((old) => ({ ...old, [p.id]: 0 })); refresh(); }}>Ajustar moedas</Button>
             <Select onValueChange={async (v) => { await rpc("master_give_item", { _user: p.id, _item: v }, "Item entregue"); refresh(); }}>
               <SelectTrigger className="sm:w-56"><SelectValue placeholder="Dar item…" /></SelectTrigger>
               <SelectContent>{shop?.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
@@ -207,7 +274,7 @@ function Players() {
           </div>
           <div className="mt-2 flex flex-col gap-2 sm:flex-row">
             <Input type="number" placeholder="+/- vigor" className="sm:w-32" value={vdeltas[p.id] ?? ""} onChange={(e) => setVdeltas({ ...vdeltas, [p.id]: +e.target.value })} />
-            <Button size="sm" variant="secondary" onClick={async () => { await rpc("master_adjust_vigor", { _user: p.id, _delta: vdeltas[p.id] ?? 0 }, "Vigor ajustado"); refresh(); }}>Ajustar vigor</Button>
+            <Button size="sm" variant="secondary" disabled={!vdeltas[p.id]} onClick={async () => { await rpc("master_adjust_vigor", { _user: p.id, _delta: vdeltas[p.id] ?? 0 }, "Vigor ajustado"); setVdeltas((old) => ({ ...old, [p.id]: 0 })); refresh(); }}>Ajustar vigor</Button>
             <Button size="sm" variant="destructive" className="sm:ml-auto" onClick={async () => {
               if (prompt(`Para excluir PERMANENTEMENTE a conta de ${p.display_name}, digite o nome de usuário (${p.username}):`) !== p.username) return;
               try { await del({ data: { userId: p.id } }); toast.success("Conta excluída"); refresh(); } catch (e) { toast.error((e as Error).message); }
@@ -322,7 +389,7 @@ function Rules() {
   );
 }
 
-const emptyMonster = { name: "", f: 1, h: 1, a: 1, pdf: 0, pv: 5, xp: 1, reward: "" as number | "" };
+const emptyMonster = { name: "", f: 1, h: 1, a: 1, pdf: 0, pv: 5, xp: 1, reward: "" as number | "", image_url: "" };
 
 function Monsters() {
   const refresh = useRefresh();
@@ -331,7 +398,7 @@ function Monsters() {
   const db = (supabase as any).from("monsters");
   const num = ["f", "h", "a", "pdf", "pv", "xp"] as const;
   async function add() {
-    const { error } = await (supabase as any).from("monsters").insert({ ...form, reward: form.reward === "" ? null : form.reward });
+    const { error } = await (supabase as any).from("monsters").insert({ ...form, reward: form.reward === "" ? null : form.reward, image_url: form.image_url.trim() || null });
     if (error) { toast.error(error.message); return; }
     setForm(emptyMonster); refresh();
   }
@@ -345,6 +412,7 @@ function Monsters() {
       <section className="space-y-2 rounded-lg border bg-card p-4">
         <h2 className="text-lg">Novo monstro</h2>
         <Input placeholder="Nome" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+        <label className="block space-y-1 text-xs font-medium text-muted-foreground">Imagem do monstro (URL) <Input placeholder="https://… ou caminho /monsters/…" value={form.image_url} onChange={(e) => setForm({ ...form, image_url: e.target.value })} /></label>
         <div className="grid grid-cols-3 gap-2 sm:grid-cols-7">
           {num.map((k) => <label key={k} className="text-xs uppercase">{k === "pv" ? "PV" : k}<Input type="number" value={form[k]} onChange={(e) => setForm({ ...form, [k]: +e.target.value })} /></label>)}
           <label className="text-xs">Moedas<Input type="number" placeholder="padrão" value={form.reward} onChange={(e) => setForm({ ...form, reward: e.target.value === "" ? "" : +e.target.value })} /></label>
@@ -354,6 +422,7 @@ function Monsters() {
       {data?.map((m: any) => (
         <div key={m.id} className="space-y-2 rounded-lg border bg-card p-3">
           <Input defaultValue={m.name} className={m.active ? "" : "opacity-60"} onBlur={(e) => e.target.value !== m.name && upd(m.id, { name: e.target.value })} />
+          <label className="block space-y-1 text-xs font-medium text-muted-foreground">Imagem do monstro (URL)<Input key={`${m.id}-${m.image_url ?? ""}`} defaultValue={m.image_url ?? ""} placeholder="URL da imagem ou /monsters/arquivo.svg" onBlur={(e) => e.target.value.trim() !== (m.image_url ?? "") && upd(m.id, { image_url: e.target.value.trim() || null })} /></label>
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-7">
             {num.map((k) => <label key={k} className="text-xs uppercase">{k === "pv" ? "PV" : k}<Input type="number" defaultValue={m[k]} onBlur={(e) => +e.target.value !== m[k] && upd(m.id, { [k]: +e.target.value })} /></label>)}
             <label className="text-xs">Moedas<Input type="number" placeholder="padrão" defaultValue={m.reward ?? ""} onBlur={(e) => upd(m.id, { reward: e.target.value === "" ? null : +e.target.value })} /></label>

@@ -8,6 +8,34 @@
       "when": 1791509417914,
       "tag": "0000_spells",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1793594129201,
+      "tag": "0001_lore_library_and_farkle",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793594153675,
+      "tag": "0002_lore_groups_and_permissions",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1793595000000,
+      "tag": "0003_farkle_optional_wagers",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1794010516240,
+      "tag": "0004_strategic_3dt_alpha_combat",
+      "breakpoints": true
     }
   ]
 }
