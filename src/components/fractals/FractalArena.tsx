@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type PointerEvent } from "react";
-import { AlertTriangle, Heart, Move, Pause, Play, RotateCcw, Shield, Skull, Sparkles, Swords, Zap } from "lucide-react";
+import { AlertTriangle, Heart, Move, Pause, Play, RotateCcw, Shield, Skull, Sparkles, Swords, Zap, Maximize, UserRound, Gauge, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { getDifficultySnapshot } from "@/lib/fractals/difficulty";
@@ -118,7 +118,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
   }
 }
 
-export function FractalArena() {
+export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const gameRef = useRef<GameState | null>(null);
   const keysRef = useRef(new Set<string>());
@@ -131,6 +131,8 @@ export function FractalArena() {
   const [hud, setHud] = useState({ hp: 100, maxHp: 100, xp: 0, nextXp: 12, level: 1, kills: 0, elapsed: 0, phase: "Exploração", pressure: 0 });
   const [result, setResult] = useState<"victory" | "defeat" | null>(null);
   const [bossMessage, setBossMessage] = useState(false);
+  const [pausePanel, setPausePanel] = useState<"main" | "attributes">("main");
+  const [speedMultiplier, setSpeedMultiplier] = useState<1 | 2 | 3>(1);
 
   const start = useCallback(() => {
     const rect = canvasRef.current?.getBoundingClientRect();
@@ -179,7 +181,8 @@ export function FractalArena() {
       const game = gameRef.current;
       if (!game) return;
       if (!game.last) game.last = now;
-      const dt = Math.min(0.033, (now - game.last) / 1000);
+      const rawDt = Math.min(0.033, (now - game.last) / 1000);
+      const dt = rawDt * speedMultiplier;
       game.last = now;
       if (!game.ended && !paused && levelChoices.length === 0) {
         game.elapsed += dt;
@@ -290,7 +293,7 @@ export function FractalArena() {
     };
     frame = requestAnimationFrame(tick);
     return () => { cancelAnimationFrame(frame); window.removeEventListener("resize", resize); window.removeEventListener("keydown", onKeyDown); window.removeEventListener("keyup", onKeyUp); };
-  }, [running, paused, levelChoices.length, missionId, corruption]);
+  }, [running, paused, levelChoices.length, missionId, corruption, speedMultiplier]);
 
   const pointerStart = (event: PointerEvent<HTMLCanvasElement>) => {
     const rect = event.currentTarget.getBoundingClientRect();
@@ -305,9 +308,13 @@ export function FractalArena() {
   const pointerEnd = () => { joystickRef.current = null; };
   const formatTime = (seconds: number) => `${Math.floor(seconds / 60).toString().padStart(2, "0")}:${Math.floor(seconds % 60).toString().padStart(2, "0")}`;
   const mission = FRACTAL_MISSIONS.find((item) => item.id === missionId)!;
+  const toggleFullscreen = async () => {
+    const target = canvasRef.current?.closest("[data-fractal-arena]") as HTMLElement | null;
+    try { if (!document.fullscreenElement) await target?.requestFullscreen(); else await document.exitFullscreen(); } catch { /* Fullscreen may be unavailable in embedded browsers. */ }
+  };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" data-fractal-arena>
       {!running && !result && (
         <Card className="overflow-hidden border-border/70 bg-card/80">
           <div className="space-y-5 p-4 sm:p-6">
@@ -357,7 +364,19 @@ export function FractalArena() {
             <canvas ref={canvasRef} className="block h-[min(64vh,560px)] min-h-[390px] w-full touch-none" onPointerDown={pointerStart} onPointerMove={pointerMove} onPointerUp={pointerEnd} onPointerCancel={pointerEnd} aria-label="Arena de sobrevivência. Use WASD, setas ou arraste o dedo para mover." />
             <div className="pointer-events-none absolute left-3 top-3 rounded-lg border border-white/10 bg-black/45 px-2.5 py-1.5 text-[11px] text-white/75"><span className="font-semibold text-white">{hud.phase}</span><span className="mx-1.5">·</span>Movimento: WASD / setas / toque</div>
             {bossMessage && !result && <div className="pointer-events-none absolute inset-x-0 top-14 text-center"><span className="rounded-full border border-violet-300/40 bg-violet-950/80 px-4 py-2 text-xs font-semibold tracking-wider text-violet-100">{mission.bossTitle.toUpperCase()} DESPERTOU</span></div>}
-            {paused && !result && levelChoices.length === 0 && <div className="absolute inset-0 grid place-items-center bg-black/65 p-4"><div className="text-center"><Pause className="mx-auto mb-2 h-8 w-8 text-amber-200"/><p className="font-display text-xl">Expedição pausada</p><Button className="mt-3" onClick={() => {setPaused(false)}}>Continuar</Button></div></div>}
+            {paused && !result && levelChoices.length === 0 && <div className="absolute inset-0 grid place-items-center overflow-y-auto bg-black/85 p-3 sm:p-5">
+ <div className="w-full max-w-md rounded-2xl border border-white/15 bg-[#191824] p-4 shadow-2xl">
+  <div className="mb-4 flex items-center justify-between"><div><p className="text-[10px] uppercase tracking-[.2em] text-violet-200">Ecos dos Fractais</p><h3 className="font-display text-2xl">Expedição pausada</h3></div><Pause className="h-7 w-7 text-amber-200"/></div>
+  {pausePanel === "main" ? <>
+   <div className="grid grid-cols-2 gap-2"><Button variant="outline" className="h-auto justify-start gap-2 border-white/15 bg-white/5 py-3 text-white hover:bg-white/10" onClick={() => setPausePanel("attributes")}><UserRound className="h-4 w-4"/> Atributos</Button><Button variant="outline" className="h-auto justify-start gap-2 border-white/15 bg-white/5 py-3 text-white hover:bg-white/10" onClick={toggleFullscreen}><Maximize className="h-4 w-4"/> Tela cheia</Button></div>
+   <div className="mt-3 rounded-xl border border-white/10 p-3"><div className="mb-2 flex items-center gap-2 text-xs font-semibold text-white/75"><Gauge className="h-4 w-4"/> Velocidade da expedição</div><div className="grid grid-cols-3 gap-2">{([1,2,3] as const).map((speed) => <Button key={speed} size="sm" variant={speedMultiplier===speed?"default":"outline"} disabled={!isMaster && speed>1} className={!isMaster && speed>1?"border-white/10 opacity-45":""} onClick={()=>setSpeedMultiplier(speed)}>{speed}x{!isMaster && speed>1?" 🔒":""}</Button>)}</div>{!isMaster && <p className="mt-2 text-[10px] text-white/45">Aceleração 2x e 3x será liberada pela loja de fractais.</p>}{isMaster && <p className="mt-2 text-[10px] text-emerald-200/70">Acesso de mestre: todas as velocidades liberadas para testes.</p>}</div>
+   <Button className="mt-3 w-full" onClick={() => {setPausePanel("main");setPaused(false)}}><Play className="mr-2 h-4 w-4"/> Retomar expedição</Button>
+  </> : <>
+   <div className="mb-3 grid grid-cols-2 gap-2">{[["Vida",`${Math.ceil(gameRef.current?.player.hp ?? hud.hp)} / ${Math.ceil(gameRef.current?.player.maxHp ?? hud.maxHp)}`],["Dano",`${(gameRef.current?.player.damage ?? 0).toFixed(1)}`],["Velocidade",`${(gameRef.current?.player.speed ?? 0).toFixed(0)}`],["Intervalo de ataque",`${(gameRef.current?.player.fireRate ?? 0).toFixed(2)}s`],["Nível",`${gameRef.current?.player.level ?? hud.level}`],["Experiência",`${gameRef.current?.player.xp ?? hud.xp} / ${gameRef.current?.player.nextXp ?? hud.nextXp}`],["Abates",`${gameRef.current?.kills ?? hud.kills}`],["Multiplicador",`${speedMultiplier}x`]].map(([label,value])=><div key={label} className="rounded-lg border border-white/10 bg-white/5 p-2"><p className="text-[10px] text-white/45">{label}</p><p className="text-sm font-semibold tabular-nums text-white">{value}</p></div>)}</div>
+   <Button variant="outline" className="w-full border-white/15 text-white hover:bg-white/10" onClick={()=>setPausePanel("main")}><ArrowLeft className="mr-2 h-4 w-4"/> Voltar ao menu</Button>
+  </>}
+ </div>
+</div>}
             {levelChoices.length > 0 && <div className="absolute inset-0 grid place-items-center bg-black/80 p-3 sm:p-6"><div className="w-full max-w-2xl space-y-3"><div className="text-center"><p className="text-xs uppercase tracking-[.22em] text-violet-200">A energia do fractal responde</p><h3 className="font-display text-2xl">Escolha uma dádiva</h3></div><div className="grid gap-2 sm:grid-cols-3">{levelChoices.map((upgrade) => {const Icon=upgrade.icon;return <button key={upgrade.id} onClick={()=>chooseUpgrade(upgrade)} className="rounded-xl border border-violet-200/20 bg-white/5 p-3 text-left transition hover:border-violet-200/60 hover:bg-violet-500/15"><Icon className="mb-2 h-5 w-5 text-amber-200"/><p className="text-sm font-semibold">{upgrade.name}</p><p className="mt-1 text-xs leading-relaxed text-white/65">{upgrade.description}</p></button>;})}</div></div></div>}
             {result && <div className="absolute inset-0 grid place-items-center bg-black/80 p-4"><div className="max-w-sm text-center"><div className="mx-auto mb-3 grid h-14 w-14 place-items-center rounded-2xl border border-violet-200/20 bg-violet-400/10">{result==="victory"?<Sparkles className="h-7 w-7 text-amber-200"/>:<Skull className="h-7 w-7 text-rose-300"/>}</div><p className="text-xs uppercase tracking-[.22em] text-violet-200">{result==="victory"?"Guardião derrotado":"Expedição encerrada"}</p><h3 className="mt-1 font-display text-2xl">{result==="victory"?"O fractal silenciou":"O Vazio prevaleceu"}</h3><p className="mt-2 text-sm text-white/65">Nível {hud.level} · {hud.kills} criaturas derrotadas · {formatTime(hud.elapsed)}</p><p className="mt-2 text-xs text-amber-100/80">Recompensas e fractais ainda não são creditados neste protótipo; serão conectados após a validação segura no servidor.</p><Button className="mt-4 gap-2" onClick={()=>{setRunning(false);setResult(null);setBossMessage(false);gameRef.current=null;}}><RotateCcw className="h-4 w-4"/> Voltar à expedição</Button></div></div>}
           </div>
