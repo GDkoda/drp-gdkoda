@@ -6,7 +6,7 @@ import { useMe, rpc, useRefresh } from "@/lib/game";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowDownLeft, ArrowUpRight, CalendarCheck, CheckCircle2, Clock, Coins, Gift, History, Send, Sparkles, Users, Wallet, Zap } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, CalendarCheck, CheckCircle2, Clock, Coins, Gift, History, Send, Sparkles, Users, Wallet, Zap, type LucideIcon } from "lucide-react";
 import { useCustomization } from "@/lib/app-customization";
 import { VigorRestore, useGameSettings } from "@/components/VigorRestore";
 import { toast } from "sonner";
@@ -213,7 +213,7 @@ function Taverna() {
 }
 
 function Stat({ icon: Icon, label, value, suffix, tone }: {
-  icon: React.ComponentType<{ className?: string }>;
+  icon: LucideIcon;
   label: string;
   value: string;
   suffix: string;
