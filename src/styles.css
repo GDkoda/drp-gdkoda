@@ -4560,3 +4560,72 @@ html { background-color: #000000; }
   .character-studio-attribute-wrap .character-studio-attribute > span { font-size:.67rem; }
   .character-studio-attribute-wrap .character-studio-attribute > small { font-size:.46rem; }
 }
+
+
+/* Atributos: apresentação enxuta, sem molduras individuais */
+.character-studio-attributes {
+  gap: .22rem;
+}
+.character-studio-attribute-wrap {
+  gap: 0;
+}
+.character-studio-attribute-wrap .character-studio-attribute {
+  min-height: 3.15rem;
+  gap: .04rem;
+  padding: .12rem .08rem 0;
+  border: 0;
+  border-radius: .35rem;
+  background: transparent;
+  box-shadow: none;
+}
+.character-studio-attribute-wrap .character-studio-attribute > span {
+  font-size: .62rem;
+  line-height: 1;
+  letter-spacing: .025em;
+}
+.character-studio-attribute-wrap .character-studio-attribute input {
+  width: 2.15rem;
+  max-width: 100%;
+  height: 1.55rem;
+  padding: 0;
+  border: 0;
+  border-radius: .3rem;
+  background: transparent;
+  font-size: .92rem;
+  line-height: 1;
+}
+.character-studio-attribute-wrap .character-studio-attribute input:focus-visible {
+  outline: 1px solid var(--ring);
+  outline-offset: 1px;
+}
+.character-studio-attribute-wrap .character-studio-attribute > small {
+  min-height: .55rem;
+  font-size: .44rem;
+  line-height: 1;
+}
+.character-attribute-test-trigger {
+  width: 1.25rem;
+  height: 1.05rem;
+  min-height: 1.05rem;
+  padding: 0;
+  border: 0;
+  border-radius: .25rem;
+  background: transparent;
+}
+.character-attribute-test-trigger svg {
+  width: .72rem;
+  height: .72rem;
+}
+@media (max-width: 767px) {
+  .character-studio-attributes { gap: .16rem; }
+  .character-studio-attribute-wrap .character-studio-attribute { min-height: 2.9rem; }
+  .character-studio-attribute-wrap .character-studio-attribute > span { font-size: .6rem; }
+  .character-studio-attribute-wrap .character-studio-attribute input { height: 1.42rem; font-size: .88rem; }
+  .character-studio-attribute-wrap .character-studio-attribute > small { min-height: .48rem; font-size: .42rem; }
+  .character-attribute-test-trigger { width: 1.15rem; height: .95rem; min-height: .95rem; }
+}
+@media (max-width: 360px) {
+  .character-studio-attribute-wrap .character-studio-attribute { min-height: 2.7rem; }
+  .character-studio-attribute-wrap .character-studio-attribute > span { font-size: .56rem; }
+  .character-studio-attribute-wrap .character-studio-attribute input { height: 1.32rem; font-size: .84rem; }
+}
