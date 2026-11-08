@@ -201,19 +201,48 @@ function Combat({ onDone, hasActive, buttonLabel }: { onDone: () => void; hasAct
   return (
     <div className={`combat-screen space-y-4 rounded-2xl border bg-card p-4 sm:p-6 ${res ? "combat-screen-active" : ""}`}>
 
-      <div className="flex items-start gap-3 rounded-xl bg-muted/50 p-3">
-        <Swords className="mt-0.5 h-5 w-5 shrink-0 text-gold" />
-        <div className="min-w-0">
-          <p className="font-semibold">Combate tático por turnos</p>
-          <p className="text-sm text-muted-foreground">Escolha uma ação. O inimigo responde automaticamente se continuar de pé. FA = maior entre F/PdF + H + 1d6; FD = A + H + 1d6. Prepare ataques, use fintas e administre seus PMs.</p>
-        </div>
-      </div>
-      {!hasActive && <p className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">Defina uma ficha ativa na tela de Fichas antes de iniciar um combate.</p>}
-
       {!res && (
-        <Button className="w-full sm:w-auto" onClick={startFight} disabled={busy || !hasActive}>
-          {busy ? "Preparando combate…" : buttonLabel}
-        </Button>
+        <section className="combat-lobby">
+          <div className="combat-lobby-art" aria-hidden="true">
+            <div className="combat-lobby-orbit combat-lobby-orbit-one" />
+            <div className="combat-lobby-orbit combat-lobby-orbit-two" />
+            <div className="combat-lobby-sigil"><Swords className="h-10 w-10 sm:h-12 sm:w-12" /><span>⚔</span></div>
+            <i className="combat-lobby-spark combat-lobby-spark-one">✦</i>
+            <i className="combat-lobby-spark combat-lobby-spark-two">✧</i>
+          </div>
+
+          <div className="combat-lobby-copy">
+            <p className="combat-lobby-eyebrow"><Sparkles className="h-3.5 w-3.5" /> Arena de desafios · 3D&T Alpha</p>
+            <h2>Erga sua arma. A batalha chama.</h2>
+            <p>Enfrente um adversário escolhido para a arena. Cada turno exige uma decisão: atacar, pressionar, recuperar o fôlego ou enganar a defesa inimiga.</p>
+          </div>
+
+          <div className="combat-lobby-info">
+            <div className="combat-lobby-cost">
+              <span className="combat-lobby-info-icon"><Zap className="h-4 w-4" /></span>
+              <span><small>Custo de entrada</small><strong>2 pontos de vigor</strong></span>
+            </div>
+            <div className="combat-lobby-separator" />
+            <div className={"combat-lobby-character" + (hasActive ? " is-ready" : " is-missing")}>
+              <span className="combat-lobby-info-icon">{hasActive ? <Shield className="h-4 w-4" /> : <Lock className="h-4 w-4" />}</span>
+              <span><small>Sua ficha</small><strong>{hasActive ? "Herói preparado" : "Nenhuma ficha ativa"}</strong></span>
+            </div>
+          </div>
+
+          <div className="combat-lobby-footer">
+            <div className="combat-lobby-rules">
+              <span><Swords className="h-3 w-3" /> Ação por turno</span>
+              <span><Sparkles className="h-3 w-3" /> Habilidades e PM</span>
+              <span><Shield className="h-3 w-3" /> Inimigo automático</span>
+            </div>
+            {!hasActive && <p className="combat-lobby-warning">Defina uma ficha ativa na tela de Fichas antes de entrar na arena.</p>}
+            <Button className="combat-lobby-start h-12 w-full sm:w-auto sm:min-w-56" onClick={startFight} disabled={busy || !hasActive}>
+              <Swords className="h-4 w-4" />
+              {busy ? "Preparando a arena…" : !hasActive ? "Ficha necessária" : buttonLabel}
+              <span aria-hidden="true">→</span>
+            </Button>
+          </div>
+        </section>
       )}
 
       {res && (
@@ -1101,6 +1130,16 @@ function FarkleGame({ onDone, onClose, vigor, coins }: { onDone: () => void; onC
         .farkle-hud [class*="from-amber-"] { --tw-gradient-from: var(--primary) !important; }
         .farkle-hud [class*="to-amber-"] { --tw-gradient-to: color-mix(in oklab, var(--primary) 8%, transparent) !important; }
         .farkle-hud .farkle-theme-panel { background: color-mix(in oklab, var(--card) 88%, var(--primary) 12%) !important; }
+        .farkle-hud [class*="text-emerald-"] { color: var(--primary) !important; }
+        .farkle-hud [class*="text-rose-"] { color: var(--destructive) !important; }
+        .farkle-hud [class*="border-emerald-"],
+        .farkle-hud [class*="border-rose-"] { border-color: color-mix(in oklab, var(--primary) 30%, var(--border)) !important; }
+        .farkle-hud [class*="bg-emerald-"],
+        .farkle-hud [class*="bg-rose-"] { background-color: color-mix(in oklab, var(--card) 88%, var(--primary) 12%) !important; }
+        .farkle-hud [class*="from-emerald-"],
+        .farkle-hud [class*="from-amber-"] { --tw-gradient-from: var(--primary) !important; }
+        .farkle-hud [class*="to-emerald-"],
+        .farkle-hud [class*="to-amber-"] { --tw-gradient-to: color-mix(in oklab, var(--primary) 18%, var(--card)) !important; }
       `}</style>
       <div className="pointer-events-none absolute inset-0" style={{ background: "var(--ambient-glow)" }} />
       <div className="pointer-events-none absolute inset-0 opacity-[0.08]" style={{ backgroundImage: "repeating-linear-gradient(4deg,transparent 0px,transparent 9px,color-mix(in oklab,var(--primary) 10%,transparent) 10px,color-mix(in oklab,var(--primary) 10%,transparent) 11px,transparent 14px)" }} />
