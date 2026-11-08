@@ -190,19 +190,9 @@ function AppearanceEditor() {
         </TabsList>
 
         <TabsContent value="appearance" className="mt-0 space-y-3">
-          <section className="rounded-xl border bg-card p-3 sm:p-4">
-            <div className="mb-3 flex items-center justify-between gap-2">
-              <div><h2 className="text-sm font-semibold">Cores da mesa</h2><p className="text-xs text-muted-foreground">Ajuste os tons principais da interface.</p></div>
-              <Palette className="h-4 w-4 text-gold" />
-            </div>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              {([['primaryColor', 'Destaques'], ['backgroundColor', 'Fundo'], ['cardColor', 'Cartões'], ['textColor', 'Texto']] as [keyof Appearance, string][]).map(([key, label]) => (
-                <label key={key} className="flex min-w-0 items-center gap-2 rounded-lg border bg-background/60 p-2 text-xs font-medium">
-                  <Input aria-label={label} type="color" className="h-9 w-10 shrink-0 cursor-pointer rounded-md border-0 p-0.5" value={String(draft.appearance[key])} onChange={(e) => setLook(key, e.target.value as never)} />
-                  <span className="min-w-0"><span className="block">{label}</span><span className="block font-mono text-[10px] text-muted-foreground">{String(draft.appearance[key]).toUpperCase()}</span></span>
-                </label>
-              ))}
-            </div>
+          <section className="flex items-start gap-3 rounded-xl border border-primary/20 bg-primary/5 p-3 sm:p-4">
+            <Palette className="mt-0.5 h-4 w-4 shrink-0 text-gold" />
+            <div><h2 className="text-sm font-semibold">Paleta por dispositivo</h2><p className="text-xs text-muted-foreground">As cores agora são controladas pelo tema escolhido por cada jogador. O Mestre não sobrescreve mais fundo, cartões, texto ou destaques; escala, textos e imagem de fundo continuam personalizáveis.</p></div>
           </section>
 
           <section className="rounded-xl border bg-card p-3 sm:p-4">
