@@ -8,7 +8,7 @@ import { CORRUPTION_LEVELS, FRACTAL_MISSIONS, RUN_DURATION_SECONDS } from "@/lib
 type UpgradeId = "power" | "haste" | "vitality" | "swift";
 type Upgrade = { id: UpgradeId; name: string; description: string; icon: typeof Zap };
 
-type Enemy = { x: number; y: number; hp: number; maxHp: number; speed: number; radius: number; damage: number; color: string; xp: number; type: "wraith" | "brute" | "charger" | "boss"; attack: number; flash: number };
+type Enemy = { x: number; y: number; hp: number; maxHp: number; speed: number; radius: number; damage: number; color: string; xp: number; type: "wraith" | "brute" | "charger" | "elite" | "boss"; attack: number; flash: number; windup: number; targetX: number; targetY: number; summonedAtHalf: boolean };
 type Shot = { x: number; y: number; vx: number; vy: number; damage: number; life: number };
 type Gem = { x: number; y: number; value: number; radius: number };
 type Particle = { x: number; y: number; vx: number; vy: number; life: number; color: string };
@@ -37,23 +37,26 @@ function makeGame(width: number, height: number): GameState {
   };
 }
 
-function spawnEnemy(game: GameState, missionId: number, elapsed: number, boss = false) {
+function spawnEnemy(game: GameState, missionId: number, elapsed: number, corruption: number, boss = false) {
   const side = Math.floor(Math.random() * 4);
   const margin = 30;
   const x = side === 0 ? -margin : side === 1 ? game.width + margin : Math.random() * game.width;
   const y = side === 2 ? -margin : side === 3 ? game.height + margin : Math.random() * game.height;
-  const pressure = getDifficultySnapshot(missionId, elapsed, 0);
+  const pressure = getDifficultySnapshot(missionId, elapsed, corruption);
   const roll = Math.random();
-  const type: Enemy["type"] = boss ? "boss" : elapsed > 150 && roll > 0.76 ? "brute" : elapsed > 70 && roll > 0.56 ? "charger" : "wraith";
+  const eliteChance = Math.min(0.22, pressure.eliteSpawnScale * 0.075);
+  const type: Enemy["type"] = boss ? "boss" : elapsed > 210 && roll < eliteChance ? "elite" : elapsed > 150 && roll > 0.76 ? "brute" : elapsed > 70 && roll > 0.56 ? "charger" : "wraith";
   const scale = 1 + elapsed / 650 + (missionId - 1) * 0.18;
   const stats = type === "boss"
     ? { hp: 1700, speed: 40, radius: 38, damage: 24, color: "#b9a0ff", xp: 0 }
-    : type === "brute"
-      ? { hp: 100 * scale, speed: 35, radius: 17, damage: 15, color: "#7d8495", xp: 4 }
-      : type === "charger"
-        ? { hp: 36 * scale, speed: 105, radius: 11, damage: 10, color: "#e5a45b", xp: 2 }
-        : { hp: 28 * scale, speed: 57, radius: 10, damage: 8, color: "#9b91b4", xp: 2 };
-  game.enemies.push({ x, y, ...stats, maxHp: stats.hp, type, attack: 0, flash: 0 });
+    : type === "elite"
+      ? { hp: 245 * scale, speed: 31, radius: 21, damage: 17, color: "#c7a7d9", xp: 9 }
+      : type === "brute"
+        ? { hp: 100 * scale, speed: 35, radius: 17, damage: 15, color: "#7d8495", xp: 4 }
+        : type === "charger"
+          ? { hp: 36 * scale, speed: 105, radius: 11, damage: 10, color: "#e5a45b", xp: 2 }
+          : { hp: 28 * scale, speed: 57, radius: 10, damage: 8, color: "#9b91b4", xp: 2 };
+  game.enemies.push({ x, y, ...stats, maxHp: stats.hp, type, attack: type === "boss" ? 2.2 : 0, flash: 0, windup: 0, targetX: x, targetY: y, summonedAtHalf: false });
   // Spawn pressure is bounded. It affects encounter density, not enemy HP directly.
   if (!boss && pressure.enemySpawnScale > 1.25 && game.enemies.length < 48 && Math.random() < 0.18) {
     game.enemies.push({ x: x + (Math.random() - 0.5) * 70, y: y + (Math.random() - 0.5) * 70, ...stats, maxHp: stats.hp, type, attack: 0, flash: 0 });
@@ -85,9 +88,11 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
   });
   game.enemies.forEach((enemy) => {
     ctx.save(); ctx.translate(enemy.x, enemy.y);
+    if (enemy.type === "boss" && enemy.windup > 0) { ctx.save(); ctx.globalAlpha = 0.25 + Math.sin(game.elapsed * 18) * 0.08; ctx.strokeStyle = "#d8b5ff"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(enemy.targetX, enemy.targetY, 88, 0, Math.PI * 2); ctx.stroke(); ctx.fillStyle = "rgba(177,112,220,.12)"; ctx.beginPath(); ctx.arc(enemy.targetX, enemy.targetY, 88, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
+    if (enemy.type === "elite") { ctx.strokeStyle = "rgba(210,170,230,.38)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, 0, enemy.radius + 7, 0, Math.PI * 2); ctx.stroke(); }
     ctx.fillStyle = enemy.flash > 0 ? "#ffffff" : enemy.color; ctx.shadowColor = enemy.color; ctx.shadowBlur = enemy.type === "boss" ? 25 : 10;
     ctx.beginPath(); ctx.arc(0, 0, enemy.radius, 0, Math.PI * 2); ctx.fill();
-    ctx.shadowBlur = 0; ctx.strokeStyle = enemy.type === "boss" ? "#eadcff" : "rgba(255,255,255,.35)"; ctx.lineWidth = enemy.type === "boss" ? 3 : 1.5;
+    ctx.shadowBlur = 0; ctx.strokeStyle = enemy.type === "boss" ? "#eadcff" : enemy.type === "elite" ? "#f0d5ff" : "rgba(255,255,255,.35)"; ctx.lineWidth = enemy.type === "boss" || enemy.type === "elite" ? 3 : 1.5;
     ctx.beginPath(); ctx.arc(0, 0, enemy.radius * 0.62, 0, Math.PI * 2); ctx.stroke();
     ctx.fillStyle = "#d8c6ff"; ctx.beginPath(); ctx.moveTo(0, -enemy.radius * 0.5); ctx.lineTo(enemy.radius * 0.23, 0); ctx.lineTo(0, enemy.radius * 0.5); ctx.lineTo(-enemy.radius * 0.23, 0); ctx.closePath(); ctx.fill();
     if (enemy.type === "boss" || enemy.hp < enemy.maxHp) {
@@ -191,11 +196,11 @@ export function FractalArena() {
         const spawnInterval = clamp(1.18 / snapshot.enemySpawnScale, 0.28, 1.35);
         game.spawnTimer -= dt;
         if (game.spawnTimer <= 0 && game.enemies.length < 64 && game.elapsed < RUN_DURATION_SECONDS) {
-          spawnEnemy(game, missionId, game.elapsed);
+          spawnEnemy(game, missionId, game.elapsed, corruption);
           game.spawnTimer = spawnInterval * (0.78 + Math.random() * 0.45);
         }
         if (game.elapsed >= 660 && !game.bossSpawned) {
-          spawnEnemy(game, missionId, game.elapsed, true); game.bossSpawned = true;
+          spawnEnemy(game, missionId, game.elapsed, corruption, true); game.bossSpawned = true;
           if (!bossNotified) { bossNotified = true; setBossMessage(true); }
         }
         game.shotTimer -= dt;
@@ -211,14 +216,36 @@ export function FractalArena() {
         game.shots = game.shots.filter((shot) => shot.life > 0 && shot.x > -20 && shot.x < game.width + 20 && shot.y > -20 && shot.y < game.height + 20);
         for (const enemy of game.enemies) {
           const d = Math.max(1, distance(game.player.x, game.player.y, enemy.x, enemy.y));
-          enemy.x += ((game.player.x - enemy.x) / d) * enemy.speed * dt;
-          enemy.y += ((game.player.y - enemy.y) / d) * enemy.speed * dt;
           enemy.flash = Math.max(0, enemy.flash - dt);
           enemy.attack = Math.max(0, enemy.attack - dt);
-          if (d < enemy.radius + 15 && enemy.attack <= 0 && game.player.invuln <= 0) {
-            game.player.hp = Math.max(0, game.player.hp - enemy.damage);
-            game.player.invuln = 0.72; enemy.attack = 0.8;
-            for (let i = 0; i < 7; i++) game.particles.push({ x: game.player.x, y: game.player.y, vx: (Math.random() - 0.5) * 120, vy: (Math.random() - 0.5) * 120, life: 0.4, color: "#ed8585" });
+          if (enemy.type === "boss") {
+            if (enemy.windup > 0) {
+              enemy.windup -= dt;
+              if (enemy.windup <= 0 && distance(game.player.x, game.player.y, enemy.targetX, enemy.targetY) < 101 && game.player.invuln <= 0) {
+                game.player.hp = Math.max(0, game.player.hp - 28); game.player.invuln = 0.85;
+              }
+            } else if (enemy.attack <= 0) {
+              enemy.targetX = game.player.x; enemy.targetY = game.player.y; enemy.windup = 1.05; enemy.attack = 5.1;
+            }
+            if (enemy.hp <= enemy.maxHp * 0.5 && !enemy.summonedAtHalf) {
+              enemy.summonedAtHalf = true;
+              for (let i = 0; i < 3; i++) {
+                const angle = (Math.PI * 2 * i) / 3;
+                game.enemies.push({ x: enemy.x + Math.cos(angle) * 58, y: enemy.y + Math.sin(angle) * 58, hp: 34, maxHp: 34, speed: 62, radius: 10, damage: 8, color: "#9b91b4", xp: 2, type: "wraith", attack: 0, flash: 0, windup: 0, targetX: 0, targetY: 0, summonedAtHalf: false });
+              }
+            }
+            enemy.x += ((game.player.x - enemy.x) / d) * enemy.speed * dt;
+            enemy.y += ((game.player.y - enemy.y) / d) * enemy.speed * dt;
+          } else {
+            enemy.x += ((game.player.x - enemy.x) / d) * enemy.speed * dt;
+            enemy.y += ((game.player.y - enemy.y) / d) * enemy.speed * dt;
+            if (enemy.type === "elite" && enemy.attack <= 0) {
+              if (d < 105 && game.player.invuln <= 0) { game.player.hp = Math.max(0, game.player.hp - 7); game.player.invuln = 0.35; }
+              enemy.attack = 1.7;
+            }
+            if (enemy.type !== "elite" && d < enemy.radius + 15 && enemy.attack <= 0 && game.player.invuln <= 0) {
+              game.player.hp = Math.max(0, game.player.hp - enemy.damage); game.player.invuln = 0.72; enemy.attack = 0.8;
+            }
           }
         }
         for (const shot of game.shots) {
@@ -337,7 +364,7 @@ export function FractalArena() {
           <div className="flex flex-wrap items-center justify-between gap-2 border-t border-white/10 px-3 py-2 text-[10px] text-white/45 sm:px-4"><span>Arma automática: projétil perseguidor</span><span>Protótipo sem persistência de recompensas</span></div>
         </Card>
       )}
-      <div className="flex items-start gap-2 rounded-lg border border-amber-300/15 bg-amber-500/5 p-3 text-xs text-muted-foreground"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-300"/><p>Esta é a primeira arena funcional para validar movimentação, combate automático, coleta de experiência, evoluções e pressão temporal. A economia, os desbloqueios e o registro de fractais ainda não estão conectados.</p></div>
+      <div className="flex items-start gap-2 rounded-lg border border-amber-300/15 bg-amber-500/5 p-3 text-xs text-muted-foreground"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-300"/><p>Último Silêncio apresenta Ecos errantes, Enlutados resistentes, Vigias de elite com aura de drenagem e o Pranteador Sem Rosto, que marca uma área antes de liberar uma onda de lamento e convoca ecos quando perde metade da vida. A economia, os desbloqueios e o registro de fractais ainda não estão conectados.</p></div>
     </div>
   );
 }
