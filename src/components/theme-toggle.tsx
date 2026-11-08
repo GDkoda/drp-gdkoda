@@ -7,11 +7,11 @@ type PaletteId = "ousado" | "rico" | "eletrizante" | "destemido" | "moderno" | "
 
 const palettes: { id: PaletteId; label: string; description: string; colors: [string, string, string] }[] = [
   { id: "ousado", label: "OUSADO", description: "Amarelo elétrico, carvão e violeta", colors: ["#FFF21A", "#171717", "#A66BFF"] },
-  { id: "rico", label: "RICO", description: "Madeira, creme e cobre", colors: ["#5B4632", "#F4D9A0", "#C8792C"] },
+  { id: "rico", label: "RICO", description: "Lavanda, lima elétrica e vermelhão", colors: ["#CBB3E6", "#D4FF24", "#E34234"] },
   { id: "eletrizante", label: "ELETRIZANTE", description: "Azul intenso, noite e lima neon", colors: ["#030407", "#1558C9", "#D4FF24"] },
-  { id: "destemido", label: "DESTEMIDO", description: "Rosa vibrante, ameixa e laranja", colors: ["#E7B0DE", "#400849", "#FF5A0A"] },
-  { id: "moderno", label: "MODERNO", description: "Preto, sálvia e verde luminoso", colors: ["#000000", "#6D8F63", "#39FF88"] },
-  { id: "futurista", label: "FUTURISTA", description: "Menta tecnológica, preto e vermelho", colors: ["#39F0AE", "#000000", "#FF0000"] },
+  { id: "destemido", label: "DESTEMIDO", description: "Preto profundo, pink e lima neon", colors: ["#0B0B0B", "#FF2DAB", "#D4FF3F"] },
+  { id: "moderno", label: "MODERNO", description: "Azul royal, branco e vermelho", colors: ["#20309A", "#FFFFFF", "#BB232B"] },
+  { id: "futurista", label: "FUTURISTA", description: "Verde petróleo, marfim e turquesa", colors: ["#031211", "#EBE4D3", "#00AEBB"] },
 ];
 
 function storedMode(): ThemeMode {
