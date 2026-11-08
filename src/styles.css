@@ -72,7 +72,8 @@
   --blood: #c95748;
   --mana: #7a9de8;
   --ambient-glow: radial-gradient(ellipse at 50% -18%, rgb(171 113 45 / 18%), transparent 58%);
-  --texture-color: #FFF21A;\n  --texture-accent: #A66BFF;
+  --texture-color: #FFF21A;
+  --texture-accent: #A66BFF;
   --surface-glass: color-mix(in oklab, var(--card) 90%, transparent);
   --shadow-soft: 0 18px 48px rgb(0 0 0 / 18%);
 }
