@@ -2904,3 +2904,18 @@ html[data-palette="po-de-fada"][data-theme="light"] {
 .combat-action-card { border-color: var(--border); background: color-mix(in oklab, var(--card) 92%, var(--primary) 8%); color: var(--foreground); }
 .combat-action-card:hover { border-color: color-mix(in oklab, var(--primary) 55%, var(--border)); background: color-mix(in oklab, var(--primary) 9%, var(--card)); }
 .combat-action-icon { background: color-mix(in oklab, var(--primary) 10%, var(--muted)) !important; }
+
+
+/* Ajustes finais de contraste em áreas de jogo fora do HUD interno. */
+.twentyone-window [class*="text-rose-"] { color: var(--destructive) !important; }
+.twentyone-window [class*="text-white/"] { color: var(--foreground) !important; }
+.farkle-window-header [class*="text-amber-50"],
+.farkle-window-header [class*="text-amber-100"] { color: var(--foreground) !important; }
+.farkle-window-header [class*="text-amber-200"],
+.farkle-window-header [class*="text-amber-300"] { color: var(--primary) !important; }
+.farkle-window-header .farkle-launch-eyebrow { color: var(--primary) !important; }
+.farkle-window-header .farkle-brand-mark {
+  border-color: color-mix(in oklab, var(--primary) 36%, var(--border)) !important;
+  background: color-mix(in oklab, var(--primary) 12%, var(--card)) !important;
+  color: var(--primary) !important;
+}
