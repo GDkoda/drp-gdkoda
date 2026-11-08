@@ -30,6 +30,7 @@ declare
   ans text;
   sid uuid;
   v_expires_at timestamptz;
+  v_server_now timestamptz;
   pz public.puzzles;
   rw integer;
 begin
@@ -92,10 +93,13 @@ begin
   returning id, expires_at
   into sid, v_expires_at;
 
+  v_server_now := clock_timestamp();
+
   return jsonb_build_object(
     'id', sid,
     'question', q,
-    'expiresAt', v_expires_at
+    'expiresAt', v_expires_at,
+    'serverNow', v_server_now
   );
 end;
 $$;
@@ -191,7 +195,8 @@ begin
   if s.expires_at > clock_timestamp() then
     return jsonb_build_object(
       'expired', false,
-      'expiresAt', s.expires_at
+      'expiresAt', s.expires_at,
+      'serverNow', clock_timestamp()
     );
   end if;
 
