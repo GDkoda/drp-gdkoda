@@ -79,8 +79,8 @@ Valores iniciais centralizados em `src/lib/fractals/economy.ts` para facilitar a
 
 | Compra permanente | Níveis / custo |
 | --- | --- |
-| Área de coleta | +12%, +24%, +36% — 300 / 600 / 1.000 fractais |
-| Afinidade de experiência | +10%, +20%, +30% — 250 / 500 / 900 fractais |
+| Desbloqueio do coletável Área | N1/N2/N3 — 300 / 600 / 1.000 fractais |
+| Desbloqueio do coletável Experiência | N1/N2/N3 — 250 / 500 / 900 fractais |
 | Raridade | Normal (100%, grátis); Rara (85% normal / 15% rara); Épica (70% normal / 23% rara / 7% épica); Superior (60% normal / 27% rara / 13% épica) — 400 / 800 / 1.400 fractais |
 | Velocidade 2x | 1.000 fractais |
 | Velocidade 3x | 2.000 fractais |
@@ -99,7 +99,7 @@ A recompensa usa até 65% do teto pela sobrevivência proporcional, 25% por derr
 - [x] Valores iniciais de custos, raridades e recompensa centralizados.
 - [x] Compra persistente da loja e leitura do saldo via RPC; a concessão de recompensas continua bloqueada até haver combate autoritativo no servidor.
 - [x] Persistência da progressão de corrupção via RPC; há bloqueio por tempo mínimo, mas a confirmação do chefe ainda depende do cliente.
-- [x] Aplicação dos bônus permanentes de área de coleta e experiência.
+- [x] Desbloqueio de Coletáveis Especiais por nível; seus efeitos são temporários e limitados por expedição.
 
 A interface de aceleração bloqueia 2x/3x para contas comuns até a compra permanente. A loja persistente já está conectada. Não creditar fractais a partir de uma vitória informada apenas pelo navegador: o protótipo de combate é client-side e ainda precisa de uma camada de validação adequada.
 
@@ -108,7 +108,7 @@ A interface de aceleração bloqueia 2x/3x para contas comuns até a compra perm
 
 - [x] Custos da loja multiplicados por 10 na configuração TypeScript e na RPC SQL.
 - [x] Loja conectada às RPCs de leitura e compra; compras ficam persistidas por conta.
-- [x] Bônus permanentes de área de coleta e ganho de XP aplicados às novas partidas.
+- [x] Bônus de Área e Experiência convertidos em coletáveis temporários, com limites por expedição.
 - [x] Seleção de corrupção bloqueia níveis acima do desbloqueado; vitória no nível atual registra conclusão e libera o seguinte.
 - [x] Início e encerramento de expedição registrados no banco. A RPC exige 11 minutos de tempo real para vitória em contas comuns; a conta mestre pode testar sem essa espera.
 
