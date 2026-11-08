@@ -3091,3 +3091,12 @@ html, body { background-color: var(--background); }
 @media (max-width: 767px) {
   body { background-attachment: scroll; }
 }
+
+.app-top-chrome {
+  padding-top: env(safe-area-inset-top);
+}
+.app-brand-sigil {
+  color: var(--primary);
+  border-color: color-mix(in oklab, var(--primary) 38%, var(--border));
+  background: color-mix(in oklab, var(--primary) 13%, var(--card));
+}
