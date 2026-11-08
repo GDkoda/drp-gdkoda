@@ -571,3 +571,76 @@ html[data-palette="fervor"][data-theme="light"] {
   .auth-shell { align-items: flex-start; padding-top: 5.5rem; }
   .auth-layout { border-radius: 1.4rem; }
 }
+
+
+/* Refinamento geral: interface mais leve, compacta e contemporânea. */
+@layer base {
+  body {
+    background-image:
+      radial-gradient(ellipse at 8% 0%, color-mix(in oklab, var(--primary) 7%, transparent), transparent 34%),
+      radial-gradient(ellipse at 96% 14%, color-mix(in oklab, var(--accent) 6%, transparent), transparent 32%),
+      var(--ambient-glow);
+    background-attachment: fixed;
+  }
+  h1, h2, h3 { letter-spacing: -.015em; }
+  h1 { line-height: 1.12; }
+  button, a, [role="button"] { -webkit-tap-highlight-color: transparent; }
+}
+@layer components {
+  .theme-trigger {
+    border-radius: .85rem;
+    background: color-mix(in oklab, var(--card) 88%, transparent);
+    box-shadow: 0 3px 12px rgb(0 0 0 / 9%);
+  }
+  .theme-dialog {
+    animation: theme-dialog-in 170ms cubic-bezier(.2,.8,.2,1);
+    backdrop-filter: blur(24px);
+    background: color-mix(in oklab, var(--popover) 96%, transparent);
+  }
+  .theme-palette-card { min-height: 3.2rem; }
+  .theme-palette-card.is-selected {
+    box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--primary) 18%, transparent), 0 4px 14px rgb(0 0 0 / 7%);
+  }
+  @keyframes theme-dialog-in {
+    from { opacity: 0; transform: translateY(8px) scale(.985); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  /* Painéis e cartões com menos peso visual e melhor leitura. */
+  [data-slot="card"] {
+    border-color: color-mix(in oklab, var(--border) 72%, transparent);
+    box-shadow: 0 8px 24px rgb(0 0 0 / 6%);
+    background-image: linear-gradient(145deg, color-mix(in oklab, var(--card) 98%, var(--primary) 2%), var(--card));
+  }
+  [data-slot="card-header"] { padding: 1rem 1.1rem .7rem; }
+  [data-slot="card-content"] { padding: 0 1.1rem 1.1rem; }
+  [data-slot="card-footer"] { padding: .75rem 1.1rem 1rem; }
+  [data-slot="tabs-list"] { border-radius: .85rem; padding: .25rem; gap: .2rem; }
+  [data-slot="tabs-trigger"] { min-height: 2.4rem; border-radius: .65rem; padding-inline: .8rem; font-size: .88rem; }
+  .page-heading { padding-bottom: .75rem; gap: .65rem; }
+  .page-eyebrow { letter-spacing: .13em; font-size: .66rem; }
+  .empty-state { border-radius: 1rem; }
+  input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),
+  textarea, select { border-radius: .75rem; }
+}
+@media (min-width: 768px) {
+  main { padding-block: 1.25rem; }
+  main > * + * { margin-top: 1.15rem; }
+}
+@media (max-width: 767px) {
+  body { background-attachment: scroll; }
+  main { padding-inline: .85rem; }
+  main > * + * { margin-top: .8rem; }
+  [data-slot="card-header"] { padding: .85rem .9rem .6rem; }
+  [data-slot="card-content"] { padding: 0 .9rem .9rem; }
+  [data-slot="card-footer"] { padding: .65rem .9rem .85rem; }
+  [data-slot="tabs-trigger"] { min-height: 2.35rem; padding-inline: .55rem; font-size: .8rem; }
+  .theme-dialog { max-height: min(82dvh, 39rem); }
+}
+@media (max-width: 360px) {
+  .theme-dialog { width: calc(100vw - 1rem); }
+  .theme-dialog > header { padding-inline: .8rem; }
+  .theme-dialog > div { padding: .7rem; }
+  .theme-palette-card { gap: .45rem; padding: .4rem .5rem; }
+  .theme-palette-card > span:first-child { width: 1.8rem; height: 1.8rem; }
+}
