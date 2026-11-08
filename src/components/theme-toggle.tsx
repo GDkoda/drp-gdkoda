@@ -1,16 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Check, Moon, Palette, Sun, X } from "lucide-react";
 
 type ThemeMode = "dark" | "light";
-type PaletteId = "ousado" | "rico" | "eletrizante" | "destemido" | "moderno" | "futurista";
+type PaletteId = "ousado" | "eletrizante" | "destemido" | "futurista";
 
 const palettes: { id: PaletteId; label: string; description: string; colors: [string, string, string] }[] = [
   { id: "ousado", label: "OUSADO", description: "Amarelo elétrico, carvão e violeta", colors: ["#FFF21A", "#171717", "#A66BFF"] },
-  { id: "rico", label: "RICO", description: "Lavanda, lima elétrica e vermelhão", colors: ["#CBB3E6", "#D4FF24", "#E34234"] },
   { id: "eletrizante", label: "ELETRIZANTE", description: "Azul intenso, noite e lima neon", colors: ["#030407", "#1558C9", "#D4FF24"] },
   { id: "destemido", label: "DESTEMIDO", description: "Preto profundo, pink e lima neon", colors: ["#0B0B0B", "#FF2DAB", "#D4FF3F"] },
-  { id: "moderno", label: "MODERNO", description: "Azul royal, branco e vermelho", colors: ["#20309A", "#FFFFFF", "#BB232B"] },
   { id: "futurista", label: "FUTURISTA", description: "Verde petróleo, marfim e turquesa", colors: ["#031211", "#EBE4D3", "#00AEBB"] },
 ];
 
@@ -29,13 +27,26 @@ function storedPalette(): PaletteId {
 }
 
 export function ThemeToggle({ className = "" }: { className?: string }) {
-  const [mode, setMode] = useState<ThemeMode>(storedMode);
-  const [palette, setPalette] = useState<PaletteId>(storedPalette);
+  const [mode, setMode] = useState<ThemeMode>("dark");
+  const [palette, setPalette] = useState<PaletteId>("ousado");
   const [open, setOpen] = useState(false);
 
-  useEffect(() => {
+  // Restaura a preferência antes da primeira pintura para evitar o flash do tema padrão marrom.
+  useLayoutEffect(() => {
+    const savedMode = storedMode();
+    const savedPalette = storedPalette();
+    setMode(savedMode);
+    setPalette(savedPalette);
+    document.documentElement.dataset.theme = savedMode;
+    document.documentElement.dataset.palette = savedPalette;
+  }, []);
+
+  useLayoutEffect(() => {
     document.documentElement.dataset.theme = mode;
     document.documentElement.dataset.palette = palette;
+  }, [mode, palette]);
+
+  useEffect(() => {
     try {
       window.localStorage.setItem("mesa-theme", mode);
       window.localStorage.setItem("mesa-palette", palette);
@@ -130,7 +141,7 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
               <section aria-label="Paletas de cores">
                 <div className="mb-2 flex items-center justify-between">
                   <p className="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Paletas de cores</p>
-                  <span className="text-[11px] text-muted-foreground">6 estilos</span>
+                  <span className="text-[11px] text-muted-foreground">4 estilos</span>
                 </div>
                 <div className="space-y-1.5">
                   {palettes.map((item) => (
