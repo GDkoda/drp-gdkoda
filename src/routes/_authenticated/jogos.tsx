@@ -5,7 +5,7 @@ import { rpc, useRefresh, useMe } from "@/lib/game";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Zap, Swords, Spade, Dice5, Brain, Trophy, RotateCcw, Shield, BookOpen, Flame, Sparkles, Coins, Wind, X, CheckCircle2, Sparkle, Plus, Lock } from "lucide-react";
+import { Zap, Swords, Spade, Dice5, Brain, Trophy, RotateCcw, Shield, BookOpen, Flame, Sparkles, Coins, Wind, X, CheckCircle2, Sparkle, Plus, Lock, ArrowLeft } from "lucide-react";
 import { useCustomization } from "@/lib/app-customization";
 import { supabase } from "@/integrations/supabase/client";
 import { VigorRestore, useGameSettings } from "@/components/VigorRestore";
@@ -199,7 +199,7 @@ function Combat({ onDone, hasActive, buttonLabel }: { onDone: () => void; hasAct
   const monsterDamageTaken = latestTurnEntries.filter((entry) => entry.target === "monster").reduce((sum, entry) => sum + (entry.dmg ?? 0), 0);
 
   return (
-    <div className="space-y-4 rounded-2xl border bg-card p-4 sm:p-6">
+    <div className={`combat-screen space-y-4 rounded-2xl border bg-card p-4 sm:p-6 ${res ? "combat-screen-active" : ""}`}>
 
       <div className="flex items-start gap-3 rounded-xl bg-muted/50 p-3">
         <Swords className="mt-0.5 h-5 w-5 shrink-0 text-gold" />
@@ -218,8 +218,8 @@ function Combat({ onDone, hasActive, buttonLabel }: { onDone: () => void; hasAct
 
       {res && (
         <div className="space-y-4">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className={`relative space-y-3 rounded-xl border bg-background/50 p-3 sm:p-4 ${visualEvents.some((event) => event.target === "hero" && event.kind === "damage") ? "jrpg-hit-panel" : ""} ${visualEvents.some((event) => event.target === "hero" && event.kind === "heal") ? "jrpg-heal-panel" : ""}`}>
+          <div className="combat-status-grid grid grid-cols-2 gap-2 sm:gap-3">
+            <div className={`relative combat-status-card combat-hero-card space-y-2 rounded-xl border bg-background/50 p-2 sm:space-y-3 sm:p-4 ${visualEvents.some((event) => event.target === "hero" && event.kind === "damage") ? "jrpg-hit-panel" : ""} ${visualEvents.some((event) => event.target === "hero" && event.kind === "heal") ? "jrpg-heal-panel" : ""}`}>
               {visualEvents.filter((event) => event.target === "hero").map((event) => (
                 <span key={event.id} className={`jrpg-number ${event.kind === "damage" ? "jrpg-number-damage" : event.kind === "heal" ? "jrpg-number-heal" : "jrpg-number-guard"}`}>
                   {event.kind === "damage" ? `-${event.amount}${event.crit ? " CRÍTICO!" : ""}` : event.kind === "heal" ? `+${event.amount}` : event.kind === "aim" ? "MIRA!" : event.kind === "feint" ? "FINTA!" : "DEFESA!"}
@@ -228,17 +228,17 @@ function Combat({ onDone, hasActive, buttonLabel }: { onDone: () => void; hasAct
               <div className="flex items-center gap-2"><span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10"><Swords className="h-5 w-5 text-gold" /></span><div className="min-w-0"><p className="text-xs uppercase tracking-wider text-muted-foreground">Herói</p><h3 className="truncate font-display text-lg">{res.hero}</h3></div></div>
               <StatBar label="Pontos de Vida (PV)" value={res.heroPv} max={res.heroMaxPv} color="bg-emerald-500" />
               <StatBar label="Pontos de Magia (PM)" value={res.heroPm} max={res.heroMaxPm} color="bg-sky-500" />
-              <div className="flex gap-1 pt-1 text-center [&>div]:flex-1 [&>div]:min-w-0">{([["F", res.attributes?.f], ["H", res.attributes?.h], ["R", res.attributes?.r], ["A", res.attributes?.a], ["PdF", res.attributes?.pdf]] as const).map(([label, value]) => <div key={label} className="rounded-md bg-muted/60 px-1 py-1"><span className="block text-[10px] uppercase text-muted-foreground">{label}</span><span className="font-display text-sm">{value ?? "—"}</span></div>)}</div>
+              <div className="combat-attributes flex gap-1 pt-1 text-center [&>div]:flex-1 [&>div]:min-w-0">{([["F", res.attributes?.f], ["H", res.attributes?.h], ["R", res.attributes?.r], ["A", res.attributes?.a], ["PdF", res.attributes?.pdf]] as const).map(([label, value]) => <div key={label} className="rounded-md bg-muted/60 px-1 py-1"><span className="block text-[10px] uppercase text-muted-foreground">{label}</span><span className="font-display text-sm">{value ?? "—"}</span></div>)}</div>
             </div>
-            <div className="space-y-3 rounded-xl border border-blood/20 bg-blood/5 p-3 sm:p-4">
+            <div className="combat-status-card combat-enemy-card space-y-2 rounded-xl border border-blood/20 bg-blood/5 p-2 sm:space-y-3 sm:p-4">
               <div className="flex items-center gap-2"><span className="flex h-9 w-9 items-center justify-center rounded-lg bg-blood/10"><Shield className="h-5 w-5 text-blood" /></span><div className="min-w-0"><p className="text-xs uppercase tracking-wider text-muted-foreground">Adversário</p><h3 className="truncate font-display text-lg">{res.monster}</h3></div></div>
-              <div className="relative isolate flex min-h-[210px] items-center justify-center overflow-hidden rounded-xl border border-blood/20 bg-gradient-to-b from-[#211629] via-[#17121e] to-[#0c0b12] p-3">
+              <div className="combat-monster-stage relative isolate flex min-h-[210px] items-center justify-center overflow-hidden rounded-xl border border-blood/20 bg-gradient-to-b from-[#211629] via-[#17121e] to-[#0c0b12] p-3">
                 <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(154,67,165,0.22),transparent_68%)]" />
                 <img
                   key={visualEvents.filter((event) => event.target === "monster")[visualEvents.filter((event) => event.target === "monster").length - 1]?.id ?? "monster-art"}
                   src={monsterArtworkUrl || getMonsterArtwork(res.monster).src}
                   alt={getMonsterArtwork(res.monster).alt}
-                  className={`relative z-10 h-[190px] w-full object-contain drop-shadow-[0_12px_18px_rgba(0,0,0,0.55)] ${visualEvents.some((event) => event.target === "monster" && event.kind === "damage") ? "jrpg-hit" : ""} ${visualEvents.some((event) => event.target === "monster" && event.kind === "heal") ? "jrpg-heal" : ""} ${visualEvents.some((event) => event.target === "monster" && event.kind === "feint") ? "jrpg-feint" : ""} ${visualEvents.some((event) => event.target === "monster" && event.kind === "damage" && event.sourceAction?.startsWith("Magia:")) ? "jrpg-magic" : ""} `}
+                  className={`combat-monster-art relative z-10 h-[190px] w-full object-contain drop-shadow-[0_12px_18px_rgba(0,0,0,0.55)] ${visualEvents.some((event) => event.target === "monster" && event.kind === "damage") ? "jrpg-hit" : ""} ${visualEvents.some((event) => event.target === "monster" && event.kind === "heal") ? "jrpg-heal" : ""} ${visualEvents.some((event) => event.target === "monster" && event.kind === "feint") ? "jrpg-feint" : ""} ${visualEvents.some((event) => event.target === "monster" && event.kind === "damage" && event.sourceAction?.startsWith("Magia:")) ? "jrpg-magic" : ""} `}
                 />
                 {visualEvents.some((event) => event.target === "monster" && event.kind === "damage" && !event.sourceAction?.startsWith("Magia:")) && <span className="jrpg-slash" />}
                 {visualEvents.some((event) => event.target === "monster" && event.kind === "damage" && event.sourceAction?.startsWith("Magia:")) && <span className="jrpg-magic-burst" />}
@@ -258,14 +258,14 @@ function Combat({ onDone, hasActive, buttonLabel }: { onDone: () => void; hasAct
 
           {res.status === "active" ? (
             <div className="space-y-2">
-              <div className="flex flex-wrap items-end justify-between gap-2"><div><h3 className="font-display text-lg">Escolha sua ação</h3><p className="text-xs text-muted-foreground">Vigor gasto ao iniciar: 2 por combate.</p></div><span className="text-xs text-muted-foreground">{busy ? "Resolvendo turno…" : "Sua vez"}</span></div>
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <div className="combat-actions-heading flex flex-wrap items-end justify-between gap-2"><div><h3 className="font-display text-lg">Escolha sua ação</h3><p className="text-xs text-muted-foreground">Vigor gasto ao iniciar: 2 por combate.</p></div><span className="text-xs text-muted-foreground">{busy ? "Resolvendo turno…" : "Sua vez"}</span></div>
+              <div className="combat-action-grid grid grid-cols-2 gap-2">
                 {actions.map((action) => {
                   const Icon = action.icon;
                   return (
-                    <button key={action.id} type="button" disabled={busy || !!action.disabled || done} onClick={() => act(action.id)} className="flex min-h-[82px] min-w-0 items-start gap-2.5 rounded-xl border bg-background p-2.5 text-left transition hover:border-primary/50 hover:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-45 sm:min-h-[90px] sm:p-3">
-                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted"><Icon className={`h-4 w-4 ${action.tone}`} /></span>
-                      <span className="min-w-0 flex-1"><span className="block font-semibold">{action.title}</span><span className="mt-0.5 block text-xs leading-snug text-muted-foreground">{action.description}</span><span className="mt-1 block text-[11px] font-medium text-gold">{action.cost}</span></span>
+                    <button key={action.id} type="button" disabled={busy || !!action.disabled || done} onClick={() => act(action.id)} className="combat-action-card flex min-h-[82px] min-w-0 items-start gap-2.5 rounded-xl border bg-background p-2.5 text-left transition hover:border-primary/50 hover:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-45 sm:min-h-[90px] sm:p-3">
+                      <span className="combat-action-icon flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted"><Icon className={`h-4 w-4 ${action.tone}`} /></span>
+                      <span className="min-w-0 flex-1"><span className="combat-action-title block font-semibold">{action.title}</span><span className="combat-action-description mt-0.5 block text-xs leading-snug text-muted-foreground">{action.description}</span><span className="combat-action-cost mt-1 block text-[11px] font-medium text-gold">{action.cost}</span></span>
                     </button>
                   );
                 })}
@@ -336,26 +336,139 @@ function Puzzle({ onDone, buttonLabel }: { onDone: () => void; buttonLabel: stri
   const [ans, setAns] = useState("");
   const [busy, setBusy] = useState(false);
   const [res, setRes] = useState<{ correct: boolean; answer: string; reward: number } | null>(null);
+
   async function start() {
     setBusy(true);
-    try { setP(await rpc("start_puzzle", {})); setRes(null); setAns(""); onDone(); }
-    finally { setBusy(false); }
+    try {
+      const next = await rpc("start_puzzle", {}) as { id: string; question: string };
+      setP(next);
+      setRes(null);
+      setAns("");
+      onDone();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível preparar um enigma.");
+    } finally {
+      setBusy(false);
+    }
   }
+
   async function solve() {
-    if (!p || !ans.trim()) return;
+    if (!p || !ans.trim() || busy || res) return;
     setBusy(true);
-    try { setRes(await rpc("solve_puzzle", { _id: p.id, _answer: ans.trim() })); onDone(); }
-    finally { setBusy(false); }
+    try {
+      const result = await rpc("solve_puzzle", { _id: p.id, _answer: ans.trim() }) as { correct: boolean; answer: string; reward: number };
+      setRes(result);
+      onDone();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível verificar sua resposta.");
+    } finally {
+      setBusy(false);
+    }
   }
+
   return (
-    <div className="space-y-5 rounded-2xl border bg-card p-5 sm:p-6">
-      <div className="flex items-start gap-3 rounded-xl bg-muted/50 p-3"><Brain className="mt-0.5 h-5 w-5 shrink-0 text-gold" /><div><p className="font-semibold">Desafio de lógica</p><p className="text-sm text-muted-foreground">Você tem uma tentativa por enigma. Resolva em até 10 minutos; recompensas podem variar conforme o enigma.</p></div></div>
-      <Button onClick={start} disabled={busy || (!!p && !res)}>{busy ? "Preparando enigma…" : p && !res ? "Resolva o enigma atual" : p && res ? "Jogar outro enigma" : buttonLabel}</Button>
-      {p && <div className="space-y-4 rounded-2xl border bg-background/40 p-4 sm:p-5"><p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Enigma atual</p><p className="font-display text-lg leading-relaxed">{p.question}</p>
-        {!res && <form className="flex flex-col gap-2 sm:flex-row" onSubmit={(e) => { e.preventDefault(); void solve(); }}><Input value={ans} onChange={(e) => setAns(e.target.value)} placeholder="Digite sua resposta…" autoComplete="off" disabled={busy} /><Button type="submit" disabled={busy || !ans.trim()}>{busy ? "Verificando…" : "Responder"}</Button></form>}
-        {res && <div aria-live="polite" className={`rounded-xl border p-4 ${res.correct ? "border-emerald-500/30 bg-emerald-500/10" : "border-blood/30 bg-blood/5"}`}><p className="font-display text-lg">{res.correct ? "Enigma resolvido!" : "Não foi dessa vez"}</p><p className="mt-1 text-sm">{res.correct ? `Recompensa: +${res.reward} moedas` : `Resposta correta: ${res.answer}`}</p></div>}
-      </div>}
-    </div>
+    <section className="puzzle-room">
+      <header className="puzzle-hero">
+        <div className="puzzle-hero-emblem"><Brain className="h-7 w-7" /></div>
+        <div className="puzzle-hero-copy">
+          <p className="puzzle-eyebrow"><Sparkles className="h-3 w-3" /> O arquivo arcano · Provas de raciocínio</p>
+          <h2>O Oráculo dos Enigmas</h2>
+          <p>Decifre uma questão por vez. Observe as palavras, encontre o padrão e prove que sua mente é tão afiada quanto sua lâmina.</p>
+        </div>
+        <div className="puzzle-time-seal" aria-label="Limite de dez minutos">
+          <span>10</span><small>MIN</small>
+        </div>
+      </header>
+
+      <div className="puzzle-layout">
+        <main className="puzzle-challenge-panel">
+          <div className="puzzle-panel-heading">
+            <div>
+              <span className="puzzle-section-kicker">Câmara de dedução</span>
+              <h3>{p ? "Um mistério aguarda solução" : "A próxima prova está selada"}</h3>
+            </div>
+            <span className={"puzzle-state-pill" + (res ? (res.correct ? " is-correct" : " is-wrong") : p ? " is-active" : "")}>
+              {res ? (res.correct ? "Resolvido" : "Encerrado") : p ? "Em andamento" : "Preparado"}
+            </span>
+          </div>
+
+          {!p ? (
+            <div className="puzzle-empty-state">
+              <div className="puzzle-rune" aria-hidden="true">✧</div>
+              <p className="puzzle-question-kicker">Um desafio. Uma tentativa. Glória ou aprendizado.</p>
+              <h3>Abra o selo e receba seu enigma</h3>
+              <p>Cada prova tem sua própria resposta e recompensa. Leia com calma: depois de responder, não será possível tentar novamente.</p>
+              <Button onClick={start} disabled={busy} className="puzzle-main-button">
+                <BookOpen className="h-4 w-4" /> {busy ? "Preparando desafio…" : buttonLabel}
+              </Button>
+            </div>
+          ) : (
+            <div className="puzzle-question-wrap">
+              <div className="puzzle-question-ornament" aria-hidden="true"><span>✦</span><span>✧</span><span>✦</span></div>
+              <p className="puzzle-question-kicker">Enigma recebido · Leia atentamente</p>
+              <h3 className="puzzle-question-text">{p.question}</h3>
+
+              {!res ? (
+                <form className="puzzle-answer-form" onSubmit={(event) => { event.preventDefault(); void solve(); }}>
+                  <label className="puzzle-answer-label" htmlFor="puzzle-answer">Sua dedução</label>
+                  <Input
+                    id="puzzle-answer"
+                    className="puzzle-answer-input"
+                    value={ans}
+                    onChange={(event) => setAns(event.target.value)}
+                    placeholder="Escreva sua resposta…"
+                    autoComplete="off"
+                    disabled={busy}
+                  />
+                  <Button type="submit" disabled={busy || !ans.trim()} className="puzzle-main-button">
+                    {busy ? "Consultando o oráculo…" : "Confirmar resposta"}
+                    <Sparkles className="h-4 w-4" />
+                  </Button>
+                  <p className="puzzle-answer-footnote"><Lock className="h-3 w-3" /> Uma única tentativa. Revise sua resposta antes de confirmar.</p>
+                </form>
+              ) : (
+                <div aria-live="polite" className={"puzzle-result-panel" + (res.correct ? " is-correct" : " is-wrong")}>
+                  <div className="puzzle-result-symbol">{res.correct ? <CheckCircle2 className="h-6 w-6" /> : <Brain className="h-6 w-6" />}</div>
+                  <div className="min-w-0 flex-1">
+                    <p className="puzzle-result-kicker">{res.correct ? "Prova superada" : "A resposta escapou desta vez"}</p>
+                    <h4>{res.correct ? "Sabedoria conquistada!" : "O mistério foi revelado"}</h4>
+                    <p>{res.correct ? "Sua recompensa foi registrada: +" + res.reward.toLocaleString("pt-BR") + " moedas." : "A resposta correta era: " + res.answer}</p>
+                  </div>
+                  {res.correct && <div className="puzzle-reward"><Trophy className="h-4 w-4" /><strong>+{res.reward.toLocaleString("pt-BR")}</strong><small>moedas</small></div>}
+                  <Button onClick={start} disabled={busy} className="puzzle-main-button puzzle-next-button">
+                    {busy ? "Abrindo…" : "Novo enigma"} <Sparkles className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+        </main>
+
+        <aside className="puzzle-sidebar">
+          <div className="puzzle-rules-card">
+            <p className="puzzle-section-kicker">Regras da prova</p>
+            <h3>Raciocínio acima da sorte.</h3>
+            <div className="puzzle-rule-row">
+              <span className="puzzle-rule-icon">⌛</span>
+              <div><strong>10 minutos</strong><small>Limite para resolver o desafio</small></div>
+            </div>
+            <div className="puzzle-rule-row">
+              <span className="puzzle-rule-icon">◆</span>
+              <div><strong>Uma tentativa</strong><small>Responda apenas quando tiver certeza</small></div>
+            </div>
+            <div className="puzzle-rule-row">
+              <span className="puzzle-rule-icon">✦</span>
+              <div><strong>Recompensa variável</strong><small>O prêmio depende do enigma recebido</small></div>
+            </div>
+          </div>
+          <div className="puzzle-motto-card">
+            <Sparkles className="h-4 w-4" />
+            <p>“A resposta certa raramente está escondida. Quase sempre, está diante dos olhos.”</p>
+            <span>— Inscrição na porta do Oráculo</span>
+          </div>
+        </aside>
+      </div>
+    </section>
   );
 }
 
@@ -1102,6 +1215,7 @@ function FarkleGame({ onDone, onClose, vigor, coins }: { onDone: () => void; onC
 
 function Farkle({ onDone, vigor, coins }: { onDone: () => void; vigor: number; coins: number }) {
   const [open, setOpen] = useState(false);
+  const [hasOpened, setHasOpened] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -1126,11 +1240,11 @@ function Farkle({ onDone, vigor, coins }: { onDone: () => void; vigor: number; c
             <span className="farkle-feature-pill"><Shield className="h-3 w-3" /> Regras clássicas da mesa</span>
           </div>
         </div>
-        <Button onClick={() => setOpen(true)} className="h-11 shrink-0 px-5 font-display"><Trophy className="h-4 w-4" /> Abrir mesa</Button>
+        <Button onClick={() => { setHasOpened(true); setOpen(true); }} className="h-11 shrink-0 px-5 font-display"><Trophy className="h-4 w-4" /> Abrir mesa</Button>
       </section>
 
-      {open && (
-        <div className="farkle-overlay">
+      {hasOpened && (
+        <div className="farkle-overlay" hidden={!open} aria-hidden={!open}>
           <section className="farkle-window" role="dialog" aria-modal="true" aria-labelledby="farkle-window-title">
             <header className="farkle-window-header">
               <div className="flex min-w-0 items-center gap-3">
@@ -1140,7 +1254,10 @@ function Farkle({ onDone, vigor, coins }: { onDone: () => void; vigor: number; c
                   <h2 id="farkle-window-title" className="truncate font-display text-lg text-amber-50 sm:text-xl">Farkle</h2>
                 </div>
               </div>
-              <span className="farkle-window-balance"><Coins className="h-3.5 w-3.5" /> {coins.toLocaleString("pt-BR")} moedas</span>
+              <div className="farkle-window-header-actions">
+                <span className="farkle-window-balance"><Coins className="h-3.5 w-3.5" /> {coins.toLocaleString("pt-BR")} moedas</span>
+                <Button type="button" variant="outline" onClick={() => setOpen(false)} className="farkle-back-button h-9 shrink-0 px-3" aria-label="Voltar para a seleção de jogos"><ArrowLeft className="h-4 w-4" /><span>Voltar</span></Button>
+              </div>
             </header>
             <FarkleGame onDone={onDone} onClose={() => setOpen(false)} vigor={vigor} coins={coins} />
           </section>
