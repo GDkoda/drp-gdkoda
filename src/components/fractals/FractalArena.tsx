@@ -326,16 +326,17 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               enemy.hp -= shot.damage; enemy.flash = 0.09; shot.life = 0;
               if (enemy.hp <= 0) {
                 game.kills += 1;
-                if (enemy.type !== "boss") game.gems.push({ x: enemy.x, y: enemy.y, value: enemy.xp, radius: 5 });
-                const specialDropTier = Math.max(purchases.area, purchases.experience);
-                const specialDropChance = specialDropTier >= 3 ? 0.03 : specialDropTier >= 2 ? 0.01 : 0;
-                if ((enemy.type === "elite" || enemy.type === "brute") && specialDropChance > 0 && Math.random() < specialDropChance) {
-                  const eligible: SpecialDrop["kind"][] = [];
-                  if (purchases.area >= 1 && game.player.specialAreaStacks < 5) eligible.push("area");
-                  if (purchases.experience >= 1 && game.player.specialExperienceStacks < 6) eligible.push("experience");
-                  if (eligible.length) game.specialDrops.push({ x: enemy.x, y: enemy.y, kind: eligible[Math.floor(Math.random() * eligible.length)], radius: 13 });
-                }
-                else { game.ended = true; setResult("victory"); if (runId) void (supabase.rpc as any)("finish_fractal_run", { _run_id: runId, _victory: true }).then(({ data, error }: any) => { if (error) toast.error(error.message); else { setFractalBalance(Number(data?.fractals ?? 0)); setUnlockedCorruption(Number(data?.corruptionUnlocked ?? 0)); setCompletedCorruptions(Array.isArray(data?.completedCorruptions) ? data.completedCorruptions : []); toast.success("Corrupção concluída. O próximo nível foi liberado."); } }); }
+                if (enemy.type !== "boss") {
+                  game.gems.push({ x: enemy.x, y: enemy.y, value: enemy.xp, radius: 5 });
+                  const specialDropTier = Math.max(purchases.area, purchases.experience);
+                  const specialDropChance = specialDropTier >= 3 ? 0.03 : specialDropTier >= 2 ? 0.01 : 0;
+                  if ((enemy.type === "elite" || enemy.type === "brute") && specialDropChance > 0 && Math.random() < specialDropChance) {
+                    const eligible: SpecialDrop["kind"][] = [];
+                    if (purchases.area >= 1 && game.player.specialAreaStacks < 5) eligible.push("area");
+                    if (purchases.experience >= 1 && game.player.specialExperienceStacks < 6) eligible.push("experience");
+                    if (eligible.length) game.specialDrops.push({ x: enemy.x, y: enemy.y, kind: eligible[Math.floor(Math.random() * eligible.length)], radius: 13 });
+                  }
+                } else { game.ended = true; setResult("victory"); if (runId) void (supabase.rpc as any)("finish_fractal_run", { _run_id: runId, _victory: true }).then(({ data, error }: any) => { if (error) toast.error(error.message); else { setFractalBalance(Number(data?.fractals ?? 0)); setUnlockedCorruption(Number(data?.corruptionUnlocked ?? 0)); setCompletedCorruptions(Array.isArray(data?.completedCorruptions) ? data.completedCorruptions : []); toast.success("Corrupção concluída. O próximo nível foi liberado."); } }); }
                 for (let i = 0; i < 5; i++) game.particles.push({ x: enemy.x, y: enemy.y, vx: (Math.random() - 0.5) * 100, vy: (Math.random() - 0.5) * 100, life: 0.45, color: enemy.color });
               }
               break;
