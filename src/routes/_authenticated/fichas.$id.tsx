@@ -96,7 +96,7 @@ function Sheet() {
   const isActive = me?.profile?.active_character_id === c.id;
   const F = c.f + b.f, H = c.h + b.h, R = c.r + b.r, A = c.a + b.a, P = c.pdf + b.pdf;
   const pvMax = Math.max(1, R * 5);
-  const pmMax = Math.max(1, R * 5);
+  const pmMax = Math.max(1, R * 5 + b.pm);
   const sum = (items: Trait[]) => items.reduce((total, trait) => total + (Number(trait.cost) || 0), 0);
   const spent = c.f + c.h + c.r + c.a + c.pdf + sum(c.advantages) + sum(c.skills) - sum(c.disadvantages);
   const set = (patch: Partial<Char>) => setC((current) => current ? { ...current, ...patch } : current);
