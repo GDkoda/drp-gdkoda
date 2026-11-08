@@ -31,9 +31,9 @@ export function AionEmblem(props: SVGProps<SVGSVGElement>) {
       <g>
         <path d="M42 38.5Q64 19 86 38.5Q64 58 42 38.5Z" strokeWidth="2.3" />
         <path d="M64 26V22M53 38.5H49M79 38.5H75" strokeWidth="1.35" />
-        <ellipse cx="64" cy="38.5" rx="5.1" ry="6.1" fill="currentColor" stroke="none" />
-        <ellipse cx="64" cy="38.5" rx="2" ry="3.4" fill="var(--background, #111521)" stroke="none" />
-        <circle cx="62.8" cy="36.8" r="1.05" fill="#fff6da" stroke="none" />
+        <circle cx="64" cy="38.5" r="5.35" fill="currentColor" fillOpacity=".12" stroke="currentColor" strokeWidth="1.35" />
+        <path d="M64 34.1C61.6 36 61.6 41 64 42.9C66.4 41 66.4 36 64 34.1Z" fill="var(--background, #111521)" stroke="currentColor" strokeWidth="1.05" />
+        <circle cx="62.9" cy="36.6" r="1" fill="#fff6da" stroke="none" />
         <path d="M58 31.5 55 28M70 31.5 73 28" opacity=".8" />
       </g>
 
