@@ -107,6 +107,20 @@ export function PwaInstallProvider({ children }: { children: ReactNode }) {
     setShowManualInstructions(true);
     setShowIntro(true);
   }, []);
+  useEffect(() => {
+    if (!showIntro) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") dismissIntro();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [showIntro, dismissIntro]);
+
 
   const value = useMemo(() => ({
     isMobile, isIOS, installed, canPrompt: !!deferredPrompt, install, showInstructions,
