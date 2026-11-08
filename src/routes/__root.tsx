@@ -15,6 +15,7 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { supabase } from "@/integrations/supabase/client";
 import { Toaster } from "@/components/ui/sonner";
 import { AppCustomizationProvider } from "@/lib/app-customization";
+import { PwaInstallProvider } from "@/components/PwaInstall";
 
 function NotFoundComponent() {
   return (
@@ -61,6 +62,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
       { title: "Mesa 3D&T Alpha" },
       { name: "description", content: "Mesa de RPG 3D&T Alpha: fichas, loja, baú e mini-jogos." },
+      { name: "theme-color", content: "#211b18" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
+      { name: "apple-mobile-web-app-title", content: "Mesa 3D&T" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -70,6 +75,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Crimson+Pro:wght@400;600&display=swap" },
       { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "manifest", href: "/manifest.webmanifest" },
+      { rel: "apple-touch-icon", href: "/pwa-icon-192.png" },
     ],
   }),
   shellComponent: RootShell,
@@ -104,7 +111,9 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <AppCustomizationProvider>
-        <Outlet />
+        <PwaInstallProvider>
+          <Outlet />
+        </PwaInstallProvider>
         <Toaster />
       </AppCustomizationProvider>
     </QueryClientProvider>
