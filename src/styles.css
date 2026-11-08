@@ -3075,3 +3075,7 @@ html[data-theme="dark"][data-palette="taverna-zendikar"] {
 .farkle-hud [class*="to-black/"] {
   --tw-gradient-to: color-mix(in oklab, var(--primary) 4%, var(--card)) !important;
 }
+
+/* Mantém as barras de PV e PM vivas sem abandonar as cores da paleta. */
+.combat-screen .combat-status-card .bg-emerald-500 { background-color: var(--primary) !important; }
+.combat-screen .combat-status-card .bg-sky-500 { background-color: var(--mana) !important; }
