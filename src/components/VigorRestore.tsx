@@ -21,6 +21,8 @@ export function VigorRestore({ vigor }: { vigor: number | undefined }) {
   const buy = async (amount: 1 | 5) => {
     try {
       await rpc("restore_vigor", { _amount: amount }, "+" + amount + " vigor restaurado");
+    } catch {
+      // A RPC já apresenta a mensagem de erro ao jogador.
     } finally {
       await Promise.all([
         qc.invalidateQueries({ queryKey: ["vigor"] }),
