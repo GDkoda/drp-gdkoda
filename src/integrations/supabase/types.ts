@@ -22,6 +22,9 @@ export type Database = {
           created_at: string
           disadvantages: Json
           f: number
+          fa_bonus: number
+          fd_bonus: number
+          custom_rolls: Json
           h: number
           id: string
           known_spells: string[]
@@ -44,6 +47,9 @@ export type Database = {
           created_at?: string
           disadvantages?: Json
           f?: number
+          fa_bonus?: number
+          fd_bonus?: number
+          custom_rolls?: Json
           h?: number
           id?: string
           known_spells?: string[]

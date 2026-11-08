@@ -22,9 +22,12 @@ type Char = {
   id: string; owner_id: string; name: string; concept: string;
   f: number; h: number; r: number; a: number; pdf: number;
   pv_current: number; pm_current: number; pp_total: number; xp: number;
+  fa_bonus: number; fd_bonus: number; custom_rolls: CustomRoll[];
   advantages: Trait[]; disadvantages: Trait[]; skills: Trait[];
   notes: string; known_spells: string[];
 };
+
+type CustomRoll = { id: string; name: string; kind: "FA-F" | "FA-PdF" | "FD"; dice: number; sides: number; bonus: number };
 
 function Sheet() {
   const { id } = Route.useParams();
@@ -50,6 +53,11 @@ function Sheet() {
 
   const [c, setC] = useState<Char | null>(null);
   const [roll, setRoll] = useState<string | null>(null);
+  const [customName, setCustomName] = useState("");
+  const [customKind, setCustomKind] = useState<CustomRoll["kind"]>("FA-F");
+  const [customDice, setCustomDice] = useState(1);
+  const [customSides, setCustomSides] = useState(6);
+  const [customBonus, setCustomBonus] = useState(0);
   const [activationBusy, setActivationBusy] = useState(false);
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   useEffect(() => { if (loaded) setC(loaded); }, [loaded]);
@@ -122,11 +130,32 @@ function Sheet() {
   const rollFA = (useP: boolean) => {
     const die = d6();
     const base = (useP ? P : F) + H;
-    setRoll("FA (" + (useP ? "PdF" : "F") + "): " + base + " + 1d6[" + die + "] = " + (base + die));
+    const manual = Number(c.fa_bonus) || 0;
+    const total = base + manual + die;
+    setRoll("FA (" + (useP ? "PdF" : "F") + "): " + base + (manual ? " + bônus " + manual : "") + " + 1d6[" + die + "] = " + total);
   };
   const rollFD = () => {
     const die = d6();
-    setRoll("FD: " + (A + H) + " + 1d6[" + die + "] = " + (A + H + die));
+    const base = A + H;
+    const manual = Number(c.fd_bonus) || 0;
+    const total = base + manual + die;
+    setRoll("FD: " + base + (manual ? " + bônus " + manual : "") + " + 1d6[" + die + "] = " + total);
+  };
+  const runCustomRoll = (item: CustomRoll) => {
+    const base = item.kind === "FA-F" ? F + H : item.kind === "FA-PdF" ? P + H : A + H;
+    const manual = item.kind === "FD" ? Number(c.fd_bonus) || 0 : Number(c.fa_bonus) || 0;
+    const dice = Array.from({ length: Math.max(1, Math.min(10, item.dice)) }, () => Math.floor(Math.random() * Math.max(2, Math.min(100, item.sides))) + 1);
+    const diceTotal = dice.reduce((sum, value) => sum + value, 0);
+    const total = base + manual + (Number(item.bonus) || 0) + diceTotal;
+    setRoll(item.name + " · " + item.kind + ": " + base + (manual ? " + bônus FA/FD " + manual : "") + (item.bonus ? " + bônus próprio " + item.bonus : "") + " + " + dice.length + "d" + item.sides + " [" + dice.join(", ") + "] = " + total);
+  };
+  const addCustomRoll = () => {
+    const name = customName.trim();
+    if (!name) { toast.error("Dê um nome para a rolagem personalizada."); return; }
+    const item: CustomRoll = { id: crypto.randomUUID(), name, kind: customKind, dice: Math.max(1, Math.min(10, Number(customDice) || 1)), sides: Math.max(2, Math.min(100, Number(customSides) || 6)), bonus: Number(customBonus) || 0 };
+    set({ custom_rolls: [...(c.custom_rolls ?? []), item] });
+    setCustomName("");
+    toast.success("Rolagem personalizada adicionada.");
   };
 
   return (
@@ -173,10 +202,31 @@ function Sheet() {
       <section className="character-studio-vitals" aria-label="Recursos do personagem">
         <Bar label="Pontos de Vida" shortLabel="PV" cur={c.pv_current} max={pvMax} color="bg-blood" onChange={(value) => set({ pv_current: value })} />
         <Bar label="Pontos de Magia" shortLabel="PM" cur={c.pm_current} max={pmMax} color="bg-mana" onChange={(value) => set({ pm_current: value })} />
-        <div className="character-studio-rolls no-print">
-          <Button size="sm" variant="secondary" onClick={() => rollFA(false)}><Dice6 className="h-4 w-4" />FA</Button>
-          <Button size="sm" variant="secondary" onClick={() => rollFA(true)}>FA PdF</Button>
-          <Button size="sm" variant="secondary" onClick={rollFD}>FD</Button>
+        <div className="character-studio-roll-panel no-print">
+          <div className="character-roll-heading"><strong>Rolagens automáticas</strong><small>1d6 + atributo + H</small></div>
+          <div className="character-roll-bonuses">
+            <label> Bônus manual FA <Input aria-label="Bônus manual de FA" type="number" inputMode="numeric" value={c.fa_bonus ?? 0} onChange={(event) => set({ fa_bonus: Number(event.target.value) || 0 })} /></label>
+            <label> Bônus manual FD <Input aria-label="Bônus manual de FD" type="number" inputMode="numeric" value={c.fd_bonus ?? 0} onChange={(event) => set({ fd_bonus: Number(event.target.value) || 0 })} /></label>
+          </div>
+          <div className="character-studio-rolls">
+            <Button size="sm" variant="secondary" onClick={() => rollFA(false)}><Dice6 className="h-4 w-4" />FA · F</Button>
+            <Button size="sm" variant="secondary" onClick={() => rollFA(true)}>FA · PdF</Button>
+            <Button size="sm" variant="secondary" onClick={rollFD}>FD</Button>
+          </div>
+          <div className="character-custom-rolls">
+            <div className="character-roll-heading"><strong>Rolagens personalizadas</strong><small>Crie dados e bônus próprios</small></div>
+            <div className="character-custom-roll-form">
+              <Input aria-label="Nome da rolagem personalizada" placeholder="Nome da rolagem" value={customName} onChange={(event) => setCustomName(event.target.value)} />
+              <select aria-label="Base da rolagem" value={customKind} onChange={(event) => setCustomKind(event.target.value as CustomRoll["kind"])}>
+                <option value="FA-F">FA baseada em F</option><option value="FA-PdF">FA baseada em PdF</option><option value="FD">FD baseada em A</option>
+              </select>
+              <label>Dados <Input aria-label="Quantidade de dados" type="number" min={1} max={10} value={customDice} onChange={(event) => setCustomDice(Number(event.target.value) || 1)} /></label>
+              <label>Lados <Input aria-label="Lados do dado" type="number" min={2} max={100} value={customSides} onChange={(event) => setCustomSides(Number(event.target.value) || 6)} /></label>
+              <label>Bônus <Input aria-label="Bônus da rolagem personalizada" type="number" value={customBonus} onChange={(event) => setCustomBonus(Number(event.target.value) || 0)} /></label>
+              <Button size="sm" onClick={addCustomRoll}><Plus className="h-4 w-4" />Adicionar rolagem</Button>
+            </div>
+            {(c.custom_rolls ?? []).length > 0 && <div className="character-custom-roll-list">{c.custom_rolls.map((item) => <div key={item.id}><span><strong>{item.name}</strong><small>{item.kind} · {item.dice}d{item.sides} · bônus {item.bonus >= 0 ? "+" : ""}{item.bonus}</small></span><Button size="sm" variant="secondary" onClick={() => runCustomRoll(item)}><Dice6 className="h-4 w-4" />Rolar</Button><Button size="icon" variant="ghost" aria-label={"Excluir " + item.name} onClick={() => set({ custom_rolls: c.custom_rolls.filter((entry) => entry.id !== item.id) })}><X className="h-4 w-4" /></Button></div>)}</div>}
+          </div>
         </div>
         {roll && <div className="character-studio-roll-result" role="status">{roll}</div>}
       </section>
@@ -216,8 +266,8 @@ function Sheet() {
             </label>
             <div className="character-identity-progress-card">
               <span>Força de Ataque · FA</span>
-              <strong>{Math.max(F, P) + H}</strong>
-              <small>Melhor entre F/PdF + H</small>
+              <strong>F {F + H} <span className="character-progress-separator">/</span> PdF {P + H}</strong>
+              <small>F + H / PdF + H</small>
             </div>
             <div className="character-identity-progress-card">
               <span>Força de Defesa · FD</span>
