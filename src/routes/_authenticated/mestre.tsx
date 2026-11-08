@@ -130,6 +130,7 @@ function AppearanceEditor() {
   const { settings, setPreview, refresh } = useCustomization();
   const [draft, setDraft] = useState<Customization>(settings);
   const [busy, setBusy] = useState(false);
+  const [textSearch, setTextSearch] = useState("");
   useEffect(() => { setDraft(settings); }, [settings]);
   useEffect(() => { setPreview(draft); return () => setPreview(null); }, [draft, setPreview]);
   const setLook = <K extends keyof Appearance>(key: K, value: Appearance[K]) => setDraft((old) => ({ ...old, appearance: { ...old.appearance, [key]: value } }));
@@ -163,46 +164,105 @@ function AppearanceEditor() {
     setDraft({ texts: { ...defaultTexts }, appearance: { ...defaultAppearance } });
   }
 
-  return (
-    <div className="space-y-5">
-      <section className="space-y-4 rounded-lg border bg-card p-4">
-        <div>
-          <h2 className="text-lg">Aparência</h2>
-          <p className="text-sm text-muted-foreground">As mudanças aparecem nesta tela antes de serem publicadas.</p>
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {([['textColor', 'Cor do texto'], ['primaryColor', 'Destaques e botões'], ['backgroundColor', 'Cor do fundo'], ['cardColor', 'Cor dos itens']] as [keyof Appearance, string][]).map(([key, label]) => (
-            <label key={key} className="text-sm">{label}<Input type="color" className="mt-1 h-10 p-1" value={String(draft.appearance[key])} onChange={(e) => setLook(key, e.target.value as never)} /></label>
-          ))}
-        </div>
-        <div className="grid gap-5 sm:grid-cols-3">
-          <ScaleControl label={`Texto: ${draft.appearance.textSize}px`} value={draft.appearance.textSize} min={14} max={22} step={1} onChange={(v) => setLook("textSize", v)} />
-          <ScaleControl label={`Títulos: ${Math.round(draft.appearance.titleSize * 100)}%`} value={draft.appearance.titleSize} min={.8} max={1.5} step={.05} onChange={(v) => setLook("titleSize", v)} />
-          <ScaleControl label={`Itens: ${Math.round(draft.appearance.itemScale * 100)}%`} value={draft.appearance.itemScale} min={.85} max={1.25} step={.05} onChange={(v) => setLook("itemScale", v)} />
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <label className="text-sm">Imagem de fundo
-            <span className="mt-1 flex items-center gap-2"><Input type="file" accept="image/png,image/jpeg,image/webp" disabled={busy} onChange={(e) => { const file = e.target.files?.[0]; if (file) void upload(file); }} /><ImageUp className="h-5 w-5 text-muted-foreground" /></span>
-          </label>
-          <div className="space-y-3">
-            <ScaleControl label={`Intensidade: ${Math.round(draft.appearance.backgroundOpacity * 100)}%`} value={draft.appearance.backgroundOpacity} min={0} max={.7} step={.05} onChange={(v) => setLook("backgroundOpacity", v)} />
-            <Select value={draft.appearance.backgroundPosition} onValueChange={(v) => setLook("backgroundPosition", v as "cover" | "contain")}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="cover">Preencher a tela</SelectItem><SelectItem value="contain">Mostrar imagem inteira</SelectItem></SelectContent></Select>
-          </div>
-        </div>
-        {draft.appearance.backgroundPath && <Button variant="secondary" size="sm" onClick={() => setLook("backgroundPath", "")}>Remover imagem da prévia</Button>}
-      </section>
+  const filteredGroups = textGroups.map((group) => ({
+    ...group,
+    keys: group.keys.filter((key) => {
+      const term = textSearch.trim().toLocaleLowerCase("pt-BR");
+      return !term || `${textLabels[key] ?? defaultTexts[key]} ${group.title} ${key} ${draft.texts[key]}`.toLocaleLowerCase("pt-BR").includes(term);
+    }),
+  })).filter((group) => group.keys.length > 0);
+  const textCount = textGroups.reduce((total, group) => total + group.keys.length, 0);
 
-      {textGroups.map((group) => (
-        <section key={group.title} className="space-y-3 rounded-lg border bg-card p-4">
-          <h2 className="text-lg">Textos — {group.title}</h2>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {group.keys.map((key) => <label key={key} className="text-sm">{textLabels[key] ?? defaultTexts[key]}<Input className="mt-1" maxLength={240} value={draft.texts[key]} onChange={(e) => setText(key, e.target.value)} /></label>)}
+  return (
+    <div className="space-y-3 pb-24">
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border bg-card/70 px-3 py-2.5">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold">Personalização da campanha</p>
+          <p className="text-xs text-muted-foreground">Prévia instantânea · as alterações só ficam públicas ao publicar</p>
+        </div>
+        <span className="shrink-0 rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[11px] font-medium text-gold">Rascunho</span>
+      </div>
+
+      <Tabs defaultValue="appearance" className="space-y-3">
+        <TabsList className="grid h-10 w-full grid-cols-2 rounded-xl p-1">
+          <TabsTrigger value="appearance" className="gap-2 rounded-lg text-xs sm:text-sm"><Palette className="h-4 w-4" /> Aparência</TabsTrigger>
+          <TabsTrigger value="texts" className="gap-2 rounded-lg text-xs sm:text-sm"><ScrollText className="h-4 w-4" /> Textos <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px]">{textCount}</span></TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="appearance" className="mt-0 space-y-3">
+          <section className="rounded-xl border bg-card p-3 sm:p-4">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <div><h2 className="text-sm font-semibold">Cores da mesa</h2><p className="text-xs text-muted-foreground">Ajuste os tons principais da interface.</p></div>
+              <Palette className="h-4 w-4 text-gold" />
+            </div>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {([['primaryColor', 'Destaques'], ['backgroundColor', 'Fundo'], ['cardColor', 'Cartões'], ['textColor', 'Texto']] as [keyof Appearance, string][]).map(([key, label]) => (
+                <label key={key} className="flex min-w-0 items-center gap-2 rounded-lg border bg-background/60 p-2 text-xs font-medium">
+                  <Input aria-label={label} type="color" className="h-9 w-10 shrink-0 cursor-pointer rounded-md border-0 p-0.5" value={String(draft.appearance[key])} onChange={(e) => setLook(key, e.target.value as never)} />
+                  <span className="min-w-0"><span className="block">{label}</span><span className="block font-mono text-[10px] text-muted-foreground">{String(draft.appearance[key]).toUpperCase()}</span></span>
+                </label>
+              ))}
+            </div>
+          </section>
+
+          <section className="rounded-xl border bg-card p-3 sm:p-4">
+            <div className="mb-3 flex items-center gap-2"><SlidersHorizontal className="h-4 w-4 text-gold" /><div><h2 className="text-sm font-semibold">Escala e legibilidade</h2><p className="text-xs text-muted-foreground">Controles compactos para equilibrar o espaço.</p></div></div>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <ScaleControl label={`Texto · ${draft.appearance.textSize}px`} value={draft.appearance.textSize} min={14} max={22} step={1} onChange={(v) => setLook("textSize", v)} />
+              <ScaleControl label={`Títulos · ${Math.round(draft.appearance.titleSize * 100)}%`} value={draft.appearance.titleSize} min={.8} max={1.5} step={.05} onChange={(v) => setLook("titleSize", v)} />
+              <ScaleControl label={`Elementos · ${Math.round(draft.appearance.itemScale * 100)}%`} value={draft.appearance.itemScale} min={.85} max={1.25} step={.05} onChange={(v) => setLook("itemScale", v)} />
+            </div>
+          </section>
+
+          <section className="rounded-xl border bg-card p-3 sm:p-4">
+            <div className="mb-3 flex items-center gap-2"><ImageUp className="h-4 w-4 text-gold" /><div><h2 className="text-sm font-semibold">Imagem de fundo</h2><p className="text-xs text-muted-foreground">PNG, JPG ou WebP · até 5 MB.</p></div></div>
+            <div className="grid gap-3 sm:grid-cols-[1fr_1fr] sm:items-end">
+              <label className="space-y-1 text-xs font-medium text-muted-foreground">Selecionar imagem
+                <Input className="h-10 text-xs file:mr-2 file:rounded-md file:border-0 file:bg-muted file:px-2 file:py-1 file:text-xs" type="file" accept="image/png,image/jpeg,image/webp" disabled={busy} onChange={(e) => { const file = e.target.files?.[0]; if (file) void upload(file); e.currentTarget.value = ""; }} />
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <ScaleControl label={`Opacidade · ${Math.round(draft.appearance.backgroundOpacity * 100)}%`} value={draft.appearance.backgroundOpacity} min={0} max={.7} step={.05} onChange={(v) => setLook("backgroundOpacity", v)} />
+                <label className="space-y-1 text-xs font-medium text-muted-foreground">Enquadramento
+                  <Select value={draft.appearance.backgroundPosition} onValueChange={(v) => setLook("backgroundPosition", v as "cover" | "contain")}><SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="cover">Preencher</SelectItem><SelectItem value="contain">Imagem inteira</SelectItem></SelectContent></Select>
+                </label>
+              </div>
+            </div>
+            {draft.appearance.backgroundPath && <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-muted/50 px-3 py-2"><span className="min-w-0 truncate text-xs text-muted-foreground">Imagem de fundo selecionada</span><Button variant="ghost" size="sm" className="h-8" onClick={() => setLook("backgroundPath", "")}>Remover</Button></div>}
+          </section>
+        </TabsContent>
+
+        <TabsContent value="texts" className="mt-0 space-y-3">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input className="h-10 rounded-xl pl-9 text-sm" placeholder="Buscar texto, seção ou conteúdo…" value={textSearch} onChange={(e) => setTextSearch(e.target.value)} />
           </div>
-        </section>
-      ))}
-      <div className="sticky bottom-20 z-20 flex flex-wrap gap-2 border-t bg-background/95 py-3 backdrop-blur md:bottom-0">
-        <Button onClick={save} disabled={busy}><Save className="h-4 w-4" />Publicar para todos</Button>
-        <Button variant="secondary" onClick={restore} disabled={busy}><RotateCcw className="h-4 w-4" />Restaurar padrão</Button>
+          <div className="flex items-center justify-between gap-2 px-1 text-xs text-muted-foreground"><span>{filteredGroups.reduce((n, group) => n + group.keys.length, 0)} de {textCount} textos</span><span>Edite os campos e veja a prévia ao vivo</span></div>
+          {filteredGroups.map((group) => (
+            <details key={group.title} open={!!textSearch.trim()} className="group rounded-xl border bg-card">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-3 [&::-webkit-details-marker]:hidden">
+                <span className="flex min-w-0 items-center gap-2"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-[11px] font-semibold text-gold">{group.keys.length}</span><span className="text-sm font-semibold">{group.title}</span></span>
+                <span className="flex items-center gap-2 text-xs text-muted-foreground"><span>{group.keys.length} campos</span><span className="text-base transition-transform group-open:rotate-180">⌄</span></span>
+              </summary>
+              <div className="grid gap-2 border-t px-3 py-3 sm:grid-cols-2">
+                {group.keys.map((key) => (
+                  <label key={key} className="min-w-0 space-y-1 text-xs font-medium text-muted-foreground">
+                    <span className="block truncate">{textLabels[key] ?? defaultTexts[key]}</span>
+                    <Input className="h-9 text-sm" maxLength={240} value={draft.texts[key]} onChange={(e) => setText(key, e.target.value)} />
+                    <span className="block text-right text-[10px] font-normal tabular-nums">{draft.texts[key].length}/240</span>
+                  </label>
+                ))}
+              </div>
+            </details>
+          ))}
+          {!filteredGroups.length && <div className="rounded-xl border border-dashed p-6 text-center"><p className="text-sm font-medium">Nenhum texto encontrado</p><p className="mt-1 text-xs text-muted-foreground">Tente outro termo de busca.</p></div>}
+        </TabsContent>
+      </Tabs>
+
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/90 px-3 py-2.5 shadow-[0_-8px_30px_rgb(0_0_0/0.08)] backdrop-blur-xl sm:sticky sm:inset-auto sm:bottom-0 sm:rounded-xl sm:border sm:px-3">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-2">
+          <Button variant="ghost" size="sm" className="h-9 px-2 text-xs sm:px-3" onClick={restore} disabled={busy}><RotateCcw className="h-3.5 w-3.5" />Restaurar padrão</Button>
+          <Button size="sm" className="h-9 px-3 text-xs sm:px-4" onClick={save} disabled={busy}>{busy ? <span className="animate-pulse">Salvando…</span> : <><Save className="h-3.5 w-3.5" />Publicar alterações</>}</Button>
+        </div>
       </div>
     </div>
   );
