@@ -79,11 +79,11 @@ Valores iniciais centralizados em `src/lib/fractals/economy.ts` para facilitar a
 
 | Compra permanente | Níveis / custo |
 | --- | --- |
-| Área de coleta | +12%, +24%, +36% — 30 / 60 / 100 fractais |
-| Afinidade de experiência | +10%, +20%, +30% — 25 / 50 / 90 fractais |
-| Raridade | Normal (100%, grátis); Rara (85% normal / 15% rara); Épica (70% normal / 23% rara / 7% épica); Superior (60% normal / 27% rara / 13% épica) — 40 / 80 / 140 fractais |
-| Velocidade 2x | 100 fractais |
-| Velocidade 3x | 200 fractais |
+| Área de coleta | +12%, +24%, +36% — 300 / 600 / 1.000 fractais |
+| Afinidade de experiência | +10%, +20%, +30% — 250 / 500 / 900 fractais |
+| Raridade | Normal (100%, grátis); Rara (85% normal / 15% rara); Épica (70% normal / 23% rara / 7% épica); Superior (60% normal / 27% rara / 13% épica) — 400 / 800 / 1.400 fractais |
+| Velocidade 2x | 1.000 fractais |
+| Velocidade 3x | 2.000 fractais |
 
 Evoluções de armas são sempre Lendárias e não entram no sorteio de raridade.
 
@@ -102,3 +102,16 @@ A recompensa usa até 65% do teto pela sobrevivência proporcional, 25% por derr
 - [ ] Aplicação dos bônus permanentes de área e experiência no jogo.
 
 A interface de aceleração já bloqueia 2x/3x para contas comuns; esses modos serão liberados após compra quando a loja persistente estiver conectada. Não creditar fractais a partir de uma vitória informada apenas pelo navegador: o protótipo de combate é client-side e ainda precisa de uma camada de validação adequada.
+
+
+### Continuação implementada
+
+- [x] Custos da loja multiplicados por 10 na configuração TypeScript e na RPC SQL.
+- [x] Loja conectada às RPCs de leitura e compra; compras ficam persistidas por conta.
+- [x] Bônus permanentes de área de coleta e ganho de XP aplicados às novas partidas.
+- [x] Seleção de corrupção bloqueia níveis acima do desbloqueado; vitória no nível atual registra conclusão e libera o seguinte.
+- [x] Início e encerramento de expedição registrados no banco. A RPC exige 11 minutos de tempo real para vitória em contas comuns; a conta mestre pode testar sem essa espera.
+
+**Limitação de segurança ainda existente:** o jogo e a morte/derrota do chefe são processados no cliente. O banco aplica uma barreira de tempo e controla o desbloqueio, mas ainda não consegue provar criptograficamente que o chefe foi derrotado. Não há concessão de fractais por vitória nesta etapa; isso fica bloqueado até a simulação/recompensa ser autoritativa no servidor. As probabilidades de raridade estão configuradas, mas ainda precisam ser aplicadas às cartas de evolução de armas.
+
+**SQL:** executar a migração `drizzle/migrations/0005_fractal_shop_state.sql` no editor SQL do Supabase. Se a versão anterior já foi aplicada, execute o arquivo atualizado inteiro para substituir as funções e criar a tabela de expedições.
