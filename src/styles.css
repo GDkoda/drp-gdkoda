@@ -3038,3 +3038,40 @@ html[data-theme="dark"][data-palette="taverna-zendikar"] {
   color: var(--primary-foreground) !important;
 }
 .twentyone-window [class*="text-amber-950"] { color: var(--primary-foreground) !important; }
+
+
+/* Harmonização final: todos os estados e indicadores dos jogos usam a paleta. */
+.combat-status-card .bg-emerald-500 { background-color: var(--primary) !important; }
+.combat-status-card .bg-sky-500 { background-color: var(--mana) !important; }
+.combat-action-card .text-amber-400 { color: var(--primary) !important; }
+.combat-screen [class*="bg-emerald-"] {
+  background-color: color-mix(in oklab, var(--primary) 12%, var(--card)) !important;
+}
+.combat-screen [class*="border-emerald-"] {
+  border-color: color-mix(in oklab, var(--primary) 35%, var(--border)) !important;
+}
+.combat-screen [class*="text-emerald-"] { color: var(--primary) !important; }
+
+.puzzle-time-seal span { font-size: 1.16rem; letter-spacing: -.045em; }
+.puzzle-time-seal small { font-size: .47rem; letter-spacing: .1em; }
+.puzzle-state-pill.is-correct {
+  border-color: color-mix(in oklab, var(--primary) 38%, var(--border)) !important;
+  background: color-mix(in oklab, var(--primary) 11%, var(--card)) !important;
+  color: var(--primary) !important;
+}
+.puzzle-result-panel.is-correct {
+  border-color: color-mix(in oklab, var(--primary) 36%, var(--border)) !important;
+  background: color-mix(in oklab, var(--primary) 9%, var(--card)) !important;
+}
+.puzzle-result-panel.is-correct .puzzle-result-symbol { color: var(--primary) !important; }
+.puzzle-reward { color: var(--primary) !important; }
+
+/* Farkle: barras e placas pretas antigas passam a usar superfícies do tema.
+   Isso evita texto de paleta clara sobre fundos fixamente escuros no modo Dia. */
+.farkle-hud [class*="bg-black"] {
+  background-color: color-mix(in oklab, var(--background) 78%, var(--card)) !important;
+}
+.farkle-hud [class*="to-black-"],
+.farkle-hud [class*="to-black/"] {
+  --tw-gradient-to: color-mix(in oklab, var(--primary) 4%, var(--card)) !important;
+}
