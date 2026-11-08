@@ -81,7 +81,7 @@ Valores iniciais centralizados em `src/lib/fractals/economy.ts` para facilitar a
 | --- | --- |
 | Área de coleta | +12%, +24%, +36% — 30 / 60 / 100 fractais |
 | Afinidade de experiência | +10%, +20%, +30% — 25 / 50 / 90 fractais |
-| Raridade | Normal (100%); Rara (85% normal / 15% rara); Épica (70% normal / 23% rara / 7% épica) — 40 / 80 / 140 fractais |
+| Raridade | Normal (100%, grátis); Rara (85% normal / 15% rara); Épica (70% normal / 23% rara / 7% épica); Superior (60% normal / 27% rara / 13% épica) — 40 / 80 / 140 fractais |
 | Velocidade 2x | 100 fractais |
 | Velocidade 3x | 200 fractais |
 
