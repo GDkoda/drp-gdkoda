@@ -389,7 +389,7 @@ function Rules() {
   );
 }
 
-const emptyMonster = { name: "", f: 1, h: 1, a: 1, pdf: 0, pv: 5, xp: 1, reward: "" as number | "" };
+const emptyMonster = { name: "", f: 1, h: 1, a: 1, pdf: 0, pv: 5, xp: 1, reward: "" as number | "", image_url: "" };
 
 function Monsters() {
   const refresh = useRefresh();
@@ -398,7 +398,7 @@ function Monsters() {
   const db = (supabase as any).from("monsters");
   const num = ["f", "h", "a", "pdf", "pv", "xp"] as const;
   async function add() {
-    const { error } = await (supabase as any).from("monsters").insert({ ...form, reward: form.reward === "" ? null : form.reward });
+    const { error } = await (supabase as any).from("monsters").insert({ ...form, reward: form.reward === "" ? null : form.reward, image_url: form.image_url.trim() || null });
     if (error) { toast.error(error.message); return; }
     setForm(emptyMonster); refresh();
   }
@@ -412,6 +412,7 @@ function Monsters() {
       <section className="space-y-2 rounded-lg border bg-card p-4">
         <h2 className="text-lg">Novo monstro</h2>
         <Input placeholder="Nome" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+        <label className="block space-y-1 text-xs font-medium text-muted-foreground">Imagem do monstro (URL) <Input placeholder="https://… ou caminho /monsters/…" value={form.image_url} onChange={(e) => setForm({ ...form, image_url: e.target.value })} /></label>
         <div className="grid grid-cols-3 gap-2 sm:grid-cols-7">
           {num.map((k) => <label key={k} className="text-xs uppercase">{k === "pv" ? "PV" : k}<Input type="number" value={form[k]} onChange={(e) => setForm({ ...form, [k]: +e.target.value })} /></label>)}
           <label className="text-xs">Moedas<Input type="number" placeholder="padrão" value={form.reward} onChange={(e) => setForm({ ...form, reward: e.target.value === "" ? "" : +e.target.value })} /></label>
@@ -421,6 +422,7 @@ function Monsters() {
       {data?.map((m: any) => (
         <div key={m.id} className="space-y-2 rounded-lg border bg-card p-3">
           <Input defaultValue={m.name} className={m.active ? "" : "opacity-60"} onBlur={(e) => e.target.value !== m.name && upd(m.id, { name: e.target.value })} />
+          <label className="block space-y-1 text-xs font-medium text-muted-foreground">Imagem do monstro (URL)<Input key={`${m.id}-${m.image_url ?? ""}`} defaultValue={m.image_url ?? ""} placeholder="URL da imagem ou /monsters/arquivo.svg" onBlur={(e) => e.target.value.trim() !== (m.image_url ?? "") && upd(m.id, { image_url: e.target.value.trim() || null })} /></label>
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-7">
             {num.map((k) => <label key={k} className="text-xs uppercase">{k === "pv" ? "PV" : k}<Input type="number" defaultValue={m[k]} onBlur={(e) => +e.target.value !== m[k] && upd(m.id, { [k]: +e.target.value })} /></label>)}
             <label className="text-xs">Moedas<Input type="number" placeholder="padrão" defaultValue={m.reward ?? ""} onBlur={(e) => upd(m.id, { reward: e.target.value === "" ? null : +e.target.value })} /></label>

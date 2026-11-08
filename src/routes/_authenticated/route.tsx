@@ -40,25 +40,25 @@ function Layout() {
   }
 
   return (
-    <div className="min-h-screen pb-20 md:pb-0">
+    <div className="min-h-screen pb-32 md:pb-0">
       <header className="no-print sticky top-0 z-30 border-b border-border/80 bg-background/85 backdrop-blur-2xl">
-        <div className="mx-auto flex max-w-7xl items-center gap-2 px-2.5 py-2.5 sm:gap-3 sm:px-5 sm:py-3 lg:px-8">
-          <Link to="/taverna" className="flex min-w-0 max-w-[9.5rem] shrink items-center gap-1.5 rounded-lg font-display text-base font-bold tracking-wide text-gold sm:max-w-none sm:shrink-0 sm:gap-2 sm:text-xl"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-primary/30 bg-primary/10 text-sm sm:h-9 sm:w-9">✦</span><span className="truncate">{text("brand")}</span></Link>
-          <nav aria-label="Navegação principal" className="hidden flex-1 items-center justify-center gap-1 lg:flex">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-3 gap-y-2 px-3 py-2.5 sm:flex-nowrap sm:px-5 sm:py-3 lg:px-8">
+          <Link to="/taverna" className="flex min-w-0 max-w-[42%] shrink items-center gap-1.5 rounded-lg font-display text-sm font-bold tracking-wide text-gold sm:max-w-none sm:shrink-0 sm:gap-2 sm:text-xl"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-primary/30 bg-primary/10 text-sm sm:h-9 sm:w-9">✦</span><span className="truncate">{text("brand")}</span></Link>
+          <nav aria-label="Navegação principal" className="hidden min-w-0 flex-1 flex-wrap items-center justify-center gap-1 lg:flex">
             {links.map((l) => (
               <Link key={l.to} to={l.to} className="rounded-xl px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted/80 hover:text-foreground" activeProps={{ className: "bg-primary/10 font-semibold text-gold" }}>
                 {l.label}
               </Link>
             ))}
           </nav>
-          <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-3">
+          <div className="ml-auto flex shrink-0 items-center justify-end gap-1 sm:gap-2 lg:gap-3">
             <ThemeToggle />
             <span className="flex max-w-[6.5rem] shrink-0 items-center gap-1 rounded-xl border border-primary/25 bg-primary/10 px-2 py-1.5 text-xs font-semibold tabular-nums text-gold sm:max-w-none sm:gap-1.5 sm:px-3 sm:py-2 sm:text-sm"><Coins className="h-4 w-4" />{me?.profile?.coins ?? "…"}</span>
             <span className="hidden max-w-36 truncate text-sm text-muted-foreground xl:inline">{me?.profile?.display_name}</span>
             <button type="button" onClick={signOut} aria-label="Sair" title="Sair" className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground"><LogOut className="h-4 w-4" /></button>
           </div>
         </div>
-        <nav aria-label="Navegação secundária" className="mx-auto hidden max-w-7xl gap-1 overflow-x-auto px-3 pb-2 sm:px-5 md:flex lg:hidden">
+        <nav aria-label="Navegação secundária" className="mx-auto hidden max-w-7xl flex-wrap items-center justify-center gap-1 px-3 pb-2 sm:px-5 md:flex lg:hidden">
           {links.map((l) => (
             <Link key={l.to} to={l.to} className="whitespace-nowrap rounded-xl px-3 py-1.5 text-sm font-medium text-muted-foreground hover:bg-muted/80 hover:text-foreground" activeProps={{ className: "bg-primary/10 font-semibold text-gold" }}>
               {l.label}
@@ -67,17 +67,17 @@ function Layout() {
         </nav>
       </header>
       <main className="mx-auto w-full max-w-7xl px-3 py-5 sm:px-5 sm:py-7 lg:px-8"><Outlet /></main>
-      <nav aria-label="Navegação principal" className="mobile-bottom-nav no-print fixed inset-x-0 bottom-0 z-30 flex border-t border-border/80 bg-background/92 pb-[env(safe-area-inset-bottom)] shadow-[0_-10px_34px_rgb(0_0_0/0.16)] backdrop-blur-2xl md:hidden">
+      <nav aria-label="Navegação principal" className="mobile-bottom-nav no-print fixed inset-x-0 bottom-0 z-30 flex flex-wrap items-stretch justify-center gap-1 border-t border-border/80 bg-background/95 px-1 pt-1 pb-[max(env(safe-area-inset-bottom),.25rem)] shadow-[0_-10px_34px_rgb(0_0_0/0.16)] backdrop-blur-2xl md:hidden">
         {links.map((l) => (
           <Link
             key={l.to}
             to={l.to}
-            className="flex min-h-14 min-w-0 flex-1 touch-manipulation select-none flex-col items-center justify-center gap-1 px-0.5 py-2 text-[10px] leading-tight transition-transform active:scale-95"
+            className="flex min-h-[3.15rem] w-1/4 max-w-1/4 flex-none touch-manipulation select-none flex-col items-center justify-center gap-1 rounded-lg px-0.5 py-1.5 text-[9px] leading-tight transition-colors active:scale-95"
             activeProps={{ className: "bg-muted font-semibold text-gold", "aria-current": "page" }}
             inactiveProps={{ className: "text-muted-foreground" }}
           >
-            <l.icon className="pointer-events-none h-5 w-5" />
-            <span className="pointer-events-none">{l.label}</span>
+            <l.icon className="pointer-events-none h-[1.15rem] w-[1.15rem] shrink-0" />
+            <span className="pointer-events-none max-w-full truncate">{l.label}</span>
           </Link>
         ))}
       </nav>

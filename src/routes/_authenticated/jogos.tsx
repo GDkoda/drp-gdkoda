@@ -5,8 +5,9 @@ import { rpc, useRefresh, useMe } from "@/lib/game";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Zap, Swords, Dice5, Brain, Trophy, RotateCcw, Shield, BookOpen, Flame, Sparkles, Coins, Target, Wind } from "lucide-react";
+import { Zap, Swords, Dice5, Brain, Trophy, RotateCcw, Shield, BookOpen, Flame, Sparkles, Coins, Wind } from "lucide-react";
 import { useCustomization } from "@/lib/app-customization";
+import { supabase } from "@/integrations/supabase/client";
 import { VigorRestore, useGameSettings } from "@/components/VigorRestore";
 import { createMachineStrategy, maxFarkleWager, nextRollCount, scoreDiceSelection, hasScoringCombination, farkleProbability } from "@/lib/farkle";
 import type { DieFace } from "@/lib/farkle";
@@ -41,11 +42,11 @@ function Jogos() {
       <p className="text-sm text-muted-foreground">{text("jogos_help")}</p>
       <VigorRestore vigor={vigor} />
       <Tabs defaultValue="combat">
-        <TabsList className="w-full">
-          <TabsTrigger value="combat" className="flex-1"><Swords className="h-4 w-4" />{text("jogos_combat")}</TabsTrigger>
-          <TabsTrigger value="dice" className="flex-1"><Dice5 className="h-4 w-4" />{text("jogos_dice")}</TabsTrigger>
-          <TabsTrigger value="farkle" className="flex-1"><Trophy className="h-4 w-4" />Jogo de Dados</TabsTrigger>
-          <TabsTrigger value="puzzle" className="flex-1"><Brain className="h-4 w-4" />{text("jogos_puzzle")}</TabsTrigger>
+        <TabsList className="grid h-auto w-full grid-cols-2 gap-1.5 rounded-xl border border-border bg-muted/70 p-1.5 sm:grid-cols-4">
+          <TabsTrigger value="combat" className="min-w-0 gap-1.5 px-2 py-2 text-xs sm:text-sm"><Swords className="h-4 w-4" />{text("jogos_combat")}</TabsTrigger>
+          <TabsTrigger value="dice" className="min-w-0 gap-1.5 px-2 py-2 text-xs sm:text-sm"><Dice5 className="h-4 w-4" />{text("jogos_dice")}</TabsTrigger>
+          <TabsTrigger value="farkle" className="min-w-0 gap-1.5 px-2 py-2 text-xs sm:text-sm"><Trophy className="h-4 w-4" />Jogo de Dados</TabsTrigger>
+          <TabsTrigger value="puzzle" className="min-w-0 gap-1.5 px-2 py-2 text-xs sm:text-sm"><Brain className="h-4 w-4" />{text("jogos_puzzle")}</TabsTrigger>
         </TabsList>
         <TabsContent value="combat"><Combat onDone={after} hasActive={!!me?.profile?.active_character_id} buttonLabel={text("jogos_fight")} /></TabsContent>
         <TabsContent value="dice"><Dice onDone={after} buttonLabel={text("jogos_roll")} /></TabsContent>
@@ -75,6 +76,7 @@ function Combat({ onDone, hasActive, buttonLabel }: { onDone: () => void; hasAct
   const visualSequence = useRef(0);
   const completed = useRef(false);
   const done = !!res && res.status !== "active";
+  const { data: monsterArtworkUrl } = useQuery({ queryKey: ["combat-monster-art", res?.monster], enabled: !!res?.monster, queryFn: async () => { const { data } = await (supabase as any).from("monsters").select("image_url").eq("name", res!.monster).maybeSingle(); return data?.image_url as string | null; } });
 
   async function startFight() {
     setBusy(true);
@@ -179,12 +181,14 @@ function Combat({ onDone, hasActive, buttonLabel }: { onDone: () => void; hasAct
   }[] = [
     { id: "attack", title: "Ataque básico", description: "FA = maior entre F/PdF + H + 1d6.", cost: "Sem custo de PM", icon: Swords, tone: "text-gold" },
     { id: "power", title: "Golpe poderoso", description: "+2 no atributo de ataque; crítico em 6.", cost: "1 PM", icon: Flame, tone: "text-blood", disabled: !isCombatActionAvailable("power", res) },
-    { id: "defend", title: "Postura defensiva", description: "+3 na FD contra o próximo ataque inimigo.", cost: "Sem custo de PM", icon: Shield, tone: "text-sky-400" },
     { id: "recover", title: "Recuperar fôlego", description: "Recupera até 3 PV; o inimigo ainda age.", cost: "1 PM", icon: Sparkles, tone: "text-mana", disabled: !isCombatActionAvailable("recover", res) },
-    { id: "aim", title: "Preparar ataque", description: "Acumula +2 na próxima FA (máximo +4).", cost: "Sem custo de PM", icon: Target, tone: "text-violet-400" },
     { id: "feint", title: "Finta", description: "+1 na FA; se causar dano, reduz o próximo ataque inimigo em 2.", cost: "Sem custo de PM", icon: Wind, tone: "text-amber-400" },
   ];
   const entries = (res?.log ?? []).filter((entry: CombatLogEntry) => !entry.system);
+  const latestTurn = entries.reduce((max, entry) => Math.max(max, entry.turn ?? 0), 0);
+  const latestTurnEntries = entries.filter((entry) => (entry.turn ?? 0) === latestTurn);
+  const heroDamageTaken = latestTurnEntries.filter((entry) => entry.target === "hero").reduce((sum, entry) => sum + (entry.dmg ?? 0), 0);
+  const monsterDamageTaken = latestTurnEntries.filter((entry) => entry.target === "monster").reduce((sum, entry) => sum + (entry.dmg ?? 0), 0);
 
   return (
     <div className="space-y-4 rounded-2xl border bg-card p-4 sm:p-6">
@@ -247,7 +251,7 @@ function Combat({ onDone, hasActive, buttonLabel }: { onDone: () => void; hasAct
                 <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(154,67,165,0.22),transparent_68%)]" />
                 <img
                   key={visualEvents.filter((event) => event.target === "monster")[visualEvents.filter((event) => event.target === "monster").length - 1]?.id ?? "monster-art"}
-                  src={getMonsterArtwork(res.monster).src}
+                  src={monsterArtworkUrl || getMonsterArtwork(res.monster).src}
                   alt={getMonsterArtwork(res.monster).alt}
                   className={`relative z-10 h-[190px] w-full object-contain drop-shadow-[0_12px_18px_rgba(0,0,0,0.55)] ${visualEvents.some((event) => event.target === "monster" && event.kind === "damage") ? "jrpg-hit" : ""} ${visualEvents.some((event) => event.target === "monster" && event.kind === "heal") ? "jrpg-heal" : ""} ${visualEvents.some((event) => event.target === "monster" && event.kind === "feint") ? "jrpg-feint" : ""} ${visualEvents.some((event) => event.target === "monster" && event.kind === "damage" && event.sourceAction?.startsWith("Magia:")) ? "jrpg-magic" : ""} `}
                 />
@@ -274,9 +278,9 @@ function Combat({ onDone, hasActive, buttonLabel }: { onDone: () => void; hasAct
                 {actions.map((action) => {
                   const Icon = action.icon;
                   return (
-                    <button key={action.id} type="button" disabled={busy || !!action.disabled || done} onClick={() => act(action.id)} className="flex min-h-[112px] min-w-0 items-start gap-3 rounded-xl border bg-background p-3 text-left transition hover:border-primary/50 hover:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-45 sm:p-4">
-                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted"><Icon className={`h-5 w-5 ${action.tone}`} /></span>
-                      <span className="min-w-0 flex-1"><span className="block font-semibold">{action.title}</span><span className="mt-1 block text-sm leading-snug text-muted-foreground">{action.description}</span><span className="mt-2 block text-xs font-medium text-gold">{action.cost}</span></span>
+                    <button key={action.id} type="button" disabled={busy || !!action.disabled || done} onClick={() => act(action.id)} className="flex min-h-[82px] min-w-0 items-start gap-2.5 rounded-xl border bg-background p-2.5 text-left transition hover:border-primary/50 hover:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-45 sm:min-h-[90px] sm:p-3">
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted"><Icon className={`h-4 w-4 ${action.tone}`} /></span>
+                      <span className="min-w-0 flex-1"><span className="block font-semibold">{action.title}</span><span className="mt-0.5 block text-xs leading-snug text-muted-foreground">{action.description}</span><span className="mt-1 block text-[11px] font-medium text-gold">{action.cost}</span></span>
                     </button>
                   );
                 })}
@@ -291,12 +295,12 @@ function Combat({ onDone, hasActive, buttonLabel }: { onDone: () => void; hasAct
                     {res.abilities.map((ability) => {
                       const available = isCombatAbilityAvailable(ability, res);
                       return (
-                        <button key={ability.id} type="button" disabled={busy || !available} onClick={() => act("spell", ability.id)} className="flex min-h-[112px] min-w-0 items-start gap-3 rounded-xl border border-mana/25 bg-mana/5 p-3 text-left transition hover:border-mana/50 hover:bg-mana/10 disabled:cursor-not-allowed disabled:opacity-45 sm:p-4">
-                          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-mana/10"><Sparkles className="h-5 w-5 text-mana" /></span>
+                        <button key={ability.id} type="button" disabled={busy || !available} onClick={() => act("spell", ability.id)} className="flex min-h-[82px] min-w-0 items-start gap-2.5 rounded-xl border border-mana/25 bg-mana/5 p-2.5 text-left transition hover:border-mana/50 hover:bg-mana/10 disabled:cursor-not-allowed disabled:opacity-45 sm:min-h-[90px] sm:p-3">
+                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-mana/10"><Sparkles className="h-4 w-4 text-mana" /></span>
                           <span className="min-w-0 flex-1">
                             <span className="flex flex-wrap items-center gap-2 font-semibold">{ability.name}<span className="text-xs font-normal text-mana">{ability.pmCost} PM</span></span>
                             <span className="mt-1 block text-xs text-muted-foreground">{ability.school} · {combatEffectLabel(ability.effect)} · Potência {ability.power}</span>
-                            <span className="mt-1 block text-sm leading-snug text-muted-foreground">{ability.description}</span>
+                            <span className="mt-1 block text-xs leading-snug text-muted-foreground">{ability.description}</span>
                           </span>
                         </button>
                       );
@@ -313,16 +317,28 @@ function Combat({ onDone, hasActive, buttonLabel }: { onDone: () => void; hasAct
             </div>
           )}
 
-          <div className="space-y-2">
-            <h3 className="font-display text-lg">Registro do combate</h3>
-            {entries.length === 0 && <p className="rounded-xl border border-dashed p-3 text-sm text-muted-foreground">O combate começou. Escolha sua primeira ação.</p>}
-            {entries.slice(-8).map((entry, index) => (
-              <div key={`${entry.turn ?? 0}-${index}`} className={`flex min-w-0 items-start gap-3 rounded-xl border p-3 ${entry.target === "monster" ? "border-primary/20 bg-primary/5" : "border-border bg-muted/30"}`}>
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-background font-display text-sm">{entry.turn ?? "•"}</span>
-                <div className="min-w-0 flex-1"><p className="break-words font-semibold">{entry.who}{entry.action ? ` · ${entry.action}` : ""}</p><p className="text-sm text-muted-foreground">{entry.fa || entry.fd ? `FA ${entry.fa ?? 0} vs FD ${entry.fd ?? 0} · ${entry.dmg ?? 0} dano` : entry.effect === "heal" ? `Recuperou ${entry.amount ?? 0} PV` : entry.effect === "guard" ? `Proteção +${entry.amount ?? 0} na FD` : entry.effect === "weaken" ? `Ataque inimigo reduzido em ${entry.amount ?? 0}` : "Ação tática"}{entry.crit ? " · CRÍTICO!" : ""}</p><p className="mt-1 text-xs text-muted-foreground">PV restantes do alvo: {entry.hp ?? 0}</p></div>
-                {entry.crit && <span className="shrink-0 rounded-lg bg-amber-500/15 px-2 py-1 text-xs font-bold text-amber-500">CRÍTICO</span>}
+          <div className="space-y-2 rounded-xl border border-border bg-background/40 p-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h3 className="font-display text-base">Último turno</h3>
+              <span className="text-[11px] font-semibold text-muted-foreground">Turno {latestTurn || 1}</span>
+            </div>
+            <div aria-live="polite" className="grid gap-1.5 text-sm sm:grid-cols-2">
+              <p className="rounded-lg border border-blood/20 bg-blood/5 px-3 py-2"><strong className="text-blood">{res.monster}</strong> causou <strong>{heroDamageTaken}</strong> dano{heroDamageTaken === 1 ? "" : "s"}</p>
+              <p className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2"><strong className="text-gold">{res.hero}</strong> causou <strong>{monsterDamageTaken}</strong> dano{monsterDamageTaken === 1 ? "" : "s"}</p>
+            </div>
+            <details className="group">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-2 rounded-lg px-2 py-2 text-sm font-semibold text-muted-foreground hover:bg-muted/60 [&::-webkit-details-marker]:hidden">Ver registro completo <span className="transition-transform group-open:rotate-180">⌄</span></summary>
+              <div className="mt-2 max-h-80 space-y-2 overflow-y-auto pr-1">
+                {entries.length === 0 && <p className="rounded-xl border border-dashed p-3 text-sm text-muted-foreground">O combate começou. Escolha sua primeira ação.</p>}
+                {entries.slice(-12).map((entry, index) => (
+                  <div key={`${entry.turn ?? 0}-${index}`} className={`flex min-w-0 items-start gap-2 rounded-xl border p-2.5 ${entry.target === "monster" ? "border-primary/20 bg-primary/5" : "border-border bg-muted/30"}`}>
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-background font-display text-xs">{entry.turn ?? "•"}</span>
+                    <div className="min-w-0 flex-1"><p className="break-words text-sm font-semibold">{entry.who}{entry.action ? ` · ${entry.action}` : ""}</p><p className="text-xs text-muted-foreground">{entry.fa || entry.fd ? `FA ${entry.fa ?? 0} vs FD ${entry.fd ?? 0} · ${entry.dmg ?? 0} dano` : entry.effect === "heal" ? `Recuperou ${entry.amount ?? 0} PV` : entry.effect === "guard" ? `Proteção +${entry.amount ?? 0} na FD` : entry.effect === "weaken" ? `Ataque inimigo reduzido em ${entry.amount ?? 0}` : "Ação tática"}{entry.crit ? " · CRÍTICO!" : ""}</p><p className="mt-1 text-[11px] text-muted-foreground">PV restantes do alvo: {entry.hp ?? 0}</p></div>
+                    {entry.crit && <span className="shrink-0 rounded-lg bg-amber-500/15 px-2 py-1 text-[11px] font-bold text-amber-500">CRÍTICO</span>}
+                  </div>
+                ))}
               </div>
-            ))}
+            </details>
           </div>
         </div>
       )}
@@ -409,29 +425,29 @@ function FarkleScoreGuide({ compact = false }: { compact?: boolean }) {
   ];
 
   return (
-    <details open={!compact} className="group overflow-hidden rounded-2xl border border-amber-200/20 bg-[#211710]/85 shadow-[0_12px_30px_rgba(0,0,0,.16)]">
+    <details open={!compact} className="group overflow-hidden rounded-2xl border border-amber-300/40 bg-card text-card-foreground shadow-[0_12px_30px_rgba(0,0,0,.16)]">
       <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-4 transition-colors hover:bg-amber-100/[0.04] [&::-webkit-details-marker]:hidden">
         <span className="flex min-w-0 items-center gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-amber-200/20 bg-amber-300/10 text-amber-200"><BookOpen className="h-5 w-5" /></span>
-          <span className="min-w-0"><span className="block font-display text-lg text-amber-100">Guia de pontuação</span><span className="mt-0.5 block text-xs text-amber-100/55">Consulte todas as combinações válidas e seus valores.</span></span>
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-amber-200/20 bg-amber-300/10 text-gold"><BookOpen className="h-5 w-5" /></span>
+          <span className="min-w-0"><span className="block font-display text-lg text-foreground">Guia de pontuação</span><span className="mt-0.5 block text-xs text-muted-foreground">Consulte todas as combinações válidas e seus valores.</span></span>
         </span>
         <span className="shrink-0 rounded-full border border-amber-200/20 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-200 group-open:bg-amber-200/10">Tabela <span className="ml-1 inline-block transition-transform group-open:rotate-180">⌄</span></span>
       </summary>
-      <div className="space-y-4 border-t border-amber-100/10 p-3 sm:p-4">
-        <div className="overflow-x-auto rounded-xl border border-amber-100/10">
-          <table className="w-full min-w-[440px] border-collapse text-center text-xs sm:text-sm">
-            <thead className="bg-amber-100/[0.07] text-amber-100/80">
-              <tr><th scope="col" className="px-3 py-3 text-left font-semibold">Combinação</th>{["⚀", "⚁", "⚂", "⚃", "⚄", "⚅"].map((face) => <th key={face} scope="col" className="px-2 py-3 text-lg">{face}</th>)}</tr>
+      <div className="space-y-4 border-t border-border p-3 sm:p-4">
+        <div className="overflow-x-auto rounded-xl border border-border">
+          <table className="w-full min-w-0 border-collapse text-center text-[10px] sm:text-sm">
+            <thead className="bg-muted text-foreground">
+              <tr><th scope="col" className="px-1.5 py-2 text-left font-semibold sm:px-3 sm:py-3">Combinação</th>{["⚀", "⚁", "⚂", "⚃", "⚄", "⚅"].map((face) => <th key={face} scope="col" className="px-1 py-2 text-base sm:px-2 sm:py-3 sm:text-lg">{face}</th>)}</tr>
             </thead>
-            <tbody className="divide-y divide-amber-100/10 text-amber-50/85">
-              <tr className="bg-amber-300/[0.06]"><th scope="row" className="px-3 py-3 text-left font-semibold text-amber-100">Dado isolado</th><td colSpan={6} className="px-3 py-3 text-left">⚀ 100 pts <span className="mx-2 text-amber-100/30">•</span> ⚄ 50 pts <span className="ml-2 text-amber-100/45">(2, 3, 4 e 6 não pontuam sozinhos)</span></td></tr>
-              {groupRows.map((row) => <tr key={row.label} className="transition-colors hover:bg-amber-100/[0.04]"><th scope="row" className="whitespace-nowrap px-3 py-3 text-left font-semibold text-amber-100">{row.label}</th>{row.values.map((value, index) => <td key={index} className="px-2 py-3 tabular-nums">{value}</td>)}</tr>)}
-              <tr className="bg-amber-300/[0.06]"><th scope="row" className="px-3 py-3 text-left font-semibold text-amber-100">Sequências</th><td colSpan={6} className="px-3 py-3 text-left leading-relaxed">1–2–3–4–5 <strong className="text-amber-200">500 pts</strong><span className="mx-2 text-amber-100/25">•</span> 2–3–4–5–6 <strong className="text-amber-200">750 pts</strong><br />1–2–3–4–5–6 <strong className="text-amber-200">1.500 pts</strong></td></tr>
+            <tbody className="divide-y divide-border text-foreground">
+              <tr className="bg-muted/70"><th scope="row" className="px-3 py-3 text-left font-semibold text-foreground">Dado isolado</th><td colSpan={6} className="px-1.5 py-2 text-left leading-snug sm:px-3 sm:py-3">⚀ 100 pts <span className="mx-2 text-muted-foreground/60">•</span> ⚄ 50 pts <span className="ml-2 text-muted-foreground">(2, 3, 4 e 6 não pontuam sozinhos)</span></td></tr>
+              {groupRows.map((row) => <tr key={row.label} className="transition-colors hover:bg-amber-100/[0.04]"><th scope="row" className="whitespace-nowrap px-1.5 py-2 text-left font-semibold text-foreground sm:px-3 sm:py-3">{row.label}</th>{row.values.map((value, index) => <td key={index} className="px-1 py-2 tabular-nums sm:px-2 sm:py-3">{value}</td>)}</tr>)}
+              <tr className="bg-amber-300/[0.06]"><th scope="row" className="px-3 py-3 text-left font-semibold text-foreground">Sequências</th><td colSpan={6} className="px-3 py-3 text-left leading-relaxed">1–2–3–4–5 <strong className="text-amber-200">500 pts</strong><span className="mx-2 text-muted-foreground/50">•</span> 2–3–4–5–6 <strong className="text-amber-200">750 pts</strong><br />1–2–3–4–5–6 <strong className="text-amber-200">1.500 pts</strong></td></tr>
             </tbody>
           </table>
         </div>
         <div className="grid gap-2 sm:grid-cols-2">
-          <p className="rounded-xl border border-amber-100/10 bg-black/20 p-3 text-[11px] leading-relaxed text-amber-100/65"><strong className="text-amber-200">Regra dos iguais:</strong> cada dado adicional igual dobra o valor da trinca. Ex.: três 4 valem 400; quatro 4 valem 800.</p>
+          <p className="rounded-xl border border-amber-100/10 bg-black/20 p-3 text-[11px] leading-relaxed text-muted-foreground"><strong className="text-amber-200">Regra dos iguais:</strong> cada dado adicional igual dobra o valor da trinca. Ex.: três 4 valem 400; quatro 4 valem 800.</p>
           <p className="rounded-xl border border-amber-100/10 bg-black/20 p-3 text-[11px] leading-relaxed text-amber-100/65"><strong className="text-amber-200">Atenção:</strong> padrões independentes do mesmo lançamento somam (⚀ + ⚄ = 150 pts). Pares e três pares não pontuam; dados escolhidos precisam pontuar juntos no lançamento atual.</p>
         </div>
       </div>
@@ -468,6 +484,7 @@ function Farkle({ onDone, vigor, coins }: { onDone: () => void; vigor: number; c
   const onDoneRef = useRef(onDone);
   const maxWager = maxFarkleWager(coins);
   const wagerPresets = [...new Set([10, 25, maxWager].filter((value) => value > 0 && value <= maxWager))];
+  const vigorCost = wager > 0 ? 3 : 1;
   const timer = useRef<number | null>(null);
   const selectedFaces = selectedIndices.map((index) => dice[index]);
   const selectedScore = scoreDiceSelection(selectedFaces);
@@ -503,7 +520,7 @@ function Farkle({ onDone, vigor, coins }: { onDone: () => void; vigor: number; c
         { _wager: wager },
         wager > 0
           ? `Aposta de ${wager.toLocaleString("pt-BR")} moedas reservada. Partida iniciada por 3 de vigor.`
-          : "Partida iniciada sem aposta. 3 de vigor gastos.",
+          : "Partida iniciada sem aposta. 1 de vigor gasto.",
       );
       if (typeof sessionId !== "string") throw new Error("O servidor não retornou o identificador da partida.");
       setActiveGameId(sessionId);
@@ -752,7 +769,7 @@ function Farkle({ onDone, vigor, coins }: { onDone: () => void; vigor: number; c
           </div>
           <div className="flex items-center gap-3 rounded-xl border border-amber-200/20 bg-black/25 px-4 py-3">
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-300/10 text-amber-300"><Flame className="h-5 w-5" /></span>
-            <div><p className="text-[9px] font-bold uppercase tracking-[0.2em] text-amber-100/55">Entrada por partida</p><p className="font-display text-xl leading-tight text-amber-200">3 vigor</p><p className="text-[10px] text-amber-100/55">{activeGameId ? `Aposta: ${activeWager.toLocaleString("pt-BR")} moedas` : "Aposta opcional"}</p></div>
+            <div><p className="text-[9px] font-bold uppercase tracking-[0.2em] text-amber-100/55">Entrada por partida</p><p className="font-display text-xl leading-tight text-amber-200">{wager > 0 ? "3 vigor" : "1 vigor"}</p><p className="text-[10px] text-amber-100/55">{activeGameId ? `Aposta: ${activeWager.toLocaleString("pt-BR")} moedas` : "Aposta opcional"}</p></div>
           </div>
         </div>
 
@@ -775,9 +792,9 @@ function Farkle({ onDone, vigor, coins }: { onDone: () => void; vigor: number; c
               <p className="text-[10px] leading-relaxed text-amber-100/40">A aposta é reservada ao iniciar. O lucro é arredondado para baixo quando a aposta for ímpar. Se sair ou recarregar a página antes do fim da partida, ela será considerada perdida.</p>
               <p className="text-[10px] leading-relaxed text-amber-100/35">A partida ainda é executada no navegador; o servidor registra a reserva e a liquidação, mas não revalida os lançamentos realizados.</p>
             </div>
-            <p className="mt-2 text-xs text-amber-200/80">Com o vigor atual, você tem {Math.floor(vigor / 3)} partida(s) disponível(is) hoje.</p>
+            <p className="mt-2 text-xs text-amber-200/80">Com o vigor atual, você tem {Math.floor(vigor / vigorCost)} partida(s) disponível(is) hoje.</p>
             <p className="text-xs text-amber-100/55">Você precisa selecionar ao menos uma combinação válida por lançamento. Dados guardados não voltam a rolar no mesmo turno. Um Farkle perde todos os pontos ainda não guardados. Ao usar os seis dados, você pode rolar os seis novamente.</p>
-            <Button onClick={() => void startGame()} disabled={busy || vigor < 3 || wager > maxWager} className="min-h-12 border border-amber-100/20 bg-amber-300 px-8 font-display text-amber-950 shadow-lg hover:bg-amber-200">{busy ? "Preparando a mesa…" : vigor < 3 ? "Vigor insuficiente · precisa 3" : wager > 0 ? `Jogar com aposta de ${wager.toLocaleString("pt-BR")} · 3 vigor` : "Jogar sem aposta · 3 vigor"}</Button>
+            <Button onClick={() => void startGame()} disabled={busy || vigor < vigorCost || wager > maxWager} className="min-h-12 border border-amber-100/20 bg-amber-300 px-8 font-display text-amber-950 shadow-lg hover:bg-amber-200">{busy ? "Preparando a mesa…" : vigor < vigorCost ? `Vigor insuficiente · precisa ${vigorCost}` : wager > 0 ? `Jogar com aposta de ${wager.toLocaleString("pt-BR")} · 3 vigor` : "Jogar sem aposta · 1 vigor"}</Button>
           </div>
         ) : (
           <>
@@ -846,7 +863,7 @@ function Farkle({ onDone, vigor, coins }: { onDone: () => void; vigor: number; c
           {settlementError && <div className="space-y-2 rounded-xl border border-rose-200/25 bg-rose-950/30 p-3 text-sm text-rose-100"><p>Não foi possível confirmar a aposta. Tente novamente para concluir a liquidação.</p><Button type="button" variant="outline" className="w-full border-rose-100/30 bg-transparent text-rose-50 hover:bg-rose-100/10" onClick={() => { settlementRequested.current = false; setSettlementError(false); setSettlementRetry((value) => value + 1); }}>Tentar novamente</Button></div>}
           {settlement && settlement.wager > 0 && <div className={`rounded-xl border p-3 text-sm ${playerWon ? "border-emerald-200/20 bg-emerald-950/30 text-emerald-100" : "border-rose-200/20 bg-rose-950/30 text-rose-100"}`}><p className="font-semibold">{playerWon ? "Aposta vencedora!" : "Aposta perdida"}</p><p className="mt-1 text-xs leading-relaxed">{playerWon ? `Sua aposta de ${settlement.wager.toLocaleString("pt-BR")} moedas foi devolvida, com ${settlement.profit.toLocaleString("pt-BR")} moedas de lucro. Crédito total: ${settlement.payout.toLocaleString("pt-BR")} moedas.` : `Você perdeu as ${settlement.wager.toLocaleString("pt-BR")} moedas apostadas.`}</p></div>}
           {settlement && settlement.wager === 0 && <p className="rounded-xl border border-amber-100/10 bg-black/20 p-3 text-xs text-amber-100/60">Partida sem aposta. Nenhuma moeda foi debitada ou creditada.</p>}
-          <Button disabled={settlementBusy || settlementError || !settlement} onClick={() => { setPhase("intro"); setStatus("Uma nova partida custa mais 3 de vigor."); setWager(0); setActiveWager(0); setActiveGameId(null); setSettlement(null); setSettlementError(false); settlementRequested.current = false; }} className="w-full border border-amber-100/20 bg-amber-300 font-display text-amber-950 hover:bg-amber-200"><RotateCcw className="h-4 w-4" />Nova partida · 3 vigor</Button></div></div>}
+          <Button disabled={settlementBusy || settlementError || !settlement} onClick={() => { setPhase("intro"); setStatus("Uma nova partida custa 1 de vigor sem aposta ou 3 com aposta."); setWager(0); setActiveWager(0); setActiveGameId(null); setSettlement(null); setSettlementError(false); settlementRequested.current = false; }} className="w-full border border-amber-100/20 bg-amber-300 font-display text-amber-950 hover:bg-amber-200"><RotateCcw className="h-4 w-4" />Nova partida · 3 vigor</Button></div></div>}
       </div>
     </section>
   );
