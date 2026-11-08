@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Zap, Swords, Dice5, Brain, Trophy, RotateCcw, Shield, BookOpen, Flame, Sparkles, Coins, Target, Wind } from "lucide-react";
-import { useCustomization } from "@/lib/app-customization";
+import { useCustomization } from "@/lib/app-customization";\nimport { supabase } from "@/integrations/supabase/client";
 import { VigorRestore, useGameSettings } from "@/components/VigorRestore";
 import { createMachineStrategy, maxFarkleWager, nextRollCount, scoreDiceSelection, hasScoringCombination, farkleProbability } from "@/lib/farkle";
 import type { DieFace } from "@/lib/farkle";
@@ -74,7 +74,7 @@ function Combat({ onDone, hasActive, buttonLabel }: { onDone: () => void; hasAct
   const previousState = useRef<CombatState | null>(null);
   const visualSequence = useRef(0);
   const completed = useRef(false);
-  const done = !!res && res.status !== "active";
+  const done = !!res && res.status !== "active";\n  const { data: monsterArtworkUrl } = useQuery({ queryKey: ["combat-monster-art", res?.monster], enabled: !!res?.monster, queryFn: async () => { const { data } = await (supabase as any).from("monsters").select("image_url").eq("name", res!.monster).maybeSingle(); return data?.image_url as string | null; } });
 
   async function startFight() {
     setBusy(true);
@@ -247,7 +247,7 @@ function Combat({ onDone, hasActive, buttonLabel }: { onDone: () => void; hasAct
                 <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(154,67,165,0.22),transparent_68%)]" />
                 <img
                   key={visualEvents.filter((event) => event.target === "monster")[visualEvents.filter((event) => event.target === "monster").length - 1]?.id ?? "monster-art"}
-                  src={getMonsterArtwork(res.monster).src}
+                  src={monsterArtworkUrl || getMonsterArtwork(res.monster).src}
                   alt={getMonsterArtwork(res.monster).alt}
                   className={`relative z-10 h-[190px] w-full object-contain drop-shadow-[0_12px_18px_rgba(0,0,0,0.55)] ${visualEvents.some((event) => event.target === "monster" && event.kind === "damage") ? "jrpg-hit" : ""} ${visualEvents.some((event) => event.target === "monster" && event.kind === "heal") ? "jrpg-heal" : ""} ${visualEvents.some((event) => event.target === "monster" && event.kind === "feint") ? "jrpg-feint" : ""} ${visualEvents.some((event) => event.target === "monster" && event.kind === "damage" && event.sourceAction?.startsWith("Magia:")) ? "jrpg-magic" : ""} `}
                 />
@@ -431,13 +431,13 @@ function FarkleScoreGuide({ compact = false }: { compact?: boolean }) {
       </summary>
       <div className="space-y-4 border-t border-border p-3 sm:p-4">
         <div className="overflow-x-auto rounded-xl border border-border">
-          <table className="w-full min-w-[440px] border-collapse text-center text-xs sm:text-sm">
+          <table className="w-full min-w-0 border-collapse text-center text-[10px] sm:text-sm">
             <thead className="bg-muted text-foreground">
-              <tr><th scope="col" className="px-3 py-3 text-left font-semibold">Combinação</th>{["⚀", "⚁", "⚂", "⚃", "⚄", "⚅"].map((face) => <th key={face} scope="col" className="px-2 py-3 text-lg">{face}</th>)}</tr>
+              <tr><th scope="col" className="px-1.5 py-2 text-left font-semibold sm:px-3 sm:py-3">Combinação</th>{["⚀", "⚁", "⚂", "⚃", "⚄", "⚅"].map((face) => <th key={face} scope="col" className="px-1 py-2 text-base sm:px-2 sm:py-3 sm:text-lg">{face}</th>)}</tr>
             </thead>
             <tbody className="divide-y divide-border text-foreground">
-              <tr className="bg-muted/70"><th scope="row" className="px-3 py-3 text-left font-semibold text-foreground">Dado isolado</th><td colSpan={6} className="px-3 py-3 text-left">⚀ 100 pts <span className="mx-2 text-muted-foreground/60">•</span> ⚄ 50 pts <span className="ml-2 text-muted-foreground">(2, 3, 4 e 6 não pontuam sozinhos)</span></td></tr>
-              {groupRows.map((row) => <tr key={row.label} className="transition-colors hover:bg-amber-100/[0.04]"><th scope="row" className="whitespace-nowrap px-3 py-3 text-left font-semibold text-amber-100">{row.label}</th>{row.values.map((value, index) => <td key={index} className="px-2 py-3 tabular-nums">{value}</td>)}</tr>)}
+              <tr className="bg-muted/70"><th scope="row" className="px-3 py-3 text-left font-semibold text-foreground">Dado isolado</th><td colSpan={6} className="px-1.5 py-2 text-left leading-snug sm:px-3 sm:py-3">⚀ 100 pts <span className="mx-2 text-muted-foreground/60">•</span> ⚄ 50 pts <span className="ml-2 text-muted-foreground">(2, 3, 4 e 6 não pontuam sozinhos)</span></td></tr>
+              {groupRows.map((row) => <tr key={row.label} className="transition-colors hover:bg-amber-100/[0.04]"><th scope="row" className="whitespace-nowrap px-3 py-3 text-left font-semibold text-amber-100">{row.label}</th>{row.values.map((value, index) => <td key={index} className="px-1 py-2 tabular-nums sm:px-2 sm:py-3">{value}</td>)}</tr>)}
               <tr className="bg-amber-300/[0.06]"><th scope="row" className="px-3 py-3 text-left font-semibold text-foreground">Sequências</th><td colSpan={6} className="px-3 py-3 text-left leading-relaxed">1–2–3–4–5 <strong className="text-amber-200">500 pts</strong><span className="mx-2 text-muted-foreground/50">•</span> 2–3–4–5–6 <strong className="text-amber-200">750 pts</strong><br />1–2–3–4–5–6 <strong className="text-amber-200">1.500 pts</strong></td></tr>
             </tbody>
           </table>
