@@ -748,7 +748,7 @@ function Farkle({ onDone, vigor, coins }: { onDone: () => void; vigor: number; c
         <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-amber-100/15 bg-[#2a1b14]/75 p-4 shadow-[0_12px_32px_rgba(0,0,0,.18)] backdrop-blur-sm sm:p-5">
           <div className="flex min-w-0 items-center gap-3">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-amber-200/25 bg-gradient-to-br from-amber-200/20 to-amber-500/5 text-3xl text-amber-200 shadow-inner">⚄</div>
-            <div className="min-w-0"><p className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.24em] text-amber-200/70"><Sparkles className="h-3.5 w-3.5" /> Taverna • disputa contra a casa</p><h2 className="mt-1 font-display text-2xl text-amber-100 sm:text-3xl">Jogo de Dados</h2><p className="mt-1 text-xs text-amber-100/60">Acumule pontos, administre o risco e alcance 4.000 primeiro.</p></div>
+            <div className="min-w-0"><p className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.24em] text-amber-200/70"><Sparkles className="h-3.5 w-3.5" /> Jogo de Dados • disputa contra a máquina</p><h2 className="mt-1 font-display text-2xl text-amber-100 sm:text-3xl">Jogo de Dados</h2><p className="mt-1 text-xs text-amber-100/60">Acumule pontos, administre o risco e alcance 4.000 primeiro.</p></div>
           </div>
           <div className="flex items-center gap-3 rounded-xl border border-amber-200/20 bg-black/25 px-4 py-3">
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-300/10 text-amber-300"><Flame className="h-5 w-5" /></span>
