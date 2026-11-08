@@ -218,7 +218,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
     if (upgrade.id === "special_experience" && game.player.specialExperienceStacks < 6) { game.player.specialExperienceStacks += 1; game.player.xpMultiplier = 1 + game.player.specialExperienceStacks * 0.05; }
     if (upgrade.id === "power") game.player.damage *= 1 + 0.30 * rarityPower;
     if (upgrade.id === "haste") game.player.fireRate *= 1 - 0.18 * rarityPower;
-    if (upgrade.id === "vitality") { game.player.maxHp *= 1 + 0.15 * rarityPower; game.player.hp = Math.min(game.player.maxHp, game.player.hp + game.player.maxHp * 0.25); }
+    if (upgrade.id === "vitality") { game.player.maxHp *= 1 + 0.15 * rarityPower; game.player.hp = Math.min(game.player.maxHp, game.player.hp + game.player.maxHp * 0.25 * rarityPower); }
     if (upgrade.id === "swift") game.player.speed *= 1 + 0.10 * rarityPower;
     setLevelChoices([]);
   }, []);
