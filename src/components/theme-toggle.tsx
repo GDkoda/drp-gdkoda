@@ -20,10 +20,21 @@ const palettes: { id: PaletteId; label: string; description: string; colors: [st
 
 function syncBrowserThemeColor() {
   const root = document.documentElement;
-  const background = getComputedStyle(root).getPropertyValue("--background").trim();
+  const styles = getComputedStyle(root);
+  const background = styles.getPropertyValue("--background").trim();
+  const primary = styles.getPropertyValue("--primary").trim();
   const color = background || (root.dataset.theme === "light" ? "#f5f0e6" : "#171717");
   document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]').forEach((meta) => {
     meta.setAttribute("content", color);
+  });
+
+  // Favicon vetorial do navegador: o traço acompanha a cor primária do tema.
+  const iconColor = primary || "#d7a83e";
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><path d="M32 4 55 17v30L32 60 9 47V17L32 4Z" fill="${color}" stroke="${iconColor}" stroke-width="3"/><path d="m32 14 9 13-9 23-9-23 9-13Z" fill="${iconColor}" fill-opacity=".18" stroke="${iconColor}" stroke-width="2.5" stroke-linejoin="round"/><path d="M32 20v24M20 32h24" stroke="${iconColor}" stroke-width="2.5" stroke-linecap="round"/><circle cx="32" cy="32" r="4" fill="${iconColor}"/></svg>`;
+  const favicon = `data:image/svg+xml,${encodeURIComponent(svg)}`;
+  document.querySelectorAll<HTMLLinkElement>('link[rel="icon"]').forEach((link) => {
+    link.setAttribute("href", favicon);
+    link.setAttribute("type", "image/svg+xml");
   });
 }
 
