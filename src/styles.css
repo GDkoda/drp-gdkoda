@@ -4405,3 +4405,20 @@ html { background-color: #000000; }
   .character-custom-roll-form > input,.character-custom-roll-form > select { grid-column: 1 / -1; }
   .character-custom-roll-form button { grid-column: 1 / -1; width: 100%; }
 }
+
+
+/* Menu compacto de rolagens personalizadas: fechado por padrão. */
+.character-custom-roll-trigger { width: 100%; justify-content: flex-start; min-height: 2.25rem; gap: .45rem; font-size: .72rem; }
+.character-custom-roll-count { display: inline-grid; min-width: 1.25rem; height: 1.25rem; place-items: center; margin-left: auto; border-radius: 999px; background: var(--muted); color: var(--muted-foreground); font-size: .62rem; font-weight: 800; }
+.character-custom-roll-chevron { transition: transform .16s ease; }
+.character-custom-roll-chevron.is-open { transform: rotate(180deg); }
+.character-custom-roll-menu { display: grid; gap: .45rem; padding: .55rem; border: 1px solid var(--border); border-radius: .7rem; background: var(--card); box-shadow: 0 8px 24px rgb(0 0 0 / .10); }
+.character-custom-roll-menu .character-custom-roll-list > div { padding: .3rem .4rem; }
+.character-custom-roll-menu .character-custom-roll-list button { min-height: 1.9rem; padding-inline: .5rem; font-size: .65rem; }
+.character-custom-roll-new { width: 100%; min-height: 2rem; font-size: .68rem; }
+.character-custom-roll-form-actions { display: flex; grid-column: 1 / -1; gap: .35rem; }
+.character-custom-roll-form-actions button { flex: 1; min-height: 2rem; }
+@media(max-width:767px) {
+  .character-custom-roll-menu { padding: .45rem; }
+  .character-custom-roll-form { gap: .35rem; }
+}
