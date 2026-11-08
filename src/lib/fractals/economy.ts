@@ -4,9 +4,10 @@
  * constants are display/game-design configuration, not an authority boundary.
  */
 export const FRACTAL_RARITY_TIERS = [
-  { tier: 1, normal: 100, rare: 0, epic: 0, label: "Normal" },
-  { tier: 2, normal: 85, rare: 15, epic: 0, label: "Rara" },
-  { tier: 3, normal: 70, rare: 23, epic: 7, label: "Épica" },
+  { tier: 0, normal: 100, rare: 0, epic: 0, label: "Normal" },
+  { tier: 1, normal: 85, rare: 15, epic: 0, label: "Rara" },
+  { tier: 2, normal: 70, rare: 23, epic: 7, label: "Épica" },
+  { tier: 3, normal: 60, rare: 27, epic: 13, label: "Ressonância superior" },
 ] as const;
 
 export const FRACTAL_SHOP = {
