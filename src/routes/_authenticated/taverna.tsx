@@ -6,7 +6,7 @@ import { useMe, rpc } from "@/lib/game";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowDownLeft, ArrowUpRight, CalendarCheck, CheckCircle2, Clock, Coins, Gift, History, Send, Sparkles, Users, Wallet, Zap, type LucideIcon } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, CalendarCheck, CheckCircle2, Clock, Coins, Gift, History, Send, Sparkles, Users, Wallet, Zap, ChevronDown, type LucideIcon } from "lucide-react";
 import { useCustomization } from "@/lib/app-customization";
 import { VigorRestore, useGameSettings } from "@/components/VigorRestore";
 import { toast } from "sonner";
@@ -97,6 +97,33 @@ function Taverna() {
     return (transactionNames[normalized] ?? normalized.replace(/[_-]+/g, " ").replace(/^./, (char) => char.toUpperCase())) || "Movimentação";
   }
 
+  const renderTransactions = (items = txs ?? []) => items.map((transaction) => {
+    const isOutgoing = transaction.from_user === me?.id;
+    const peer = isOutgoing && transaction.to_user
+      ? "Para " + nameOf(transaction.to_user)
+      : transaction.to_user === me?.id && transaction.from_user
+        ? "De " + nameOf(transaction.from_user)
+        : "";
+    const Icon = isOutgoing ? ArrowUpRight : ArrowDownLeft;
+    const value = Number(transaction.coins) || 0;
+    const date = transaction.created_at
+      ? new Date(transaction.created_at).toLocaleString("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })
+      : "";
+    return (
+      <li key={transaction.id} className="tavern-transaction">
+        <span className={"tavern-transaction-icon " + (isOutgoing ? "is-outgoing" : "is-incoming")}><Icon className="h-4 w-4" /></span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-medium">{transactionTitle(transaction.kind)}</span>
+          <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">{transaction.item_name || transaction.note || peer || "Movimentação da campanha"}{peer && transaction.item_name ? " · " + peer : ""}</span>
+          <span className="mt-0.5 block text-[10px] text-muted-foreground">{date}</span>
+        </span>
+        <span className={"shrink-0 text-right text-sm font-semibold tabular-nums " + (value < 0 ? "text-destructive" : "text-gold")}>{value > 0 ? "+" : ""}{coinNumber.format(value)}<span className="block text-[9px] font-normal text-muted-foreground">moedas</span></span>
+      </li>
+    );
+  });
+  const latestTransaction = txs?.[0];
+  const olderTransactions = txs?.slice(1) ?? [];
+
   return (
     <div className="tavern-page space-y-4">
       <header className="tavern-hero">
@@ -181,35 +208,31 @@ function Taverna() {
             {to && <p className="mt-2 text-[11px] text-muted-foreground">Destino: <strong className="font-semibold text-foreground">{players?.find((x) => x.id === to)?.display_name ?? "jogador selecionado"}</strong> · Total: <strong className="font-semibold text-gold">{coinNumber.format(safeAmount)} moedas</strong></p>}
           </section>
 
-          <section className="tavern-section">
+          <section className="tavern-section tavern-history">
             <div className="mb-2 flex items-center justify-between gap-2">
               <div className="flex items-center gap-2.5">
                 <div className="tavern-section-icon"><History className="h-5 w-5" /></div>
-                <div><h2 className="text-base font-semibold">{text("taverna_history_title")}</h2><p className="text-xs text-muted-foreground">As últimas atividades da sua carteira.</p></div>
+                <div>
+                  <h2 className="text-base font-semibold">{text("taverna_history_title")}</h2>
+                  <p className="text-xs text-muted-foreground">Sua atividade mais recente.</p>
+                </div>
               </div>
-              <span className="rounded-full bg-muted px-2 py-1 text-[10px] font-medium text-muted-foreground">Últimas 10</span>
+              <span className="rounded-full bg-muted px-2 py-1 text-[10px] font-medium text-muted-foreground">Até 10</span>
             </div>
             <ul className="tavern-transactions">
-              {txs?.map((transaction) => {
-                const isOutgoing = transaction.from_user === me?.id;
-                const peer = isOutgoing && transaction.to_user ? "Para " + nameOf(transaction.to_user) : transaction.to_user === me?.id && transaction.from_user ? "De " + nameOf(transaction.from_user) : "";
-                const Icon = isOutgoing ? ArrowUpRight : ArrowDownLeft;
-                const value = Number(transaction.coins) || 0;
-                const date = transaction.created_at ? new Date(transaction.created_at).toLocaleString("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "";
-                return (
-                  <li key={transaction.id} className="tavern-transaction">
-                    <span className={"tavern-transaction-icon " + (isOutgoing ? "is-outgoing" : "is-incoming")}><Icon className="h-4 w-4" /></span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-medium">{transactionTitle(transaction.kind)}</span>
-                      <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">{transaction.item_name || transaction.note || peer || "Movimentação da campanha"}{peer && transaction.item_name ? " · " + peer : ""}</span>
-                      <span className="mt-0.5 block text-[10px] text-muted-foreground">{date}</span>
-                    </span>
-                    <span className={"shrink-0 text-right text-sm font-semibold tabular-nums " + (value < 0 ? "text-destructive" : "text-gold")}>{value > 0 ? "+" : ""}{coinNumber.format(value)}<span className="block text-[9px] font-normal text-muted-foreground">moedas</span></span>
-                  </li>
-                );
-              })}
-              {!txs?.length && <li className="rounded-lg border border-dashed px-3 py-5 text-center"><Wallet className="mx-auto h-5 w-5 text-muted-foreground" /><p className="mt-1 text-sm font-medium">Sua história começa agora</p><p className="text-xs text-muted-foreground">Suas recompensas e movimentações aparecerão aqui.</p></li>}
+              {latestTransaction
+                ? renderTransactions([latestTransaction])
+                : <li className="rounded-lg border border-dashed px-3 py-5 text-center"><Wallet className="mx-auto h-5 w-5 text-muted-foreground" /><p className="mt-1 text-sm font-medium">Sua história começa agora</p><p className="text-xs text-muted-foreground">Suas recompensas e movimentações aparecerão aqui.</p></li>}
             </ul>
+            {olderTransactions.length > 0 && (
+              <details className="tavern-history-more">
+                <summary>
+                  <span><History className="h-3.5 w-3.5" /> Ver movimentações anteriores</span>
+                  <span className="flex items-center gap-2"><span className="tavern-history-count">{olderTransactions.length}</span><ChevronDown className="tavern-history-chevron h-4 w-4" /></span>
+                </summary>
+                <ul className="tavern-transactions mt-1">{renderTransactions(olderTransactions)}</ul>
+              </details>
+            )}
           </section>
         </div>
       </div>
