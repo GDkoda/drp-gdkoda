@@ -161,7 +161,7 @@ function Sheet() {
               title={isActive ? "Desativar esta ficha para o combate" : "Usar esta ficha no minigame de combate"}
             >
               {isActive ? <ShieldCheck className="h-4 w-4" /> : <Swords className="h-4 w-4" />}
-              <span>{activationBusy ? "Atualizando…" : isActive ? "Ativa no combate" : "Usar no combate"}</span>
+              <span>{activationBusy ? "Atualizando…" : isActive ? "Desativar ficha" : "Ativar para combate"}</span>
               {isActive ? <span className="character-active-toggle-dot" /> : null}
             </button>
           ) : (
@@ -269,12 +269,6 @@ function Sheet() {
           {isActive ? <><ShieldCheck className="h-4 w-4" />Esta é a ficha que alimenta o minigame de combate.</> : <><ShieldOff className="h-4 w-4" />Esta ficha não está selecionada para o combate.</>}
         </div>
         <div className="character-studio-footer-actions">
-          {isOwner && (
-            <Button variant="secondary" onClick={() => void toggleActive()} disabled={activationBusy}>
-              {isActive ? <ShieldOff className="h-4 w-4" /> : <ShieldCheck className="h-4 w-4" />}
-              {isActive ? "Desativar ficha" : "Ativar para combate"}
-            </Button>
-          )}
           <Button variant="secondary" onClick={() => window.print()}><Printer className="h-4 w-4" />Imprimir / PDF</Button>
           <Button variant="destructive" onClick={async () => {
             if (!confirm("Apagar esta ficha?")) return;
