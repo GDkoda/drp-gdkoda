@@ -721,9 +721,28 @@ function Farkle({ onDone, vigor, coins }: { onDone: () => void; vigor: number; c
   }, [gameOver, activeGameId, playerWon, settlement, settlementBusy, settlementRetry, activeWager]);
 
   return (
-    <section className="relative isolate overflow-hidden rounded-[1.75rem] border border-amber-200/20 bg-[#17100d] p-3 text-amber-50 shadow-[0_28px_80px_rgba(0,0,0,.38)] sm:p-6">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_8%_0%,rgba(180,116,45,.22),transparent_34%),radial-gradient(ellipse_at_92%_8%,rgba(117,62,34,.25),transparent_34%),linear-gradient(145deg,#241710_0%,#1a120e_52%,#100b09_100%)]" />
-      <div className="pointer-events-none absolute inset-0 opacity-[0.08]" style={{ backgroundImage: "repeating-linear-gradient(4deg,transparent 0px,transparent 9px,#e4b66d 10px,#e4b66d 11px,transparent 14px)" }} />
+    <section className="farkle-hud relative isolate overflow-hidden rounded-[1.75rem] border border-border bg-card p-3 text-card-foreground shadow-[0_28px_80px_rgba(0,0,0,.12)] sm:p-6">
+      <style>{`
+        /* The dice HUD follows the active global theme/palette instead of a fixed tavern skin. */
+        .farkle-hud { background: var(--card) !important; color: var(--foreground) !important; border-color: var(--border) !important; }
+        .farkle-hud [class*="text-amber-"] { color: var(--muted-foreground) !important; }
+        .farkle-hud [class*="text-amber-100"] { color: var(--foreground) !important; }
+        .farkle-hud [class*="text-amber-200"],
+        .farkle-hud [class*="text-amber-300"] { color: var(--primary) !important; }
+        .farkle-hud [class*="border-amber-"] { border-color: var(--border) !important; }
+        .farkle-hud [class*="bg-amber-"] { background-color: var(--primary) !important; color: var(--primary-foreground) !important; }
+        .farkle-hud [class*="bg-[#"],
+        .farkle-hud [class*="bg-[linear-gradient"],
+        .farkle-hud [class*="bg-[radial-gradient"] {
+          background: var(--card) !important;
+          background-image: none !important;
+        }
+        .farkle-hud [class*="from-amber-"] { --tw-gradient-from: var(--primary) !important; }
+        .farkle-hud [class*="to-amber-"] { --tw-gradient-to: color-mix(in oklab, var(--primary) 8%, transparent) !important; }
+        .farkle-hud .farkle-theme-panel { background: color-mix(in oklab, var(--card) 88%, var(--primary) 12%) !important; }
+      `}</style>
+      <div className="pointer-events-none absolute inset-0" style={{ background: "var(--ambient-glow)" }} />
+      <div className="pointer-events-none absolute inset-0 opacity-[0.08]" style={{ backgroundImage: "repeating-linear-gradient(4deg,transparent 0px,transparent 9px,color-mix(in oklab,var(--primary) 10%,transparent) 10px,color-mix(in oklab,var(--primary) 10%,transparent) 11px,transparent 14px)" }} />
       <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/70 to-transparent" />
       <div className="relative space-y-5 sm:space-y-6">
         <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-amber-100/15 bg-[#2a1b14]/75 p-4 shadow-[0_12px_32px_rgba(0,0,0,.18)] backdrop-blur-sm sm:p-5">
