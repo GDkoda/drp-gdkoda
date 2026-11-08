@@ -976,3 +976,468 @@ html[data-palette="po-de-fada"][data-theme="light"] {
     scroll-behavior: auto !important;
   }
 }
+
+
+/* Oculta de forma persistente o selo de edição injetado pelo Lovable. */
+#lovable-badge {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
+}
+
+/* Grimório: biblioteca arcana com leitura em camadas e controles leves. */
+@layer components {
+  .grimoire-page { max-width: 78rem; margin-inline: auto; }
+  .grimoire-hero {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    border: 1px solid color-mix(in oklab, var(--primary) 28%, var(--border));
+    border-radius: 1.35rem;
+    padding: clamp(1rem, 2.8vw, 1.6rem);
+    background:
+      radial-gradient(ellipse at 80% 10%, color-mix(in oklab, var(--accent) 16%, transparent), transparent 38%),
+      radial-gradient(ellipse at 8% 100%, color-mix(in oklab, var(--primary) 13%, transparent), transparent 48%),
+      linear-gradient(135deg, color-mix(in oklab, var(--card) 92%, var(--primary) 8%), var(--card));
+    box-shadow: var(--shadow-soft);
+  }
+  .grimoire-hero-pattern {
+    position: absolute;
+    z-index: -1;
+    right: 1.7rem;
+    top: .7rem;
+    color: color-mix(in oklab, var(--primary) 10%, transparent);
+    pointer-events: none;
+  }
+  .grimoire-hero-pattern svg { width: clamp(5rem, 13vw, 9rem); height: auto; stroke-width: .8; }
+  .grimoire-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    color: var(--gold);
+    font-size: .65rem;
+    font-weight: 750;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+  }
+  .grimoire-bookmark {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: .45rem;
+    border: 1px solid color-mix(in oklab, var(--primary) 25%, transparent);
+    border-radius: 999px;
+    padding: .4rem .7rem;
+    background: color-mix(in oklab, var(--card) 70%, transparent);
+    color: var(--gold);
+    font-size: .68rem;
+    font-weight: 650;
+    white-space: nowrap;
+  }
+  .grimoire-overview {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: .55rem;
+    margin-top: 1.2rem;
+  }
+  .grimoire-overview-item {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: .6rem;
+    border: 1px solid color-mix(in oklab, var(--border) 68%, transparent);
+    border-radius: .85rem;
+    padding: .65rem .75rem;
+    background: color-mix(in oklab, var(--card) 72%, transparent);
+    backdrop-filter: blur(12px);
+    color: var(--gold);
+  }
+  .grimoire-overview-item > svg { flex: 0 0 auto; opacity: .9; }
+  .grimoire-overview-item > span { display: grid; min-width: 0; }
+  .grimoire-overview-item strong {
+    overflow: hidden;
+    color: var(--foreground);
+    font-size: .95rem;
+    font-weight: 700;
+    line-height: 1.25;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .grimoire-overview-item small {
+    overflow: hidden;
+    color: var(--muted-foreground);
+    font-size: .62rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .grimoire-active-sheet {
+    display: flex;
+    align-items: center;
+    gap: .55rem;
+    border: 1px solid color-mix(in oklab, var(--primary) 20%, var(--border));
+    border-radius: .85rem;
+    padding: .65rem .8rem;
+    background: color-mix(in oklab, var(--primary) 7%, var(--card));
+    color: var(--gold);
+    font-size: .75rem;
+  }
+  .grimoire-active-sheet > span:first-of-type { min-width: 0; flex: 1; color: var(--muted-foreground); }
+  .grimoire-active-sheet strong { color: var(--foreground); }
+  .grimoire-active-sheet.is-empty { border-style: dashed; color: var(--muted-foreground); }
+  .grimoire-active-count {
+    flex: 0 0 auto;
+    border-radius: 999px;
+    padding: .2rem .5rem;
+    background: color-mix(in oklab, var(--primary) 13%, var(--card));
+    color: var(--gold);
+    font-size: .65rem;
+    font-weight: 700;
+  }
+  .grimoire-tools {
+    display: grid;
+    gap: .8rem;
+    border: 1px solid color-mix(in oklab, var(--border) 76%, transparent);
+    border-radius: 1rem;
+    padding: .85rem;
+    background: color-mix(in oklab, var(--card) 96%, transparent);
+  }
+  .grimoire-search { position: relative; display: flex; align-items: center; }
+  .grimoire-search > svg {
+    position: absolute;
+    left: .8rem;
+    z-index: 1;
+    color: var(--muted-foreground);
+    pointer-events: none;
+  }
+  .grimoire-search input { width: 100%; height: 2.65rem; padding-left: 2.4rem; padding-right: 2.4rem; }
+  .grimoire-search > button {
+    position: absolute;
+    right: .7rem;
+    display: grid;
+    width: 1.5rem;
+    height: 1.5rem;
+    place-items: center;
+    border-radius: .45rem;
+    color: var(--muted-foreground);
+    font-size: 1.2rem;
+  }
+  .grimoire-pm-filter { display: grid; gap: .25rem; color: var(--muted-foreground); font-size: .65rem; font-weight: 650; }
+  .grimoire-pm-filter input { height: 2.65rem; }
+  .grimoire-collection-tabs {
+    display: flex;
+    width: fit-content;
+    max-width: 100%;
+    gap: .2rem;
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: .8rem;
+    padding: .22rem;
+    background: color-mix(in oklab, var(--muted) 55%, transparent);
+  }
+  .grimoire-collection-tabs button {
+    display: inline-flex;
+    min-height: 2.1rem;
+    align-items: center;
+    gap: .4rem;
+    border-radius: .58rem;
+    padding: .35rem .65rem;
+    color: var(--muted-foreground);
+    font-size: .7rem;
+    font-weight: 650;
+    white-space: nowrap;
+    transition: background 150ms ease, color 150ms ease;
+  }
+  .grimoire-collection-tabs button.is-active {
+    background: var(--card);
+    color: var(--foreground);
+    box-shadow: 0 2px 8px rgb(0 0 0 / 8%);
+  }
+  .grimoire-collection-tabs button span {
+    border-radius: 999px;
+    padding: .08rem .35rem;
+    background: color-mix(in oklab, var(--muted) 85%, transparent);
+    color: var(--muted-foreground);
+    font-size: .58rem;
+    font-variant-numeric: tabular-nums;
+  }
+  .grimoire-school-filters {
+    display: flex;
+    gap: .35rem;
+    overflow-x: auto;
+    padding-bottom: .1rem;
+    scrollbar-width: thin;
+  }
+  .grimoire-school-filters button {
+    flex: 0 0 auto;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: .35rem .65rem;
+    background: color-mix(in oklab, var(--card) 80%, transparent);
+    color: var(--muted-foreground);
+    font-size: .68rem;
+    font-weight: 600;
+    white-space: nowrap;
+    transition: border-color 150ms ease, background 150ms ease, color 150ms ease;
+  }
+  .grimoire-school-filters button.is-active {
+    border-color: color-mix(in oklab, var(--primary) 50%, var(--border));
+    background: color-mix(in oklab, var(--primary) 13%, var(--card));
+    color: var(--gold);
+  }
+  .grimoire-results-line {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    color: var(--muted-foreground);
+    font-size: .68rem;
+  }
+  .grimoire-results-line button { color: var(--gold); font-weight: 650; }
+  .grimoire-master-tools {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    border: 1px solid color-mix(in oklab, var(--primary) 24%, var(--border));
+    border-radius: .95rem;
+    padding: .7rem .85rem;
+    background: color-mix(in oklab, var(--primary) 6%, var(--card));
+  }
+  .grimoire-master-tools > div:first-child { display: flex; min-width: 0; align-items: center; gap: .65rem; }
+  .grimoire-master-tools > div:first-child > span:last-child { display: grid; }
+  .grimoire-master-tools strong { font-size: .78rem; }
+  .grimoire-master-tools small { color: var(--muted-foreground); font-size: .63rem; }
+  .grimoire-master-icon {
+    display: grid;
+    width: 2.2rem;
+    height: 2.2rem;
+    flex: 0 0 auto;
+    place-items: center;
+    border-radius: .7rem;
+    background: color-mix(in oklab, var(--primary) 14%, var(--card));
+    color: var(--gold);
+  }
+  .grimoire-master-tools details { flex: 0 0 auto; }
+  .grimoire-master-tools details > summary,
+  .grimoire-spell-details details > summary {
+    display: inline-flex;
+    min-height: 2.15rem;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid color-mix(in oklab, var(--primary) 30%, var(--border));
+    border-radius: .65rem;
+    padding: .35rem .7rem;
+    background: color-mix(in oklab, var(--primary) 10%, var(--card));
+    color: var(--gold);
+    font-size: .7rem;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .grimoire-spell-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .7rem;
+  }
+  .grimoire-spell-card {
+    min-width: 0;
+    overflow: hidden;
+    border: 1px solid color-mix(in oklab, var(--border) 76%, transparent);
+    border-radius: 1rem;
+    background:
+      linear-gradient(145deg, color-mix(in oklab, var(--card) 98%, var(--primary) 2%), var(--card));
+    box-shadow: 0 6px 20px rgb(0 0 0 / 5%);
+    transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+  }
+  .grimoire-spell-card:hover {
+    transform: translateY(-2px);
+    border-color: color-mix(in oklab, var(--primary) 36%, var(--border));
+    box-shadow: 0 12px 30px rgb(0 0 0 / 10%);
+  }
+  .grimoire-spell-card details > summary { list-style: none; }
+  .grimoire-spell-card details > summary::-webkit-details-marker { display: none; }
+  .grimoire-spell-summary {
+    display: flex;
+    min-height: 5.1rem;
+    align-items: center;
+    gap: .65rem;
+    padding: .75rem;
+    cursor: pointer;
+  }
+  .grimoire-spell-sigil {
+    display: grid;
+    width: 2.55rem;
+    height: 2.55rem;
+    flex: 0 0 auto;
+    place-items: center;
+    border: 1px solid color-mix(in oklab, var(--primary) 26%, transparent);
+    border-radius: .85rem;
+    background: color-mix(in oklab, var(--primary) 10%, var(--card));
+    color: var(--gold);
+  }
+  .grimoire-spell-title {
+    display: block;
+    overflow: hidden;
+    color: var(--foreground);
+    font-family: var(--font-display);
+    font-size: .88rem;
+    font-weight: 700;
+    line-height: 1.25;
+    text-overflow: ellipsis;
+  }
+  .grimoire-spell-subtitle {
+    display: block;
+    overflow: hidden;
+    margin-top: .24rem;
+    color: var(--muted-foreground);
+    font-size: .65rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .grimoire-spell-cost {
+    flex: 0 0 auto;
+    border: 1px solid color-mix(in oklab, var(--mana) 26%, transparent);
+    border-radius: .55rem;
+    padding: .25rem .4rem;
+    background: color-mix(in oklab, var(--mana) 10%, var(--card));
+    color: var(--mana);
+    font-size: .62rem;
+    font-weight: 750;
+    white-space: nowrap;
+  }
+  .grimoire-known-mark {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: .22rem;
+    border-radius: 999px;
+    padding: .2rem .38rem;
+    background: color-mix(in oklab, #36a878 12%, var(--card));
+    color: #38a878;
+    font-size: .58rem;
+    font-weight: 700;
+  }
+  .grimoire-spell-chevron {
+    flex: 0 0 auto;
+    color: var(--muted-foreground);
+    transition: transform 160ms ease;
+  }
+  .grimoire-spell-card details[open] .grimoire-spell-chevron { transform: rotate(180deg); }
+  .grimoire-spell-details {
+    border-top: 1px solid color-mix(in oklab, var(--border) 72%, transparent);
+    padding: .8rem;
+    background: color-mix(in oklab, var(--muted) 20%, transparent);
+  }
+  .grimoire-spell-metadata {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .35rem;
+  }
+  .grimoire-spell-metadata > span {
+    border: 1px solid color-mix(in oklab, var(--border) 75%, transparent);
+    border-radius: .5rem;
+    padding: .25rem .42rem;
+    color: var(--muted-foreground);
+    font-size: .62rem;
+  }
+  .grimoire-spell-metadata strong { color: var(--foreground); }
+  .grimoire-spell-description {
+    margin-top: .75rem;
+    color: var(--foreground);
+    font-size: .82rem;
+    line-height: 1.55;
+    white-space: pre-line;
+  }
+  .grimoire-combat-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    margin-top: .65rem;
+    border: 1px solid color-mix(in oklab, var(--mana) 25%, transparent);
+    border-radius: .55rem;
+    padding: .3rem .5rem;
+    background: color-mix(in oklab, var(--mana) 8%, var(--card));
+    color: var(--mana);
+    font-size: .63rem;
+    font-weight: 650;
+  }
+  .grimoire-spell-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .4rem;
+    margin-top: .8rem;
+  }
+  .grimoire-spell-actions details { display: inline-flex; }
+  .grimoire-spell-actions details > summary { min-height: 2.25rem; }
+  .grimoire-empty, .grimoire-loading {
+    display: grid;
+    justify-items: center;
+    gap: .45rem;
+    border: 1px dashed var(--border);
+    border-radius: 1rem;
+    padding: 2.2rem 1rem;
+    color: var(--muted-foreground);
+    text-align: center;
+  }
+  .grimoire-empty > svg { color: var(--gold); opacity: .8; }
+  .grimoire-empty strong { color: var(--foreground); font-size: .9rem; }
+  .grimoire-empty span, .grimoire-loading p { font-size: .75rem; }
+  .grimoire-loading-orb {
+    width: 2rem;
+    height: 2rem;
+    border: 2px solid color-mix(in oklab, var(--primary) 22%, transparent);
+    border-top-color: var(--primary);
+    border-radius: 999px;
+    animation: grimoire-spin .8s linear infinite;
+  }
+  @keyframes grimoire-spin { to { transform: rotate(360deg); } }
+  .tavern-history-more {
+    margin-top: .55rem;
+    border-top: 1px solid color-mix(in oklab, var(--border) 65%, transparent);
+    padding-top: .35rem;
+  }
+  .tavern-history-more > summary {
+    display: flex;
+    min-height: 2.35rem;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    padding: .35rem .15rem;
+    color: var(--gold);
+    font-size: .72rem;
+    font-weight: 650;
+    cursor: pointer;
+    list-style: none;
+  }
+  .tavern-history-more > summary::-webkit-details-marker { display: none; }
+  .tavern-history-more > summary > span:first-child { display: inline-flex; align-items: center; gap: .4rem; }
+  .tavern-history-count {
+    min-width: 1.25rem;
+    border-radius: 999px;
+    padding: .08rem .35rem;
+    background: color-mix(in oklab, var(--primary) 13%, var(--card));
+    text-align: center;
+    font-size: .62rem;
+  }
+  .tavern-history-chevron { transition: transform 160ms ease; }
+  .tavern-history-more[open] .tavern-history-chevron { transform: rotate(180deg); }
+}
+@media (max-width: 700px) {
+  .grimoire-spell-grid { grid-template-columns: minmax(0, 1fr); }
+  .grimoire-overview { gap: .35rem; }
+  .grimoire-overview-item { gap: .4rem; padding: .55rem .5rem; }
+  .grimoire-overview-item > svg { width: .9rem; height: .9rem; }
+  .grimoire-overview-item strong { font-size: .82rem; }
+  .grimoire-overview-item small { font-size: .55rem; }
+  .grimoire-spell-summary { min-height: 4.5rem; }
+  .grimoire-master-tools { align-items: flex-start; flex-direction: column; }
+  .grimoire-master-tools > details { width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .grimoire-spell-card, .grimoire-spell-chevron, .tavern-history-chevron { transition: none; }
+  .grimoire-loading-orb { animation: none; }
+}
