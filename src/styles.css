@@ -671,3 +671,308 @@ html[data-palette="po-de-fada"][data-theme="light"] {
   --accent:#B9A7F5; --accent-foreground:#30234F; --destructive:#B83F62; --destructive-foreground:#FFFFFF; --border:#D4D7EF; --input:#CCD1E9; --ring:#668FC7; --gold:#8066B8; --blood:#B83F62; --mana:#668FC7;
   --texture-color:#8DBFEA; --texture-accent:#E99BCB; --ambient-glow:radial-gradient(ellipse at 50% -18%,rgb(185 167 245 / 18%),transparent 60%); --surface-glass:rgb(255 255 255 / 94%); --shadow-soft:0 18px 48px rgb(63 53 100 / 10%);
 }
+
+
+/* Taverna: visual de painel pessoal, denso e acolhedor. */
+@layer components {
+  .tavern-page { max-width: 76rem; margin-inline: auto; }
+  .tavern-hero {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    padding: clamp(1rem, 2.5vw, 1.5rem);
+    border: 1px solid color-mix(in oklab, var(--primary) 24%, var(--border));
+    border-radius: 1.35rem;
+    background:
+      radial-gradient(ellipse at 86% 0%, color-mix(in oklab, var(--primary) 15%, transparent), transparent 42%),
+      linear-gradient(135deg, color-mix(in oklab, var(--card) 92%, var(--primary) 8%), var(--card) 72%);
+    box-shadow: var(--shadow-soft);
+  }
+  .tavern-hero::after {
+    content: "✦";
+    position: absolute;
+    z-index: -1;
+    right: 1.4rem;
+    bottom: -2.2rem;
+    color: color-mix(in oklab, var(--primary) 10%, transparent);
+    font: 10rem/1 var(--font-display);
+    pointer-events: none;
+  }
+  .tavern-live-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    border: 1px solid color-mix(in oklab, var(--primary) 24%, transparent);
+    border-radius: 999px;
+    padding: .38rem .65rem;
+    background: color-mix(in oklab, var(--primary) 9%, var(--card));
+    color: var(--gold);
+    font-size: .68rem;
+    font-weight: 650;
+    white-space: nowrap;
+  }
+  .tavern-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: .55rem;
+    margin-top: 1.1rem;
+  }
+  .tavern-stat {
+    min-width: 0;
+    border: 1px solid color-mix(in oklab, var(--border) 76%, transparent);
+    border-radius: .95rem;
+    padding: .75rem .85rem;
+    background: color-mix(in oklab, var(--card) 82%, transparent);
+    backdrop-filter: blur(12px);
+  }
+  .tavern-stat > div { min-width: 0; }
+  .tavern-stat > div > svg { flex: 0 0 auto; color: var(--gold); }
+  .tavern-section {
+    min-width: 0;
+    border: 1px solid color-mix(in oklab, var(--border) 78%, transparent);
+    border-radius: 1rem;
+    padding: .9rem;
+    background: color-mix(in oklab, var(--card) 96%, transparent);
+    box-shadow: 0 6px 20px rgb(0 0 0 / 5%);
+  }
+  .tavern-section-icon {
+    display: grid;
+    width: 2.35rem;
+    height: 2.35rem;
+    flex: 0 0 auto;
+    place-items: center;
+    border: 1px solid color-mix(in oklab, var(--primary) 20%, transparent);
+    border-radius: .8rem;
+    background: color-mix(in oklab, var(--primary) 11%, var(--card));
+    color: var(--gold);
+  }
+  .tavern-section-icon.is-mana {
+    border-color: color-mix(in oklab, var(--mana) 24%, transparent);
+    background: color-mix(in oklab, var(--mana) 11%, var(--card));
+    color: var(--mana);
+  }
+  .tavern-status-ready, .tavern-status-wait {
+    border-radius: 999px;
+    padding: .2rem .5rem;
+    font-size: .62rem;
+    font-weight: 650;
+  }
+  .tavern-status-ready {
+    background: color-mix(in oklab, #28a66a 12%, var(--card));
+    color: #35a875;
+  }
+  .tavern-status-wait {
+    background: color-mix(in oklab, var(--muted) 72%, transparent);
+    color: var(--muted-foreground);
+  }
+  .tavern-vigor-track {
+    height: .42rem;
+    overflow: hidden;
+    border-radius: 999px;
+    background: color-mix(in oklab, var(--mana) 14%, var(--muted));
+  }
+  .tavern-vigor-track > span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, color-mix(in oklab, var(--mana) 74%, var(--primary)), var(--mana));
+    transition: width 240ms ease;
+  }
+  .tavern-transactions { display: grid; gap: .15rem; }
+  .tavern-transaction {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: .7rem;
+    padding: .65rem .1rem;
+    border-bottom: 1px solid color-mix(in oklab, var(--border) 62%, transparent);
+  }
+  .tavern-transaction:last-child { border-bottom: 0; }
+  .tavern-transaction-icon {
+    display: grid;
+    width: 2rem;
+    height: 2rem;
+    flex: 0 0 auto;
+    place-items: center;
+    border-radius: .7rem;
+  }
+  .tavern-transaction-icon.is-incoming {
+    background: color-mix(in oklab, #31a875 12%, var(--card));
+    color: #35a875;
+  }
+  .tavern-transaction-icon.is-outgoing {
+    background: color-mix(in oklab, var(--destructive) 12%, var(--card));
+    color: var(--destructive);
+  }
+  .pwa-install-backdrop {
+    position: fixed;
+    z-index: 100;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    padding: max(1rem, env(safe-area-inset-top)) 1rem max(1rem, env(safe-area-inset-bottom));
+    background: rgb(8 8 12 / 66%);
+    backdrop-filter: blur(9px);
+    animation: pwa-fade-in 180ms ease-out;
+  }
+  .pwa-install-dialog {
+    position: relative;
+    width: min(100%, 25rem);
+    max-height: min(88dvh, 42rem);
+    overflow-y: auto;
+    border: 1px solid color-mix(in oklab, var(--primary) 30%, var(--border));
+    border-radius: 1.45rem;
+    padding: 1.5rem;
+    background:
+      radial-gradient(ellipse at 80% 0%, color-mix(in oklab, var(--primary) 15%, transparent), transparent 48%),
+      var(--card);
+    color: var(--foreground);
+    box-shadow: 0 28px 90px rgb(0 0 0 / 42%);
+    text-align: center;
+    animation: pwa-dialog-in 220ms cubic-bezier(.2,.8,.2,1);
+  }
+  .pwa-install-close {
+    position: absolute;
+    top: .8rem;
+    right: .8rem;
+    display: grid;
+    width: 2rem;
+    height: 2rem;
+    place-items: center;
+    border-radius: .7rem;
+    color: var(--muted-foreground);
+    background: color-mix(in oklab, var(--muted) 70%, transparent);
+  }
+  .pwa-install-emblem {
+    display: grid;
+    width: 3.6rem;
+    height: 3.6rem;
+    margin: .15rem auto 1rem;
+    place-items: center;
+    border: 1px solid color-mix(in oklab, var(--primary) 32%, transparent);
+    border-radius: 1.15rem;
+    background: color-mix(in oklab, var(--primary) 12%, var(--card));
+    color: var(--gold);
+  }
+  .pwa-install-eyebrow {
+    color: var(--gold);
+    font-size: .65rem;
+    font-weight: 700;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+  }
+  .pwa-install-dialog h2 {
+    margin-top: .35rem;
+    font-family: var(--font-display);
+    font-size: 1.25rem;
+    font-weight: 700;
+    line-height: 1.25;
+  }
+  .pwa-install-copy {
+    margin: .6rem auto 1.15rem;
+    max-width: 21rem;
+    color: var(--muted-foreground);
+    font-size: .9rem;
+    line-height: 1.5;
+  }
+  .pwa-install-steps {
+    display: grid;
+    gap: .55rem;
+    margin: 0 0 1rem;
+    padding: .85rem;
+    border: 1px solid var(--border);
+    border-radius: .9rem;
+    background: color-mix(in oklab, var(--muted) 52%, transparent);
+    text-align: left;
+  }
+  .pwa-install-steps p {
+    display: flex;
+    align-items: flex-start;
+    gap: .5rem;
+    color: var(--muted-foreground);
+    font-size: .78rem;
+    line-height: 1.4;
+  }
+  .pwa-install-steps p strong { color: var(--foreground); }
+  .pwa-step-number {
+    display: inline-grid;
+    width: 1.2rem;
+    height: 1.2rem;
+    flex: 0 0 auto;
+    place-items: center;
+    border-radius: 999px;
+    background: color-mix(in oklab, var(--primary) 16%, var(--card));
+    color: var(--gold);
+    font-size: .65rem;
+    font-weight: 700;
+  }
+  .pwa-install-actions { display: grid; gap: .65rem; }
+  .pwa-install-later {
+    padding: .4rem;
+    color: var(--muted-foreground);
+    font-size: .75rem;
+  }
+  .pwa-install-card {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    gap: .75rem;
+    border: 1px solid color-mix(in oklab, var(--primary) 22%, var(--border));
+    border-radius: 1rem;
+    padding: .75rem;
+    background:
+      linear-gradient(115deg, color-mix(in oklab, var(--primary) 8%, var(--card)), var(--card) 74%);
+    box-shadow: 0 8px 24px rgb(0 0 0 / 7%);
+    text-align: left;
+  }
+  .pwa-install-card-icon {
+    display: grid;
+    width: 2.5rem;
+    height: 2.5rem;
+    flex: 0 0 auto;
+    place-items: center;
+    border-radius: .8rem;
+    background: color-mix(in oklab, var(--primary) 13%, var(--card));
+    color: var(--gold);
+  }
+  .pwa-installed-label {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: .25rem;
+    border-radius: 999px;
+    padding: .35rem .55rem;
+    background: color-mix(in oklab, #28a66a 13%, var(--card));
+    color: #35a875;
+    font-size: .68rem;
+    font-weight: 700;
+  }
+  @keyframes pwa-fade-in { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes pwa-dialog-in { from { opacity: 0; transform: translateY(12px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+}
+@layer base {
+  html { scrollbar-gutter: stable; }
+  button, [role="button"] { touch-action: manipulation; }
+  :focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+  img, video { max-width: 100%; height: auto; }
+}
+@media (max-width: 480px) {
+  .tavern-stats-grid { gap: .4rem; }
+  .tavern-stat { padding: .65rem .55rem; }
+  .tavern-stat > div { gap: .35rem; font-size: .66rem; }
+  .tavern-stat > div > svg { width: .85rem; height: .85rem; }
+  .tavern-stat > .font-display { font-size: 1.25rem; }
+  .tavern-stat > p { font-size: .58rem; }
+  .tavern-section { padding: .75rem; }
+  .pwa-install-dialog { padding: 1.25rem; border-radius: 1.25rem; }
+  .pwa-install-card { gap: .55rem; padding: .65rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
