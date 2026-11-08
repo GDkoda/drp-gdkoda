@@ -14,6 +14,22 @@ alter table public.puzzle_sessions
   alter column expires_at set not null;
 
 
+-- Preflight para o cliente confirmar que a regra de 60 segundos está ativa
+-- antes de gastar o vigor da tentativa.
+create or replace function public.get_puzzle_time_limit_seconds()
+returns integer
+language sql
+stable
+security definer
+set search_path = public
+as $
+  select 60;
+$;
+
+revoke all on function public.get_puzzle_time_limit_seconds() from public, anon;
+grant execute on function public.get_puzzle_time_limit_seconds() to authenticated;
+
+
 -- Inicia o enigma e devolve o prazo oficial calculado pelo servidor.
 create or replace function public.start_puzzle()
 returns jsonb
@@ -209,6 +225,7 @@ end;
 $$;
 
 
+revoke all on function public.get_puzzle_time_limit_seconds() from public, anon;
 revoke all on function public.start_puzzle() from public, anon;
 revoke all on function public.solve_puzzle(uuid, text) from public, anon;
 revoke all on function public.expire_puzzle(uuid) from public, anon;
