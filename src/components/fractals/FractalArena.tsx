@@ -27,7 +27,7 @@ const UPGRADES: Upgrade[] = [
   { id: "power", name: "Estilhaço Voraz", description: "Aumenta o dano dos disparos em 30%.", icon: Swords },
   { id: "haste", name: "Pulso Acelerado", description: "Dispara 18% mais rápido.", icon: Zap },
   { id: "vitality", name: "Casca de Cristal", description: "Recupera 25% da vida máxima e aumenta a vida em 15%.", icon: Shield },
-  { id: "swift", name: "Passos do Errante", description: "Aumenta a velocidade de movimento em 12%.", icon: Move },
+  { id: "swift", name: "Passos do Errante", description: "Aumenta a velocidade de movimento em 10%.", icon: Move },
 ];
 
 const SPECIAL_UPGRADES: Upgrade[] = [
@@ -219,7 +219,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
     if (upgrade.id === "power") game.player.damage *= 1 + 0.30 * rarityPower;
     if (upgrade.id === "haste") game.player.fireRate *= 1 - 0.18 * rarityPower;
     if (upgrade.id === "vitality") { game.player.maxHp *= 1 + 0.15 * rarityPower; game.player.hp = Math.min(game.player.maxHp, game.player.hp + game.player.maxHp * 0.25); }
-    if (upgrade.id === "swift") game.player.speed *= 1 + 0.12 * rarityPower;
+    if (upgrade.id === "swift") game.player.speed *= 1 + 0.10 * rarityPower;
     setLevelChoices([]);
   }, []);
 
