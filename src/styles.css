@@ -4422,3 +4422,22 @@ html { background-color: #000000; }
   .character-custom-roll-menu { padding: .45rem; }
   .character-custom-roll-form { gap: .35rem; }
 }
+
+
+/* Construtor visual e compacto de rolagens FA/FD. */
+.character-custom-roll-kind { display: grid; grid-template-columns: 1fr 1fr; gap: .35rem; }
+.character-custom-roll-kind button { min-height: 2.15rem; border: 1px solid var(--border); border-radius: .55rem; background: var(--background); color: var(--muted-foreground); font-size: .72rem; font-weight: 800; transition: .15s ease; }
+.character-custom-roll-kind button.is-selected { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 14%, var(--card)); color: var(--foreground); box-shadow: inset 0 0 0 1px var(--primary); }
+.character-custom-roll-attributes { display: grid; grid-template-columns: 1fr 1fr; gap: .4rem; }
+.character-custom-roll-attributes label,.character-custom-roll-bonus { display: grid; gap: .2rem; min-width: 0; }
+.character-custom-roll-attributes label > span,.character-custom-roll-bonus > span { color: var(--muted-foreground); font-size: .6rem; font-weight: 750; letter-spacing: .04em; text-transform: uppercase; }
+.character-custom-roll-form .character-custom-roll-attributes select { height: 2.2rem; }
+.character-custom-roll-bonus { grid-template-columns: 1fr 5rem; align-items: center; }
+.character-custom-roll-form .character-custom-roll-bonus input { height: 2.1rem; }
+.character-custom-roll-list .character-custom-roll-entry { min-height: 2.7rem; }
+.character-custom-roll-die { flex: 0 0 auto; }
+.character-custom-roll-value { display: grid; min-width: 2rem; height: 2rem; place-items: center; padding-inline: .35rem; border: 1px solid color-mix(in srgb, var(--primary) 45%, var(--border)); border-radius: .55rem; background: color-mix(in srgb, var(--primary) 12%, var(--card)); color: var(--foreground); font-size: .85rem !important; font-variant-numeric: tabular-nums; }
+@media(max-width:767px) {
+  .character-custom-roll-attributes { grid-template-columns: 1fr 1fr; }
+  .character-custom-roll-form .character-custom-roll-bonus { grid-column: 1 / -1; }
+}
