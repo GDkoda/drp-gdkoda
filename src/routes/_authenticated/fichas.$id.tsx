@@ -98,7 +98,7 @@ function Sheet() {
   const pvMax = Math.max(1, R * 5);
   const pmMax = Math.max(1, R * 5 + b.pm);
   const sum = (items: Trait[]) => items.reduce((total, trait) => total + (Number(trait.cost) || 0), 0);
-  const spent = c.f + c.h + c.r + c.a + c.pdf + sum(c.advantages) + sum(c.skills) - sum(c.disadvantages);
+  const spent = c.f + c.h + c.r + c.a + c.pdf + sum(c.advantages ?? []) + sum(c.skills ?? []) - sum(c.disadvantages ?? []);
   const set = (patch: Partial<Char>) => setC((current) => current ? { ...current, ...patch } : current);
 
   async function toggleActive() {
