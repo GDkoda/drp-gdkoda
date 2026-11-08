@@ -8,18 +8,19 @@ import { FRACTAL_SHOP, FRACTAL_RARITY_TIERS } from "@/lib/fractals/economy";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-type UpgradeId = "power" | "haste" | "vitality" | "swift";
+type UpgradeId = "power" | "haste" | "vitality" | "swift" | "special_area" | "special_experience";
 type Upgrade = { id: UpgradeId; name: string; description: string; icon: typeof Zap; rarity?: "normal" | "rare" | "epic" };
 
 type Enemy = { x: number; y: number; hp: number; maxHp: number; speed: number; radius: number; damage: number; color: string; xp: number; type: "wraith" | "brute" | "charger" | "elite" | "boss"; attack: number; flash: number; windup: number; targetX: number; targetY: number; summonedAtHalf: boolean };
 type Shot = { x: number; y: number; vx: number; vy: number; damage: number; life: number };
 type Gem = { x: number; y: number; value: number; radius: number };
+type SpecialDrop = { x: number; y: number; kind: "area" | "experience"; radius: number };
 type Particle = { x: number; y: number; vx: number; vy: number; life: number; color: string };
 
 type GameState = {
   width: number; height: number; last: number; elapsed: number; spawnTimer: number; shotTimer: number; bossSpawned: boolean;
-  player: { x: number; y: number; hp: number; maxHp: number; speed: number; damage: number; fireRate: number; invuln: number; xp: number; nextXp: number; level: number; pickupRadius: number; xpMultiplier: number };
-  enemies: Enemy[]; shots: Shot[]; gems: Gem[]; particles: Particle[]; kills: number; ended: boolean;
+  player: { x: number; y: number; hp: number; maxHp: number; speed: number; damage: number; fireRate: number; invuln: number; xp: number; nextXp: number; level: number; pickupRadius: number; xpMultiplier: number; specialAreaStacks: number; specialExperienceStacks: number };
+  enemies: Enemy[]; shots: Shot[]; gems: Gem[]; specialDrops: SpecialDrop[]; particles: Particle[]; kills: number; ended: boolean;
 };
 
 const UPGRADES: Upgrade[] = [
@@ -29,15 +30,32 @@ const UPGRADES: Upgrade[] = [
   { id: "swift", name: "Passos do Errante", description: "Aumenta a velocidade de movimento em 12%.", icon: Move },
 ];
 
+const SPECIAL_UPGRADES: Upgrade[] = [
+  { id: "special_area", name: "Ímã de Fragmentos", description: "+10% de alcance de coleta (máx. +50%).", icon: Move },
+  { id: "special_experience", name: "Eco do Conhecimento", description: "+5% de experiência recebida (máx. +30%).", icon: Sparkles },
+];
+
+function buildLevelChoices(game: GameState, areaLevel: number, experienceLevel: number, rarityTier: number): Upgrade[] {
+  const core = [...UPGRADES].sort(() => Math.random() - 0.5).slice(0, 3);
+  const available = SPECIAL_UPGRADES.filter((item) => item.id === "special_area"
+    ? areaLevel >= 1 && game.player.specialAreaStacks < 5
+    : experienceLevel >= 1 && game.player.specialExperienceStacks < 6);
+  if (available.length && Math.random() < 0.18) {
+    const special = available[Math.floor(Math.random() * available.length)];
+    return [...core.slice(0, 2), special].map((upgrade) => ({ ...upgrade, rarity: upgrade.id.startsWith("special_") ? undefined : rollUpgradeRarity(rarityTier) }));
+  }
+  return core.map((upgrade) => ({ ...upgrade, rarity: rollUpgradeRarity(rarityTier) }));
+}
+
 function rollUpgradeRarity(tier: number): "normal" | "rare" | "epic" { const odds = FRACTAL_RARITY_TIERS[Math.max(0, Math.min(3, tier))]; const roll = Math.random() * 100; if (roll < odds.epic) return "epic"; if (roll < odds.epic + odds.rare) return "rare"; return "normal"; }
 const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(max, n));
 const distance = (ax: number, ay: number, bx: number, by: number) => Math.hypot(ax - bx, ay - by);
 
-function makeGame(width: number, height: number, areaLevel = 0, experienceLevel = 0): GameState {
+function makeGame(width: number, height: number): GameState {
   return {
     width, height, last: 0, elapsed: 0, spawnTimer: 0.4, shotTimer: 0.25, bossSpawned: false,
-    player: { x: width / 2, y: height / 2, hp: 100, maxHp: 100, speed: 205, damage: 22, fireRate: 0.72, invuln: 0, xp: 0, nextXp: 12, level: 1, pickupRadius: 85 * (1 + [0, 0.12, 0.24, 0.36][areaLevel]), xpMultiplier: 1 + [0, 0.10, 0.20, 0.30][experienceLevel] },
-    enemies: [], shots: [], gems: [], particles: [], kills: 0, ended: false,
+    player: { x: width / 2, y: height / 2, hp: 100, maxHp: 100, speed: 205, damage: 22, fireRate: 0.72, invuln: 0, xp: 0, nextXp: 12, level: 1, pickupRadius: 85, xpMultiplier: 1, specialAreaStacks: 0, specialExperienceStacks: 0 },
+    enemies: [], shots: [], gems: [], specialDrops: [], particles: [], kills: 0, ended: false,
   };
 }
 
@@ -85,6 +103,14 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     ctx.save(); ctx.translate(gem.x, gem.y); ctx.rotate(Math.PI / 4);
     ctx.fillStyle = "#9ee6c1"; ctx.shadowColor = "#7df0b0"; ctx.shadowBlur = 12;
     ctx.fillRect(-gem.radius / 2, -gem.radius / 2, gem.radius, gem.radius); ctx.restore();
+  });
+  game.specialDrops.forEach((drop) => {
+    ctx.save(); ctx.translate(drop.x, drop.y); ctx.rotate(Math.PI / 4);
+    ctx.fillStyle = drop.kind === "area" ? "#67d9e8" : "#b58cff";
+    ctx.shadowColor = ctx.fillStyle; ctx.shadowBlur = 16;
+    ctx.fillRect(-drop.radius / 2, -drop.radius / 2, drop.radius, drop.radius);
+    ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 1.5; ctx.strokeRect(-drop.radius / 2, -drop.radius / 2, drop.radius, drop.radius);
+    ctx.restore();
   });
   game.shots.forEach((shot) => {
     ctx.beginPath(); ctx.fillStyle = "#f4d58a"; ctx.shadowColor = "#f4bd54"; ctx.shadowBlur = 12;
@@ -178,7 +204,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
     const rect = canvasRef.current?.getBoundingClientRect();
     const width = Math.max(320, rect?.width ?? 760);
     const height = Math.max(380, rect?.height ?? 520);
-    const game = makeGame(width, height, purchases.area, purchases.experience);
+    const game = makeGame(width, height);
     gameRef.current = game;
     setHud({ hp: 100, maxHp: 100, xp: 0, nextXp: 12, level: 1, kills: 0, elapsed: 0, phase: "Exploração", pressure: 0 });
     setLevelChoices([]); setPaused(false); setResult(null); setBossMessage(false); setRunning(true);
@@ -187,7 +213,9 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
   const chooseUpgrade = useCallback((upgrade: Upgrade) => {
     const game = gameRef.current;
     if (!game) return;
-    const rarityPower = upgrade.rarity === "epic" ? 2 : upgrade.rarity === "rare" ? 1.5 : 1;
+    const rarityPower = upgrade.rarity === "epic" ? 1.5 : upgrade.rarity === "rare" ? 1.25 : 1;
+    if (upgrade.id === "special_area" && game.player.specialAreaStacks < 5) { game.player.specialAreaStacks += 1; game.player.pickupRadius = 85 * (1 + game.player.specialAreaStacks * 0.10); }
+    if (upgrade.id === "special_experience" && game.player.specialExperienceStacks < 6) { game.player.specialExperienceStacks += 1; game.player.xpMultiplier = 1 + game.player.specialExperienceStacks * 0.05; }
     if (upgrade.id === "power") game.player.damage *= 1 + 0.30 * rarityPower;
     if (upgrade.id === "haste") game.player.fireRate *= 1 - 0.18 * rarityPower;
     if (upgrade.id === "vitality") { game.player.maxHp *= 1 + 0.15 * rarityPower; game.player.hp = Math.min(game.player.maxHp, game.player.hp + game.player.maxHp * 0.25); }
@@ -299,6 +327,14 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               if (enemy.hp <= 0) {
                 game.kills += 1;
                 if (enemy.type !== "boss") game.gems.push({ x: enemy.x, y: enemy.y, value: enemy.xp, radius: 5 });
+                const specialDropTier = Math.max(purchases.area, purchases.experience);
+                const specialDropChance = specialDropTier >= 3 ? 0.03 : specialDropTier >= 2 ? 0.01 : 0;
+                if ((enemy.type === "elite" || enemy.type === "brute") && specialDropChance > 0 && Math.random() < specialDropChance) {
+                  const eligible: SpecialDrop["kind"][] = [];
+                  if (purchases.area >= 1 && game.player.specialAreaStacks < 5) eligible.push("area");
+                  if (purchases.experience >= 1 && game.player.specialExperienceStacks < 6) eligible.push("experience");
+                  if (eligible.length) game.specialDrops.push({ x: enemy.x, y: enemy.y, kind: eligible[Math.floor(Math.random() * eligible.length)], radius: 13 });
+                }
                 else { game.ended = true; setResult("victory"); if (runId) void (supabase.rpc as any)("finish_fractal_run", { _run_id: runId, _victory: true }).then(({ data, error }: any) => { if (error) toast.error(error.message); else { setFractalBalance(Number(data?.fractals ?? 0)); setUnlockedCorruption(Number(data?.corruptionUnlocked ?? 0)); setCompletedCorruptions(Array.isArray(data?.completedCorruptions) ? data.completedCorruptions : []); toast.success("Corrupção concluída. O próximo nível foi liberado."); } }); }
                 for (let i = 0; i < 5; i++) game.particles.push({ x: enemy.x, y: enemy.y, vx: (Math.random() - 0.5) * 100, vy: (Math.random() - 0.5) * 100, life: 0.45, color: enemy.color });
               }
@@ -315,12 +351,22 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           }
         });
         game.gems = game.gems.filter((gem) => gem.value > 0);
+        game.specialDrops.forEach((drop) => {
+          const d = distance(game.player.x, game.player.y, drop.x, drop.y);
+          if (d < game.player.pickupRadius) { drop.x += ((game.player.x - drop.x) / Math.max(1, d)) * 280 * dt; drop.y += ((game.player.y - drop.y) / Math.max(1, d)) * 280 * dt; }
+          if (d < 18) {
+            if (drop.kind === "area" && game.player.specialAreaStacks < 5) { game.player.specialAreaStacks += 1; game.player.pickupRadius = 85 * (1 + game.player.specialAreaStacks * 0.10); }
+            if (drop.kind === "experience" && game.player.specialExperienceStacks < 6) { game.player.specialExperienceStacks += 1; game.player.xpMultiplier = 1 + game.player.specialExperienceStacks * 0.05; }
+            drop.radius = 0;
+          }
+        });
+        game.specialDrops = game.specialDrops.filter((drop) => drop.radius > 0);
         game.particles.forEach((p) => { p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; });
         game.particles = game.particles.filter((p) => p.life > 0);
         if (game.player.xp >= game.player.nextXp && !game.ended) {
           game.player.xp -= game.player.nextXp; game.player.level += 1; game.player.nextXp = Math.floor(game.player.nextXp * 1.32 + 5);
           
-          setLevelChoices([...UPGRADES].sort(() => Math.random() - 0.5).slice(0, 3).map((upgrade) => ({ ...upgrade, rarity: rollUpgradeRarity(purchases.rarity) })));
+          setLevelChoices(buildLevelChoices(game, purchases.area, purchases.experience, purchases.rarity));
         }
         if (game.player.hp <= 0 && !game.ended) { game.ended = true; setResult("defeat"); if (runId) void (supabase.rpc as any)("finish_fractal_run", { _run_id: runId, _victory: false }).then(({ error }: any) => { if (error) toast.error(error.message); }); }
         if (game.elapsed >= RUN_DURATION_SECONDS && !game.ended && !game.bossSpawned) { spawnEnemy(game, missionId, game.elapsed, corruption, true); game.bossSpawned = true; }
@@ -334,7 +380,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
     };
     frame = requestAnimationFrame(tick);
     return () => { cancelAnimationFrame(frame); window.removeEventListener("resize", resize); window.removeEventListener("keydown", onKeyDown); window.removeEventListener("keyup", onKeyUp); };
-  }, [running, paused, levelChoices.length, missionId, corruption, speedMultiplier, runId, purchases.rarity]);
+  }, [running, paused, levelChoices.length, missionId, corruption, speedMultiplier, runId, purchases.rarity, purchases.area, purchases.experience]);
 
   const pointerStart = (event: PointerEvent<HTMLCanvasElement>) => {
     const rect = event.currentTarget.getBoundingClientRect();
@@ -391,13 +437,13 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               </div>
               {shopError && <p className="mt-2 text-xs text-amber-300">{shopError}</p>}
               {shopOpen && <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                <div className="rounded-lg border p-2"><p className="text-xs font-semibold">Área de coleta</p><p className="text-[10px] text-muted-foreground">Nível {purchases.area}/3</p><Button size="sm" className="mt-2 w-full" disabled={shopBusy || purchases.area>=3 || (!isMaster && fractalBalance < FRACTAL_SHOP.area[purchases.area].cost)} onClick={() => void purchaseUpgrade("area")}>{purchases.area>=3 ? "Máximo" : isMaster ? "Desbloquear grátis" : "Comprar · " + FRACTAL_SHOP.area[purchases.area].cost.toLocaleString("pt-BR")}</Button></div>
-                <div className="rounded-lg border p-2"><p className="text-xs font-semibold">Afinidade de experiência</p><p className="text-[10px] text-muted-foreground">Nível {purchases.experience}/3</p><Button size="sm" className="mt-2 w-full" disabled={shopBusy || purchases.experience>=3 || (!isMaster && fractalBalance < FRACTAL_SHOP.experience[purchases.experience].cost)} onClick={() => void purchaseUpgrade("experience")}>{purchases.experience>=3 ? "Máximo" : isMaster ? "Desbloquear grátis" : "Comprar · " + FRACTAL_SHOP.experience[purchases.experience].cost.toLocaleString("pt-BR")}</Button></div>
+                <div className="rounded-lg border p-2"><p className="text-xs font-semibold">Área de coleta</p><p className="text-[10px] text-muted-foreground">Nível {purchases.area}/3 · N1: escolhas; N2: 1% de queda; N3: 3%.</p><Button size="sm" className="mt-2 w-full" disabled={shopBusy || purchases.area>=3 || (!isMaster && fractalBalance < FRACTAL_SHOP.area[purchases.area].cost)} onClick={() => void purchaseUpgrade("area")}>{purchases.area>=3 ? "Máximo" : isMaster ? "Desbloquear grátis" : "Comprar · " + FRACTAL_SHOP.area[purchases.area].cost.toLocaleString("pt-BR")}</Button></div>
+                <div className="rounded-lg border p-2"><p className="text-xs font-semibold">Afinidade de experiência</p><p className="text-[10px] text-muted-foreground">Nível {purchases.experience}/3 · N1: escolhas; N2: 1% de queda; N3: 3%.</p><Button size="sm" className="mt-2 w-full" disabled={shopBusy || purchases.experience>=3 || (!isMaster && fractalBalance < FRACTAL_SHOP.experience[purchases.experience].cost)} onClick={() => void purchaseUpgrade("experience")}>{purchases.experience>=3 ? "Máximo" : isMaster ? "Desbloquear grátis" : "Comprar · " + FRACTAL_SHOP.experience[purchases.experience].cost.toLocaleString("pt-BR")}</Button></div>
                 <div className="rounded-lg border p-2"><p className="text-xs font-semibold">Ressonância de raridade</p><p className="text-[10px] text-muted-foreground">Tier {purchases.rarity}/3 · Normal, Rara e Épica</p><Button size="sm" className="mt-2 w-full" disabled={shopBusy || purchases.rarity>=3 || (!isMaster && fractalBalance < FRACTAL_SHOP.rarity[purchases.rarity].cost)} onClick={() => void purchaseUpgrade("rarity")}>{purchases.rarity>=3 ? "Máximo" : isMaster ? "Desbloquear grátis" : "Comprar · " + FRACTAL_SHOP.rarity[purchases.rarity].cost.toLocaleString("pt-BR")}</Button></div>
                 <div className="rounded-lg border p-2"><p className="text-xs font-semibold">Velocidade 2x</p><p className="text-[10px] text-muted-foreground">Desbloqueio permanente</p><Button size="sm" className="mt-2 w-full" disabled={shopBusy || purchases.speed_2x || (!isMaster && fractalBalance < FRACTAL_SHOP.speed.double.cost)} onClick={() => void purchaseUpgrade("speed_2x")}>{purchases.speed_2x ? "Adquirido" : isMaster ? "Grátis" : "Comprar · 1.000"}</Button></div>
                 <div className="rounded-lg border p-2"><p className="text-xs font-semibold">Velocidade 3x</p><p className="text-[10px] text-muted-foreground">Requer 2x · Desbloqueio permanente</p><Button size="sm" className="mt-2 w-full" disabled={shopBusy || purchases.speed_3x || (!isMaster && (!purchases.speed_2x || fractalBalance < FRACTAL_SHOP.speed.triple.cost))} onClick={() => void purchaseUpgrade("speed_3x")}>{purchases.speed_3x ? "Adquirido" : isMaster ? "Grátis" : "Comprar · 2.000"}</Button></div>
               </div>}
-              <p className="mt-2 text-[10px] text-muted-foreground">Área e experiência já afetam as próximas expedições. A raridade será conectada às ofertas de armas na etapa de evoluções.</p>
+              <p className="mt-2 text-[10px] text-muted-foreground">Coletáveis Especiais: 18% de chance de uma opção especial por subida de nível. Área: +10% por coleta (máx. +50%); XP: +5% por coleta (máx. +30%). Efeitos reiniciam a cada expedição.</p>
             </div>
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-muted/35 p-3">
               <div><p className="text-sm font-semibold">12 minutos de sobrevivência</p><p className="text-xs text-muted-foreground">Chefe corrompido surge aos 11 minutos. Derrotá-lo encerra a expedição.</p></div>
