@@ -16,6 +16,8 @@ type Shot = { x: number; y: number; vx: number; vy: number; damage: number; life
 type Gem = { x: number; y: number; value: number; radius: number };
 type SpecialDrop = { x: number; y: number; kind: "area" | "experience"; radius: number };
 type Particle = { x: number; y: number; vx: number; vy: number; life: number; color: string };
+type SpriteKey = "player" | "boss" | "elite";
+type SpriteMap = Partial<Record<SpriteKey, HTMLImageElement>>;
 
 type GameState = {
   width: number; height: number; last: number; elapsed: number; spawnTimer: number; shotTimer: number; bossSpawned: boolean;
@@ -85,7 +87,7 @@ function spawnEnemy(game: GameState, missionId: number, elapsed: number, corrupt
   }
 }
 
-function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: number, missionId: number) {
+function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: number, missionId: number, sprites: SpriteMap = {}) {
   const { width, height, player } = game;
   ctx.clearRect(0, 0, width, height);
   // Ruínas de Último Silêncio: piso de lajes, rachaduras, pilares e cristais.
@@ -158,7 +160,19 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     if (enemy.type === "charger" && enemy.windup > 0) { ctx.save(); ctx.rotate(Math.atan2(enemy.targetY - enemy.y, enemy.targetX - enemy.x)); ctx.globalAlpha = .55 + Math.sin(game.elapsed * 24) * .2; ctx.strokeStyle = "#ffc477"; ctx.lineWidth = 3; ctx.setLineDash([5, 4]); ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(125, 0); ctx.stroke(); ctx.restore(); }
     if (enemy.type === "elite") { ctx.save(); ctx.globalAlpha = .18 + Math.sin(game.elapsed * 4) * .06; ctx.strokeStyle = "#d69cff"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, 0, 105, 0, Math.PI * 2); ctx.stroke(); ctx.restore(); }
     const hurt = enemy.flash > 0;
-    if (enemy.type === "wraith") {
+    const enemySprite = enemy.type === "boss" ? sprites.boss : enemy.type === "elite" ? sprites.elite : undefined;
+    if (enemySprite?.complete && enemySprite.naturalWidth > 0) {
+      ctx.save();
+      const isBoss = enemy.type === "boss";
+      const spriteWidth = isBoss ? 78 : 46;
+      const spriteHeight = isBoss ? 98 : 52;
+      ctx.globalAlpha = hurt ? 0.78 : 1;
+      ctx.filter = hurt ? "brightness(2.35) saturate(.35)" : "none";
+      ctx.shadowColor = isBoss ? "#a95cff" : "#8b68ff";
+      ctx.shadowBlur = isBoss ? 24 : 14;
+      ctx.drawImage(enemySprite, -spriteWidth / 2, -spriteHeight * 0.68, spriteWidth, spriteHeight);
+      ctx.restore();
+    } else if (enemy.type === "wraith") {
       ctx.shadowColor = enemy.color; ctx.shadowBlur = 13; ctx.fillStyle = hurt ? "#fff" : "#827394";
       ctx.beginPath(); ctx.moveTo(-enemy.radius, 3); ctx.quadraticCurveTo(-enemy.radius * 1.2, -enemy.radius, 0, -enemy.radius * 1.1); ctx.quadraticCurveTo(enemy.radius * 1.2, -enemy.radius, enemy.radius, 3); ctx.lineTo(enemy.radius * .55, enemy.radius * .45); ctx.lineTo(0, enemy.radius * .12); ctx.lineTo(-enemy.radius * .55, enemy.radius * .45); ctx.closePath(); ctx.fill();
       ctx.fillStyle = "#d9b8ff"; ctx.fillRect(-4, -3, 3, 4); ctx.fillRect(2, -3, 3, 4);
@@ -195,21 +209,31 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
   game.particles.forEach((p) => { ctx.globalAlpha = clamp(p.life * 2, 0, 1); ctx.fillStyle = p.color; ctx.fillRect(p.x, p.y, 3, 3); });
   ctx.globalAlpha = 1;
 
-  // Protagonista: viajante encapuzado, manto dividido e foco cristalino.
+  // Protagonista ilustrado; mantém o desenho procedural como fallback enquanto o sprite carrega.
   ctx.save(); ctx.translate(player.x, player.y);
   const bob = Math.sin(game.elapsed * 7) * 1.7;
   ctx.fillStyle = "rgba(0,0,0,.42)"; ctx.beginPath(); ctx.ellipse(0, 13, 17, 7, 0, 0, Math.PI * 2); ctx.fill();
   ctx.translate(0, bob);
-  ctx.shadowColor = player.invuln > 0 ? "#ffffff" : "#a75cff"; ctx.shadowBlur = player.invuln > 0 ? 28 : 17;
-  ctx.fillStyle = "#292039"; ctx.beginPath(); ctx.moveTo(-12, -3); ctx.lineTo(-9, -13); ctx.lineTo(0, -19); ctx.lineTo(9, -13); ctx.lineTo(13, 8); ctx.lineTo(7, 14); ctx.lineTo(-9, 12); ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = "#8d65b5"; ctx.lineWidth = 1.5; ctx.stroke();
-  ctx.fillStyle = "#4a315e"; ctx.beginPath(); ctx.moveTo(-10,-7);ctx.lineTo(-5,-17);ctx.lineTo(2,-20);ctx.lineTo(10,-12);ctx.lineTo(7,1);ctx.lineTo(0,9);ctx.lineTo(-8,2);ctx.closePath();ctx.fill();
-  ctx.fillStyle = player.invuln > 0 && Math.floor(game.elapsed * 14) % 2 === 0 ? "#fff" : "#e5c9a0";
-  ctx.beginPath(); ctx.ellipse(0,-7,6.5,8,0,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle="#17121f";ctx.beginPath();ctx.moveTo(-8,-9);ctx.lineTo(0,-20);ctx.lineTo(9,-10);ctx.lineTo(4,-8);ctx.lineTo(-5,-7);ctx.closePath();ctx.fill();
-  ctx.fillStyle="#d9c4ff";ctx.fillRect(-4,-7,2.5,2);ctx.fillRect(2,-7,2.5,2);
-  ctx.strokeStyle="#d7b5ff";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(8,-1);ctx.lineTo(17,-12);ctx.stroke();
-  ctx.fillStyle="#d5a7ff";ctx.shadowColor="#bd7cff";ctx.shadowBlur=16;ctx.beginPath();ctx.arc(18,-13,3.5,0,Math.PI*2);ctx.fill();
+  if (sprites.player?.complete && sprites.player.naturalWidth > 0) {
+    const blinking = player.invuln > 0 && Math.floor(game.elapsed * 14) % 2 === 0;
+    ctx.globalAlpha = blinking ? 0.62 : 1;
+    ctx.filter = player.invuln > 0 ? "brightness(1.45) saturate(.7)" : "none";
+    ctx.shadowColor = player.invuln > 0 ? "#ffffff" : "#a75cff";
+    ctx.shadowBlur = player.invuln > 0 ? 24 : 14;
+    ctx.drawImage(sprites.player, -25, -39, 50, 68);
+    ctx.filter = "none"; ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+  } else {
+    ctx.shadowColor = player.invuln > 0 ? "#ffffff" : "#a75cff"; ctx.shadowBlur = player.invuln > 0 ? 28 : 17;
+    ctx.fillStyle = "#292039"; ctx.beginPath(); ctx.moveTo(-12, -3); ctx.lineTo(-9, -13); ctx.lineTo(0, -19); ctx.lineTo(9, -13); ctx.lineTo(13, 8); ctx.lineTo(7, 14); ctx.lineTo(-9, 12); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = "#8d65b5"; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.fillStyle = "#4a315e"; ctx.beginPath(); ctx.moveTo(-10,-7);ctx.lineTo(-5,-17);ctx.lineTo(2,-20);ctx.lineTo(10,-12);ctx.lineTo(7,1);ctx.lineTo(0,9);ctx.lineTo(-8,2);ctx.closePath();ctx.fill();
+    ctx.fillStyle = player.invuln > 0 && Math.floor(game.elapsed * 14) % 2 === 0 ? "#fff" : "#e5c9a0";
+    ctx.beginPath(); ctx.ellipse(0,-7,6.5,8,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle="#17121f";ctx.beginPath();ctx.moveTo(-8,-9);ctx.lineTo(0,-20);ctx.lineTo(9,-10);ctx.lineTo(4,-8);ctx.lineTo(-5,-7);ctx.closePath();ctx.fill();
+    ctx.fillStyle="#d9c4ff";ctx.fillRect(-4,-7,2.5,2);ctx.fillRect(2,-7,2.5,2);
+    ctx.strokeStyle="#d7b5ff";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(8,-1);ctx.lineTo(17,-12);ctx.stroke();
+    ctx.fillStyle="#d5a7ff";ctx.shadowColor="#bd7cff";ctx.shadowBlur=16;ctx.beginPath();ctx.arc(18,-13,3.5,0,Math.PI*2);ctx.fill();
+  }
   ctx.shadowBlur=0;ctx.strokeStyle="#f2d6ff";ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(0,0,19+Math.sin(game.elapsed*4)*1.2,0,Math.PI*2);ctx.stroke();
   ctx.restore();
 
@@ -242,6 +266,23 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
   const [shopBusy, setShopBusy] = useState(false);
   const [shopOpen, setShopOpen] = useState(false);
   const [shopError, setShopError] = useState<string | null>(null);
+  const spritesRef = useRef<SpriteMap>({});
+  useEffect(() => {
+    let cancelled = false;
+    const assets: Record<SpriteKey, string> = {
+      player: "/fractals/sprites/player.webp",
+      boss: "/fractals/sprites/boss.webp",
+      elite: "/fractals/sprites/elite.webp",
+    };
+    (Object.entries(assets) as [SpriteKey, string][]).forEach(([key, src]) => {
+      const image = new Image();
+      image.decoding = "async";
+      image.onload = () => { if (!cancelled) spritesRef.current[key] = image; };
+      image.src = src;
+    });
+    return () => { cancelled = true; };
+  }, []);
+
 
   const refreshFractalState = useCallback(async () => {
     const { data, error } = await (supabase.rpc as any)("get_fractal_state");
@@ -477,7 +518,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           setHud({ hp: game.player.hp, maxHp: game.player.maxHp, xp: game.player.xp, nextXp: game.player.nextXp, level: game.player.level, kills: game.kills, elapsed: game.elapsed, phase: snapshot.phaseLabel, pressure: snapshot.totalPressure });
         }
       }
-      drawGame(ctx, game, corruption, missionId);
+      drawGame(ctx, game, corruption, missionId, spritesRef.current);
       frame = requestAnimationFrame(tick);
     };
     frame = requestAnimationFrame(tick);
