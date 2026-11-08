@@ -5,7 +5,7 @@ import { rpc, useRefresh, useMe } from "@/lib/game";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Zap, Swords, Spade, Dice5, Brain, Trophy, RotateCcw, Shield, BookOpen, Flame, Sparkles, Coins, Wind, X, CheckCircle2, Sparkle, Plus, Lock, ArrowLeft } from "lucide-react";
+import { Zap, Swords, Spade, Dice5, Brain, Trophy, RotateCcw, Shield, BookOpen, Flame, Sparkles, Coins, Wind, X, CheckCircle2, Sparkle, Plus, Lock, ArrowLeft, Skull } from "lucide-react";
 import { useCustomization } from "@/lib/app-customization";
 import { supabase } from "@/integrations/supabase/client";
 import { VigorRestore, useGameSettings } from "@/components/VigorRestore";
@@ -360,18 +360,58 @@ function Combat({ onDone, hasActive, buttonLabel }: { onDone: () => void; hasAct
   );
 }
 
+const puzzleCurseLines = [
+  "O Oráculo marcou sua alma. A partir de hoje, até sua própria sombra desconfiará de você.",
+  "Uma maldição antiga se prende ao seu nome. Os sussurros da cripta agora conhecem seu caminho.",
+  "As runas se apagaram diante de você. Um presságio sombrio acompanhará seus próximos passos.",
+  "O guardião tomou sua resposta como oferenda. Você deixa a câmara levando uma maldição.",
+  "A névoa negra envolve seus pensamentos. O Oráculo condenou sua memória ao esquecimento.",
+  "Um selo profano foi gravado em seu destino. A sorte se afastou por não ousar contrariar a maldição.",
+  "O sino da derrota soou. Algo antigo despertou e agora caminha no rastro de sua alma.",
+  "As páginas do arquivo se fecharam. Uma voz sem rosto declarou seu nome amaldiçoado.",
+  "O símbolo da ruína brilhou sobre você. Nem mesmo as estrelas ousam desfazer esse presságio.",
+  "A chama do conhecimento se extinguiu. Você foi lançado para fora sob o peso de uma praga arcana.",
+  "O Oráculo recusou sua oferenda e cobrou um preço: uma maldição seguirá seus passos.",
+  "A última runa se partiu. Seu fracasso foi selado nas pedras desta câmara."
+];
+
 function Puzzle({ onDone, buttonLabel }: { onDone: () => void; buttonLabel: string }) {
   const [p, setP] = useState<{ id: string; question: string } | null>(null);
   const [ans, setAns] = useState("");
   const [busy, setBusy] = useState(false);
-  const [res, setRes] = useState<{ correct: boolean; answer: string; reward: number } | null>(null);
+  const [res, setRes] = useState<{ correct: boolean; answer: string; reward: number; expired?: boolean } | null>(null);
+  const [deadlineMs, setDeadlineMs] = useState<number | null>(null);
+  const [remainingSeconds, setRemainingSeconds] = useState(60);
+  const [curseLine, setCurseLine] = useState("");
+  const finalizing = useRef(false);
+
+  const timeLabel = `00:${String(remainingSeconds).padStart(2, "0")}`;
+
+  function showDefeat(expired: boolean) {
+    setCurseLine(puzzleCurseLines[Math.floor(Math.random() * puzzleCurseLines.length)]);
+    setRemainingSeconds(0);
+  }
 
   async function start() {
     setBusy(true);
     try {
-      const next = await rpc("start_puzzle", {}) as { id: string; question: string };
-      setP(next);
+      const next = await rpc("start_puzzle", {}) as {
+        id: string;
+        question: string;
+        expiresAt?: string;
+        serverNow?: string;
+      };
+      if (!next.expiresAt || !next.serverNow) {
+        throw new Error("O prazo do Oráculo ainda não foi configurado no banco. Execute a migração SQL de 1 minuto.");
+      }
+
+      const remainingMs = Math.max(0, Date.parse(next.expiresAt) - Date.parse(next.serverNow));
+      finalizing.current = false;
+      setP({ id: next.id, question: next.question });
+      setDeadlineMs(Date.now() + remainingMs);
+      setRemainingSeconds(Math.max(0, Math.ceil(remainingMs / 1000)));
       setRes(null);
+      setCurseLine("");
       setAns("");
       onDone();
     } catch (error) {
@@ -382,18 +422,78 @@ function Puzzle({ onDone, buttonLabel }: { onDone: () => void; buttonLabel: stri
   }
 
   async function solve() {
-    if (!p || !ans.trim() || busy || res) return;
+    if (!p || !ans.trim() || busy || res || finalizing.current) return;
+    if (deadlineMs !== null && Date.now() >= deadlineMs) {
+      setRemainingSeconds(0);
+      return;
+    }
+
+    finalizing.current = true;
     setBusy(true);
     try {
-      const result = await rpc("solve_puzzle", { _id: p.id, _answer: ans.trim() }) as { correct: boolean; answer: string; reward: number };
+      const result = await rpc("solve_puzzle", { _id: p.id, _answer: ans.trim() }) as {
+        correct: boolean;
+        answer: string;
+        reward: number;
+        expired?: boolean;
+      };
       setRes(result);
+      if (!result.correct) showDefeat(!!result.expired);
       onDone();
     } catch (error) {
+      finalizing.current = false;
       toast.error(error instanceof Error ? error.message : "Não foi possível verificar sua resposta.");
     } finally {
       setBusy(false);
     }
   }
+
+  // Countdown uses the server-issued duration, not a ten-minute display or a
+  // client-only answer check. The database independently rejects late answers.
+  useEffect(() => {
+    if (!p || res || deadlineMs === null) return;
+
+    const tick = () => {
+      const ms = deadlineMs - Date.now();
+      const seconds = Math.max(0, Math.ceil(ms / 1000));
+      setRemainingSeconds((previous) => previous === seconds ? previous : seconds);
+
+      if (ms > 0 || finalizing.current) return;
+      finalizing.current = true;
+      setBusy(true);
+
+      void rpc("expire_puzzle", { _id: p.id })
+        .then((value) => {
+          const result = value as { expired: boolean; expiresAt?: string; serverNow?: string };
+          if (result.expired) {
+            setRes({ correct: false, answer: "", reward: 0, expired: true });
+            showDefeat(true);
+            onDone();
+            return;
+          }
+
+          // The database may be a fraction of a second ahead of the UI timer.
+          // Rebase the local countdown using the server's clock and expiry.
+          if (result.expiresAt && result.serverNow) {
+            const msRemaining = Math.max(0, Date.parse(result.expiresAt) - Date.parse(result.serverNow));
+            setDeadlineMs(Date.now() + msRemaining);
+            finalizing.current = false;
+          }
+        })
+        .catch((error) => {
+          finalizing.current = false;
+          toast.error(error instanceof Error ? error.message : "Não foi possível registrar a derrota.");
+        })
+        .finally(() => setBusy(false));
+    };
+
+    tick();
+    const timerId = window.setInterval(tick, 200);
+    return () => window.clearInterval(timerId);
+  }, [p?.id, res, deadlineMs, onDone]);
+
+  const inProgress = !!p && !res;
+  const timerProgress = Math.max(0, Math.min(100, (remainingSeconds / 60) * 100));
 
   return (
     <section className="puzzle-room">
@@ -402,10 +502,10 @@ function Puzzle({ onDone, buttonLabel }: { onDone: () => void; buttonLabel: stri
         <div className="puzzle-hero-copy">
           <p className="puzzle-eyebrow"><Sparkles className="h-3 w-3" /> O arquivo arcano · Provas de raciocínio</p>
           <h2>O Oráculo dos Enigmas</h2>
-          <p>Decifre uma questão por vez. Observe as palavras, encontre o padrão e prove que sua mente é tão afiada quanto sua lâmina.</p>
+          <p>Decifre a questão antes que o último grão de areia caia. Uma única tentativa separa a glória da maldição.</p>
         </div>
-        <div className="puzzle-time-seal" aria-label="Limite de dez minutos">
-          <span>10</span><small>MIN</small>
+        <div className={"puzzle-time-seal" + (inProgress && remainingSeconds <= 15 ? " is-urgent" : "")} aria-label={`Tempo restante: ${inProgress ? timeLabel : "um minuto"}`}>
+          <span>{inProgress ? timeLabel : "01:00"}</span><small>{inProgress ? "RESTANTE" : "LIMITE"}</small>
         </div>
       </header>
 
@@ -417,16 +517,16 @@ function Puzzle({ onDone, buttonLabel }: { onDone: () => void; buttonLabel: stri
               <h3>{p ? "Um mistério aguarda solução" : "A próxima prova está selada"}</h3>
             </div>
             <span className={"puzzle-state-pill" + (res ? (res.correct ? " is-correct" : " is-wrong") : p ? " is-active" : "")}>
-              {res ? (res.correct ? "Resolvido" : "Encerrado") : p ? "Em andamento" : "Preparado"}
+              {res ? (res.correct ? "Resolvido" : "Derrota") : p ? "Em andamento" : "Preparado"}
             </span>
           </div>
 
           {!p ? (
             <div className="puzzle-empty-state">
               <div className="puzzle-rune" aria-hidden="true">✧</div>
-              <p className="puzzle-question-kicker">Um desafio. Uma tentativa. Glória ou aprendizado.</p>
+              <p className="puzzle-question-kicker">Um desafio. Sessenta segundos. Uma chance.</p>
               <h3>Abra o selo e receba seu enigma</h3>
-              <p>Cada prova tem sua própria resposta e recompensa. Leia com calma: depois de responder, não será possível tentar novamente.</p>
+              <p>Leia com atenção, encontre o padrão e responda antes que o tempo acabe. Falhar desperta a maldição do Oráculo.</p>
               <Button onClick={start} disabled={busy} className="puzzle-main-button">
                 <BookOpen className="h-4 w-4" /> {busy ? "Preparando desafio…" : buttonLabel}
               </Button>
@@ -434,8 +534,13 @@ function Puzzle({ onDone, buttonLabel }: { onDone: () => void; buttonLabel: stri
           ) : (
             <div className="puzzle-question-wrap">
               <div className="puzzle-question-ornament" aria-hidden="true"><span>✦</span><span>✧</span><span>✦</span></div>
-              <p className="puzzle-question-kicker">Enigma recebido · Leia atentamente</p>
+              <p className="puzzle-question-kicker">Enigma recebido · O tempo está correndo</p>
               <h3 className="puzzle-question-text">{p.question}</h3>
+              {!res && (
+                <div className={"puzzle-countdown" + (remainingSeconds <= 15 ? " is-urgent" : "")} aria-label={`${remainingSeconds} segundos restantes`}>
+                  <div className="puzzle-countdown-fill" style={{ width: `${timerProgress}%` }} />
+                </div>
+              )}
 
               {!res ? (
                 <form className="puzzle-answer-form" onSubmit={(event) => { event.preventDefault(); void solve(); }}>
@@ -447,25 +552,42 @@ function Puzzle({ onDone, buttonLabel }: { onDone: () => void; buttonLabel: stri
                     onChange={(event) => setAns(event.target.value)}
                     placeholder="Escreva sua resposta…"
                     autoComplete="off"
-                    disabled={busy}
+                    disabled={busy || remainingSeconds <= 0}
                   />
-                  <Button type="submit" disabled={busy || !ans.trim()} className="puzzle-main-button">
+                  <Button type="submit" disabled={busy || !ans.trim() || remainingSeconds <= 0} className="puzzle-main-button">
                     {busy ? "Consultando o oráculo…" : "Confirmar resposta"}
                     <Sparkles className="h-4 w-4" />
                   </Button>
-                  <p className="puzzle-answer-footnote"><Lock className="h-3 w-3" /> Uma única tentativa. Revise sua resposta antes de confirmar.</p>
+                  <p className="puzzle-answer-footnote"><Lock className="h-3 w-3" /> Uma tentativa · {remainingSeconds} {remainingSeconds === 1 ? "segundo" : "segundos"} restantes.</p>
                 </form>
-              ) : (
-                <div aria-live="polite" className={"puzzle-result-panel" + (res.correct ? " is-correct" : " is-wrong")}>
-                  <div className="puzzle-result-symbol">{res.correct ? <CheckCircle2 className="h-6 w-6" /> : <Brain className="h-6 w-6" />}</div>
+              ) : res.correct ? (
+                <div aria-live="polite" className="puzzle-result-panel is-correct">
+                  <div className="puzzle-result-symbol"><CheckCircle2 className="h-6 w-6" /></div>
                   <div className="min-w-0 flex-1">
-                    <p className="puzzle-result-kicker">{res.correct ? "Prova superada" : "A resposta escapou desta vez"}</p>
-                    <h4>{res.correct ? "Sabedoria conquistada!" : "O mistério foi revelado"}</h4>
-                    <p>{res.correct ? "Sua recompensa foi registrada: +" + res.reward.toLocaleString("pt-BR") + " moedas." : "A resposta correta era: " + res.answer}</p>
+                    <p className="puzzle-result-kicker">Prova superada</p>
+                    <h4>Sabedoria conquistada!</h4>
+                    <p>Sua recompensa foi registrada: +{res.reward.toLocaleString("pt-BR")} moedas.</p>
                   </div>
-                  {res.correct && <div className="puzzle-reward"><Trophy className="h-4 w-4" /><strong>+{res.reward.toLocaleString("pt-BR")}</strong><small>moedas</small></div>}
+                  <div className="puzzle-reward"><Trophy className="h-4 w-4" /><strong>+{res.reward.toLocaleString("pt-BR")}</strong><small>moedas</small></div>
                   <Button onClick={start} disabled={busy} className="puzzle-main-button puzzle-next-button">
                     {busy ? "Abrindo…" : "Novo enigma"} <Sparkles className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <div aria-live="polite" className="puzzle-defeat-panel">
+                  <div className="puzzle-defeat-skull"><Skull className="h-12 w-12 sm:h-16 sm:w-16" strokeWidth={1.7} /></div>
+                  <div className="puzzle-defeat-copy">
+                    <p className="puzzle-result-kicker">O selo se partiu</p>
+                    <h4>DERROTA</h4>
+                    <p>{curseLine}</p>
+                    {res.expired ? (
+                      <small>O último segundo escapou. O Oráculo encerrou sua prova.</small>
+                    ) : (
+                      <small>Resposta correta: {res.answer}</small>
+                    )}
+                  </div>
+                  <Button onClick={start} disabled={busy} className="puzzle-main-button puzzle-next-button">
+                    {busy ? "Abrindo…" : "Tentar outro enigma"} <Sparkles className="h-4 w-4" />
                   </Button>
                 </div>
               )}
@@ -479,20 +601,20 @@ function Puzzle({ onDone, buttonLabel }: { onDone: () => void; buttonLabel: stri
             <h3>Raciocínio acima da sorte.</h3>
             <div className="puzzle-rule-row">
               <span className="puzzle-rule-icon">⌛</span>
-              <div><strong>10 minutos</strong><small>Limite para resolver o desafio</small></div>
+              <div><strong>60 segundos</strong><small>O prazo é contado pelo relógio do servidor</small></div>
             </div>
             <div className="puzzle-rule-row">
               <span className="puzzle-rule-icon">◆</span>
-              <div><strong>Uma tentativa</strong><small>Responda apenas quando tiver certeza</small></div>
+              <div><strong>Uma tentativa</strong><small>Resposta errada encerra a prova</small></div>
             </div>
             <div className="puzzle-rule-row">
               <span className="puzzle-rule-icon">✦</span>
-              <div><strong>Recompensa variável</strong><small>O prêmio depende do enigma recebido</small></div>
+              <div><strong>Vitória recompensa</strong><small>O prêmio depende do enigma recebido</small></div>
             </div>
           </div>
           <div className="puzzle-motto-card">
             <Sparkles className="h-4 w-4" />
-            <p>“A resposta certa raramente está escondida. Quase sempre, está diante dos olhos.”</p>
+            <p>“O tempo não teme os sábios. O Oráculo, porém, não perdoa os distraídos.”</p>
             <span>— Inscrição na porta do Oráculo</span>
           </div>
         </aside>
