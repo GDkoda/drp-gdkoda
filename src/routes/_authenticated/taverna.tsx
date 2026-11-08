@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useMe, rpc, useRefresh } from "@/lib/game";
+import { useMe, rpc } from "@/lib/game";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -10,6 +10,7 @@ import { ArrowDownLeft, ArrowUpRight, CalendarCheck, CheckCircle2, Clock, Coins,
 import { useCustomization } from "@/lib/app-customization";
 import { VigorRestore, useGameSettings } from "@/components/VigorRestore";
 import { toast } from "sonner";
+import { PwaInstallCard } from "@/components/PwaInstall";
 
 export const Route = createFileRoute("/_authenticated/taverna")({
   head: () => ({ meta: [{ title: "Taverna — Mesa 3D&T" }, { name: "description", content: "Sua carteira, check-in diário e transferências." }] }),
@@ -31,7 +32,12 @@ const transactionNames: Record<string, string> = {
 function Taverna() {
   const { text } = useCustomization();
   const { data: me } = useMe();
-  const refresh = useRefresh();
+  const queryClient = useQueryClient();
+  const refreshWallet = async () => Promise.all([
+    queryClient.invalidateQueries({ queryKey: ["me"] }),
+    queryClient.invalidateQueries({ queryKey: ["vigor"] }),
+    queryClient.invalidateQueries({ queryKey: ["mytx"] }),
+  ]);
   const p = me?.profile;
   const { data: settings } = useGameSettings();
   const { data: vigor } = useQuery({ queryKey: ["vigor"], queryFn: () => rpc("get_vigor", {}) as Promise<number> });
@@ -41,7 +47,7 @@ function Taverna() {
   });
   const { data: txs } = useQuery({
     queryKey: ["mytx"],
-    queryFn: async () => (await supabase.from("transactions").select("*").order("created_at", { ascending: false }).limit(10)).data ?? [],
+    queryFn: async () => (await supabase.from("transactions").select("id, kind, item_name, coins, from_user, to_user, note, created_at").order("created_at", { ascending: false }).limit(10)).data ?? [],
   });
   const [to, setTo] = useState("");
   const [amount, setAmount] = useState(10);
@@ -63,7 +69,7 @@ function Taverna() {
     try {
       const reward = await rpc("daily_checkin", {});
       toast.success("Check-in concluído! +" + reward + " moedas");
-      refresh();
+      await refreshWallet();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Não foi possível concluir o check-in.");
     } finally {
@@ -78,7 +84,7 @@ function Taverna() {
       await rpc("transfer_coins", { _to: to, _amount: safeAmount }, "Moedas enviadas");
       setTo("");
       setAmount(10);
-      refresh();
+      await refreshWallet();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Não foi possível enviar as moedas.");
     } finally {
@@ -102,7 +108,8 @@ function Taverna() {
           </div>
           <span className="tavern-live-pill"><Sparkles className="h-3.5 w-3.5" /> Painel do aventureiro</span>
         </div>
-        <div className="tavern-stats-grid">
+        <PwaInstallCard />
+      <div className="tavern-stats-grid">
           <Stat icon={Coins} label="Carteira" value={coinNumber.format(balance)} suffix="moedas" tone="gold" />
           <Stat icon={Zap} label="Vigor disponível" value={currentVigor + "/" + vigorMax} suffix="para suas ações" tone="mana" />
           <Stat icon={CalendarCheck} label="Sequência diária" value={String(p?.checkin_streak ?? 0)} suffix="dias consecutivos" tone="default" />
