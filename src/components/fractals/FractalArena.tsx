@@ -371,13 +371,14 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               <div className="rounded-xl border border-border/70 p-3">
                 <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Nível de Corrupção</p>
                 <div className="grid grid-cols-3 gap-1.5">
-                  {CORRUPTION_LEVELS.map((level) => (
-                    <button key={level.level} type="button" onClick={() => setCorruption(level.level)} className={`rounded-lg border px-2 py-2 text-left text-xs transition ${corruption === level.level ? "border-violet-400 bg-violet-500/15 text-violet-100" : "border-border bg-muted/30 text-muted-foreground hover:bg-muted"}`}>
-                      <span className="block font-semibold">{level.level} · {level.name}</span>
-                    </button>
-                  ))}
+                  {CORRUPTION_LEVELS.map((level) => {
+                    const locked = level.level > unlockedCorruption;
+                    return <button key={level.level} type="button" disabled={locked} onClick={() => setCorruption(level.level)} className={`rounded-lg border px-2 py-2 text-left text-xs transition ${corruption === level.level ? "border-violet-400 bg-violet-500/15 text-violet-100" : locked ? "cursor-not-allowed border-border/40 bg-muted/10 text-muted-foreground/35" : "border-border bg-muted/30 text-muted-foreground hover:bg-muted"}`}>
+                      <span className="block font-semibold">{level.level} · {level.name} {locked ? "🔒" : completedCorruptions.includes(level.level) ? "✓" : ""}</span>
+                    </button>;
+                  })}
                 </div>
-                <p className="mt-2 text-xs text-muted-foreground">{CORRUPTION_LEVELS[corruption].description} Neste protótipo, os níveis estão disponíveis para testar o balanceamento.</p>
+                <p className="mt-2 text-xs text-muted-foreground">{CORRUPTION_LEVELS[corruption].description} {unlockedCorruption < 5 ? "Conclua com sucesso para liberar o próximo nível." : "Todos os níveis foram liberados."}</p>
               </div>
             </div>
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-muted/35 p-3">
