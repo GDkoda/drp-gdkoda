@@ -504,8 +504,8 @@ function Puzzle({ onDone, buttonLabel }: { onDone: () => void; buttonLabel: stri
           <h2>O Oráculo dos Enigmas</h2>
           <p>Decifre a questão antes que o último grão de areia caia. Uma única tentativa separa a glória da maldição.</p>
         </div>
-        <div className={"puzzle-time-seal" + (inProgress && remainingSeconds <= 15 ? " is-urgent" : "")} aria-label={`Tempo restante: ${inProgress ? timeLabel : "um minuto"}`}>
-          <span>{inProgress ? timeLabel : "01:00"}</span><small>{inProgress ? "RESTANTE" : "LIMITE"}</small>
+        <div className={"puzzle-time-seal" + (inProgress && remainingSeconds <= 15 ? " is-urgent" : "")} aria-label={`Tempo restante: ${p ? timeLabel : "um minuto"}`}>
+          <span>{p ? timeLabel : "01:00"}</span><small>{inProgress ? "RESTANTE" : "LIMITE"}</small>
         </div>
       </header>
 
@@ -1276,9 +1276,13 @@ function FarkleGame({ onDone, onClose, vigor, coins }: { onDone: () => void; onC
         .farkle-hud [class*="bg-emerald-"],
         .farkle-hud [class*="bg-rose-"] { background-color: color-mix(in oklab, var(--card) 88%, var(--primary) 12%) !important; }
         .farkle-hud [class*="from-emerald-"],
-        .farkle-hud [class*="from-amber-"] { --tw-gradient-from: var(--primary) !important; }
+        .farkle-hud [class*="from-amber-"] {
+          --tw-gradient-from: color-mix(in oklab, var(--primary) 18%, var(--card)) !important;
+        }
         .farkle-hud [class*="to-emerald-"],
-        .farkle-hud [class*="to-amber-"] { --tw-gradient-to: color-mix(in oklab, var(--primary) 18%, var(--card)) !important; }
+        .farkle-hud [class*="to-amber-"] {
+          --tw-gradient-to: color-mix(in oklab, var(--primary) 4%, var(--card)) !important;
+        }
       `}</style>
       <div className="pointer-events-none absolute inset-0" style={{ background: "var(--ambient-glow)" }} />
       <div className="pointer-events-none absolute inset-0 opacity-[0.08]" style={{ backgroundImage: "repeating-linear-gradient(4deg,transparent 0px,transparent 9px,color-mix(in oklab,var(--primary) 10%,transparent) 10px,color-mix(in oklab,var(--primary) 10%,transparent) 11px,transparent 14px)" }} />
