@@ -67,12 +67,12 @@ function Layout() {
         </nav>
       </header>
       <main className="mx-auto w-full max-w-7xl px-3 py-5 sm:px-5 sm:py-7 lg:px-8"><Outlet /></main>
-      <nav aria-label="Navegação principal" className="mobile-bottom-nav no-print fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 gap-1 border-t border-border/80 bg-background/95 px-1 pt-1 pb-[max(env(safe-area-inset-bottom),.25rem)] shadow-[0_-10px_34px_rgb(0_0_0/0.16)] backdrop-blur-2xl md:hidden">
+      <nav aria-label="Navegação principal" className="mobile-bottom-nav no-print fixed inset-x-0 bottom-0 z-30 flex flex-wrap items-stretch justify-center gap-1 border-t border-border/80 bg-background/95 px-1 pt-1 pb-[max(env(safe-area-inset-bottom),.25rem)] shadow-[0_-10px_34px_rgb(0_0_0/0.16)] backdrop-blur-2xl md:hidden">
         {links.map((l) => (
           <Link
             key={l.to}
             to={l.to}
-            className="flex min-h-[3.15rem] min-w-0 touch-manipulation select-none flex-col items-center justify-center gap-1 rounded-lg px-0.5 py-1.5 text-[9px] leading-tight transition-colors active:scale-95"
+            className="flex min-h-[3.15rem] w-1/4 max-w-1/4 flex-none touch-manipulation select-none flex-col items-center justify-center gap-1 rounded-lg px-0.5 py-1.5 text-[9px] leading-tight transition-colors active:scale-95"
             activeProps={{ className: "bg-muted font-semibold text-gold", "aria-current": "page" }}
             inactiveProps={{ className: "text-muted-foreground" }}
           >
