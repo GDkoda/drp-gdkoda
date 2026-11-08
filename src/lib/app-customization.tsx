@@ -63,10 +63,8 @@ export function AppCustomizationProvider({ children }: { children: ReactNode }) 
   }, [active.appearance.backgroundPath]);
   useEffect(() => {
     const root = document.documentElement;
-    root.style.setProperty("--app-foreground", active.appearance.textColor);
-    root.style.setProperty("--app-primary", active.appearance.primaryColor);
-    root.style.setProperty("--app-background", active.appearance.backgroundColor);
-    root.style.setProperty("--app-card", active.appearance.cardColor);
+    // As cores pertencem ao tema escolhido no dispositivo. A personalização
+    // do Mestre continua controlando escala e imagem, mas não sobrescreve a paleta.
     root.style.setProperty("--app-text-size", `${active.appearance.textSize}px`);
     root.style.setProperty("--app-title-scale", String(active.appearance.titleSize));
     root.style.setProperty("--app-item-scale", String(active.appearance.itemScale));
