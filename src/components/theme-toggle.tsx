@@ -25,7 +25,7 @@ function storedPalette(): PaletteId {
   try {
     const value = window.localStorage.getItem("mesa-palette");
     return palettes.some((palette) => palette.id === value) ? value as PaletteId : "ousado";
-  } catch { return "medieval"; }
+  } catch { return "ousado"; }
 }
 
 export function ThemeToggle({ className = "" }: { className?: string }) {
