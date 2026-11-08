@@ -88,7 +88,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 function RootShell({ children }: { children: ReactNode }) {
   return (
     <html lang="pt-BR" data-theme="dark" data-palette="ousado">
-      <head><HeadContent /></head>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: `(function(){try{var m=localStorage.getItem("mesa-theme");var p=localStorage.getItem("mesa-palette");var valid=["ousado","eletrizante","destemido","futurista","prata-grafite","areia-vinho","sangue","fervor","taverna-zendikar","po-de-fada"];document.documentElement.dataset.theme=m==="light"?"light":"dark";document.documentElement.dataset.palette=valid.indexOf(p)>=0?p:"ousado";}catch(e){document.documentElement.dataset.theme="dark";document.documentElement.dataset.palette="ousado";}})();` }} />
+        <HeadContent />
+      </head>
       <body>
         {children}
         <Scripts />
