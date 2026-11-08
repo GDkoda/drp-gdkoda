@@ -395,6 +395,11 @@ function Puzzle({ onDone, buttonLabel }: { onDone: () => void; buttonLabel: stri
   async function start() {
     setBusy(true);
     try {
+      const timerLimit = await rpc("get_puzzle_time_limit_seconds", {}) as number;
+      if (Number(timerLimit) !== 60) {
+        throw new Error("O Oráculo ainda não está configurado para 60 segundos no banco.");
+      }
+
       const next = await rpc("start_puzzle", {}) as {
         id: string;
         question: string;
