@@ -40,7 +40,7 @@ function Layout() {
   }
 
   return (
-    <div className="min-h-screen pb-20 md:pb-0">
+    <div className="min-h-screen pb-32 md:pb-0">
       <header className="no-print sticky top-0 z-30 border-b border-border/80 bg-background/85 backdrop-blur-2xl">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-3 gap-y-2 px-3 py-2.5 sm:flex-nowrap sm:px-5 sm:py-3 lg:px-8">
           <Link to="/taverna" className="flex min-w-0 max-w-[42%] shrink items-center gap-1.5 rounded-lg font-display text-sm font-bold tracking-wide text-gold sm:max-w-none sm:shrink-0 sm:gap-2 sm:text-xl"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-primary/30 bg-primary/10 text-sm sm:h-9 sm:w-9">✦</span><span className="truncate">{text("brand")}</span></Link>
