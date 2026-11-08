@@ -4479,3 +4479,46 @@ html { background-color: #000000; }
   .character-custom-roll-form .character-custom-roll-dice-config { grid-column: 1 / -1; }
   .character-attribute-test-modifiers { grid-template-columns: 1fr 1fr 3.8rem; }
 }
+
+
+/* Testes de atributo abaixo do valor; grade mobile mais larga para rótulos legíveis. */
+.character-studio-attribute-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: .25rem;
+}
+.character-studio-attribute-wrap .character-studio-attribute { width: 100%; }
+.character-attribute-test-trigger {
+  width: 2.2rem;
+  height: 1.9rem;
+  align-self: center;
+  margin-top: -.1rem;
+  border: 1px solid var(--border);
+  border-radius: .55rem;
+  background: color-mix(in srgb, var(--background) 75%, var(--card));
+}
+.character-attribute-test-panel { width: 100%; }
+@media (max-width: 767px) {
+  .character-studio-attributes {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .5rem;
+  }
+  .character-studio-attribute-wrap { min-width: 0; }
+  .character-studio-attribute {
+    min-height: 6.1rem;
+    justify-content: center;
+    gap: .35rem;
+    padding: .65rem .5rem .5rem;
+  }
+  .character-studio-attribute > span { font-size: .78rem; line-height: 1.2; text-align: center; }
+  .character-studio-attribute input { width: 100%; max-width: 5rem; height: 2.65rem; font-size: 1.15rem; }
+  .character-studio-attribute > small { min-height: 1rem; font-size: .58rem; text-align: center; }
+  .character-attribute-test-trigger { width: 2.5rem; height: 2rem; }
+  .character-attribute-test-panel { grid-column: auto; }
+}
+@media (max-width: 360px) {
+  .character-studio-attributes { gap: .35rem; }
+  .character-studio-attribute { padding-inline: .3rem; }
+  .character-studio-attribute > span { font-size: .72rem; }
+}
