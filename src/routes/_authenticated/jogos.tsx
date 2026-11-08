@@ -481,8 +481,12 @@ function Puzzle({ onDone, buttonLabel }: { onDone: () => void; buttonLabel: stri
           }
         })
         .catch((error) => {
-          finalizing.current = false;
-          toast.error(error instanceof Error ? error.message : "Não foi possível registrar a derrota.");
+          // The server deadline has passed. Even if the expiry RPC briefly
+          // fails, a late answer is still rejected by solve_puzzle.
+          setRes({ correct: false, answer: "", reward: 0, expired: true });
+          showDefeat();
+          onDone();
+          toast.error(error instanceof Error ? error.message : "O Oráculo encerrou a prova.");
         })
         .finally(() => setBusy(false));
     };
