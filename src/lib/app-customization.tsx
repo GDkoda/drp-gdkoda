@@ -8,7 +8,7 @@ export const defaultTexts = {
   home_eyebrow: "Bem-vindo, viajante", home_title: "Taverna 3D&T", home_description: "A mesa onde heróis guardam suas fichas, gastam moedas suadas e desafiam a sorte nos dados.", home_enter: "Entrar na taverna",
   taverna_title: "Taverna", taverna_checkin_title: "Check-in diário", taverna_checkin_help: "Recompensa cresce a cada dia seguido.", taverna_checkin_button: "Fazer check-in", taverna_send_title: "Enviar moedas", taverna_send_button: "Enviar", taverna_history_title: "Últimas movimentações",
   fichas_title: "Minhas fichas", fichas_master_title: "Todas as fichas", fichas_new: "Nova ficha", fichas_empty: "Nenhum herói ainda. Crie o primeiro!",
-  jogos_title: "Mini-jogos", jogos_help: "O vigor renova todo dia. Combate custa 2, dados e enigmas custam 1.", jogos_combat: "Combate", jogos_dice: "Dados", jogos_puzzle: "Enigmas", jogos_fight: "Lutar (2 vigor)", jogos_roll: "Rolar (1 vigor)", jogos_new_puzzle: "Novo enigma (1 vigor)",
+  jogos_title: "Mini-jogos", jogos_help: "O vigor renova todo dia. Combate custa 2; 21 custa 1 sem aposta ou 3 com aposta; enigmas custam 1.", jogos_combat: "Combate", jogos_dice: "Dados", jogos_puzzle: "Enigmas", jogos_fight: "Lutar (2 vigor)", jogos_roll: "Rolar (1 vigor)", jogos_new_puzzle: "Novo enigma (1 vigor)",
   loja_title: "Loja do Ferreiro", loja_all: "Todos",
   bau_title: "Baú da conta", bau_use: "Usar na ficha ativa", bau_stored: "Guardado no baú", bau_send: "Enviar para jogador…", bau_empty: "Baú vazio. Visite a loja!",
   mestre_title: "Painel do Mestre", mestre_players: "Jogadores", mestre_shop: "Loja", mestre_rules: "Regras", mestre_monsters: "Monstros", mestre_puzzles: "Enigmas", mestre_log: "Registro", mestre_appearance: "Aparência e textos",
