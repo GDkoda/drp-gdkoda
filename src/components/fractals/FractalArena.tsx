@@ -633,7 +633,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
 
   const refreshFractalState = useCallback(async () => {
     const { data, error } = await (supabase.rpc as any)("get_fractal_state");
-    if (error) { setShopError("Aplique a migração SQL 0005 para ativar loja e progressão."); return; }
+    if (error) { setShopError("Aplique as migrações SQL 0005 e 0006 para ativar a loja e a progressão."); return; }
     setFractalBalance(Number(data?.fractals ?? 0));
     setCoinBalance(Number(data?.coins ?? 0));
     setUnlockedCorruption(Number(data?.corruptionUnlocked ?? 0));
@@ -675,7 +675,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
       await queryClient.invalidateQueries({ queryKey: ["me"] });
       toast.success(amount.toLocaleString("pt-BR") + " fractais convertidos em " + (amount / 10).toLocaleString("pt-BR") + " moedas.");
     } catch (error: any) {
-      toast.error(error?.message ?? "Não foi possível converter os fractais.");
+      if (error?.code === "PGRST202") toast.error("Aplique a migração SQL 0007 para habilitar a troca por moedas.");
+      else toast.error(error?.message ?? "Não foi possível converter os fractais.");
     } finally {
       setShopBusy(false);
     }
