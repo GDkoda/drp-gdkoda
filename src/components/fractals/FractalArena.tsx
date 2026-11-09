@@ -136,7 +136,7 @@ function makeGame(width: number, height: number, purchases: PurchaseState): Game
   const projectileLife = PROJECTILE_BASE_LIFE * PROJECTILE_DURATION_MULTIPLIERS[clamp(purchases.projectile_duration, 0, 3)];
   return {
     width, height, last: 0, elapsed: 0, spawnTimer: 0.4, shotTimer: 0.25, bossSpawned: false,
-    player: { x: width / 2, y: height / 2, hp: maxHp, maxHp, speed: 205, damage: 22, fireRate: 0.72, invuln: 0, hitFlash: 0, xp: 0, nextXp: 12, level: 1, pickupRadius: 85, xpMultiplier: 1, specialAreaStacks: 0, specialExperienceStacks: 0, projectileRangeStacks: 0, projectileRangeMultiplier: 1, projectileStacks: 0, projectileLife, facing: 0, castFacing: 0, castTimer: 0, moving: false, spriteAction: "idle", spriteDirection: 0, previousSpriteAction: "idle", previousSpriteDirection: 0, spriteBlend: 1 },
+    player: { x: 0, y: 0, hp: maxHp, maxHp, speed: 205, damage: 22, fireRate: 0.72, invuln: 0, hitFlash: 0, xp: 0, nextXp: 12, level: 1, pickupRadius: 85, xpMultiplier: 1, specialAreaStacks: 0, specialExperienceStacks: 0, projectileRangeStacks: 0, projectileRangeMultiplier: 1, projectileStacks: 0, projectileLife, facing: 0, castFacing: 0, castTimer: 0, moving: false, spriteAction: "idle", spriteDirection: 0, previousSpriteAction: "idle", previousSpriteDirection: 0, spriteBlend: 1 },
     enemies: [], shots: [], gems: [], specialDrops: [], particles: [], damageNumbers: [], kills: 0, ended: false,
   };
 }
@@ -144,8 +144,9 @@ function makeGame(width: number, height: number, purchases: PurchaseState): Game
 function spawnEnemy(game: GameState, missionId: number, elapsed: number, corruption: number, boss = false) {
   const side = Math.floor(Math.random() * 4);
   const margin = 30;
-  const x = side === 0 ? -margin : side === 1 ? game.width + margin : Math.random() * game.width;
-  const y = side === 2 ? -margin : side === 3 ? game.height + margin : Math.random() * game.height;
+  const centerX = game.player.x, centerY = game.player.y;
+  const x = side === 0 ? centerX - game.width / 2 - margin : side === 1 ? centerX + game.width / 2 + margin : centerX + (Math.random() - 0.5) * game.width;
+  const y = side === 2 ? centerY - game.height / 2 - margin : side === 3 ? centerY + game.height / 2 + margin : centerY + (Math.random() - 0.5) * game.height;
   const pressure = getDifficultySnapshot(missionId, elapsed, corruption);
   const roll = Math.random();
   const eliteChance = Math.min(0.22, pressure.eliteSpawnScale * 0.075);
@@ -170,51 +171,179 @@ function spawnEnemy(game: GameState, missionId: number, elapsed: number, corrupt
 function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: number, missionId: number, sprites: SpriteMap = {}, showPlayerHp = true, showDamageNumbers = true) {
   const { width, height, player } = game;
   ctx.clearRect(0, 0, width, height);
-  // Ruínas de Último Silêncio: piso de lajes, rachaduras, pilares e cristais.
-  const bg = ctx.createLinearGradient(0, 0, width, height);
-  bg.addColorStop(0, "#171522"); bg.addColorStop(0.52, "#242032"); bg.addColorStop(1, "#100f1a");
-  ctx.fillStyle = bg; ctx.fillRect(0, 0, width, height);
+  const cameraX = player.x - width / 2;
+  const cameraY = player.y - height / 2;
+  ctx.save();
+  ctx.translate(-cameraX, -cameraY);
+
+  // Paletas prontas para os cinco biomas; somente o primeiro está liberado.
+  const biomes = [
+    { floor: [35, 32, 48], glow: "#a75bff", crystal: "#a75bff", stone: "#554365" },
+    { floor: [48, 27, 28], glow: "#ed654c", crystal: "#ff754e", stone: "#74443b" },
+    { floor: [27, 43, 31], glow: "#69b978", crystal: "#79d18a", stone: "#466b4a" },
+    { floor: [25, 37, 53], glow: "#69a9ed", crystal: "#78c8f4", stone: "#456783" },
+    { floor: [39, 27, 53], glow: "#c08aff", crystal: "#d29aff", stone: "#654b80" },
+  ] as const;
+  const biome = biomes[clamp(missionId - 1, 0, biomes.length - 1)];
+  const bg = ctx.createLinearGradient(cameraX, cameraY, cameraX + width, cameraY + height);
+  bg.addColorStop(0, "rgba(27,24,37,1)");
+  bg.addColorStop(0.52, "rgba(35,31,47,1)");
+  bg.addColorStop(1, "rgba(14,13,23,1)");
+  ctx.fillStyle = bg;
+  ctx.fillRect(cameraX, cameraY, width, height);
+
+  // O padrão do piso usa coordenadas globais; não reinicia ao andar.
   const tile = 48;
-  const hash = (x: number, y: number) => { const n = Math.sin(x * 127.1 + y * 311.7) * 43758.5453; return n - Math.floor(n); };
-  for (let row = -1; row < Math.ceil(height / tile) + 1; row++) {
-    for (let col = -1; col < Math.ceil(width / tile) + 1; col++) {
+  const hash = (x: number, y: number) => {
+    const n = Math.sin(x * 127.1 + y * 311.7 + missionId * 74.7) * 43758.5453;
+    return n - Math.floor(n);
+  };
+  const firstRow = Math.floor(cameraY / tile) - 2;
+  const lastRow = Math.ceil((cameraY + height) / tile) + 2;
+  const firstCol = Math.floor(cameraX / tile) - 2;
+  const lastCol = Math.ceil((cameraX + width) / tile) + 2;
+  for (let row = firstRow; row <= lastRow; row++) {
+    for (let col = firstCol; col <= lastCol; col++) {
       const x = col * tile + (row % 2) * tile / 2;
       const y = row * tile;
-      const shade = Math.floor(hash(col, row) * 13);
-      ctx.fillStyle = `rgb(${35 + shade},${32 + shade},${48 + shade})`;
-      ctx.strokeStyle = "rgba(9,8,16,.62)"; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.moveTo(x, y - tile / 2); ctx.lineTo(x + tile / 2, y); ctx.lineTo(x, y + tile / 2); ctx.lineTo(x - tile / 2, y); ctx.closePath(); ctx.fill(); ctx.stroke();
-      if (hash(col + 17, row - 9) > 0.79) {
-        ctx.strokeStyle = "rgba(8,7,15,.72)"; ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.moveTo(x - 7, y - 4); ctx.lineTo(x + 2, y + 1); ctx.lineTo(x + 8, y + 11); ctx.stroke();
+      const shade = Math.floor(hash(col, row) * 15);
+      const rgb = biome.floor;
+      ctx.fillStyle = "rgb(" + (rgb[0] + shade) + "," + (rgb[1] + shade) + "," + (rgb[2] + shade) + ")";
+      ctx.strokeStyle = "rgba(7,6,14,.72)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x, y - tile / 2);
+      ctx.lineTo(x + tile / 2, y);
+      ctx.lineTo(x, y + tile / 2);
+      ctx.lineTo(x - tile / 2, y);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      if (hash(col + 17, row - 9) > 0.76) {
+        ctx.strokeStyle = "rgba(5,4,12,.78)";
+        ctx.lineWidth = 1.15;
+        ctx.beginPath();
+        ctx.moveTo(x - 9, y - 8);
+        ctx.lineTo(x - 1, y - 1);
+        ctx.lineTo(x + 4, y + 2);
+        ctx.lineTo(x + 10, y + 12);
+        ctx.stroke();
+        ctx.strokeStyle = "rgba(218,194,235,.10)";
+        ctx.beginPath();
+        ctx.moveTo(x - 8, y - 9);
+        ctx.lineTo(x, y - 2);
+        ctx.stroke();
       }
-      if (hash(col - 5, row + 21) > 0.965) {
-        ctx.fillStyle = "rgba(129,79,176,.12)"; ctx.beginPath(); ctx.arc(x, y, 11, 0, Math.PI * 2); ctx.fill();
+      if (hash(col - 5, row + 21) > 0.94) {
+        ctx.fillStyle = biome.glow + "24";
+        ctx.beginPath();
+        ctx.arc(x, y, 4 + hash(col + 8, row) * 9, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      if (hash(col + 31, row + 4) > 0.87) {
+        ctx.strokeStyle = "rgba(4,3,10,.42)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(x - 13, y + 15);
+        ctx.lineTo(x - 4, y + 12);
+        ctx.lineTo(x + 8, y + 16);
+        ctx.stroke();
       }
     }
   }
+
   const drawPillar = (x: number, y: number, scale = 1) => {
-    ctx.save(); ctx.translate(x, y); ctx.scale(scale, scale);
-    ctx.fillStyle = "rgba(0,0,0,.45)"; ctx.beginPath(); ctx.ellipse(2, 13, 19, 9, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = "#171522"; ctx.strokeStyle = "#554365"; ctx.lineWidth = 2;
-    ctx.fillRect(-12, -26, 24, 38); ctx.strokeRect(-12, -26, 24, 38);
-    ctx.fillStyle = "#383047"; ctx.fillRect(-16, -31, 32, 7); ctx.fillRect(-15, 10, 30, 6);
-    ctx.fillStyle = "rgba(181,105,255,.22)"; ctx.fillRect(-3, -22, 6, 28);
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(scale, scale);
+    ctx.fillStyle = "rgba(0,0,0,.48)";
+    ctx.beginPath();
+    ctx.ellipse(2, 13, 19, 9, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#171522";
+    ctx.strokeStyle = biome.stone;
+    ctx.lineWidth = 2;
+    ctx.fillRect(-12, -26, 24, 38);
+    ctx.strokeRect(-12, -26, 24, 38);
+    ctx.fillStyle = "#383047";
+    ctx.fillRect(-16, -31, 32, 7);
+    ctx.fillRect(-15, 10, 30, 6);
+    ctx.fillStyle = biome.glow + "48";
+    ctx.fillRect(-3, -22, 6, 28);
     ctx.restore();
   };
   const drawCrystal = (x: number, y: number, size: number, color: string) => {
-    ctx.save(); ctx.translate(x, y); ctx.shadowColor = color; ctx.shadowBlur = 18;
-    ctx.fillStyle = color; ctx.strokeStyle = "rgba(245,225,255,.8)"; ctx.lineWidth = 1.2;
-    ctx.beginPath(); ctx.moveTo(0, -size); ctx.lineTo(size * .48, -size * .25); ctx.lineTo(size * .32, size * .72); ctx.lineTo(-size * .3, size * .72); ctx.lineTo(-size * .48, -size * .25); ctx.closePath(); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = "rgba(255,255,255,.28)"; ctx.beginPath(); ctx.moveTo(0, -size); ctx.lineTo(0, size * .65); ctx.lineTo(-size * .3, size * .72); ctx.closePath(); ctx.fill(); ctx.restore();
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 18;
+    ctx.fillStyle = color;
+    ctx.strokeStyle = "rgba(245,225,255,.8)";
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(0, -size);
+    ctx.lineTo(size * .48, -size * .25);
+    ctx.lineTo(size * .32, size * .72);
+    ctx.lineTo(-size * .3, size * .72);
+    ctx.lineTo(-size * .48, -size * .25);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = "rgba(255,255,255,.28)";
+    ctx.beginPath();
+    ctx.moveTo(0, -size);
+    ctx.lineTo(0, size * .65);
+    ctx.lineTo(-size * .3, size * .72);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
   };
-  drawPillar(28, 45, .85); drawPillar(width - 32, 52, .9); drawPillar(38, height - 42, 1.1); drawPillar(width - 42, height - 38, 1.05);
-  drawPillar(width * .18, height * .16, .65); drawPillar(width * .82, height * .18, .7);
-  drawCrystal(width * .12, height * .28, 16, "#a75bff"); drawCrystal(width * .88, height * .72, 19, "#a75bff");
-  drawCrystal(width * .76, height * .12, 12, "#6b9cff");
-  const vignette = ctx.createRadialGradient(width / 2, height / 2, Math.min(width, height) * .22, width / 2, height / 2, Math.max(width, height) * .72);
-  vignette.addColorStop(0, "rgba(8,5,18,0)"); vignette.addColorStop(1, "rgba(5,3,12,.62)");
-  ctx.fillStyle = vignette; ctx.fillRect(0, 0, width, height);
+
+  // Destroços, pilares e cristais aparecem por setores persistentes do mapa.
+  const propSpacing = 238;
+  const propColStart = Math.floor(cameraX / propSpacing) - 1;
+  const propColEnd = Math.ceil((cameraX + width) / propSpacing) + 1;
+  const propRowStart = Math.floor(cameraY / propSpacing) - 1;
+  const propRowEnd = Math.ceil((cameraY + height) / propSpacing) + 1;
+  for (let row = propRowStart; row <= propRowEnd; row++) {
+    for (let col = propColStart; col <= propColEnd; col++) {
+      const roll = hash(col + 103, row - 67);
+      const x = col * propSpacing + 34 + hash(col + 11, row + 4) * 150;
+      const y = row * propSpacing + 30 + hash(col - 9, row + 19) * 160;
+      if (distance(x, y, player.x, player.y) < 138) continue;
+      if (roll > 0.84) {
+        drawPillar(x, y, 0.62 + hash(col, row + 8) * 0.55);
+      } else if (roll > 0.64) {
+        drawCrystal(x, y, 9 + hash(col + 5, row) * 12, biome.crystal);
+      } else if (roll > 0.48) {
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(hash(col + 2, row + 2) * Math.PI);
+        ctx.fillStyle = "rgba(8,7,15,.68)";
+        ctx.strokeStyle = biome.stone + "99";
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(-18, 8);
+        ctx.lineTo(-11, -8);
+        ctx.lineTo(4, -13);
+        ctx.lineTo(18, 2);
+        ctx.lineTo(11, 12);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = biome.glow + "30";
+        ctx.fillRect(-4, -6, 7, 4);
+        ctx.restore();
+      }
+    }
+  }
+
+  const vignette = ctx.createRadialGradient(player.x, player.y, Math.min(width, height) * .22, player.x, player.y, Math.max(width, height) * .72);
+  vignette.addColorStop(0, "rgba(8,5,18,0)");
+  vignette.addColorStop(1, "rgba(5,3,12,.62)");
+  ctx.fillStyle = vignette;
+  ctx.fillRect(cameraX, cameraY, width, height);
 
   game.gems.forEach((gem) => {
     ctx.save(); ctx.translate(gem.x, gem.y);
@@ -433,6 +562,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     ctx.strokeStyle = "rgba(255,225,232,.68)"; ctx.lineWidth = 0.7; ctx.strokeRect(-barW / 2, barY, barW, 4);
   }
   ctx.restore();
+  ctx.restore();
 
   if (corruption > 0) {
     ctx.fillStyle = `rgba(139, 76, 190, ${0.025 + corruption * 0.012})`;
@@ -565,7 +695,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
       canvas.width = Math.max(1, Math.floor(rect.width * dpr));
       canvas.height = Math.max(1, Math.floor(rect.height * dpr));
       const game = gameRef.current;
-      if (game) { game.width = rect.width; game.height = rect.height; game.player.x = clamp(game.player.x, 20, rect.width - 20); game.player.y = clamp(game.player.y, 20, rect.height - 20); }
+      if (game) { game.width = rect.width; game.height = rect.height; }
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     };
     resize();
@@ -595,8 +725,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         game.player.moving = Math.hypot(dx, dy) > 0.05;
         if (game.player.moving) game.player.facing = directionFromVector(dx, dy);
         const mag = Math.hypot(dx, dy) || 1;
-        game.player.x = clamp(game.player.x + (dx / mag) * game.player.speed * dt, 18, game.width - 18);
-        game.player.y = clamp(game.player.y + (dy / mag) * game.player.speed * dt, 18, game.height - 18);
+        game.player.x += (dx / mag) * game.player.speed * dt;
+        game.player.y += (dy / mag) * game.player.speed * dt;
 
         const snapshot = getDifficultySnapshot(missionId, game.elapsed, corruption);
         const spawnInterval = clamp(1.18 / snapshot.enemySpawnScale, 0.28, 1.35);
@@ -647,7 +777,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           game.player.spriteBlend = Math.min(1, game.player.spriteBlend + dt / 0.12);
         }
         game.shots.forEach((shot) => { shot.x += shot.vx * dt; shot.y += shot.vy * dt; shot.life -= dt; });
-        game.shots = game.shots.filter((shot) => shot.life > 0 && shot.x > -20 && shot.x < game.width + 20 && shot.y > -20 && shot.y < game.height + 20);
+        const cameraLeft = game.player.x - game.width / 2, cameraTop = game.player.y - game.height / 2;
+        game.shots = game.shots.filter((shot) => shot.life > 0 && shot.x > cameraLeft - 20 && shot.x < cameraLeft + game.width + 20 && shot.y > cameraTop - 20 && shot.y < cameraTop + game.height + 20);
         for (const enemy of game.enemies) {
           const d = Math.max(1, distance(game.player.x, game.player.y, enemy.x, enemy.y));
           enemy.flash = Math.max(0, enemy.flash - dt);
@@ -779,7 +910,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             }
           }
         }
-        game.enemies = game.enemies.filter((enemy) => enemy.hp > 0);
+        game.enemies = game.enemies.filter((enemy) => enemy.hp > 0 && distance(enemy.x, enemy.y, game.player.x, game.player.y) < Math.max(game.width, game.height) * 1.45);
         game.gems.forEach((gem) => {
           const d = distance(game.player.x, game.player.y, gem.x, gem.y);
           if (d < game.player.pickupRadius) { gem.x += ((game.player.x - gem.x) / Math.max(1, d)) * 260 * dt; gem.y += ((game.player.y - gem.y) / Math.max(1, d)) * 260 * dt; }
@@ -787,7 +918,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             game.player.xp += gem.value * game.player.xpMultiplier; gem.value = 0;
           }
         });
-        game.gems = game.gems.filter((gem) => gem.value > 0);
+        game.gems = game.gems.filter((gem) => gem.value > 0 && distance(gem.x, gem.y, game.player.x, game.player.y) < Math.max(game.width, game.height) * 1.6);
         game.specialDrops.forEach((drop) => {
           const d = distance(game.player.x, game.player.y, drop.x, drop.y);
           if (d < game.player.pickupRadius) { drop.x += ((game.player.x - drop.x) / Math.max(1, d)) * 280 * dt; drop.y += ((game.player.y - drop.y) / Math.max(1, d)) * 280 * dt; }
@@ -799,7 +930,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             drop.radius = 0;
           }
         });
-        game.specialDrops = game.specialDrops.filter((drop) => drop.radius > 0);
+        game.specialDrops = game.specialDrops.filter((drop) => drop.radius > 0 && distance(drop.x, drop.y, game.player.x, game.player.y) < Math.max(game.width, game.height) * 1.6);
         game.particles.forEach((p) => { p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; });
         game.particles = game.particles.filter((p) => p.life > 0);
         if (game.player.xp >= game.player.nextXp && !game.ended) {
@@ -823,13 +954,13 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
 
   const pointerStart = (event: PointerEvent<HTMLCanvasElement>) => {
     const rect = event.currentTarget.getBoundingClientRect();
-    joystickRef.current = { x: clamp((event.clientX - rect.left - (gameRef.current?.player.x ?? rect.width / 2)) / 55, -1, 1), y: clamp((event.clientY - rect.top - (gameRef.current?.player.y ?? rect.height / 2)) / 55, -1, 1) };
+    joystickRef.current = { x: clamp((event.clientX - rect.left - rect.width / 2) / 55, -1, 1), y: clamp((event.clientY - rect.top - rect.height / 2) / 55, -1, 1) };
     event.currentTarget.setPointerCapture(event.pointerId);
   };
   const pointerMove = (event: PointerEvent<HTMLCanvasElement>) => {
     if (!joystickRef.current) return;
     const rect = event.currentTarget.getBoundingClientRect();
-    joystickRef.current = { x: clamp((event.clientX - rect.left - (gameRef.current?.player.x ?? rect.width / 2)) / 55, -1, 1), y: clamp((event.clientY - rect.top - (gameRef.current?.player.y ?? rect.height / 2)) / 55, -1, 1) };
+    joystickRef.current = { x: clamp((event.clientX - rect.left - rect.width / 2) / 55, -1, 1), y: clamp((event.clientY - rect.top - rect.height / 2) / 55, -1, 1) };
   };
   const pointerEnd = () => { joystickRef.current = null; };
   const formatTime = (seconds: number) => `${Math.floor(seconds / 60).toString().padStart(2, "0")}:${Math.floor(seconds % 60).toString().padStart(2, "0")}`;
