@@ -21,7 +21,7 @@ type SpriteMap = Partial<Record<SpriteKey, HTMLImageElement>>;
 
 type GameState = {
   width: number; height: number; last: number; elapsed: number; spawnTimer: number; shotTimer: number; bossSpawned: boolean;
-  player: { x: number; y: number; hp: number; maxHp: number; speed: number; damage: number; fireRate: number; invuln: number; xp: number; nextXp: number; level: number; pickupRadius: number; xpMultiplier: number; specialAreaStacks: number; specialExperienceStacks: number };
+  player: { x: number; y: number; hp: number; maxHp: number; speed: number; damage: number; fireRate: number; invuln: number; xp: number; nextXp: number; level: number; pickupRadius: number; xpMultiplier: number; specialAreaStacks: number; specialExperienceStacks: number; facing: 1 | -1; moving: boolean };
   enemies: Enemy[]; shots: Shot[]; gems: Gem[]; specialDrops: SpecialDrop[]; particles: Particle[]; kills: number; ended: boolean;
 };
 
@@ -56,7 +56,7 @@ const distance = (ax: number, ay: number, bx: number, by: number) => Math.hypot(
 function makeGame(width: number, height: number): GameState {
   return {
     width, height, last: 0, elapsed: 0, spawnTimer: 0.4, shotTimer: 0.25, bossSpawned: false,
-    player: { x: width / 2, y: height / 2, hp: 100, maxHp: 100, speed: 205, damage: 22, fireRate: 0.72, invuln: 0, xp: 0, nextXp: 12, level: 1, pickupRadius: 85, xpMultiplier: 1, specialAreaStacks: 0, specialExperienceStacks: 0 },
+    player: { x: width / 2, y: height / 2, hp: 100, maxHp: 100, speed: 205, damage: 22, fireRate: 0.72, invuln: 0, xp: 0, nextXp: 12, level: 1, pickupRadius: 85, xpMultiplier: 1, specialAreaStacks: 0, specialExperienceStacks: 0, facing: 1, moving: false },
     enemies: [], shots: [], gems: [], specialDrops: [], particles: [], kills: 0, ended: false,
   };
 }
@@ -150,8 +150,11 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     ctx.restore();
   });
   game.shots.forEach((shot) => {
-    ctx.beginPath(); ctx.fillStyle = "#f4d58a"; ctx.shadowColor = "#f4bd54"; ctx.shadowBlur = 12;
-    ctx.arc(shot.x, shot.y, 4, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0;
+    ctx.save(); ctx.translate(shot.x, shot.y); ctx.rotate(Math.atan2(shot.vy, shot.vx));
+    ctx.strokeStyle = "rgba(177,116,255,.72)"; ctx.lineWidth = 2.2; ctx.shadowColor = "#a95cff"; ctx.shadowBlur = 12;
+    ctx.beginPath(); ctx.moveTo(-13, 0); ctx.lineTo(-3, 0); ctx.stroke();
+    ctx.fillStyle = "#f4d58a"; ctx.beginPath(); ctx.moveTo(6, 0); ctx.lineTo(0, -3.4); ctx.lineTo(-5, 0); ctx.lineTo(0, 3.4); ctx.closePath(); ctx.fill();
+    ctx.restore();
   });
   game.enemies.forEach((enemy) => {
     ctx.save(); ctx.translate(enemy.x, enemy.y);
@@ -206,13 +209,18 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     }
     ctx.restore();
   });
-  game.particles.forEach((p) => { ctx.globalAlpha = clamp(p.life * 2, 0, 1); ctx.fillStyle = p.color; ctx.fillRect(p.x, p.y, 3, 3); });
-  ctx.globalAlpha = 1;
+  ctx.save();
+  game.particles.forEach((p) => {
+    ctx.globalAlpha = clamp(p.life * 2, 0, 1); ctx.fillStyle = p.color; ctx.shadowColor = p.color; ctx.shadowBlur = 9;
+    ctx.beginPath(); ctx.arc(p.x, p.y, 1.5 + clamp(p.life * 2, 0, 1) * 1.4, 0, Math.PI * 2); ctx.fill();
+  });
+  ctx.restore(); ctx.globalAlpha = 1;
 
   // Protagonista ilustrado; mantém o desenho procedural como fallback enquanto o sprite carrega.
   ctx.save(); ctx.translate(player.x, player.y);
-  const bob = Math.sin(game.elapsed * 7) * 1.7;
+  const bob = Math.sin(game.elapsed * (player.moving ? 13 : 3.4)) * (player.moving ? 2.2 : 1.1);
   ctx.fillStyle = "rgba(0,0,0,.42)"; ctx.beginPath(); ctx.ellipse(0, 13, 17, 7, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.scale(player.facing, 1); ctx.rotate(player.moving ? Math.sin(game.elapsed * 13) * 0.035 : 0);
   ctx.translate(0, bob);
   if (sprites.player?.complete && sprites.player.naturalWidth > 0) {
     const blinking = player.invuln > 0 && Math.floor(game.elapsed * 14) % 2 === 0;
@@ -372,6 +380,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         let dx = (keys.has("d") || keys.has("arrowright") ? 1 : 0) - (keys.has("a") || keys.has("arrowleft") ? 1 : 0);
         let dy = (keys.has("s") || keys.has("arrowdown") ? 1 : 0) - (keys.has("w") || keys.has("arrowup") ? 1 : 0);
         if (joystickRef.current) { dx = joystickRef.current.x; dy = joystickRef.current.y; }
+        game.player.moving = Math.hypot(dx, dy) > 0.05;
+        if (Math.abs(dx) > 0.05) game.player.facing = dx < 0 ? -1 : 1;
         const mag = Math.hypot(dx, dy) || 1;
         game.player.x = clamp(game.player.x + (dx / mag) * game.player.speed * dt, 18, game.width - 18);
         game.player.y = clamp(game.player.y + (dy / mag) * game.player.speed * dt, 18, game.height - 18);
