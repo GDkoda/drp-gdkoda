@@ -10,6 +10,7 @@ export interface FractalMission {
   maxFractals: number;
   baseDifficulty: number;
   identity: string;
+  lore: string;
   mechanics: string[];
   bossTitle: string;
 }
@@ -25,6 +26,7 @@ export const FRACTAL_MISSIONS: readonly FractalMission[] = [
     maxFractals: 10,
     baseDifficulty: 1,
     identity: "Resistência, desgaste e drenagem de vida.",
+    lore: "Torres tombadas ainda repetem os nomes dos desaparecidos. Aqui, o silêncio não é ausência: é algo à espera de ser ouvido.",
     mechanics: ["Criaturas resistentes", "Zonas de drenagem", "Inimigos que protegem uns aos outros"],
     bossTitle: "O Pranteador Sem Rosto",
   },
@@ -38,6 +40,7 @@ export const FRACTAL_MISSIONS: readonly FractalMission[] = [
     maxFractals: 15,
     baseDifficulty: 2,
     identity: "Agressividade, velocidade e explosões.",
+    lore: "Um vale de muralhas derretidas, onde legiões esquecidas marcham sob brasas que nunca esfriam.",
     mechanics: ["Investidas telegrafadas", "Criaturas explosivas", "Ataques em cadeia"],
     bossTitle: "O Coração em Brasa",
   },
@@ -51,6 +54,7 @@ export const FRACTAL_MISSIONS: readonly FractalMission[] = [
     maxFractals: 25,
     baseDifficulty: 3,
     identity: "Veneno, regeneração e parasitismo.",
+    lore: "Um jardim petrificado cresce sobre ruínas vivas; suas raízes guardam memórias e consomem o que respira.",
     mechanics: ["Inimigos regenerativos", "Nuvens venenosas", "Criaturas que fortalecem outras"],
     bossTitle: "A Matriarca Insaciável",
   },
@@ -64,6 +68,7 @@ export const FRACTAL_MISSIONS: readonly FractalMission[] = [
     maxFractals: 50,
     baseDifficulty: 4,
     identity: "Controle de área, lentidão e congelamento.",
+    lore: "Sob uma geleira sem horizonte, vozes presas no gelo distorcem o caminho de quem atravessa.",
     mechanics: ["Solo congelado", "Projéteis que desaceleram", "Rotas de fuga limitadas"],
     bossTitle: "A Voz Sob o Gelo",
   },
@@ -77,6 +82,7 @@ export const FRACTAL_MISSIONS: readonly FractalMission[] = [
     maxFractals: 100,
     baseDifficulty: 5,
     identity: "Distorção, imprevisibilidade e padrões combinados.",
+    lore: "No centro da fenda, arquitetura e gravidade se contradizem; fragmentos de outros lugares flutuam como lembranças partidas.",
     mechanics: ["Trajetórias distorcidas", "Padrões mutáveis", "Combinações de ameaças"],
     bossTitle: "O Fractal Primordial",
   },
