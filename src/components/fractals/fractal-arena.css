@@ -92,6 +92,7 @@
 .fractals-hero__tags span { padding: 5px 8px; border: 1px solid rgba(225,205,255,.12); border-radius: 6px; background: rgba(255,255,255,.035); color: rgba(237,224,255,.58); font-size: 8px; font-weight: 900; letter-spacing: .15em; }
 .fractals-hero__sigil { position: relative; display: grid; min-height: 175px; place-items: center; isolation: isolate; }
 .fractals-hero__sigil-ring {
+  animation: fractals-orbit 42s linear infinite;
   position: absolute; width: 164px; height: 164px; border: 1px solid rgba(216,190,255,.29); border-radius: 50%;
   box-shadow: 0 0 0 12px rgba(194,159,255,.035), inset 0 0 30px rgba(176,126,244,.10), 0 0 55px rgba(170,119,237,.18);
   transform: rotate(-24deg);
@@ -100,6 +101,7 @@
 .fractals-hero__sigil-ring::after { content:""; position:absolute; inset:13px; border:1px dashed rgba(231,194,126,.35); border-radius:50%; }
 .fractals-hero__sigil-ring::after { inset: -18px 38px; border: 1px solid rgba(218,190,255,.20); border-radius: 46%; transform: rotate(56deg); }
 .fractals-hero__sigil-core {
+  animation: fractals-core 5.5s ease-in-out infinite;
   position: relative; display: grid; width: 92px; height: 92px; place-items: center;
   border: 1px solid rgba(244,222,184,.45); border-radius: 25px; color: #f4d79e;
   background: linear-gradient(145deg, rgba(228,195,130,.22), rgba(113,73,157,.32) 50%, rgba(16,11,24,.95));
@@ -285,4 +287,51 @@
 @media (max-width: 420px) {
   .fractals-pause-panel { border-radius:18px; padding:13px !important; }
   .fractals-pause-actions button { min-height:40px; padding-left:8px !important; padding-right:8px !important; font-size:9px !important; }
+}
+
+/* Each artifact family has its own mineral tint, not a one-color button grid. */
+.fractals-vault__content .fractals-shop-section .grid > div:nth-child(1) {
+  border-color:rgba(241,133,154,.27);
+  background:radial-gradient(ellipse at 100% 0%,rgba(246,104,142,.14),transparent 48%),linear-gradient(145deg,rgba(255,255,255,.055),rgba(255,255,255,.012)),#1d141f;
+}
+.fractals-vault__content .fractals-shop-section .grid > div:nth-child(1) button {
+  border-color:rgba(255,180,187,.38);
+  background:linear-gradient(110deg,#f0a3b2,#f2d0a1) !important;
+}
+.fractals-vault__content .fractals-shop-section .grid > div:nth-child(2) {
+  border-color:rgba(179,145,255,.29);
+  background:radial-gradient(ellipse at 100% 0%,rgba(168,117,239,.15),transparent 48%),linear-gradient(145deg,rgba(255,255,255,.055),rgba(255,255,255,.012)),#191526;
+}
+.fractals-vault__content .fractals-shop-section .grid > div:nth-child(2) button {
+  border-color:rgba(201,174,255,.42);
+  background:linear-gradient(110deg,#b69cec,#e2c3fb) !important;
+}
+.fractals-vault__content .fractals-shop-section .grid > div:nth-child(3) {
+  border-color:rgba(112,191,226,.28);
+  background:radial-gradient(ellipse at 100% 0%,rgba(76,174,220,.14),transparent 48%),linear-gradient(145deg,rgba(255,255,255,.055),rgba(255,255,255,.012)),#131a24;
+}
+.fractals-vault__content .fractals-shop-section .grid > div:nth-child(3) button {
+  border-color:rgba(163,220,242,.42);
+  background:linear-gradient(110deg,#9bd2e7,#c8e9e9) !important;
+}
+.fractals-vault__content .fractals-shop-section .grid > div:nth-child(4) {
+  border-color:rgba(231,194,126,.27);
+  background:radial-gradient(ellipse at 100% 0%,rgba(218,170,93,.13),transparent 48%),linear-gradient(145deg,rgba(255,255,255,.055),rgba(255,255,255,.012)),#1c191b;
+}
+.fractals-vault__content .fractals-shop-section .grid > div:nth-child(4) button {
+  border-color:rgba(244,215,165,.42);
+  background:linear-gradient(110deg,#e8c68e,#f0dfa9) !important;
+}
+.fractals-vault__content .fractals-shop-section .grid > div:nth-child(5) {
+  border-color:rgba(192,153,240,.27);
+  background:radial-gradient(ellipse at 100% 0%,rgba(172,133,224,.13),transparent 48%),linear-gradient(145deg,rgba(255,255,255,.055),rgba(255,255,255,.012)),#181522;
+}
+.fractals-vault__content .fractals-shop-section .grid > div:nth-child(5) button {
+  border-color:rgba(216,194,255,.40);
+  background:linear-gradient(110deg,#c0a4e5,#e0c4fa) !important;
+}
+@keyframes fractals-orbit { to { transform:rotate(336deg); } }
+@keyframes fractals-core { 0%,100% { transform:rotate(45deg) translateY(0); } 50% { transform:rotate(45deg) translateY(-5px); } }
+@media (prefers-reduced-motion: reduce) {
+  .fractals-hero__sigil-ring, .fractals-hero__sigil-core { animation:none !important; }
 }
