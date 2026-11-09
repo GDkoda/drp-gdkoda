@@ -19,6 +19,8 @@ type Gem = { x: number; y: number; value: number; radius: number };
 type SpecialDrop = { x: number; y: number; kind: "area" | "experience" | "projectile_range" | "projectiles"; radius: number };
 type Particle = { x: number; y: number; vx: number; vy: number; life: number; color: string };
 type DamageNumber = { x: number; y: number; value: number; life: number; maxLife: number; drift: number };
+type PickupLabel = { x: number; y: number; text: string; life: number; maxLife: number };
+type ChallengeEvent = { id: 1 | 2; x: number; y: number; radius: number; remaining: number; progress: number };
 type SpriteKey = "boss" | "elite" | "wraith" | "charger" | "brute" | "playerIdle" | "playerMove" | "playerCast" | "xpGem" | "specialXP" | "specialArea" | "specialRange" | "specialProjectiles" | "projectile";
 type SpriteMap = Partial<Record<SpriteKey, HTMLImageElement>>;
 type PlayerVisualAction = "idle" | "move" | "cast";
@@ -45,7 +47,7 @@ function parsePurchaseState(raw: any): PurchaseState {
 type GameState = {
   width: number; height: number; last: number; elapsed: number; spawnTimer: number; shotTimer: number; bossSpawned: boolean;
   player: { x: number; y: number; hp: number; maxHp: number; speed: number; damage: number; fireRate: number; invuln: number; hitFlash: number; xp: number; nextXp: number; level: number; pickupRadius: number; xpMultiplier: number; specialAreaStacks: number; specialExperienceStacks: number; projectileRangeStacks: number; projectileRangeMultiplier: number; projectileStacks: number; projectileLife: number; facing: number; castFacing: number; castTimer: number; moving: boolean; spriteAction: PlayerVisualAction; spriteDirection: number; previousSpriteAction: PlayerVisualAction; previousSpriteDirection: number; spriteBlend: number };
-  enemies: Enemy[]; shots: Shot[]; gems: Gem[]; specialDrops: SpecialDrop[]; particles: Particle[]; damageNumbers: DamageNumber[]; kills: number; ended: boolean;
+  enemies: Enemy[]; shots: Shot[]; gems: Gem[]; specialDrops: SpecialDrop[]; particles: Particle[]; damageNumbers: DamageNumber[]; pickupLabels: PickupLabel[]; challengeEvent: ChallengeEvent | null; nextChallengeEvent: number; kills: number; ended: boolean;
 };
 
 const UPGRADES: Upgrade[] = [
@@ -138,7 +140,7 @@ function makeGame(width: number, height: number, purchases: PurchaseState): Game
   return {
     width, height, last: 0, elapsed: 0, spawnTimer: 0.4, shotTimer: 0.25, bossSpawned: false,
     player: { x: 0, y: 0, hp: maxHp, maxHp, speed: 205, damage: 22, fireRate: 0.72, invuln: 0, hitFlash: 0, xp: 0, nextXp: 12, level: 1, pickupRadius: 85, xpMultiplier: 1, specialAreaStacks: 0, specialExperienceStacks: 0, projectileRangeStacks: 0, projectileRangeMultiplier: 1, projectileStacks: 0, projectileLife, facing: 0, castFacing: 0, castTimer: 0, moving: false, spriteAction: "idle", spriteDirection: 0, previousSpriteAction: "idle", previousSpriteDirection: 0, spriteBlend: 1 },
-    enemies: [], shots: [], gems: [], specialDrops: [], particles: [], damageNumbers: [], kills: 0, ended: false,
+    enemies: [], shots: [], gems: [], specialDrops: [], particles: [], damageNumbers: [], pickupLabels: [], challengeEvent: null, nextChallengeEvent: 0, kills: 0, ended: false,
   };
 }
 
@@ -236,6 +238,27 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
         ctx.lineTo(x, y - 2);
         ctx.stroke();
       }
+      // Peças gravadas do tileset: marcas finas, veios e mosaicos gastos.
+      const tileDetail = hash(col + 57, row - 23);
+      if (tileDetail > 0.72) {
+        ctx.strokeStyle = "rgba(235,220,255,.10)";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(x - 10, y - 1);
+        ctx.lineTo(x, y - 11);
+        ctx.lineTo(x + 10, y - 1);
+        ctx.stroke();
+      }
+      if (tileDetail > 0.88) {
+        ctx.fillStyle = biome.glow + "24";
+        ctx.beginPath();
+        ctx.moveTo(x, y - 8);
+        ctx.lineTo(x + 5, y);
+        ctx.lineTo(x, y + 8);
+        ctx.lineTo(x - 5, y);
+        ctx.closePath();
+        ctx.fill();
+      }
       if (hash(col - 5, row + 21) > 0.94) {
         ctx.fillStyle = biome.glow + "24";
         ctx.beginPath();
@@ -312,7 +335,6 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
       const roll = hash(col + 103, row - 67);
       const x = col * propSpacing + 34 + hash(col + 11, row + 4) * 150;
       const y = row * propSpacing + 30 + hash(col - 9, row + 19) * 160;
-      if (distance(x, y, player.x, player.y) < 138) continue;
       if (roll > 0.84) {
         drawPillar(x, y, 0.62 + hash(col, row + 8) * 0.55);
       } else if (roll > 0.64) {
@@ -346,6 +368,50 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
   ctx.fillStyle = vignette;
   ctx.fillRect(cameraX, cameraY, width, height);
 
+  if (game.challengeEvent) {
+    const event = game.challengeEvent;
+    const pulse = 1 + Math.sin(game.elapsed * 3.5) * 0.035;
+    ctx.save();
+    ctx.translate(event.x, event.y);
+    ctx.scale(pulse, pulse);
+    const halo = ctx.createRadialGradient(0, 0, 24, 0, 0, event.radius);
+    halo.addColorStop(0, "rgba(174,121,255,.12)");
+    halo.addColorStop(.72, "rgba(119,77,180,.07)");
+    halo.addColorStop(1, "rgba(119,77,180,0)");
+    ctx.fillStyle = halo;
+    ctx.beginPath();
+    ctx.arc(0, 0, event.radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "rgba(206,166,255,.78)";
+    ctx.lineWidth = 3;
+    ctx.setLineDash([12, 8]);
+    ctx.lineDashOffset = -game.elapsed * 22;
+    ctx.beginPath();
+    ctx.arc(0, 0, event.radius, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.strokeStyle = "rgba(241,213,255,.4)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(0, 0, event.radius - 9, 0, Math.PI * 2);
+    ctx.stroke();
+    const sentinel = sprites.elite;
+    if (sentinel?.complete && sentinel.naturalWidth > 0) {
+      ctx.shadowColor = "#bd8cff";
+      ctx.shadowBlur = 22;
+      ctx.drawImage(sentinel, -35, -44, 70, 82);
+    }
+    ctx.shadowBlur = 0;
+    ctx.font = "900 10px Inter, ui-sans-serif, system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "#f0ddff";
+    ctx.shadowColor = "#6f3eb1";
+    ctx.shadowBlur = 10;
+    ctx.fillText("ANOMALIA " + String(event.id).padStart(2, "0"), 0, -event.radius - 18);
+    ctx.restore();
+  }
+
   game.gems.forEach((gem) => {
     ctx.save(); ctx.translate(gem.x, gem.y);
     const pulse = 1 + Math.sin(game.elapsed * 6 + gem.x * 0.03) * 0.08;
@@ -375,6 +441,22 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
       ctx.fillStyle = drop.kind === "area" ? "#67d9e8" : "#b58cff";
       ctx.beginPath(); ctx.arc(0, 0, drop.radius, 0, Math.PI * 2); ctx.fill();
     }
+    ctx.restore();
+  });
+  game.pickupLabels.forEach((label) => {
+    const alpha = clamp(label.life / label.maxLife, 0, 1);
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.font = "900 13px Inter, ui-sans-serif, system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.lineWidth = 3.5;
+    ctx.strokeStyle = "rgba(12,7,20,.94)";
+    ctx.shadowColor = "rgba(228,190,255,.85)";
+    ctx.shadowBlur = 12;
+    ctx.strokeText(label.text, label.x, label.y);
+    ctx.fillStyle = "#ffe6ae";
+    ctx.fillText(label.text, label.x, label.y);
     ctx.restore();
   });
   game.shots.forEach((shot) => {
