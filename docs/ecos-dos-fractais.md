@@ -133,6 +133,8 @@ A interface de aceleração bloqueia 2x/3x para contas comuns até a compra perm
 
 Bônus normal = 100% do valor-base; rara = 125%; épica = 150%. Evoluções permanecem sempre lendárias.
 
+Os quatro aprimoramentos básicos exibem o valor efetivo na carta e aplicam o multiplicador diretamente ao bônus: Estilhaço Voraz (+30% / +37,5% / +45% de dano), Pulso Acelerado (+18% / +22,5% / +27% de velocidade de ataque), Casca de Cristal (+15% / +18,75% / +22,5% de vida máxima e cura proporcional) e Passos do Errante (+10% / +12,5% / +15% de movimento). A velocidade de ataque é aplicada como multiplicador da taxa de disparo para que o percentual anunciado corresponda ao efeito real.
+
 
 ## Atualização de combate e loja — novembro de 2026
 
