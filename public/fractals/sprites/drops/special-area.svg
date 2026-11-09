@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96">
+<defs>
+ <linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff2bf"/><stop offset=".38" stop-color="#d6a64f"/><stop offset="1" stop-color="#6b3f8e"/></linearGradient>
+ <filter id="glow"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+</defs>
+<circle cx="48" cy="48" r="38" fill="none" stroke="#d6a64f" stroke-width="3" opacity=".8"/>
+<circle cx="48" cy="48" r="29" fill="none" stroke="#a96fe4" stroke-width="2" stroke-dasharray="4 4"/>
+<circle cx="48" cy="48" r="19" fill="#6e3a99" opacity=".25" filter="url(#glow)"/>
+<path d="M48 5 L57 33 L91 48 L57 57 L48 91 L39 57 L5 48 L39 39 Z" fill="url(#g)" stroke="#fff0c2" stroke-width="2.2" stroke-linejoin="round"/>
+<path d="M48 5 L48 91 L39 57 L5 48 L39 39 Z" fill="#fff0bd" opacity=".25"/>
+<path d="M48 28 L62 48 L48 68 L34 48 Z" fill="#55246f" stroke="#e6caff" stroke-width="2"/>
+<path d="M48 33 L55 48 L48 63 L41 48 Z" fill="#d6a64f" stroke="#fff2bf" stroke-width="1.5"/>
+<circle cx="48" cy="48" r="4" fill="#fff9d7"/>
+<path d="M48 14 L48 23 M48 73 L48 82 M14 48 L23 48 M73 48 L82 48" stroke="#fff1c1" stroke-width="2.5" stroke-linecap="round"/>
+</svg>

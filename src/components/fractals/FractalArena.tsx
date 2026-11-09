@@ -16,12 +16,13 @@ type Shot = { x: number; y: number; vx: number; vy: number; damage: number; life
 type Gem = { x: number; y: number; value: number; radius: number };
 type SpecialDrop = { x: number; y: number; kind: "area" | "experience"; radius: number };
 type Particle = { x: number; y: number; vx: number; vy: number; life: number; color: string };
-type SpriteKey = "boss" | "elite" | "playerIdle" | "playerMove" | "playerCast";
+type SpriteKey = "boss" | "elite" | "wraith" | "charger" | "brute" | "playerIdle" | "playerMove" | "playerCast" | "xpGem" | "specialXP" | "specialArea";
 type SpriteMap = Partial<Record<SpriteKey, HTMLImageElement>>;
+type PlayerVisualAction = "idle" | "move" | "cast";
 
 type GameState = {
   width: number; height: number; last: number; elapsed: number; spawnTimer: number; shotTimer: number; bossSpawned: boolean;
-  player: { x: number; y: number; hp: number; maxHp: number; speed: number; damage: number; fireRate: number; invuln: number; xp: number; nextXp: number; level: number; pickupRadius: number; xpMultiplier: number; specialAreaStacks: number; specialExperienceStacks: number; facing: number; castFacing: number; castTimer: number; moving: boolean };
+  player: { x: number; y: number; hp: number; maxHp: number; speed: number; damage: number; fireRate: number; invuln: number; xp: number; nextXp: number; level: number; pickupRadius: number; xpMultiplier: number; specialAreaStacks: number; specialExperienceStacks: number; facing: number; castFacing: number; castTimer: number; moving: boolean; spriteAction: PlayerVisualAction; spriteDirection: number; previousSpriteAction: PlayerVisualAction; previousSpriteDirection: number; spriteBlend: number };
   enemies: Enemy[]; shots: Shot[]; gems: Gem[]; specialDrops: SpecialDrop[]; particles: Particle[]; kills: number; ended: boolean;
 };
 
@@ -67,7 +68,7 @@ const PLAYER_DIRECTION_VECTORS = [
 function makeGame(width: number, height: number): GameState {
   return {
     width, height, last: 0, elapsed: 0, spawnTimer: 0.4, shotTimer: 0.25, bossSpawned: false,
-    player: { x: width / 2, y: height / 2, hp: 100, maxHp: 100, speed: 205, damage: 22, fireRate: 0.72, invuln: 0, xp: 0, nextXp: 12, level: 1, pickupRadius: 85, xpMultiplier: 1, specialAreaStacks: 0, specialExperienceStacks: 0, facing: 0, castFacing: 0, castTimer: 0, moving: false },
+    player: { x: width / 2, y: height / 2, hp: 100, maxHp: 100, speed: 205, damage: 22, fireRate: 0.72, invuln: 0, xp: 0, nextXp: 12, level: 1, pickupRadius: 85, xpMultiplier: 1, specialAreaStacks: 0, specialExperienceStacks: 0, facing: 0, castFacing: 0, castTimer: 0, moving: false, spriteAction: "idle", spriteDirection: 0, previousSpriteAction: "idle", previousSpriteDirection: 0, spriteBlend: 1 },
     enemies: [], shots: [], gems: [], specialDrops: [], particles: [], kills: 0, ended: false,
   };
 }
@@ -148,16 +149,34 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
   ctx.fillStyle = vignette; ctx.fillRect(0, 0, width, height);
 
   game.gems.forEach((gem) => {
-    ctx.save(); ctx.translate(gem.x, gem.y); ctx.rotate(Math.PI / 4);
-    ctx.fillStyle = "#9ee6c1"; ctx.shadowColor = "#7df0b0"; ctx.shadowBlur = 12;
-    ctx.fillRect(-gem.radius / 2, -gem.radius / 2, gem.radius, gem.radius); ctx.restore();
+    ctx.save(); ctx.translate(gem.x, gem.y);
+    const pulse = 1 + Math.sin(game.elapsed * 6 + gem.x * 0.03) * 0.08;
+    ctx.scale(pulse, pulse);
+    const icon = sprites.xpGem;
+    if (icon?.complete && icon.naturalWidth > 0) {
+      ctx.shadowColor = "#a78bfa"; ctx.shadowBlur = 13;
+      ctx.drawImage(icon, -gem.radius * 0.95, -gem.radius * 0.95, gem.radius * 1.9, gem.radius * 1.9);
+    } else {
+      ctx.rotate(Math.PI / 4);
+      ctx.fillStyle = "#9ee6c1"; ctx.shadowColor = "#7df0b0"; ctx.shadowBlur = 12;
+      ctx.fillRect(-gem.radius / 2, -gem.radius / 2, gem.radius, gem.radius);
+    }
+    ctx.restore();
   });
   game.specialDrops.forEach((drop) => {
-    ctx.save(); ctx.translate(drop.x, drop.y); ctx.rotate(Math.PI / 4);
-    ctx.fillStyle = drop.kind === "area" ? "#67d9e8" : "#b58cff";
-    ctx.shadowColor = ctx.fillStyle; ctx.shadowBlur = 16;
-    ctx.fillRect(-drop.radius / 2, -drop.radius / 2, drop.radius, drop.radius);
-    ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 1.5; ctx.strokeRect(-drop.radius / 2, -drop.radius / 2, drop.radius, drop.radius);
+    ctx.save(); ctx.translate(drop.x, drop.y);
+    const pulse = 1 + Math.sin(game.elapsed * 7 + drop.y * 0.02) * 0.09;
+    const size = drop.radius * 2.8 * pulse;
+    const icon = drop.kind === "area" ? sprites.specialArea : sprites.specialXP;
+    ctx.globalAlpha = 0.9 + Math.sin(game.elapsed * 5 + drop.x * 0.02) * 0.1;
+    ctx.shadowColor = drop.kind === "area" ? "#e9c46a" : "#b78cff";
+    ctx.shadowBlur = 17;
+    if (icon?.complete && icon.naturalWidth > 0) {
+      ctx.drawImage(icon, -size / 2, -size / 2, size, size);
+    } else {
+      ctx.fillStyle = drop.kind === "area" ? "#67d9e8" : "#b58cff";
+      ctx.beginPath(); ctx.arc(0, 0, drop.radius, 0, Math.PI * 2); ctx.fill();
+    }
     ctx.restore();
   });
   game.shots.forEach((shot) => {
@@ -174,17 +193,19 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     if (enemy.type === "charger" && enemy.windup > 0) { ctx.save(); ctx.rotate(Math.atan2(enemy.targetY - enemy.y, enemy.targetX - enemy.x)); ctx.globalAlpha = .55 + Math.sin(game.elapsed * 24) * .2; ctx.strokeStyle = "#ffc477"; ctx.lineWidth = 3; ctx.setLineDash([5, 4]); ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(125, 0); ctx.stroke(); ctx.restore(); }
     if (enemy.type === "elite") { ctx.save(); ctx.globalAlpha = .18 + Math.sin(game.elapsed * 4) * .06; ctx.strokeStyle = "#d69cff"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, 0, 105, 0, Math.PI * 2); ctx.stroke(); ctx.restore(); }
     const hurt = enemy.flash > 0;
-    const enemySprite = enemy.type === "boss" ? sprites.boss : enemy.type === "elite" ? sprites.elite : undefined;
+    const enemySprite = enemy.type === "boss" ? sprites.boss : enemy.type === "elite" ? sprites.elite : enemy.type === "wraith" ? sprites.wraith : enemy.type === "charger" ? sprites.charger : sprites.brute;
     if (enemySprite?.complete && enemySprite.naturalWidth > 0) {
       ctx.save();
-      const isBoss = enemy.type === "boss";
-      const spriteWidth = isBoss ? 78 : 46;
-      const spriteHeight = isBoss ? 98 : 52;
+      const dimensions: Record<Enemy["type"], [number, number, number]> = {
+        boss: [78, 98, 0.68], elite: [46, 52, 0.68], wraith: [34, 52, 0.62],
+        charger: [46, 48, 0.66], brute: [56, 64, 0.68],
+      };
+      const [spriteWidth, spriteHeight, anchor] = dimensions[enemy.type];
       ctx.globalAlpha = hurt ? 0.78 : 1;
       ctx.filter = hurt ? "brightness(2.35) saturate(.35)" : "none";
-      ctx.shadowColor = isBoss ? "#a95cff" : "#8b68ff";
-      ctx.shadowBlur = isBoss ? 24 : 14;
-      ctx.drawImage(enemySprite, -spriteWidth / 2, -spriteHeight * 0.68, spriteWidth, spriteHeight);
+      ctx.shadowColor = enemy.type === "brute" ? "#9b7bce" : enemy.type === "charger" ? "#b58cff" : "#8b68ff";
+      ctx.shadowBlur = enemy.type === "boss" ? 24 : 14;
+      ctx.drawImage(enemySprite, -spriteWidth / 2, -spriteHeight * anchor, spriteWidth, spriteHeight);
       ctx.restore();
     } else if (enemy.type === "wraith") {
       ctx.shadowColor = enemy.color; ctx.shadowBlur = 13; ctx.fillStyle = hurt ? "#fff" : "#827394";
@@ -227,29 +248,38 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
   });
   ctx.restore(); ctx.globalAlpha = 1;
 
-  // Protagonista chibi: 8 direções x 3 ações (parado, movimento e conjuração).
+  // Protagonista chibi: mistura os quadros antigos e novos para transições suaves.
   ctx.save(); ctx.translate(player.x, player.y);
   const bob = Math.sin(game.elapsed * (player.moving ? 13 : 3.4)) * (player.moving ? 1.6 : 0.8);
   ctx.fillStyle = "rgba(0,0,0,.42)";
   ctx.beginPath(); ctx.ellipse(0, 13, 17, 7, 0, 0, Math.PI * 2); ctx.fill();
-  const spriteDirection = player.castTimer > 0 ? player.castFacing : player.facing;
-  const playerSprite = player.castTimer > 0 ? sprites.playerCast : player.moving ? sprites.playerMove : sprites.playerIdle;
   ctx.translate(0, bob);
-  if (playerSprite?.complete && playerSprite.naturalWidth >= 384 && playerSprite.naturalHeight >= 64) {
-    const blinking = player.invuln > 0 && Math.floor(game.elapsed * 14) % 2 === 0;
-    ctx.globalAlpha = blinking ? 0.62 : 1;
+  const getPlayerSheet = (action: PlayerVisualAction) =>
+    action === "cast" ? sprites.playerCast : action === "move" ? sprites.playerMove : sprites.playerIdle;
+  const isPlayerSheetReady = (sheet?: HTMLImageElement) =>
+    !!sheet?.complete && sheet.naturalWidth >= 384 && sheet.naturalHeight >= 64;
+  const currentSheet = getPlayerSheet(player.spriteAction);
+  const previousSheet = getPlayerSheet(player.previousSpriteAction);
+  const currentReady = isPlayerSheetReady(currentSheet);
+  const previousReady = isPlayerSheetReady(previousSheet);
+  if (currentReady) {
+    const baseAlpha = player.invuln > 0 && Math.floor(game.elapsed * 14) % 2 === 0 ? 0.62 : 1;
     ctx.filter = player.invuln > 0 ? "brightness(1.45) saturate(.7)" : "none";
     ctx.shadowColor = player.invuln > 0 ? "#ffffff" : "#a75cff";
-    ctx.shadowBlur = player.invuln > 0 ? 22 : player.castTimer > 0 ? 18 : 10;
-    // Cada tira possui oito quadros horizontais de 48 x 64 pixels.
-    ctx.drawImage(playerSprite, spriteDirection * 48, 0, 48, 64, -25, -34, 50, 68);
+    ctx.shadowBlur = player.invuln > 0 ? 22 : player.spriteAction === "cast" ? 18 : 10;
+    const blend = previousReady ? clamp(player.spriteBlend, 0, 1) : 1;
+    if (previousReady && blend < 1) {
+      ctx.globalAlpha = baseAlpha * (1 - blend);
+      ctx.drawImage(previousSheet!, player.previousSpriteDirection * 48, 0, 48, 64, -25, -34, 50, 68);
+    }
+    ctx.globalAlpha = baseAlpha * (previousReady ? blend : 1);
+    ctx.drawImage(currentSheet!, player.spriteDirection * 48, 0, 48, 64, -25, -34, 50, 68);
     ctx.filter = "none"; ctx.globalAlpha = 1; ctx.shadowBlur = 0;
-    if (player.castTimer > 0) {
-      const aim = PLAYER_DIRECTION_VECTORS[spriteDirection] ?? PLAYER_DIRECTION_VECTORS[0];
+    if (player.spriteAction === "cast" && player.castTimer > 0) {
+      const aim = PLAYER_DIRECTION_VECTORS[player.spriteDirection] ?? PLAYER_DIRECTION_VECTORS[0];
       ctx.save(); ctx.translate(aim.x * 19, aim.y * 16 - 2);
       ctx.globalAlpha = clamp(player.castTimer / 0.24, 0.35, 1);
-      ctx.shadowColor = "#c28aff"; ctx.shadowBlur = 18;
-      ctx.fillStyle = "#f0dcff";
+      ctx.shadowColor = "#c28aff"; ctx.shadowBlur = 18; ctx.fillStyle = "#f0dcff";
       ctx.beginPath(); ctx.arc(0, 0, 3.2 + Math.sin(game.elapsed * 46) * 0.8, 0, Math.PI * 2); ctx.fill();
       ctx.strokeStyle = "rgba(216,175,255,.9)"; ctx.lineWidth = 1.2;
       ctx.beginPath(); ctx.arc(0, 0, 7, 0, Math.PI * 2); ctx.stroke();
@@ -268,7 +298,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     ctx.strokeStyle="#d7b5ff";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(8,-1);ctx.lineTo(17,-12);ctx.stroke();
     ctx.fillStyle="#d5a7ff";ctx.shadowColor="#bd7cff";ctx.shadowBlur=16;ctx.beginPath();ctx.arc(18,-13,3.5,0,Math.PI*2);ctx.fill();
   }
-  ctx.shadowBlur=0;
+  ctx.shadowBlur=0; ctx.globalAlpha=1;
   ctx.strokeStyle="#f2d6ff";ctx.lineWidth=1.2;
   ctx.beginPath();ctx.arc(0,0,18+Math.sin(game.elapsed*4)*1.1,0,Math.PI*2);ctx.stroke();
   ctx.restore();
@@ -311,6 +341,12 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
       playerCast: "/fractals/sprites/player-cast-8dir.png",
       boss: "/fractals/sprites/boss.webp",
       elite: "/fractals/sprites/elite.webp",
+      wraith: "/fractals/sprites/enemies/wraith.svg",
+      charger: "/fractals/sprites/enemies/charger.svg",
+      brute: "/fractals/sprites/enemies/brute.svg",
+      xpGem: "/fractals/sprites/drops/xp-gem.svg",
+      specialXP: "/fractals/sprites/drops/special-xp.svg",
+      specialArea: "/fractals/sprites/drops/special-area.svg",
     };
     (Object.entries(assets) as [SpriteKey, string][]).forEach(([key, src]) => {
       const image = new Image();
@@ -438,6 +474,17 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           game.player.castTimer = 0.24;
           game.shots.push({ x: game.player.x, y: game.player.y, vx: ((target.x - game.player.x) / d) * speed, vy: ((target.y - game.player.y) / d) * speed, damage: game.player.damage, life: 1.6 });
           game.shotTimer = game.player.fireRate;
+        }
+        const desiredAction: PlayerVisualAction = game.player.castTimer > 0 ? "cast" : game.player.moving ? "move" : "idle";
+        const desiredDirection = desiredAction === "cast" ? game.player.castFacing : game.player.facing;
+        if (desiredAction !== game.player.spriteAction || desiredDirection !== game.player.spriteDirection) {
+          game.player.previousSpriteAction = game.player.spriteAction;
+          game.player.previousSpriteDirection = game.player.spriteDirection;
+          game.player.spriteAction = desiredAction;
+          game.player.spriteDirection = desiredDirection;
+          game.player.spriteBlend = 0;
+        } else if (game.player.spriteBlend < 1) {
+          game.player.spriteBlend = Math.min(1, game.player.spriteBlend + dt / 0.12);
         }
         game.shots.forEach((shot) => { shot.x += shot.vx * dt; shot.y += shot.vy * dt; shot.life -= dt; });
         game.shots = game.shots.filter((shot) => shot.life > 0 && shot.x > -20 && shot.x < game.width + 20 && shot.y > -20 && shot.y < game.height + 20);
