@@ -20,11 +20,11 @@ export type Database = {
           advantages: Json
           concept: string
           created_at: string
+          custom_rolls: Json
           disadvantages: Json
           f: number
           fa_bonus: number
           fd_bonus: number
-          custom_rolls: Json
           h: number
           id: string
           known_spells: string[]
@@ -45,11 +45,11 @@ export type Database = {
           advantages?: Json
           concept?: string
           created_at?: string
+          custom_rolls?: Json
           disadvantages?: Json
           f?: number
           fa_bonus?: number
           fd_bonus?: number
-          custom_rolls?: Json
           h?: number
           id?: string
           known_spells?: string[]
@@ -70,8 +70,11 @@ export type Database = {
           advantages?: Json
           concept?: string
           created_at?: string
+          custom_rolls?: Json
           disadvantages?: Json
           f?: number
+          fa_bonus?: number
+          fd_bonus?: number
           h?: number
           id?: string
           known_spells?: string[]
@@ -289,6 +292,76 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "farkle_games_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fractal_player_state: {
+        Row: {
+          completed_corruptions: number[]
+          corruption_unlocked: number
+          fractals: number
+          purchased_upgrades: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_corruptions?: number[]
+          corruption_unlocked?: number
+          fractals?: number
+          purchased_upgrades?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed_corruptions?: number[]
+          corruption_unlocked?: number
+          fractals?: number
+          purchased_upgrades?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fractal_player_state_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fractal_runs: {
+        Row: {
+          corruption_level: number
+          finished_at: string | null
+          id: string
+          started_at: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          corruption_level: number
+          finished_at?: string | null
+          id?: string
+          started_at?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          corruption_level?: number
+          finished_at?: string | null
+          id?: string
+          started_at?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fractal_runs_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -658,6 +731,7 @@ export type Database = {
         Row: {
           answer: string
           created_at: string
+          expires_at: string
           id: string
           reward: number | null
           solved: boolean | null
@@ -666,6 +740,7 @@ export type Database = {
         Insert: {
           answer: string
           created_at?: string
+          expires_at?: string
           id?: string
           reward?: number | null
           solved?: boolean | null
@@ -674,6 +749,7 @@ export type Database = {
         Update: {
           answer?: string
           created_at?: string
+          expires_at?: string
           id?: string
           reward?: number | null
           solved?: boolean | null
@@ -849,6 +925,53 @@ export type Database = {
         }
         Relationships: []
       }
+      twentyone_games: {
+        Row: {
+          created_at: string
+          dealer_cards: Json
+          deck: Json
+          finished_at: string | null
+          id: string
+          payout: number
+          player_cards: Json
+          status: string
+          user_id: string
+          wager: number
+        }
+        Insert: {
+          created_at?: string
+          dealer_cards?: Json
+          deck?: Json
+          finished_at?: string | null
+          id?: string
+          payout?: number
+          player_cards?: Json
+          status?: string
+          user_id: string
+          wager?: number
+        }
+        Update: {
+          created_at?: string
+          dealer_cards?: Json
+          deck?: Json
+          finished_at?: string | null
+          id?: string
+          payout?: number
+          player_cards?: Json
+          status?: string
+          user_id?: string
+          wager?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "twentyone_games_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           id: string
@@ -882,6 +1005,36 @@ export type Database = {
         Returns: undefined
       }
       _spend_vigor: { Args: { _n: number }; Returns: undefined }
+      _twentyone_finish: {
+        Args: {
+          _dealer_cards: Json
+          _game: Database["public"]["Tables"]["twentyone_games"]["Row"]
+          _outcome: string
+        }
+        Returns: {
+          created_at: string
+          dealer_cards: Json
+          deck: Json
+          finished_at: string | null
+          id: string
+          payout: number
+          player_cards: Json
+          status: string
+          user_id: string
+          wager: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "twentyone_games"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      _twentyone_hand: { Args: { _cards: Json }; Returns: Json }
+      _twentyone_state: {
+        Args: { _game: Database["public"]["Tables"]["twentyone_games"]["Row"] }
+        Returns: Json
+      }
       buy_item: { Args: { _item: string }; Returns: undefined }
       can_read_lore_entry: { Args: { _entry: string }; Returns: boolean }
       cast_spell: {
@@ -893,12 +1046,20 @@ export type Database = {
         Args: { _char: string; _chest: string }
         Returns: undefined
       }
+      expire_puzzle: { Args: { _id: string }; Returns: Json }
       finish_farkle_game: {
         Args: { _game: string; _won: boolean }
         Returns: Json
       }
+      finish_fractal_run: {
+        Args: { _run_id: string; _victory: boolean }
+        Returns: Json
+      }
       get_active_combat: { Args: never; Returns: Json }
+      get_active_twentyone_game: { Args: never; Returns: Json }
       get_combat_state: { Args: { _session_id: string }; Returns: Json }
+      get_fractal_state: { Args: never; Returns: Json }
+      get_puzzle_time_limit_seconds: { Args: never; Returns: number }
       get_vigor: { Args: never; Returns: number }
       has_role: {
         Args: {
@@ -926,6 +1087,7 @@ export type Database = {
       }
       play_combat: { Args: never; Returns: Json }
       play_dice: { Args: { _bet: number }; Returns: Json }
+      purchase_fractal_upgrade: { Args: { _upgrade: string }; Returns: Json }
       restore_vigor: { Args: { _amount: number }; Returns: number }
       set_lore_comment_pinned: {
         Args: { _comment: string; _pinned: boolean }
@@ -935,7 +1097,9 @@ export type Database = {
       start_combat: { Args: never; Returns: Json }
       start_farkle_game: { Args: never; Returns: number }
       start_farkle_game_with_bet: { Args: { _wager: number }; Returns: string }
+      start_fractal_run: { Args: { _corruption: number }; Returns: string }
       start_puzzle: { Args: never; Returns: Json }
+      start_twentyone_game: { Args: { _wager: number }; Returns: Json }
       transfer_coins: {
         Args: { _amount: number; _to: string }
         Returns: undefined
@@ -944,6 +1108,8 @@ export type Database = {
         Args: { _chest: string; _to: string }
         Returns: undefined
       }
+      twentyone_hit: { Args: { _game_id: string }; Returns: Json }
+      twentyone_stand: { Args: { _game_id: string }; Returns: Json }
       use_consumable: { Args: { _chest: string }; Returns: undefined }
     }
     Enums: {

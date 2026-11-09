@@ -120,7 +120,7 @@ function Sheet() {
   const set = (patch: Partial<Char>) => setC((current) => current ? { ...current, ...patch } : current);
 
   async function toggleActive() {
-    if (!isOwner || !me?.id || activationBusy) return;
+    if (!c || !isOwner || !me?.id || activationBusy) return;
     setActivationBusy(true);
     try {
       const nextId = isActive ? null : c.id;
