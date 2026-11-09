@@ -1276,7 +1276,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           <div className="fractals-arena-frame relative">
             <canvas ref={canvasRef} className="block h-[min(78vh,720px)] min-h-[430px] w-full touch-none" onPointerDown={pointerStart} onPointerMove={pointerMove} onPointerUp={pointerEnd} onPointerCancel={pointerEnd} aria-label="Arena de sobrevivência. Use WASD, setas ou arraste o dedo para mover." />
             <section className="fractals-game-hud absolute left-3 top-3">
-              <div className="fractals-game-hud__header"><span className="fractals-game-hud__sigil"><GemIcon/></span><div><strong>{mission.name}</strong><small>{mission.pathName} · {CORRUPTION_LEVELS[corruption].name}</small></div></div>
+              <div className="fractals-game-hud__header"><span className="fractals-game-hud__sigil"><GemIcon/></span><div><strong>{mission.name}</strong><small>{mission.pathName} · {CORRUPTION_LEVELS[corruption].name}</small><em><Timer/> {formatTime(hud.elapsed)} / 12:00</em></div></div>
               <div className="fractals-game-hud__stat">
                 <div><span><Heart/> VIDA</span><b>{Math.ceil(hud.hp)} / {Math.ceil(hud.maxHp)}</b></div>
                 <div className="fractals-game-hud__bar"><i className="is-life" style={{width:`${clamp(hud.hp / Math.max(1, hud.maxHp), 0, 1) * 100}%`}}/></div>
@@ -1295,10 +1295,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               </div>}
             </section>
             <div className="fractals-arena-meta absolute right-3 top-3">
-              <span><Timer/> {formatTime(hud.elapsed)} / 12:00</span>
               {!result && <Button size="sm" variant="outline" className="h-8 border-white/15 bg-black/55 text-white hover:bg-white/10" onClick={() => setPaused((v) => !v)}><Pause className="mr-1 h-3.5 w-3.5"/>{paused ? "Continuar" : "Pausar"}</Button>}
             </div>
-            <canvas ref={canvasRef} className="block h-[min(64vh,560px)] min-h-[390px] w-full touch-none" onPointerDown={pointerStart} onPointerMove={pointerMove} onPointerUp={pointerEnd} onPointerCancel={pointerEnd} aria-label="Arena de sobrevivência. Use WASD, setas ou arraste o dedo para mover." />
             <div className="fractals-arena-hint pointer-events-none absolute bottom-3 left-3">WASD / setas / toque para mover</div>
             {bossMessage && !result && <div className="pointer-events-none absolute inset-x-0 top-14 text-center"><span className="rounded-full border border-violet-300/40 bg-violet-950/80 px-4 py-2 text-xs font-semibold tracking-wider text-violet-100">{mission.bossTitle.toUpperCase()} DESPERTOU</span></div>}
             {paused && !result && levelChoices.length === 0 && <div className="fractals-pause-overlay absolute inset-0 grid place-items-center overflow-y-auto p-3 sm:p-5">
