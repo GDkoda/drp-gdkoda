@@ -830,7 +830,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                     <div className="rounded-lg border p-2"><p className="text-xs font-semibold">Coroa de Estilhaços</p><p className="text-[10px] text-muted-foreground">Nível {purchases.projectiles}/3 · desbloqueia até +2 projéteis, um por coleta.</p><Button size="sm" className="mt-2 w-full" disabled={shopBusy || purchases.projectiles>=3 || (!isMaster && fractalBalance < FRACTAL_SHOP.projectiles[purchases.projectiles].cost)} onClick={() => void purchaseUpgrade("projectiles")}>{purchases.projectiles>=3 ? "Máximo" : isMaster ? "Desbloquear grátis" : "Comprar · " + FRACTAL_SHOP.projectiles[purchases.projectiles].cost.toLocaleString("pt-BR")}</Button></div>
                   </div>
                 </section>
-              </div>}}
+              </div>}
               <p className="mt-2 text-[10px] text-muted-foreground">Coletáveis especiais: 18% de chance de aparecerem nas escolhas de nível; Brutos e Elites podem derrubá-los conforme o nível de desbloqueio. Alcance: +10% por coleta; projéteis: +1 por coleta, até 3 no total. Efeitos reiniciam a cada expedição.</p>
             </div>
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-muted/35 p-3">
