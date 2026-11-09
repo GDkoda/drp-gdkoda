@@ -1,0 +1,234 @@
+/* Ecos dos Fractais — "Relicário da Fenda" visual system */
+.fractals-hub {
+  --fx-ink: #09080f;
+  --fx-panel: #13111c;
+  --fx-panel-2: #1b1727;
+  --fx-violet: #aa82f6;
+  --fx-violet-bright: #d6bbff;
+  --fx-gold: #e7c27e;
+  --fx-muted: rgba(232, 222, 245, .58);
+  color: #f5efff;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+}
+.fractals-hub * { box-sizing: border-box; }
+.fractals-lobby-card {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border: 1px solid rgba(202, 169, 255, .20) !important;
+  border-radius: 26px !important;
+  background:
+    radial-gradient(ellipse at 12% 0%, rgba(125, 76, 181, .18), transparent 38%),
+    radial-gradient(ellipse at 92% 96%, rgba(187, 133, 71, .09), transparent 31%),
+    linear-gradient(145deg, #171321 0%, #0e0d15 52%, #17121e 100%) !important;
+  color: #f6efff !important;
+  box-shadow: 0 28px 90px rgba(0,0,0,.40), inset 0 1px rgba(255,255,255,.06) !important;
+}
+.fractals-lobby-card::before,
+.fractals-lobby-card::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: 50%;
+}
+.fractals-lobby-card::before {
+  width: 420px; height: 420px; right: -235px; top: 180px;
+  border: 1px solid rgba(195, 157, 255, .10);
+  box-shadow: 0 0 0 24px rgba(195,157,255,.018), 0 0 0 52px rgba(195,157,255,.012), 0 0 90px rgba(148,95,220,.08);
+}
+.fractals-lobby-card::after {
+  width: 300px; height: 300px; left: -220px; bottom: -160px;
+  background: radial-gradient(circle, rgba(174, 118, 235, .10), transparent 70%);
+}
+.fractals-lobby { position: relative; display: flex; flex-direction: column; gap: 18px; padding: clamp(14px, 2.5vw, 26px); }
+.fractals-hero {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(150px, 210px);
+  align-items: center;
+  gap: 18px;
+  min-height: 232px;
+  overflow: hidden;
+  padding: clamp(20px, 3.7vw, 38px);
+  border: 1px solid rgba(218, 190, 255, .17);
+  border-radius: 22px;
+  background:
+    linear-gradient(112deg, rgba(12,10,19,.98) 2%, rgba(27,19,41,.94) 54%, rgba(34,23,45,.80) 100%),
+    #171321;
+  box-shadow: inset 0 1px rgba(255,255,255,.08), 0 16px 45px rgba(0,0,0,.20);
+}
+.fractals-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: .48;
+  background:
+    linear-gradient(135deg, transparent 0 39%, rgba(203,170,255,.08) 39.1%, transparent 39.4%),
+    linear-gradient(135deg, transparent 0 44%, rgba(203,170,255,.045) 44.1%, transparent 44.4%),
+    radial-gradient(ellipse at 74% 44%, rgba(162,100,235,.22), transparent 42%);
+}
+.fractals-hero__copy { position: relative; z-index: 1; min-width: 0; }
+.fractals-eyebrow { display: flex; align-items: center; gap: 9px; color: #c7a9ed; font-size: 9px; font-weight: 900; letter-spacing: .23em; }
+.fractals-eyebrow__dot { width: 7px; height: 7px; border-radius: 50%; background: #e7c27e; box-shadow: 0 0 12px rgba(231,194,126,.9); }
+.fractals-eyebrow__line { width: min(90px, 14vw); height: 1px; background: linear-gradient(90deg, rgba(231,194,126,.65), transparent); }
+.fractals-title {
+  margin: 13px 0 0;
+  color: #fbf4ff;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(34px, 5.1vw, 58px);
+  font-weight: 800;
+  letter-spacing: -.065em;
+  line-height: .86;
+  text-shadow: 0 5px 32px rgba(160,112,224,.17);
+}
+.fractals-title span { color: #d4b3fb; font-size: .52em; letter-spacing: .22em; vertical-align: .28em; }
+.fractals-hero__text { max-width: 530px; margin: 16px 0 0; color: rgba(239,229,249,.67); font-size: 13px; line-height: 1.7; }
+.fractals-hero__tags { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 17px; }
+.fractals-hero__tags span { padding: 5px 8px; border: 1px solid rgba(225,205,255,.12); border-radius: 6px; background: rgba(255,255,255,.035); color: rgba(237,224,255,.58); font-size: 8px; font-weight: 900; letter-spacing: .15em; }
+.fractals-hero__sigil { position: relative; display: grid; min-height: 175px; place-items: center; isolation: isolate; }
+.fractals-hero__sigil-ring {
+  position: absolute; width: 164px; height: 164px; border: 1px solid rgba(216,190,255,.29); border-radius: 50%;
+  box-shadow: 0 0 0 12px rgba(194,159,255,.035), inset 0 0 30px rgba(176,126,244,.10), 0 0 55px rgba(170,119,237,.18);
+  transform: rotate(-24deg);
+}
+.fractals-hero__sigil-ring::before,
+.fractals-hero__sigil-ring::after { content:""; position:absolute; inset:13px; border:1px dashed rgba(231,194,126,.35); border-radius:50%; }
+.fractals-hero__sigil-ring::after { inset: -18px 38px; border: 1px solid rgba(218,190,255,.20); border-radius: 46%; transform: rotate(56deg); }
+.fractals-hero__sigil-core {
+  position: relative; display: grid; width: 92px; height: 92px; place-items: center;
+  border: 1px solid rgba(244,222,184,.45); border-radius: 25px; color: #f4d79e;
+  background: linear-gradient(145deg, rgba(228,195,130,.22), rgba(113,73,157,.32) 50%, rgba(16,11,24,.95));
+  box-shadow: 0 0 30px rgba(190,137,255,.20), inset 0 1px rgba(255,255,255,.22);
+  transform: rotate(45deg);
+}
+.fractals-hero__sigil-core svg:first-child { width: 26px; height: 26px; transform: rotate(-45deg) translate(-2px,-2px); filter: drop-shadow(0 0 10px rgba(236,207,155,.65)); }
+.fractals-hero__sigil-core svg:last-child { position:absolute; width: 15px; height: 15px; right: 9px; bottom: 9px; transform: rotate(-45deg); color: #d9b4ff; }
+.fractals-hero__sigil-caption { position:absolute; bottom: -1px; color: rgba(222,199,250,.42); font-size: 8px; font-weight: 900; letter-spacing: .26em; line-height: 1.4; text-align:center; }
+.fractals-lobby-grid { display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); gap: 13px; }
+.fractals-panel {
+  position: relative; overflow: hidden; min-width: 0; padding: 17px;
+  border: 1px solid rgba(217,195,245,.13); border-radius: 18px;
+  background: linear-gradient(145deg, rgba(255,255,255,.055), rgba(255,255,255,.012)), #13111c;
+  box-shadow: inset 0 1px rgba(255,255,255,.055), 0 10px 26px rgba(0,0,0,.12);
+}
+.fractals-panel::after { content:""; position:absolute; right:-45px; bottom:-64px; width:150px; height:150px; border:1px solid rgba(194,160,239,.10); border-radius:50%; box-shadow:0 0 0 13px rgba(194,160,239,.025),0 0 0 29px rgba(194,160,239,.018); pointer-events:none; }
+.fractals-panel__label { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:15px; color:rgba(215,195,242,.45); font-size:8px; font-weight:900; letter-spacing:.18em; }
+.fractals-panel__label b { color:#d6b6ff; font-size:9px; letter-spacing:.20em; }
+.fractals-mission-heading { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.fractals-mission-heading h3 { color:#fff4ff; font-family:Georgia,serif; font-size:clamp(18px,2.2vw,24px); font-weight:700; line-height:1.1; }
+.fractals-mission-heading p { margin-top:5px; color:rgba(225,211,239,.55); font-size:11px; letter-spacing:.08em; text-transform:uppercase; }
+.fractals-mission-reward { display:grid; min-width:67px; padding:9px 11px; justify-items:center; gap:2px; border:1px solid rgba(232,198,131,.24); border-radius:12px; background:linear-gradient(145deg,rgba(233,190,108,.12),rgba(0,0,0,.14)); color:#efd39b; }
+.fractals-mission-reward svg { width:14px; height:14px; }
+.fractals-mission-reward b { font-size:19px; line-height:1; }
+.fractals-mission-reward small { font-size:7px; font-weight:900; letter-spacing:.15em; }
+.fractals-mission-lore { max-width:450px; margin-top:15px; color:rgba(238,228,247,.72); font-size:12px; line-height:1.7; }
+.fractals-mission-lock { display:flex; align-items:center; gap:8px; margin-top:14px; padding-top:12px; border-top:1px solid rgba(255,255,255,.07); color:rgba(231,206,161,.58); font-size:10px; line-height:1.4; }
+.fractals-mission-lock svg { width:13px; height:13px; flex:0 0 auto; }
+.fractals-corruption-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:7px; }
+.fractals-corruption-option {
+  position:relative; display:flex; min-width:0; min-height:65px; flex-direction:column; align-items:flex-start; justify-content:center; gap:4px;
+  padding:8px 10px; border:1px solid rgba(226,210,245,.12); border-radius:10px; background:rgba(255,255,255,.025); color:#ddd2ed; text-align:left; transition:transform .2s,border-color .2s,background .2s,box-shadow .2s;
+}
+.fractals-corruption-option:not(:disabled):hover { transform:translateY(-2px); border-color:rgba(204,173,251,.43); background:rgba(152,105,221,.10); }
+.fractals-corruption-option.is-selected { border-color:rgba(231,194,126,.68); background:linear-gradient(135deg,rgba(180,130,238,.20),rgba(222,174,93,.075)); color:#fff3dc; box-shadow:0 0 22px rgba(161,113,222,.11),inset 0 0 0 1px rgba(231,194,126,.10); }
+.fractals-corruption-option.is-locked { opacity:.35; cursor:not-allowed; }
+.fractals-corruption-option__index { color:rgba(210,190,234,.42); font-size:7px; font-weight:900; letter-spacing:.15em; }
+.fractals-corruption-option strong { overflow:hidden; max-width:100%; color:inherit; font-size:10px; font-weight:800; text-overflow:ellipsis; white-space:nowrap; }
+.fractals-corruption-option__state { color:rgba(224,204,243,.40); font-size:7px; font-weight:900; letter-spacing:.1em; }
+.fractals-corruption-option.is-selected .fractals-corruption-option__state { color:#e9c98c; }
+.fractals-corruption-description { margin-top:12px; color:rgba(235,226,246,.74); font-size:11px; line-height:1.55; }
+.fractals-corruption-hint { margin-top:5px; color:rgba(220,190,255,.42); font-size:9px; }
+.fractals-vault {
+  position:relative; isolation:isolate; overflow:hidden; padding:18px;
+  border:1px solid rgba(226,195,135,.23); border-radius:22px;
+  background:
+    radial-gradient(ellipse at 0% 0%,rgba(163,111,220,.20),transparent 39%),
+    radial-gradient(ellipse at 100% 100%,rgba(202,152,76,.11),transparent 34%),
+    linear-gradient(135deg,#201a2c,#111019 55%,#18131f);
+  box-shadow:0 23px 58px rgba(0,0,0,.30),inset 0 1px rgba(255,255,255,.08);
+}
+.fractals-vault::before { content:""; position:absolute; z-index:-1; right:-100px; top:-150px; width:310px; height:310px; border:1px solid rgba(228,196,139,.12); border-radius:50%; box-shadow:0 0 0 18px rgba(228,196,139,.025),0 0 0 44px rgba(228,196,139,.018); }
+.fractals-vault__header { display:flex; align-items:center; justify-content:space-between; gap:14px; }
+.fractals-vault__brand { display:flex; align-items:center; gap:13px; min-width:0; }
+.fractals-vault__icon { position:relative; display:grid; width:48px; height:48px; flex:0 0 auto; place-items:center; border:1px solid rgba(237,205,145,.34); border-radius:15px; background:linear-gradient(145deg,rgba(228,189,115,.20),rgba(142,91,187,.18) 52%,rgba(0,0,0,.32)); color:#f1d59c; box-shadow:0 0 28px rgba(207,157,83,.12),inset 0 1px rgba(255,255,255,.12); }
+.fractals-vault__icon svg { width:20px; height:20px; }
+.fractals-vault__icon span { position:absolute; width:5px; height:5px; top:8px; right:8px; border-radius:50%; background:#e8ca91; box-shadow:0 0 10px #e8ca91; }
+.fractals-vault__eyebrow { color:rgba(232,198,133,.60); font-size:8px; font-weight:900; letter-spacing:.22em; }
+.fractals-vault__brand h3 { margin-top:3px; color:#fff4df; font-family:Georgia,serif; font-size:clamp(17px,2.6vw,23px); font-weight:800; letter-spacing:.025em; line-height:1.05; }
+.fractals-vault__brand h3 span { color:#c7a5ee; }
+.fractals-vault__brand p:last-child { margin-top:5px; color:rgba(231,220,243,.50); font-size:10px; line-height:1.45; }
+.fractals-wallet { display:grid; justify-items:end; gap:4px; padding-left:14px; border-left:1px solid rgba(255,255,255,.09); }
+.fractals-wallet small { color:rgba(234,205,151,.52); font-size:7px; font-weight:900; letter-spacing:.20em; }
+.fractals-wallet strong { color:#f4dba7; font-size:18px; font-weight:900; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.fractals-wallet i { color:rgba(244,219,167,.52); font-size:9px; font-style:normal; }
+.fractals-vault__toggle { height:29px !important; padding:0 9px !important; border-color:rgba(206,174,243,.28) !important; background:rgba(255,255,255,.055) !important; color:#eadbfb !important; font-size:8px !important; font-weight:900 !important; letter-spacing:.12em; }
+.fractals-vault__toggle span { margin-left:4px; color:#e9cc91; }
+.fractals-vault__content { margin-top:19px; padding-top:16px; border-top:1px solid rgba(255,255,255,.08); animation:fractals-rise .28s ease-out both; }
+.fractals-shop-tabs { display:grid; grid-template-columns:1fr 1fr; gap:7px; padding:5px; border:1px solid rgba(220,192,244,.11); border-radius:13px; background:rgba(0,0,0,.22); }
+.fractals-shop-tabs button { display:flex; align-items:center; justify-content:center; gap:8px; min-width:0; padding:11px 9px; border:1px solid transparent; border-radius:9px; background:transparent; color:rgba(229,216,245,.49); font-size:9px; font-weight:900; letter-spacing:.12em; transition:all .2s; }
+.fractals-shop-tabs button svg { width:14px; height:14px; }
+.fractals-shop-tabs button small { display:grid; width:18px; height:18px; place-items:center; border:1px solid rgba(255,255,255,.1); border-radius:6px; color:inherit; font-size:8px; }
+.fractals-shop-tabs button:hover { background:rgba(255,255,255,.045); color:#f4eaff; }
+.fractals-shop-tabs button.is-active { border-color:rgba(227,191,128,.28); background:linear-gradient(110deg,rgba(158,105,214,.20),rgba(224,180,106,.11)); color:#f4dca8; box-shadow:inset 0 1px rgba(255,255,255,.07),0 6px 20px rgba(0,0,0,.16); }
+.fractals-shop-section { margin-top:15px; animation:fractals-rise .22s ease-out both; }
+.fractals-shop-section__heading { display:flex; align-items:center; gap:10px; margin-bottom:11px; }
+.fractals-shop-section__heading > span { display:grid; width:26px; height:26px; flex:0 0 auto; place-items:center; border:1px solid rgba(227,191,128,.26); border-radius:8px; background:rgba(227,191,128,.08); color:#e8cb94; font-size:9px; font-weight:900; }
+.fractals-shop-section__heading h4 { color:#f7edff; font-size:11px; font-weight:900; letter-spacing:.11em; text-transform:uppercase; }
+.fractals-shop-section__heading p { margin-top:3px; color:rgba(223,210,238,.43); font-size:9px; }
+.fractals-vault__content .grid { gap:9px !important; }
+.fractals-vault__content .group.relative.overflow-hidden,
+.fractals-vault__content .rounded-xl.border { min-width:0; padding:13px; border-radius:13px; border-color:rgba(218,195,245,.15); background:linear-gradient(145deg,rgba(255,255,255,.062),rgba(255,255,255,.018)),#171420; box-shadow:inset 0 1px rgba(255,255,255,.055),0 8px 18px rgba(0,0,0,.12); transition:transform .2s,border-color .2s,box-shadow .2s; }
+.fractals-vault__content .group.relative.overflow-hidden:hover,
+.fractals-vault__content .rounded-xl.border:hover { transform:translateY(-2px); border-color:rgba(214,184,251,.35); box-shadow:inset 0 1px rgba(255,255,255,.08),0 13px 24px rgba(0,0,0,.20); }
+.fractals-vault__content .text-xs.font-semibold { color:#f6ecff; font-size:11px; font-weight:800; }
+.fractals-vault__content .text-muted-foreground { color:rgba(228,216,241,.48) !important; }
+.fractals-vault__content button:not(.fractals-vault__toggle) { min-height:34px; border:1px solid rgba(230,201,145,.24); border-radius:9px; background:linear-gradient(110deg,#b89ae7,#e4c58d) !important; color:#1a1420 !important; font-size:9px; font-weight:900; letter-spacing:.04em; box-shadow:0 5px 16px rgba(184,149,222,.10); }
+.fractals-vault__content button:not(.fractals-vault__toggle):disabled { opacity:.42; filter:saturate(.55); }
+.fractals-vault__footnote { margin-top:15px; padding-top:11px; border-top:1px solid rgba(255,255,255,.07); color:rgba(220,207,237,.38); font-size:9px; line-height:1.55; }
+.fractals-launch { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:16px 18px; border:1px solid rgba(231,194,126,.30); border-radius:17px; background:radial-gradient(ellipse at 4% 100%,rgba(166,105,225,.18),transparent 48%),linear-gradient(110deg,rgba(226,185,105,.10),rgba(149,99,205,.075),rgba(0,0,0,.06)); box-shadow:inset 0 1px rgba(255,255,255,.065),0 12px 28px rgba(0,0,0,.16); }
+.fractals-launch__copy > span { color:rgba(231,194,126,.62); font-size:7px; font-weight:900; letter-spacing:.21em; }
+.fractals-launch__copy h3 { margin-top:4px; color:#fff2dc; font-family:Georgia,serif; font-size:20px; font-weight:800; }
+.fractals-launch__copy p { margin-top:4px; color:rgba(230,218,242,.51); font-size:10px; line-height:1.45; }
+.fractals-launch__button { display:flex !important; align-items:center; gap:9px; min-height:46px !important; padding:0 18px !important; border:1px solid rgba(255,240,207,.55) !important; border-radius:11px !important; background:linear-gradient(110deg,#d9bb8a,#f1d8a5 55%,#bca0e6) !important; color:#201927 !important; font-size:9px !important; font-weight:1000 !important; letter-spacing:.12em; box-shadow:0 8px 26px rgba(210,170,109,.20),inset 0 1px rgba(255,255,255,.55); transition:transform .2s,filter .2s; white-space:nowrap; }
+.fractals-launch__button:hover { transform:translateY(-2px); filter:brightness(1.08); }
+.fractals-launch__button svg { width:15px; height:15px; }
+.fractals-launch__button span { font-size:15px; }
+@keyframes fractals-rise { from { opacity:0; transform:translateY(7px); } to { opacity:1; transform:translateY(0); } }
+@media (max-width: 680px) {
+  .fractals-lobby { gap:12px; padding:11px; }
+  .fractals-hero { grid-template-columns:minmax(0,1fr) 86px; min-height:185px; gap:6px; padding:18px 15px; }
+  .fractals-hero__sigil { min-height:105px; transform:scale(.68); transform-origin:center; margin:0 -29px; }
+  .fractals-title { font-size:clamp(30px,8vw,42px); }
+  .fractals-hero__text { margin-top:11px; font-size:11px; }
+  .fractals-hero__tags { gap:5px; margin-top:12px; }
+  .fractals-hero__tags span { padding:4px 6px; font-size:7px; }
+  .fractals-lobby-grid { grid-template-columns:1fr; gap:10px; }
+  .fractals-panel { padding:13px; }
+  .fractals-corruption-grid { grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; }
+  .fractals-corruption-option { min-height:58px; padding:7px; }
+  .fractals-corruption-option strong { font-size:9px; }
+  .fractals-vault { padding:13px; border-radius:17px; }
+  .fractals-vault__header { align-items:flex-start; gap:8px; }
+  .fractals-vault__brand { gap:9px; }
+  .fractals-vault__icon { width:37px; height:37px; border-radius:11px; }
+  .fractals-vault__icon svg { width:17px; height:17px; }
+  .fractals-vault__brand h3 { font-size:15px; }
+  .fractals-vault__brand p:last-child { max-width:230px; font-size:9px; }
+  .fractals-wallet { padding-left:8px; }
+  .fractals-wallet strong { font-size:14px; }
+  .fractals-wallet small { font-size:6px; }
+  .fractals-vault__toggle { height:26px !important; padding:0 6px !important; font-size:7px !important; }
+  .fractals-shop-tabs button { gap:5px; padding:10px 5px; font-size:7px; letter-spacing:.07em; }
+  .fractals-shop-tabs button svg { width:12px; height:12px; }
+  .fractals-launch { align-items:flex-start; flex-direction:column; padding:14px; }
+  .fractals-launch__copy h3 { font-size:18px; }
+  .fractals-launch__button { width:100%; justify-content:center; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fractals-hub *, .fractals-hub *::before, .fractals-hub *::after { animation-duration:.01ms !important; transition-duration:.01ms !important; }
+}

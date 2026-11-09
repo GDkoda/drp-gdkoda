@@ -7,6 +7,7 @@ import { CORRUPTION_LEVELS, FRACTAL_MISSIONS, RUN_DURATION_SECONDS } from "@/lib
 import { FRACTAL_SHOP, FRACTAL_RARITY_TIERS } from "@/lib/fractals/economy";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import "./fractal-arena.css";
 
 type UpgradeId = "power" | "haste" | "vitality" | "swift" | "special_area" | "special_experience" | "special_projectile_range" | "special_projectiles";
 type Upgrade = { id: UpgradeId; name: string; description: string; icon: typeof Zap; rarity?: "normal" | "rare" | "epic" };
@@ -16,6 +17,7 @@ type Shot = { x: number; y: number; vx: number; vy: number; damage: number; life
 type Gem = { x: number; y: number; value: number; radius: number };
 type SpecialDrop = { x: number; y: number; kind: "area" | "experience" | "projectile_range" | "projectiles"; radius: number };
 type Particle = { x: number; y: number; vx: number; vy: number; life: number; color: string };
+type DamageNumber = { x: number; y: number; value: number; life: number; maxLife: number; drift: number };
 type SpriteKey = "boss" | "elite" | "wraith" | "charger" | "brute" | "playerIdle" | "playerMove" | "playerCast" | "xpGem" | "specialXP" | "specialArea" | "specialRange" | "specialProjectiles" | "projectile";
 type SpriteMap = Partial<Record<SpriteKey, HTMLImageElement>>;
 type PlayerVisualAction = "idle" | "move" | "cast";
@@ -41,8 +43,8 @@ function parsePurchaseState(raw: any): PurchaseState {
 
 type GameState = {
   width: number; height: number; last: number; elapsed: number; spawnTimer: number; shotTimer: number; bossSpawned: boolean;
-  player: { x: number; y: number; hp: number; maxHp: number; speed: number; damage: number; fireRate: number; invuln: number; xp: number; nextXp: number; level: number; pickupRadius: number; xpMultiplier: number; specialAreaStacks: number; specialExperienceStacks: number; projectileRangeStacks: number; projectileRangeMultiplier: number; projectileStacks: number; projectileLife: number; facing: number; castFacing: number; castTimer: number; moving: boolean; spriteAction: PlayerVisualAction; spriteDirection: number; previousSpriteAction: PlayerVisualAction; previousSpriteDirection: number; spriteBlend: number };
-  enemies: Enemy[]; shots: Shot[]; gems: Gem[]; specialDrops: SpecialDrop[]; particles: Particle[]; kills: number; ended: boolean;
+  player: { x: number; y: number; hp: number; maxHp: number; speed: number; damage: number; fireRate: number; invuln: number; hitFlash: number; xp: number; nextXp: number; level: number; pickupRadius: number; xpMultiplier: number; specialAreaStacks: number; specialExperienceStacks: number; projectileRangeStacks: number; projectileRangeMultiplier: number; projectileStacks: number; projectileLife: number; facing: number; castFacing: number; castTimer: number; moving: boolean; spriteAction: PlayerVisualAction; spriteDirection: number; previousSpriteAction: PlayerVisualAction; previousSpriteDirection: number; spriteBlend: number };
+  enemies: Enemy[]; shots: Shot[]; gems: Gem[]; specialDrops: SpecialDrop[]; particles: Particle[]; damageNumbers: DamageNumber[]; kills: number; ended: boolean;
 };
 
 const UPGRADES: Upgrade[] = [
@@ -134,8 +136,8 @@ function makeGame(width: number, height: number, purchases: PurchaseState): Game
   const projectileLife = PROJECTILE_BASE_LIFE * PROJECTILE_DURATION_MULTIPLIERS[clamp(purchases.projectile_duration, 0, 3)];
   return {
     width, height, last: 0, elapsed: 0, spawnTimer: 0.4, shotTimer: 0.25, bossSpawned: false,
-    player: { x: width / 2, y: height / 2, hp: maxHp, maxHp, speed: 205, damage: 22, fireRate: 0.72, invuln: 0, xp: 0, nextXp: 12, level: 1, pickupRadius: 85, xpMultiplier: 1, specialAreaStacks: 0, specialExperienceStacks: 0, projectileRangeStacks: 0, projectileRangeMultiplier: 1, projectileStacks: 0, projectileLife, facing: 0, castFacing: 0, castTimer: 0, moving: false, spriteAction: "idle", spriteDirection: 0, previousSpriteAction: "idle", previousSpriteDirection: 0, spriteBlend: 1 },
-    enemies: [], shots: [], gems: [], specialDrops: [], particles: [], kills: 0, ended: false,
+    player: { x: width / 2, y: height / 2, hp: maxHp, maxHp, speed: 205, damage: 22, fireRate: 0.72, invuln: 0, hitFlash: 0, xp: 0, nextXp: 12, level: 1, pickupRadius: 85, xpMultiplier: 1, specialAreaStacks: 0, specialExperienceStacks: 0, projectileRangeStacks: 0, projectileRangeMultiplier: 1, projectileStacks: 0, projectileLife, facing: 0, castFacing: 0, castTimer: 0, moving: false, spriteAction: "idle", spriteDirection: 0, previousSpriteAction: "idle", previousSpriteDirection: 0, spriteBlend: 1 },
+    enemies: [], shots: [], gems: [], specialDrops: [], particles: [], damageNumbers: [], kills: 0, ended: false,
   };
 }
 
@@ -165,7 +167,7 @@ function spawnEnemy(game: GameState, missionId: number, elapsed: number, corrupt
   }
 }
 
-function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: number, missionId: number, sprites: SpriteMap = {}, showPlayerHp = true) {
+function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: number, missionId: number, sprites: SpriteMap = {}, showPlayerHp = true, showDamageNumbers = true) {
   const { width, height, player } = game;
   ctx.clearRect(0, 0, width, height);
   // Ruínas de Último Silêncio: piso de lajes, rachaduras, pilares e cristais.
@@ -336,6 +338,30 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
   });
   ctx.restore(); ctx.globalAlpha = 1;
 
+  if (showDamageNumbers) {
+    ctx.save();
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.font = "900 15px Inter, ui-sans-serif, system-ui, sans-serif";
+    ctx.lineJoin = "round";
+    for (const number of game.damageNumbers) {
+      const progress = 1 - number.life / number.maxLife;
+      const alpha = clamp(number.life / number.maxLife, 0, 1);
+      const label = `−${Math.max(1, Math.round(number.value))}`;
+      const y = number.y - progress * 13;
+      ctx.globalAlpha = alpha;
+      ctx.lineWidth = 3.5;
+      ctx.strokeStyle = "rgba(20,7,17,.92)";
+      ctx.shadowColor = "rgba(255,53,89,.9)";
+      ctx.shadowBlur = 12;
+      ctx.strokeText(label, number.x, y);
+      ctx.fillStyle = "#fff4ed";
+      ctx.fillText(label, number.x, y);
+    }
+    ctx.restore();
+    ctx.globalAlpha = 1;
+  }
+
   // Protagonista chibi: mistura os quadros antigos e novos para transições suaves.
   ctx.save(); ctx.translate(player.x, player.y);
   const bob = Math.sin(game.elapsed * (player.moving ? 13 : 3.4)) * (player.moving ? 1.6 : 0.8);
@@ -343,12 +369,15 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
   ctx.beginPath(); ctx.ellipse(0, 13, 17, 7, 0, 0, Math.PI * 2); ctx.fill();
   ctx.translate(0, bob);
   const auraPulse = 0.94 + Math.sin(game.elapsed * 4.4) * 0.07;
-  const energyAura = ctx.createRadialGradient(0, 2, 3, 0, 2, 31 * auraPulse);
-  energyAura.addColorStop(0, "rgba(190,139,255,.34)");
-  energyAura.addColorStop(0.42, "rgba(128,82,221,.18)");
-  energyAura.addColorStop(1, "rgba(83,146,255,0)");
+  const hitIntensity = clamp(player.hitFlash / 0.3, 0, 1);
+  const energyAura = ctx.createRadialGradient(0, 2, 3, 0, 2, (31 + hitIntensity * 12) * auraPulse);
+  energyAura.addColorStop(0, hitIntensity > 0.02 ? `rgba(255,42,66,${0.38 + hitIntensity * 0.34})` : "rgba(190,139,255,.34)");
+  energyAura.addColorStop(0.42, hitIntensity > 0.02 ? `rgba(220,24,58,${0.22 + hitIntensity * 0.26})` : "rgba(128,82,221,.18)");
+  energyAura.addColorStop(1, hitIntensity > 0.02 ? "rgba(255,24,62,0)" : "rgba(83,146,255,0)");
   ctx.save(); ctx.globalAlpha = 0.9; ctx.fillStyle = energyAura;
-  ctx.beginPath(); ctx.ellipse(0, 2, 28 * auraPulse, 34 * auraPulse, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+  ctx.shadowColor = hitIntensity > 0.02 ? "#ff183d" : "#a75cff";
+  ctx.shadowBlur = hitIntensity > 0.02 ? 24 + hitIntensity * 25 : 0;
+  ctx.beginPath(); ctx.ellipse(0, 2, (28 + hitIntensity * 8) * auraPulse, (34 + hitIntensity * 8) * auraPulse, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore();
   const getPlayerSheet = (action: PlayerVisualAction) =>
     action === "cast" ? sprites.playerCast : action === "move" ? sprites.playerMove : sprites.playerIdle;
   const isPlayerSheetReady = (sheet?: HTMLImageElement) =>
@@ -359,9 +388,9 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
   const previousReady = isPlayerSheetReady(previousSheet);
   if (currentReady) {
     const baseAlpha = player.invuln > 0 && Math.floor(game.elapsed * 14) % 2 === 0 ? 0.62 : 1;
-    ctx.filter = player.invuln > 0 ? "brightness(1.45) saturate(.7)" : "none";
-    ctx.shadowColor = player.invuln > 0 ? "#ffffff" : "#a75cff";
-    ctx.shadowBlur = player.invuln > 0 ? 22 : player.spriteAction === "cast" ? 18 : 10;
+    ctx.filter = hitIntensity > 0.02 ? "brightness(1.75) sepia(.8) saturate(4) hue-rotate(300deg)" : player.invuln > 0 ? "brightness(1.25) saturate(1.2)" : "none";
+    ctx.shadowColor = hitIntensity > 0.02 ? "#ff2448" : player.invuln > 0 ? "#ff7182" : "#a75cff";
+    ctx.shadowBlur = hitIntensity > 0.02 ? 28 + hitIntensity * 24 : player.invuln > 0 ? 16 : player.spriteAction === "cast" ? 18 : 10;
     const blend = previousReady ? clamp(player.spriteBlend, 0, 1) : 1;
     if (previousReady && blend < 1) {
       ctx.globalAlpha = baseAlpha * (1 - blend);
@@ -382,7 +411,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     }
   } else {
     // Fallback vetorial enquanto as imagens carregam ou em caso de falha de rede.
-    ctx.shadowColor = player.invuln > 0 ? "#ffffff" : "#a75cff"; ctx.shadowBlur = player.invuln > 0 ? 28 : 17;
+    ctx.shadowColor = hitIntensity > 0.02 ? "#ff2448" : player.invuln > 0 ? "#ff7182" : "#a75cff"; ctx.shadowBlur = hitIntensity > 0.02 ? 30 + hitIntensity * 20 : player.invuln > 0 ? 20 : 17;
     ctx.fillStyle = "#292039"; ctx.beginPath(); ctx.moveTo(-12, -3); ctx.lineTo(-9, -13); ctx.lineTo(0, -19); ctx.lineTo(9, -13); ctx.lineTo(13, 8); ctx.lineTo(7, 14); ctx.lineTo(-9, 12); ctx.closePath(); ctx.fill();
     ctx.strokeStyle = "#8d65b5"; ctx.lineWidth = 1.5; ctx.stroke();
     ctx.fillStyle = "#4a315e"; ctx.beginPath(); ctx.moveTo(-10,-7);ctx.lineTo(-5,-17);ctx.lineTo(2,-20);ctx.lineTo(10,-12);ctx.lineTo(7,1);ctx.lineTo(0,9);ctx.lineTo(-8,2);ctx.closePath();ctx.fill();
@@ -431,9 +460,12 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
   const [completedCorruptions, setCompletedCorruptions] = useState<number[]>([]);
   const [purchases, setPurchases] = useState<PurchaseState>(DEFAULT_PURCHASES);
   const [showPlayerHp, setShowPlayerHp] = useState(true);
+  const [showDamageNumbers, setShowDamageNumbers] = useState(true);
+  const [shopSection, setShopSection] = useState<"permanent" | "relics">("permanent");
   const [runId, setRunId] = useState<string | null>(null);
   const [shopBusy, setShopBusy] = useState(false);
   const [shopOpen, setShopOpen] = useState(false);
+  const [shopSection, setShopSection] = useState<"permanent" | "relics">("permanent");
   const [shopError, setShopError] = useState<string | null>(null);
   const spritesRef = useRef<SpriteMap>({});
   useEffect(() => {
@@ -553,6 +585,9 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
       if (!game.ended && !paused && levelChoices.length === 0) {
         game.elapsed += dt;
         game.player.invuln = Math.max(0, game.player.invuln - dt);
+        game.player.hitFlash = Math.max(0, game.player.hitFlash - dt);
+        game.damageNumbers.forEach((number) => { number.life -= dt; number.y -= 24 * dt; number.x += number.drift * dt; });
+        game.damageNumbers = game.damageNumbers.filter((number) => number.life > 0);
         game.player.castTimer = Math.max(0, game.player.castTimer - dt);
         const keys = keysRef.current;
         let dx = (keys.has("d") || keys.has("arrowright") ? 1 : 0) - (keys.has("a") || keys.has("arrowleft") ? 1 : 0);
@@ -622,7 +657,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             if (enemy.windup > 0) {
               enemy.windup -= dt;
               if (enemy.windup <= 0 && distance(game.player.x, game.player.y, enemy.targetX, enemy.targetY) < 101 && game.player.invuln <= 0) {
-                game.player.hp = Math.max(0, game.player.hp - 28); game.player.invuln = 0.85;
+                game.player.hp = Math.max(0, game.player.hp - 28); game.player.invuln = 0.85; game.player.hitFlash = 0.3;
               }
             } else if (enemy.attack <= 0) {
               const phaseTwo = enemy.hp <= enemy.maxHp * 0.5;
@@ -647,7 +682,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               enemy.dashTime = Math.max(0, enemy.dashTime - dt);
               enemy.x += enemy.targetX * 390 * dt; enemy.y += enemy.targetY * 390 * dt;
               const dashDistance = distance(game.player.x, game.player.y, enemy.x, enemy.y);
-              if (dashDistance < enemy.radius + 20 && game.player.invuln <= 0) { game.player.hp = Math.max(0, game.player.hp - enemy.damage); game.player.invuln = .65; enemy.dashTime = 0; }
+              if (dashDistance < enemy.radius + 20 && game.player.invuln <= 0) { game.player.hp = Math.max(0, game.player.hp - enemy.damage); game.player.invuln = .65; game.player.hitFlash = 0.3; enemy.dashTime = 0; }
             } else if (enemy.windup > 0) {
               enemy.windup = Math.max(0, enemy.windup - dt);
               if (enemy.windup === 0) { enemy.dashTime = .34; enemy.attack = 2.25; }
@@ -664,13 +699,13 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               const steerLength = Math.max(1, Math.hypot(steerX, steerY));
               enemy.x += (steerX / steerLength) * enemy.speed * dt;
               enemy.y += (steerY / steerLength) * enemy.speed * dt;
-              if (d < enemy.radius + 15 && enemy.attack <= 0 && game.player.invuln <= 0) { game.player.hp = Math.max(0, game.player.hp - enemy.damage); game.player.invuln = .65; enemy.attack = 1.1; }
+              if (d < enemy.radius + 15 && enemy.attack <= 0 && game.player.invuln <= 0) { game.player.hp = Math.max(0, game.player.hp - enemy.damage); game.player.invuln = .65; game.player.hitFlash = 0.3; enemy.attack = 1.1; }
             }
           } else if (enemy.type === "brute") {
             if (enemy.windup > 0) {
               enemy.windup = Math.max(0, enemy.windup - dt);
               if (enemy.windup === 0) {
-                if (distance(game.player.x, game.player.y, enemy.x, enemy.y) < 78 + 12 && game.player.invuln <= 0) { game.player.hp = Math.max(0, game.player.hp - enemy.damage * 1.35); game.player.invuln = .8; }
+                if (distance(game.player.x, game.player.y, enemy.x, enemy.y) < 78 + 12 && game.player.invuln <= 0) { game.player.hp = Math.max(0, game.player.hp - enemy.damage * 1.35); game.player.invuln = .8; game.player.hitFlash = 0.3; }
                 for (let i=0;i<10;i++) { const a=i*Math.PI/5; game.particles.push({x:enemy.x,y:enemy.y,vx:Math.cos(a)*105,vy:Math.sin(a)*105,life:.35,color:"#e7a56d"}); }
                 enemy.attack = 2.7;
               }
@@ -685,7 +720,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                 enemy.x += (steerX / steerLength) * enemy.speed * dt;
                 enemy.y += (steerY / steerLength) * enemy.speed * dt;
               }
-              if (d < enemy.radius + 15 && enemy.attack <= 0 && game.player.invuln <= 0) { game.player.hp = Math.max(0, game.player.hp - enemy.damage); game.player.invuln = .72; enemy.attack = 1.2; }
+              if (d < enemy.radius + 15 && enemy.attack <= 0 && game.player.invuln <= 0) { game.player.hp = Math.max(0, game.player.hp - enemy.damage); game.player.invuln = .72; game.player.hitFlash = 0.3; enemy.attack = 1.2; }
             }
           } else {
             const separation = getEnemySeparation(enemy, game.enemies);
@@ -710,7 +745,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               enemy.y += (steerY / steerLength) * enemy.speed * dt;
             }
             if (enemy.type === "elite" && enemy.attack <= 0) {
-              if (d < 105 && game.player.invuln <= 0) { game.player.hp = Math.max(0, game.player.hp - 7); game.player.invuln = 0.35; }
+              if (d < 105 && game.player.invuln <= 0) { game.player.hp = Math.max(0, game.player.hp - 7); game.player.invuln = 0.35; game.player.hitFlash = 0.3; }
               enemy.attack = 1.7;
             }
             if (enemy.type === "wraith" && d < enemy.radius + 15 && enemy.attack <= 0 && game.player.invuln <= 0) {
@@ -722,6 +757,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           for (const enemy of game.enemies) {
             if (enemy.hp > 0 && distance(shot.x, shot.y, enemy.x, enemy.y) < enemy.radius + 5) {
               enemy.hp -= shot.damage; enemy.flash = 0.09; shot.life = 0;
+              game.damageNumbers.push({ x: enemy.x + (Math.random() - 0.5) * 10, y: enemy.y - enemy.radius - 8, value: shot.damage, life: 0.82, maxLife: 0.82, drift: (Math.random() - 0.5) * 14 });
+              if (game.damageNumbers.length > 36) game.damageNumbers.shift();
               if (enemy.hp <= 0) {
                 game.kills += 1;
                 if (enemy.type !== "boss") {
@@ -778,12 +815,12 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           setHud({ hp: game.player.hp, maxHp: game.player.maxHp, xp: game.player.xp, nextXp: game.player.nextXp, level: game.player.level, kills: game.kills, elapsed: game.elapsed, phase: snapshot.phaseLabel, pressure: snapshot.totalPressure });
         }
       }
-      drawGame(ctx, game, corruption, missionId, spritesRef.current, showPlayerHp);
+      drawGame(ctx, game, corruption, missionId, spritesRef.current, showPlayerHp, showDamageNumbers);
       frame = requestAnimationFrame(tick);
     };
     frame = requestAnimationFrame(tick);
     return () => { cancelAnimationFrame(frame); window.removeEventListener("resize", resize); window.removeEventListener("keydown", onKeyDown); window.removeEventListener("keyup", onKeyUp); };
-  }, [running, paused, levelChoices.length, missionId, corruption, speedMultiplier, runId, purchases, showPlayerHp]);
+  }, [running, paused, levelChoices.length, missionId, corruption, speedMultiplier, runId, purchases, showPlayerHp, showDamageNumbers]);
 
   const pointerStart = (event: PointerEvent<HTMLCanvasElement>) => {
     const rect = event.currentTarget.getBoundingClientRect();
@@ -804,41 +841,37 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
   };
 
   return (
-    <div className="space-y-4" data-fractal-arena>
+    <div className="fractals-hub" data-fractal-arena>
       {!running && !result && (
-        <Card className="relative overflow-hidden border border-violet-300/20 bg-[#100e18] text-[#f4edf8] shadow-[0_24px_80px_rgba(0,0,0,0.38)]">
-          <div className="relative space-y-5 overflow-hidden p-4 sm:p-6"><div className="pointer-events-none absolute -right-24 -top-28 h-72 w-72 rounded-full bg-violet-500/10 blur-3xl"/><div className="pointer-events-none absolute -bottom-36 left-1/4 h-64 w-64 rounded-full bg-amber-400/[0.06] blur-3xl"/>
-            <div className="relative flex flex-wrap items-start justify-between gap-3 rounded-2xl border border-violet-200/15 bg-gradient-to-br from-violet-300/[0.10] via-[#20182d]/75 to-[#13111c]/90 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
-              <div><p className="text-xs uppercase tracking-[.22em] text-muted-foreground">Sobrevivência • Protótipo jogável</p><h2 className="mt-1 font-display text-2xl text-gold">Ecos dos Fractais</h2><p className="mt-1 max-w-xl text-sm text-muted-foreground">Enfrente as criaturas atraídas pelo Vazio. Mova-se, colete fragmentos de experiência e deixe suas armas responderem automaticamente.</p></div>
-              <div className="grid h-14 w-14 place-items-center rounded-2xl border border-amber-200/25 bg-gradient-to-br from-amber-200/20 via-violet-400/20 to-violet-950/60 text-amber-100 shadow-[0_0_35px_rgba(167,119,255,0.2)]"><Sparkles className="h-7 w-7 drop-shadow-[0_0_8px_rgba(255,220,150,0.8)]"/></div>
+        <Card className="fractals-lobby-card">
+          <div className="fractals-lobby">
+            <div className="fractals-hero">
+              <div className="fractals-hero__copy"><p className="fractals-eyebrow"><span className="fractals-eyebrow__dot"/><span>PROTOCOLO DE SOBREVIVÊNCIA · 01</span><span className="fractals-eyebrow__line"/></p><h2 className="fractals-title">ECOS <span>DOS</span><br/>FRACTAIS</h2><p className="fractals-hero__text">O Vazio abriu uma fenda. Atravesse as ruínas, recolha fragmentos e sobreviva ao despertar do guardião.</p><div className="fractals-hero__tags"><span>ROGUELIKE</span><span>12 MIN</span><span>COMBATE AUTOMÁTICO</span></div></div>
+              <div className="fractals-hero__sigil" aria-hidden="true"><div className="fractals-hero__sigil-ring"/><div className="fractals-hero__sigil-core"><Sparkles/><Gem/></div><span className="fractals-hero__sigil-caption">NEXUS<br/>FRACTALIS</span></div>
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="relative overflow-hidden rounded-2xl border border-violet-200/15 bg-gradient-to-br from-white/[0.075] to-white/[0.018] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-xl">
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Missão</p>
-                <div className="flex items-center justify-between gap-2"><div><p className="font-semibold">{mission.name}</p><p className="text-xs text-muted-foreground">{mission.pathName}</p></div><span className="text-xs text-muted-foreground">Máx. {mission.maxFractals} fractais</span></div>
-                <p className="mt-2 text-xs text-muted-foreground">{mission.identity}</p>
-                <p className="mt-2 text-xs text-amber-200">As outras quatro missões serão liberadas com a progressão e os custos definidos.</p>
-              </div>
-              <div className="relative overflow-hidden rounded-2xl border border-violet-200/15 bg-gradient-to-br from-white/[0.075] to-white/[0.018] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-xl">
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Nível de Corrupção</p>
-                <div className="grid grid-cols-3 gap-1.5">
+            <div className="fractals-lobby-grid">
+              <section className="fractals-panel fractals-mission-panel">
+                <div className="fractals-panel__label"><span>01 / OPERAÇÃO ATIVA</span><b>MISSÃO</b></div>
+                <div className="fractals-mission-heading"><div><h3>{mission.name}</h3><p>{mission.pathName}</p></div><div className="fractals-mission-reward"><Gem/><b>{mission.maxFractals}</b><small>FRÁCTIS</small></div></div><p className="fractals-mission-lore">{mission.identity}</p><div className="fractals-mission-lock"><Shield/><span>Outras regiões serão reveladas conforme a jornada avança.</span></div>
+              </section>
+              <section className="fractals-panel fractals-corruption-panel"><div className="fractals-panel__label"><span>02 / RISCO DA FENDA</span><b>CORRUPÇÃO</b></div>
+                <div className="fractals-corruption-grid">
                   {CORRUPTION_LEVELS.map((level) => {
                     const locked = level.level > unlockedCorruption;
-                    return <button key={level.level} type="button" disabled={locked} onClick={() => setCorruption(level.level)} className={`rounded-xl border px-2.5 py-2.5 text-left text-xs transition-all duration-200 ${corruption === level.level ? "border-violet-300/70 bg-gradient-to-br from-violet-400/25 to-indigo-500/10 text-white shadow-[0_0_22px_rgba(167,139,250,0.18)] ring-1 ring-violet-300/20" : locked ? "cursor-not-allowed border-white/5 bg-black/10 text-white/25" : "border-white/10 bg-white/[0.035] text-white/65 hover:border-violet-200/35 hover:bg-violet-400/10"}`}>
-                      <span className="block font-semibold">{level.level} · {level.name} {locked ? "🔒" : completedCorruptions.includes(level.level) ? "✓" : ""}</span>
+                    return <button key={level.level} type="button" disabled={locked} onClick={() => setCorruption(level.level)} className={`fractals-corruption-option ${corruption === level.level ? "is-selected" : ""} ${locked ? "is-locked" : ""}`}>
+                      <span className="fractals-corruption-option__index">NÍVEL {String(level.level).padStart(2,"0")}</span><strong>{level.name}</strong><span className="fractals-corruption-option__state">{locked ? "BLOQUEADO" : completedCorruptions.includes(level.level) ? "CONCLUÍDO" : corruption === level.level ? "SELECIONADO" : "DISPONÍVEL"}</span>
                     </button>;
                   })}
                 </div>
-                <p className="mt-2 text-xs text-muted-foreground">{CORRUPTION_LEVELS[corruption].description} {unlockedCorruption < 5 ? "Conclua com sucesso para liberar o próximo nível." : "Todos os níveis foram liberados."}</p>
-              </div>
+                <p className="fractals-corruption-description">{CORRUPTION_LEVELS[corruption].description}</p><p className="fractals-corruption-hint">{unlockedCorruption < 5 ? "Vença a expedição para romper o próximo selo." : "Todos os selos foram rompidos."}</p>
+              </section>
             </div>
 
-            <div className="relative overflow-hidden rounded-[1.6rem] border border-amber-200/20 bg-[radial-gradient(ellipse_at_top_left,rgba(174,127,255,0.18),transparent_42%),radial-gradient(ellipse_at_bottom_right,rgba(232,180,92,0.10),transparent_45%),linear-gradient(145deg,#211a2d,#12111c_62%,#171321)] p-4 shadow-[0_22px_60px_rgba(0,0,0,0.32),inset_0_1px_0_rgba(255,255,255,0.08)] sm:p-5">
-              <div className="relative flex flex-wrap items-center justify-between gap-3"><div className="flex items-center gap-3"><div className="grid h-12 w-12 place-items-center rounded-2xl border border-amber-100/25 bg-gradient-to-br from-amber-200/20 via-violet-400/20 to-violet-950/70 text-amber-100 shadow-[0_0_28px_rgba(223,177,100,0.14)]"><ShoppingBag className="h-5 w-5"/></div><div><p className="flex items-center gap-2 text-sm font-black tracking-wide text-white">Arsenal de Fractais <span className="rounded-full border border-amber-200/20 bg-amber-100/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-[.18em] text-amber-100/80">Mercado arcano</span></p><p className="mt-0.5 text-xs text-violet-100/55">Forje vantagens permanentes e desperte relíquias para suas expedições.</p></div></div><div className="flex items-center gap-2"><div className="rounded-xl border border-amber-200/20 bg-black/25 px-3 py-2 text-right shadow-inner"><p className="text-[9px] font-bold uppercase tracking-[.16em] text-amber-100/55">Saldo</p><p className="text-lg font-black tabular-nums text-amber-100">{fractalBalance.toLocaleString("pt-BR")} <span className="text-[10px] font-semibold text-amber-100/55">FR</span></p></div><Button size="sm" variant="outline" className="h-10 border-violet-100/20 bg-white/[0.06] px-3 text-white hover:border-violet-100/40 hover:bg-violet-300/10" onClick={() => setShopOpen((v) => !v)}>{shopOpen ? "Recolher −" : "Explorar +"}</Button></div></div>
+            <section className="fractals-vault">
+              <div className="fractals-vault__header"><div className="fractals-vault__brand"><div className="fractals-vault__icon"><ShoppingBag/><span/></div><div><p className="fractals-vault__eyebrow">CÂMARA DE PROGRESSÃO</p><h3>ARSENAL <span>DE FRACTAIS</span></h3><p>Forje atributos, desperte relíquias e prepare sua próxima incursão.</p></div></div><div className="fractals-wallet"><small>SEU COFRE</small><strong>{fractalBalance.toLocaleString("pt-BR")} <i>FR</i></strong><Button size="sm" variant="outline" className="fractals-vault__toggle" onClick={() => setShopOpen((v) => !v)}>{shopOpen ? "FECHAR" : "ABRIR ARSENAL"} <span>{shopOpen ? "−" : "+"}</span></Button></div></div>
               {shopError && <p className="mt-2 text-xs text-amber-300">{shopError}</p>}
-              {shopOpen && <div className="mt-3 space-y-4">
-                <section>
-                  <div className="mb-2 flex items-center justify-between"><p className="text-[10px] font-black uppercase tracking-[.18em] text-amber-100">Atributos permanentes</p><span className="text-[10px] text-muted-foreground">Aplicados em toda expedição</span></div>
+              {shopOpen && <div className="fractals-vault__content"><div className="fractals-shop-tabs" role="tablist" aria-label="Categorias da loja"><button type="button" role="tab" aria-selected={shopSection === "permanent"} className={shopSection === "permanent" ? "is-active" : ""} onClick={() => setShopSection("permanent")}><Crown/> FORJA PERMANENTE <small>05</small></button><button type="button" role="tab" aria-selected={shopSection === "relics"} className={shopSection === "relics" ? "is-active" : ""} onClick={() => setShopSection("relics")}><Sparkles/> RELÍQUIAS DE CAMPO <small>04</small></button></div>
+                {shopSection === "permanent" && <section className="fractals-shop-section"><div className="fractals-shop-section__heading"><span>01</span><div><h4>Aprimoramentos permanentes</h4><p>Vantagens inscritas na essência do personagem.</p></div></div>
                   <div className="grid gap-2 sm:grid-cols-2">
                     <div className="group relative overflow-hidden rounded-xl border border-rose-200/20 bg-gradient-to-br from-rose-400/[0.12] to-[#1b1422] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] transition hover:-translate-y-0.5 hover:border-rose-200/40"><p className="text-xs font-semibold">Vida reforçada</p><p className="text-[10px] text-muted-foreground">Nível {purchases.health}/5 · +10 HP máximo por nível (máx. +50).</p><Button size="sm" className="mt-3 h-9 w-full rounded-xl bg-gradient-to-r from-amber-200 to-yellow-300 font-bold text-[#291f12] shadow-[0_5px_18px_rgba(234,179,8,0.12)] transition hover:brightness-110" disabled={shopBusy || purchases.health>=5 || (!isMaster && fractalBalance < FRACTAL_SHOP.health[purchases.health].cost)} onClick={() => void purchaseUpgrade("health")}>{purchases.health>=5 ? "Máximo" : isMaster ? "Melhorar grátis" : "Comprar · " + FRACTAL_SHOP.health[purchases.health].cost.toLocaleString("pt-BR")}</Button></div>
                     <div className="group relative overflow-hidden rounded-xl border border-violet-200/20 bg-gradient-to-br from-violet-400/[0.12] to-[#171425] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] transition hover:-translate-y-0.5 hover:border-violet-200/40"><p className="text-xs font-semibold">Duração dos projéteis</p><p className="text-[10px] text-muted-foreground">Nível {purchases.projectile_duration}/3 · 0,8 s até 1,6 s (+25%, +50%, +100%).</p><Button size="sm" className="mt-3 h-9 w-full rounded-xl bg-gradient-to-r from-amber-200 to-yellow-300 font-bold text-[#291f12] shadow-[0_5px_18px_rgba(234,179,8,0.12)] transition hover:brightness-110" disabled={shopBusy || purchases.projectile_duration>=3 || (!isMaster && fractalBalance < FRACTAL_SHOP.projectile_duration[purchases.projectile_duration].cost)} onClick={() => void purchaseUpgrade("projectile_duration")}>{purchases.projectile_duration>=3 ? "Máximo" : isMaster ? "Melhorar grátis" : "Comprar · " + FRACTAL_SHOP.projectile_duration[purchases.projectile_duration].cost.toLocaleString("pt-BR")}</Button></div>
@@ -846,9 +879,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                     <div className="group relative overflow-hidden rounded-xl border border-violet-100/15 bg-gradient-to-br from-white/[0.07] to-[#171521] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition duration-200 hover:-translate-y-0.5 hover:border-violet-100/30 hover:shadow-[0_12px_25px_rgba(0,0,0,0.18)]"><p className="text-xs font-semibold">Velocidade 2x</p><p className="text-[10px] text-muted-foreground">Desbloqueio permanente</p><Button size="sm" className="mt-3 h-9 w-full rounded-xl bg-gradient-to-r from-amber-200 to-yellow-300 font-bold text-[#291f12] shadow-[0_5px_18px_rgba(234,179,8,0.12)] transition hover:brightness-110" disabled={shopBusy || purchases.speed_2x || (!isMaster && fractalBalance < FRACTAL_SHOP.speed.double.cost)} onClick={() => void purchaseUpgrade("speed_2x")}>{purchases.speed_2x ? "Adquirido" : isMaster ? "Grátis" : "Comprar · 1.000"}</Button></div>
                     <div className="group relative overflow-hidden rounded-xl border border-violet-100/15 bg-gradient-to-br from-white/[0.07] to-[#171521] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition duration-200 hover:-translate-y-0.5 hover:border-violet-100/30 hover:shadow-[0_12px_25px_rgba(0,0,0,0.18)]"><p className="text-xs font-semibold">Velocidade 3x</p><p className="text-[10px] text-muted-foreground">Requer 2x · Desbloqueio permanente</p><Button size="sm" className="mt-3 h-9 w-full rounded-xl bg-gradient-to-r from-amber-200 to-yellow-300 font-bold text-[#291f12] shadow-[0_5px_18px_rgba(234,179,8,0.12)] transition hover:brightness-110" disabled={shopBusy || purchases.speed_3x || (!isMaster && (!purchases.speed_2x || fractalBalance < FRACTAL_SHOP.speed.triple.cost))} onClick={() => void purchaseUpgrade("speed_3x")}>{purchases.speed_3x ? "Adquirido" : isMaster ? "Grátis" : "Comprar · 2.000"}</Button></div>
                   </div>
-                </section>
-                <section>
-                  <div className="mb-2 flex items-center justify-between"><p className="text-[10px] font-black uppercase tracking-[.18em] text-violet-100">Coletáveis especiais</p><span className="text-[10px] text-muted-foreground">Efeitos temporários por expedição</span></div>
+                </section>}
+                {shopSection === "relics" && <section className="fractals-shop-section"><div className="fractals-shop-section__heading"><span>02</span><div><h4>Relíquias de expedição</h4><p>Desbloqueie artefatos que podem surgir durante uma incursão.</p></div></div>
                   <div className="grid gap-2 sm:grid-cols-2">
                     <div className="group relative overflow-hidden rounded-xl border border-violet-100/15 bg-gradient-to-br from-white/[0.07] to-[#171521] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition duration-200 hover:-translate-y-0.5 hover:border-violet-100/30 hover:shadow-[0_12px_25px_rgba(0,0,0,0.18)]"><p className="text-xs font-semibold">Área de coleta</p><p className="text-[10px] text-muted-foreground">Nível {purchases.area}/3 · N1: escolhas; N2: 1% de queda; N3: 3%.</p><Button size="sm" className="mt-3 h-9 w-full rounded-xl bg-gradient-to-r from-amber-200 to-yellow-300 font-bold text-[#291f12] shadow-[0_5px_18px_rgba(234,179,8,0.12)] transition hover:brightness-110" disabled={shopBusy || purchases.area>=3 || (!isMaster && fractalBalance < FRACTAL_SHOP.area[purchases.area].cost)} onClick={() => void purchaseUpgrade("area")}>{purchases.area>=3 ? "Máximo" : isMaster ? "Desbloquear grátis" : "Comprar · " + FRACTAL_SHOP.area[purchases.area].cost.toLocaleString("pt-BR")}</Button></div>
                     <div className="group relative overflow-hidden rounded-xl border border-violet-100/15 bg-gradient-to-br from-white/[0.07] to-[#171521] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition duration-200 hover:-translate-y-0.5 hover:border-violet-100/30 hover:shadow-[0_12px_25px_rgba(0,0,0,0.18)]"><p className="text-xs font-semibold">Afinidade de experiência</p><p className="text-[10px] text-muted-foreground">Nível {purchases.experience}/3 · N1: escolhas; N2: 1% de queda; N3: 3%.</p><Button size="sm" className="mt-3 h-9 w-full rounded-xl bg-gradient-to-r from-amber-200 to-yellow-300 font-bold text-[#291f12] shadow-[0_5px_18px_rgba(234,179,8,0.12)] transition hover:brightness-110" disabled={shopBusy || purchases.experience>=3 || (!isMaster && fractalBalance < FRACTAL_SHOP.experience[purchases.experience].cost)} onClick={() => void purchaseUpgrade("experience")}>{purchases.experience>=3 ? "Máximo" : isMaster ? "Desbloquear grátis" : "Comprar · " + FRACTAL_SHOP.experience[purchases.experience].cost.toLocaleString("pt-BR")}</Button></div>
@@ -856,12 +888,13 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                     <div className="group relative overflow-hidden rounded-xl border border-violet-100/15 bg-gradient-to-br from-white/[0.07] to-[#171521] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition duration-200 hover:-translate-y-0.5 hover:border-violet-100/30 hover:shadow-[0_12px_25px_rgba(0,0,0,0.18)]"><p className="text-xs font-semibold">Coroa de Estilhaços</p><p className="text-[10px] text-muted-foreground">Nível {purchases.projectiles}/3 · desbloqueia até +2 projéteis, um por coleta.</p><Button size="sm" className="mt-3 h-9 w-full rounded-xl bg-gradient-to-r from-amber-200 to-yellow-300 font-bold text-[#291f12] shadow-[0_5px_18px_rgba(234,179,8,0.12)] transition hover:brightness-110" disabled={shopBusy || purchases.projectiles>=3 || (!isMaster && fractalBalance < FRACTAL_SHOP.projectiles[purchases.projectiles].cost)} onClick={() => void purchaseUpgrade("projectiles")}>{purchases.projectiles>=3 ? "Máximo" : isMaster ? "Desbloquear grátis" : "Comprar · " + FRACTAL_SHOP.projectiles[purchases.projectiles].cost.toLocaleString("pt-BR")}</Button></div>
                   </div>
                 </section>
+                </section>}
               </div>}
-              <p className="relative mt-3 border-t border-white/[0.07] pt-3 text-[10px] leading-relaxed text-violet-100/40">Relíquias têm 18% de chance de surgir nas escolhas de nível. Brutos e Elites podem derrubá-las conforme o grau de desbloqueio. Seus efeitos são reiniciados ao começar uma nova expedição.</p>
-            </div>
-            <div className="relative flex flex-wrap items-center justify-between gap-3 overflow-hidden rounded-2xl border border-amber-200/20 bg-gradient-to-r from-amber-200/[0.10] via-violet-400/[0.08] to-transparent p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
-              <div><p className="text-sm font-semibold">12 minutos de sobrevivência</p><p className="text-xs text-muted-foreground">Chefe corrompido surge aos 11 minutos. Derrotá-lo encerra a expedição.</p></div>
-              <Button onClick={start} className="h-11 gap-2 border border-amber-100/30 bg-gradient-to-r from-amber-200 via-yellow-300 to-amber-400 px-5 font-black text-[#251a0d] shadow-[0_8px_28px_rgba(234,179,8,0.18)] hover:brightness-110"><Play className="h-4 w-4" /> Iniciar expedição</Button>
+              <p className="fractals-vault__footnote">Relíquias têm 18% de chance de surgir nas escolhas de nível. Brutos e Elites podem derrubá-las conforme o grau de desbloqueio. Os efeitos são reiniciados ao iniciar outra expedição.</p>
+            </section>
+            <div className="fractals-launch">
+              <div className="fractals-launch__copy"><span>O PORTAL ESTÁ INSTÁVEL</span><h3>O Vazio aguarda.</h3><p>Sobreviva por 12 minutos. O guardião desperta ao final da incursão.</p></div>
+              <Button onClick={start} className="fractals-launch__button"><Play className="h-4 w-4"/> ENTRAR NA FENDA <span>↗</span></Button>
             </div>
           </div>
         </Card>
@@ -886,7 +919,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
  <div className="relative w-full max-w-md overflow-hidden rounded-[1.6rem] border border-violet-200/20 bg-[radial-gradient(ellipse_at_top_right,rgba(167,139,250,0.16),transparent_48%),linear-gradient(145deg,#282035,#171520_58%,#11121c)] p-4 shadow-[0_30px_100px_rgba(0,0,0,0.65)] sm:p-5">
   <div className="mb-4 flex items-center justify-between border-b border-white/10 pb-3"><div><p className="text-[9px] font-bold uppercase tracking-[.24em] text-violet-200/70">Ecos dos Fractais · Refúgio</p><h3 className="mt-1 font-display text-2xl text-white">Expedição pausada</h3></div><div className="grid h-11 w-11 place-items-center rounded-2xl border border-amber-200/20 bg-amber-200/10 text-amber-100 shadow-[0_0_24px_rgba(251,191,36,0.12)]"><Pause className="h-5 w-5"/></div></div>
   {pausePanel === "main" ? <>
-   <div className="grid grid-cols-2 gap-2"><Button variant="outline" className="h-auto justify-start gap-2 rounded-xl border-violet-100/15 bg-white/[0.055] py-3 text-white shadow-inner hover:border-violet-100/35 hover:bg-violet-300/10" onClick={() => setPausePanel("attributes")}><UserRound className="h-4 w-4"/> Atributos</Button><Button variant="outline" className="h-auto justify-start gap-2 rounded-xl border-violet-100/15 bg-white/[0.055] py-3 text-white shadow-inner hover:border-violet-100/35 hover:bg-violet-300/10" onClick={toggleFullscreen}><Maximize className="h-4 w-4"/> Tela cheia</Button><Button variant="outline" className="h-auto justify-start gap-2 rounded-xl border-violet-100/15 bg-white/[0.055] py-3 text-white shadow-inner hover:border-violet-100/35 hover:bg-violet-300/10" onClick={() => setShowPlayerHp((v) => !v)}><Heart className="h-4 w-4 text-rose-300"/> HP: {showPlayerHp ? "visível" : "oculto"}</Button></div>
+   <div className="grid grid-cols-2 gap-2"><Button variant="outline" className="h-auto justify-start gap-2 rounded-xl border-violet-100/15 bg-white/[0.055] py-3 text-white shadow-inner hover:border-violet-100/35 hover:bg-violet-300/10" onClick={() => setPausePanel("attributes")}><UserRound className="h-4 w-4"/> Atributos</Button><Button variant="outline" className="h-auto justify-start gap-2 rounded-xl border-violet-100/15 bg-white/[0.055] py-3 text-white shadow-inner hover:border-violet-100/35 hover:bg-violet-300/10" onClick={toggleFullscreen}><Maximize className="h-4 w-4"/> Tela cheia</Button><Button variant="outline" className="h-auto justify-start gap-2 rounded-xl border-violet-100/15 bg-white/[0.055] py-3 text-white shadow-inner hover:border-violet-100/35 hover:bg-violet-300/10" onClick={() => setShowPlayerHp((v) => !v)}><Heart className="h-4 w-4 text-rose-300"/> HP: {showPlayerHp ? "visível" : "oculto"}</Button><Button variant="outline" className="h-auto justify-start gap-2 rounded-xl border-violet-100/15 bg-white/[0.055] py-3 text-white shadow-inner hover:border-violet-100/35 hover:bg-violet-300/10" onClick={() => setShowDamageNumbers((v) => !v)}><Swords className="h-4 w-4 text-amber-200"/> Dano: {showDamageNumbers ? "visível" : "oculto"}</Button></div>
    <div className="mt-3 rounded-2xl border border-amber-100/10 bg-black/15 p-3 shadow-inner"><div className="mb-2 flex items-center gap-2 text-xs font-semibold text-white/75"><Gauge className="h-4 w-4"/> Velocidade da expedição</div><div className="grid grid-cols-3 gap-2">{([1,2,3] as const).map((speed) => <Button key={speed} size="sm" variant={speedMultiplier===speed?"default":"outline"} disabled={!isMaster && (speed===2 ? !purchases.speed_2x : speed===3 ? !purchases.speed_3x : false)} className={!isMaster && speed>1?"border-white/10 opacity-45":""} onClick={()=>setSpeedMultiplier(speed)}>{speed}x{!isMaster && (speed===2 ? !purchases.speed_2x : speed===3 ? !purchases.speed_3x : false)?" 🔒":""}</Button>)}</div>{!isMaster && <p className="mt-2 text-[10px] text-white/45">Desbloqueie 2x e 3x na loja de fractais.</p>}{isMaster && <p className="mt-2 text-[10px] text-emerald-200/70">Acesso de mestre: todas as velocidades liberadas para testes.</p>}</div>
    <Button className="mt-3 h-11 w-full border border-amber-100/25 bg-gradient-to-r from-amber-200 to-yellow-300 font-bold text-[#251a0d] shadow-[0_8px_24px_rgba(234,179,8,0.15)] hover:brightness-110" onClick={() => {setPausePanel("main");setPaused(false)}}><Play className="mr-2 h-4 w-4"/> Retomar expedição</Button>
   </> : <>
