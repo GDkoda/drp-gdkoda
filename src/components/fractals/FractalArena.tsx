@@ -16,12 +16,12 @@ type Shot = { x: number; y: number; vx: number; vy: number; damage: number; life
 type Gem = { x: number; y: number; value: number; radius: number };
 type SpecialDrop = { x: number; y: number; kind: "area" | "experience"; radius: number };
 type Particle = { x: number; y: number; vx: number; vy: number; life: number; color: string };
-type SpriteKey = "player" | "boss" | "elite";
+type SpriteKey = "boss" | "elite" | "playerIdle" | "playerMove" | "playerCast";
 type SpriteMap = Partial<Record<SpriteKey, HTMLImageElement>>;
 
 type GameState = {
   width: number; height: number; last: number; elapsed: number; spawnTimer: number; shotTimer: number; bossSpawned: boolean;
-  player: { x: number; y: number; hp: number; maxHp: number; speed: number; damage: number; fireRate: number; invuln: number; xp: number; nextXp: number; level: number; pickupRadius: number; xpMultiplier: number; specialAreaStacks: number; specialExperienceStacks: number; facing: 1 | -1; moving: boolean };
+  player: { x: number; y: number; hp: number; maxHp: number; speed: number; damage: number; fireRate: number; invuln: number; xp: number; nextXp: number; level: number; pickupRadius: number; xpMultiplier: number; specialAreaStacks: number; specialExperienceStacks: number; facing: number; castFacing: number; castTimer: number; moving: boolean };
   enemies: Enemy[]; shots: Shot[]; gems: Gem[]; specialDrops: SpecialDrop[]; particles: Particle[]; kills: number; ended: boolean;
 };
 
@@ -52,11 +52,22 @@ function buildLevelChoices(game: GameState, areaLevel: number, experienceLevel: 
 function rollUpgradeRarity(tier: number): "normal" | "rare" | "epic" { const odds = FRACTAL_RARITY_TIERS[Math.max(0, Math.min(3, tier))]; const roll = Math.random() * 100; if (roll < odds.epic) return "epic"; if (roll < odds.epic + odds.rare) return "rare"; return "normal"; }
 const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(max, n));
 const distance = (ax: number, ay: number, bx: number, by: number) => Math.hypot(ax - bx, ay - by);
+const directionFromVector = (x: number, y: number) => {
+  if (Math.hypot(x, y) < 0.001) return 0;
+  const step = Math.round((Math.atan2(y, x) - Math.PI / 2) / (Math.PI / 4));
+  return ((step % 8) + 8) % 8;
+};
+const PLAYER_DIRECTION_VECTORS = [
+  { x: 0, y: 1 }, { x: -Math.SQRT1_2, y: Math.SQRT1_2 },
+  { x: -1, y: 0 }, { x: -Math.SQRT1_2, y: -Math.SQRT1_2 },
+  { x: 0, y: -1 }, { x: Math.SQRT1_2, y: -Math.SQRT1_2 },
+  { x: 1, y: 0 }, { x: Math.SQRT1_2, y: Math.SQRT1_2 },
+];
 
 function makeGame(width: number, height: number): GameState {
   return {
     width, height, last: 0, elapsed: 0, spawnTimer: 0.4, shotTimer: 0.25, bossSpawned: false,
-    player: { x: width / 2, y: height / 2, hp: 100, maxHp: 100, speed: 205, damage: 22, fireRate: 0.72, invuln: 0, xp: 0, nextXp: 12, level: 1, pickupRadius: 85, xpMultiplier: 1, specialAreaStacks: 0, specialExperienceStacks: 0, facing: 1, moving: false },
+    player: { x: width / 2, y: height / 2, hp: 100, maxHp: 100, speed: 205, damage: 22, fireRate: 0.72, invuln: 0, xp: 0, nextXp: 12, level: 1, pickupRadius: 85, xpMultiplier: 1, specialAreaStacks: 0, specialExperienceStacks: 0, facing: 0, castFacing: 0, castTimer: 0, moving: false },
     enemies: [], shots: [], gems: [], specialDrops: [], particles: [], kills: 0, ended: false,
   };
 }
@@ -216,21 +227,36 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
   });
   ctx.restore(); ctx.globalAlpha = 1;
 
-  // Protagonista ilustrado; mantém o desenho procedural como fallback enquanto o sprite carrega.
+  // Protagonista chibi: 8 direções x 3 ações (parado, movimento e conjuração).
   ctx.save(); ctx.translate(player.x, player.y);
-  const bob = Math.sin(game.elapsed * (player.moving ? 13 : 3.4)) * (player.moving ? 2.2 : 1.1);
-  ctx.fillStyle = "rgba(0,0,0,.42)"; ctx.beginPath(); ctx.ellipse(0, 13, 17, 7, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.scale(player.facing, 1); ctx.rotate(player.moving ? Math.sin(game.elapsed * 13) * 0.035 : 0);
+  const bob = Math.sin(game.elapsed * (player.moving ? 13 : 3.4)) * (player.moving ? 1.6 : 0.8);
+  ctx.fillStyle = "rgba(0,0,0,.42)";
+  ctx.beginPath(); ctx.ellipse(0, 13, 17, 7, 0, 0, Math.PI * 2); ctx.fill();
+  const spriteDirection = player.castTimer > 0 ? player.castFacing : player.facing;
+  const playerSprite = player.castTimer > 0 ? sprites.playerCast : player.moving ? sprites.playerMove : sprites.playerIdle;
   ctx.translate(0, bob);
-  if (sprites.player?.complete && sprites.player.naturalWidth > 0) {
+  if (playerSprite?.complete && playerSprite.naturalWidth >= 384 && playerSprite.naturalHeight >= 64) {
     const blinking = player.invuln > 0 && Math.floor(game.elapsed * 14) % 2 === 0;
     ctx.globalAlpha = blinking ? 0.62 : 1;
     ctx.filter = player.invuln > 0 ? "brightness(1.45) saturate(.7)" : "none";
     ctx.shadowColor = player.invuln > 0 ? "#ffffff" : "#a75cff";
-    ctx.shadowBlur = player.invuln > 0 ? 24 : 14;
-    ctx.drawImage(sprites.player, -25, -39, 50, 68);
+    ctx.shadowBlur = player.invuln > 0 ? 22 : player.castTimer > 0 ? 18 : 10;
+    // Cada tira possui oito quadros horizontais de 48 x 64 pixels.
+    ctx.drawImage(playerSprite, spriteDirection * 48, 0, 48, 64, -25, -34, 50, 68);
     ctx.filter = "none"; ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+    if (player.castTimer > 0) {
+      const aim = PLAYER_DIRECTION_VECTORS[spriteDirection] ?? PLAYER_DIRECTION_VECTORS[0];
+      ctx.save(); ctx.translate(aim.x * 19, aim.y * 16 - 2);
+      ctx.globalAlpha = clamp(player.castTimer / 0.24, 0.35, 1);
+      ctx.shadowColor = "#c28aff"; ctx.shadowBlur = 18;
+      ctx.fillStyle = "#f0dcff";
+      ctx.beginPath(); ctx.arc(0, 0, 3.2 + Math.sin(game.elapsed * 46) * 0.8, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "rgba(216,175,255,.9)"; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.arc(0, 0, 7, 0, Math.PI * 2); ctx.stroke();
+      ctx.restore();
+    }
   } else {
+    // Fallback vetorial enquanto as imagens carregam ou em caso de falha de rede.
     ctx.shadowColor = player.invuln > 0 ? "#ffffff" : "#a75cff"; ctx.shadowBlur = player.invuln > 0 ? 28 : 17;
     ctx.fillStyle = "#292039"; ctx.beginPath(); ctx.moveTo(-12, -3); ctx.lineTo(-9, -13); ctx.lineTo(0, -19); ctx.lineTo(9, -13); ctx.lineTo(13, 8); ctx.lineTo(7, 14); ctx.lineTo(-9, 12); ctx.closePath(); ctx.fill();
     ctx.strokeStyle = "#8d65b5"; ctx.lineWidth = 1.5; ctx.stroke();
@@ -242,7 +268,9 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     ctx.strokeStyle="#d7b5ff";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(8,-1);ctx.lineTo(17,-12);ctx.stroke();
     ctx.fillStyle="#d5a7ff";ctx.shadowColor="#bd7cff";ctx.shadowBlur=16;ctx.beginPath();ctx.arc(18,-13,3.5,0,Math.PI*2);ctx.fill();
   }
-  ctx.shadowBlur=0;ctx.strokeStyle="#f2d6ff";ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(0,0,19+Math.sin(game.elapsed*4)*1.2,0,Math.PI*2);ctx.stroke();
+  ctx.shadowBlur=0;
+  ctx.strokeStyle="#f2d6ff";ctx.lineWidth=1.2;
+  ctx.beginPath();ctx.arc(0,0,18+Math.sin(game.elapsed*4)*1.1,0,Math.PI*2);ctx.stroke();
   ctx.restore();
 
   if (corruption > 0) {
@@ -278,7 +306,9 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
   useEffect(() => {
     let cancelled = false;
     const assets: Record<SpriteKey, string> = {
-      player: "/fractals/sprites/player.webp",
+      playerIdle: "/fractals/sprites/player-idle-8dir.png",
+      playerMove: "/fractals/sprites/player-move-8dir.png",
+      playerCast: "/fractals/sprites/player-cast-8dir.png",
       boss: "/fractals/sprites/boss.webp",
       elite: "/fractals/sprites/elite.webp",
     };
@@ -376,12 +406,13 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
       if (!game.ended && !paused && levelChoices.length === 0) {
         game.elapsed += dt;
         game.player.invuln = Math.max(0, game.player.invuln - dt);
+        game.player.castTimer = Math.max(0, game.player.castTimer - dt);
         const keys = keysRef.current;
         let dx = (keys.has("d") || keys.has("arrowright") ? 1 : 0) - (keys.has("a") || keys.has("arrowleft") ? 1 : 0);
         let dy = (keys.has("s") || keys.has("arrowdown") ? 1 : 0) - (keys.has("w") || keys.has("arrowup") ? 1 : 0);
         if (joystickRef.current) { dx = joystickRef.current.x; dy = joystickRef.current.y; }
         game.player.moving = Math.hypot(dx, dy) > 0.05;
-        if (Math.abs(dx) > 0.05) game.player.facing = dx < 0 ? -1 : 1;
+        if (game.player.moving) game.player.facing = directionFromVector(dx, dy);
         const mag = Math.hypot(dx, dy) || 1;
         game.player.x = clamp(game.player.x + (dx / mag) * game.player.speed * dt, 18, game.width - 18);
         game.player.y = clamp(game.player.y + (dy / mag) * game.player.speed * dt, 18, game.height - 18);
@@ -403,6 +434,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           for (const enemy of game.enemies) { const d = distance(game.player.x, game.player.y, enemy.x, enemy.y); if (d < best) { best = d; target = enemy; } }
           const d = Math.max(1, distance(game.player.x, game.player.y, target.x, target.y));
           const speed = 440;
+          game.player.castFacing = directionFromVector(target.x - game.player.x, target.y - game.player.y);
+          game.player.castTimer = 0.24;
           game.shots.push({ x: game.player.x, y: game.player.y, vx: ((target.x - game.player.x) / d) * speed, vy: ((target.y - game.player.y) / d) * speed, damage: game.player.damage, life: 1.6 });
           game.shotTimer = game.player.fireRate;
         }
