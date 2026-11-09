@@ -24,6 +24,8 @@ function JogosRouteComponent() {
 
 
 export const Route = createFileRoute("/_authenticated/jogos")({
+  // Esta rota reúne vários minijogos; evita falha do splitter automático ao gerar SplitComponent.
+  codeSplitGroupings: [],
   head: () => ({ meta: [{ title: "Mini-jogos — Mesa 3D&T" }, { name: "description", content: "Combate tático, jogo de 21 com cartas e enigmas." }] }),
   component: JogosRouteComponent,
 });
