@@ -335,3 +335,166 @@
 @media (prefers-reduced-motion: reduce) {
   .fractals-hero__sigil-ring, .fractals-hero__sigil-core { animation:none !important; }
 }
+
+
+/* FractalGame — menus mais densos, legíveis e com hierarquia de loja */
+.fractals-lobby { gap: 11px; padding: clamp(11px, 1.7vw, 18px); }
+.fractals-hero { min-height: 198px; gap: 12px; padding: clamp(17px, 2.5vw, 27px); }
+.fractals-hero__text { margin-top: 11px; font-size: 13px; line-height: 1.55; }
+.fractals-hero__tags { margin-top: 12px; }
+.fractals-panel { padding: 13px; border-radius: 15px; }
+.fractals-panel__label { margin-bottom: 10px; font-size: 9px; }
+.fractals-panel__label b { font-size: 10px; }
+.fractals-lobby-grid { gap: 9px; }
+.fractals-mission-heading { align-items: center; }
+.fractals-mission-identity { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.fractals-mission-symbol { display: grid; width: 38px; height: 38px; flex: 0 0 auto; place-items: center; border: 1px solid rgba(221,190,255,.22); border-radius: 11px; background: rgba(170,120,235,.12); color: #e0c5ff; }
+.fractals-mission-symbol svg { width: 19px; height: 19px; }
+.fractals-mission-heading h3 { font-size: clamp(17px, 2vw, 22px); }
+.fractals-mission-heading p { margin-top: 4px; font-size: 10px; }
+.fractals-mission-actions { display: flex; flex: 0 0 auto; flex-direction: column; align-items: stretch; gap: 6px; }
+.fractals-mission-reward { min-width: 58px; padding: 6px 8px; }
+.fractals-mission-reward b { font-size: 17px; }
+.fractals-mission-reward small { font-size: 8px; }
+.fractals-mission-select { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-height: 29px; padding: 0 8px; border: 1px solid rgba(211,180,248,.24); border-radius: 8px; background: rgba(174,130,230,.10); color: #e8d6ff; font-size: 9px; font-weight: 900; letter-spacing: .04em; white-space: nowrap; }
+.fractals-mission-select svg { width: 13px; height: 13px; }
+.fractals-mission-select:hover { border-color: rgba(231,194,126,.55); background: rgba(174,130,230,.18); }
+.fractals-mission-lore { max-width: 570px; margin-top: 10px; font-size: 12px; line-height: 1.5; }
+.fractals-mission-identity-copy { margin-top: 6px; color: rgba(231,220,243,.46); font-size: 11px; line-height: 1.4; }
+
+.fractals-mission-picker-backdrop { position: fixed; z-index: 100; inset: 0; display: grid; place-items: center; padding: 16px; background: rgba(5,4,12,.82); backdrop-filter: blur(10px); }
+.fractals-mission-picker { width: min(880px, 100%); max-height: min(90vh, 820px); overflow-y: auto; padding: clamp(15px, 2.4vw, 24px); border: 1px solid rgba(221,190,255,.23); border-radius: 20px; background: radial-gradient(ellipse at 100% 0%, rgba(150,95,210,.18), transparent 38%), linear-gradient(145deg,#211a2c,#111019 66%,#191320); color: #f8f0ff; box-shadow: 0 30px 100px rgba(0,0,0,.72), inset 0 1px rgba(255,255,255,.08); }
+.fractals-mission-picker__header { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; margin-bottom: 14px; }
+.fractals-mission-picker__header p { color: #d6b4f2; font-size: 9px; font-weight: 900; letter-spacing: .17em; }
+.fractals-mission-picker__header h3 { margin-top: 4px; color: #fff3df; font-family: Georgia,serif; font-size: clamp(22px,3vw,30px); font-weight: 800; }
+.fractals-mission-picker__header span { display: block; margin-top: 4px; color: rgba(232,220,244,.55); font-size: 12px; }
+.fractals-mission-picker__header > button { display: grid; width: 32px; height: 32px; flex: 0 0 auto; place-items: center; border: 1px solid rgba(255,255,255,.12); border-radius: 9px; background: rgba(255,255,255,.05); color: #f6eaff; font-size: 22px; line-height: 1; }
+.fractals-mission-picker__grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 9px; }
+.fractals-mission-card { display: flex; min-width: 0; min-height: 166px; flex-direction: column; align-items: flex-start; padding: 13px; border: 1px solid rgba(220,198,244,.15); border-radius: 13px; background: linear-gradient(145deg,rgba(255,255,255,.055),rgba(255,255,255,.012)),#171420; color: #f7efff; text-align: left; }
+.fractals-mission-card.is-available { border-color: rgba(232,198,131,.42); background: linear-gradient(145deg,rgba(225,185,110,.12),rgba(143,96,203,.11)),#171420; cursor: pointer; }
+.fractals-mission-card.is-current { box-shadow: inset 0 0 0 1px rgba(233,196,128,.22),0 0 24px rgba(183,133,240,.10); }
+.fractals-mission-card.is-available:hover { border-color: rgba(243,210,151,.78); transform: translateY(-1px); }
+.fractals-mission-card.is-locked { border-style: dashed; opacity: .78; cursor: not-allowed; }
+.fractals-mission-card__top { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 9px; }
+.fractals-mission-card__icon { display: grid; width: 34px; height: 34px; place-items: center; border: 1px solid rgba(211,180,248,.23); border-radius: 10px; background: rgba(177,135,231,.10); color: #e0c5ff; }
+.fractals-mission-card__icon svg { width: 18px; height: 18px; }
+.fractals-mission-card__status { color: #e8c88e; font-size: 8px; font-weight: 900; letter-spacing: .12em; }
+.fractals-mission-card__chains { display: inline-flex; align-items: center; gap: 4px; color: rgba(225,196,148,.72); }
+.fractals-mission-card__chains svg { width: 13px; height: 13px; }
+.fractals-mission-card > strong { font-family: Georgia,serif; font-size: 16px; line-height: 1.2; }
+.fractals-mission-card > small { margin-top: 3px; color: rgba(220,196,244,.56); font-size: 10px; }
+.fractals-mission-card > p { margin-top: 9px; color: rgba(236,226,246,.69); font-size: 11px; line-height: 1.48; }
+.fractals-mission-card__footer { margin-top: auto; padding-top: 10px; color: #e7c991; font-size: 8px; font-weight: 900; letter-spacing: .11em; }
+.fractals-mission-card.is-locked .fractals-mission-card__footer { color: rgba(226,199,151,.75); }
+
+.fractals-corruption-heading { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 10px; padding: 0; border: 0; background: transparent; color: inherit; text-align: left; cursor: pointer; }
+.fractals-corruption-heading > span:first-child { display: grid; gap: 3px; }
+.fractals-corruption-heading small { color: rgba(215,195,242,.48); font-size: 8px; font-weight: 900; letter-spacing: .16em; }
+.fractals-corruption-heading > span:first-child strong { color: #d6b6ff; font-size: 10px; letter-spacing: .16em; }
+.fractals-corruption-active { display: flex; align-items: center; gap: 7px; padding: 6px 8px; border: 1px solid rgba(231,194,126,.28); border-radius: 9px; background: rgba(184,133,221,.10); }
+.fractals-corruption-active small { color: #e9c98c; font-size: 8px; }
+.fractals-corruption-active strong { color: #fff0d4; font-size: 11px; }
+.fractals-corruption-active svg { width: 14px; height: 14px; color: #dec08e; transition: transform .2s; }
+.fractals-corruption-active svg.is-expanded { transform: rotate(180deg); }
+.fractals-corruption-current { display: flex; width: 100%; align-items: center; gap: 9px; margin-top: 9px; padding: 9px; border: 1px solid rgba(207,177,245,.14); border-radius: 11px; background: rgba(255,255,255,.035); color: #eee3fb; text-align: left; }
+.fractals-corruption-current__sigil { display: grid; width: 30px; height: 30px; flex: 0 0 auto; place-items: center; border-radius: 9px; background: rgba(177,135,231,.12); color: #d5b7f6; }
+.fractals-corruption-current__sigil svg { width: 16px; height: 16px; }
+.fractals-corruption-current > span:nth-child(2) { display: grid; min-width: 0; gap: 2px; }
+.fractals-corruption-current strong { font-size: 12px; }
+.fractals-corruption-current small { color: rgba(226,214,239,.55); font-size: 10px; line-height: 1.35; }
+.fractals-corruption-current__hint { margin-left: auto; color: #e8c98f; font-size: 8px; font-weight: 900; letter-spacing: .1em; white-space: nowrap; }
+.fractals-corruption-panel .fractals-corruption-grid { margin-top: 10px; }
+.fractals-corruption-option { min-height: 56px; padding: 7px 8px; }
+.fractals-corruption-option__index { font-size: 8px; }
+.fractals-corruption-option strong { font-size: 11px; }
+.fractals-corruption-option__state { font-size: 8px; }
+
+.fractals-vault { padding: 14px; border-radius: 17px; border-color: rgba(236,198,126,.34); box-shadow: 0 18px 46px rgba(0,0,0,.3),0 0 0 1px rgba(221,183,112,.06),inset 0 1px rgba(255,255,255,.09); }
+.fractals-vault__brand { gap: 10px; }
+.fractals-vault__icon { width: 43px; height: 43px; border-radius: 12px; }
+.fractals-vault__eyebrow { font-size: 9px; color: #e4c488; }
+.fractals-vault__brand h3 { font-size: clamp(18px,2.4vw,24px); }
+.fractals-vault__brand p:last-child { margin-top: 4px; font-size: 11px; }
+.fractals-wallet { gap: 3px; }
+.fractals-wallet small { font-size: 8px; }
+.fractals-wallet strong { font-size: 19px; }
+.fractals-vault__toggle { height: 31px !important; font-size: 9px !important; }
+.fractals-vault__content { margin-top: 12px; padding-top: 12px; }
+.fractals-shop-tabs { gap: 5px; padding: 4px; }
+.fractals-shop-tabs button { min-height: 36px; padding: 8px 7px; font-size: 10px; letter-spacing: .06em; }
+.fractals-shop-tabs button svg { width: 15px; height: 15px; }
+.fractals-shop-tabs button small { width: 17px; height: 17px; font-size: 9px; }
+.fractals-shop-section { margin-top: 11px; }
+.fractals-shop-section__heading { gap: 8px; margin-bottom: 8px; }
+.fractals-shop-section__heading > span { width: 24px; height: 24px; font-size: 10px; }
+.fractals-shop-section__heading h4 { font-size: 12px; letter-spacing: .07em; }
+.fractals-shop-section__heading p { margin-top: 2px; font-size: 10px; }
+.fractals-vault__content .grid { gap: 7px !important; }
+.fractals-vault__content .group.relative.overflow-hidden,
+.fractals-vault__content .rounded-xl.border { padding: 10px; border-radius: 11px; }
+.fractals-vault__content .text-xs.font-semibold { font-size: 12px; }
+.fractals-vault__content .text-muted-foreground { font-size: 11px !important; line-height: 1.4; }
+.fractals-vault__content .fractals-shop-section button { min-height: 32px; margin-top: 8px !important; font-size: 10px; }
+.fractals-vault__footnote { margin-top: 10px; padding-top: 8px; font-size: 10px; line-height: 1.45; }
+
+.fractals-exchange { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 8px 12px; align-items: center; margin-bottom: 10px; padding: 10px 11px; border: 1px solid rgba(233,198,132,.25); border-radius: 12px; background: linear-gradient(110deg,rgba(217,174,101,.11),rgba(167,121,218,.10)),rgba(0,0,0,.17); }
+.fractals-exchange__copy { display: grid; gap: 3px; }
+.fractals-exchange__copy strong { display: flex; align-items: center; gap: 6px; color: #f4dfb7; font-size: 12px; }
+.fractals-exchange__copy strong svg { width: 15px; height: 15px; }
+.fractals-exchange__copy span { color: rgba(231,218,240,.55); font-size: 10px; }
+.fractals-exchange__balance { display: grid; justify-items: end; gap: 2px; }
+.fractals-exchange__balance small { color: rgba(224,199,153,.56); font-size: 8px; font-weight: 900; letter-spacing: .12em; }
+.fractals-exchange__balance b { color: #f2d6a0; font-size: 16px; font-variant-numeric: tabular-nums; }
+.fractals-exchange__controls { display: grid; grid-column: 1 / -1; grid-template-columns: minmax(84px, 1fr) 22px minmax(100px, 1fr) auto; align-items: center; gap: 7px; }
+.fractals-exchange__controls label { display: flex; align-items: center; gap: 4px; min-width: 0; padding: 0 8px; border: 1px solid rgba(224,200,244,.18); border-radius: 8px; background: rgba(0,0,0,.24); }
+.fractals-exchange__controls input { width: 100%; min-width: 0; height: 31px; border: 0; outline: 0; background: transparent; color: #fff; font-size: 12px; font-weight: 700; }
+.fractals-exchange__controls label span { color: rgba(225,204,244,.44); font-size: 9px; font-weight: 800; }
+.fractals-exchange__arrow { color: #e6c58d; font-size: 16px; text-align: center; }
+.fractals-exchange__controls > strong { color: #e8d5f6; font-size: 11px; white-space: nowrap; }
+.fractals-exchange__controls > button { min-height: 32px; padding: 0 11px; border: 1px solid rgba(245,221,170,.4); border-radius: 8px; background: linear-gradient(110deg,#d8b77f,#f0d7a4) !important; color: #211a23 !important; font-size: 9px; font-weight: 1000; }
+.fractals-exchange__controls > button:disabled { opacity: .38; }
+
+@media (max-width: 680px) {
+  .fractals-lobby { gap: 9px; padding: 9px; }
+  .fractals-hero { min-height: 178px; padding: 15px 12px; }
+  .fractals-hero__text { font-size: 11px; line-height: 1.45; }
+  .fractals-panel { padding: 11px; }
+  .fractals-mission-heading { align-items: flex-start; }
+  .fractals-mission-identity { gap: 7px; }
+  .fractals-mission-symbol { width: 31px; height: 31px; }
+  .fractals-mission-heading h3 { font-size: 17px; }
+  .fractals-mission-actions { max-width: 126px; }
+  .fractals-mission-select { min-height: 29px; padding: 0 5px; font-size: 8px; }
+  .fractals-mission-picker-backdrop { padding: 8px; }
+  .fractals-mission-picker { max-height: 94vh; padding: 12px; border-radius: 15px; }
+  .fractals-mission-picker__grid { grid-template-columns: 1fr; gap: 7px; }
+  .fractals-mission-card { min-height: 0; padding: 10px; }
+  .fractals-mission-card__top { margin-bottom: 6px; }
+  .fractals-mission-card > p { margin-top: 5px; }
+  .fractals-mission-card__footer { padding-top: 7px; }
+  .fractals-corruption-active { gap: 5px; padding: 5px 6px; }
+  .fractals-corruption-active strong { font-size: 10px; }
+  .fractals-corruption-current { gap: 6px; padding: 7px; }
+  .fractals-corruption-current small { font-size: 9px; }
+  .fractals-corruption-current__hint { font-size: 7px; }
+  .fractals-corruption-option { min-height: 54px; padding: 6px; }
+  .fractals-corruption-option strong { font-size: 9px; }
+  .fractals-corruption-option__state { font-size: 7px; }
+  .fractals-vault { padding: 11px; }
+  .fractals-vault__brand { gap: 7px; }
+  .fractals-vault__icon { width: 35px; height: 35px; }
+  .fractals-vault__brand h3 { font-size: 16px; }
+  .fractals-vault__brand p:last-child { max-width: 210px; font-size: 10px; }
+  .fractals-wallet { padding-left: 8px; }
+  .fractals-wallet strong { font-size: 15px; }
+  .fractals-wallet small { font-size: 7px; }
+  .fractals-vault__toggle { height: 28px !important; padding: 0 6px !important; font-size: 8px !important; }
+  .fractals-shop-tabs button { min-height: 36px; padding: 7px 4px; font-size: 8px; }
+  .fractals-shop-tabs button small { display: none; }
+  .fractals-exchange { gap: 7px; padding: 9px; }
+  .fractals-exchange__controls { grid-template-columns: minmax(70px,1fr) 16px minmax(85px,1fr) auto; gap: 4px; }
+  .fractals-exchange__controls label { padding: 0 5px; }
+  .fractals-exchange__controls input { height: 29px; font-size: 11px; }
+  .fractals-exchange__controls > strong { font-size: 9px; }
+  .fractals-exchange__controls > button { min-height: 30px; padding: 0 7px; font-size: 8px; }
+}
