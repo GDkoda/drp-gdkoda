@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type PointerEvent } from "react";
-import { AlertTriangle, Heart, Move, Pause, Play, RotateCcw, Shield, Skull, Sparkles, Swords, Zap, Maximize, UserRound, Gauge, ArrowLeft, ShoppingBag, Crown, Gem } from "lucide-react";
+import { AlertTriangle, Heart, Move, Pause, Play, RotateCcw, Shield, Skull, Sparkles, Swords, Zap, Maximize, UserRound, Gauge, ArrowLeft, ShoppingBag, Crown, Gem as GemIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { getDifficultySnapshot } from "@/lib/fractals/difficulty";
@@ -846,12 +846,12 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           <div className="fractals-lobby">
             <div className="fractals-hero">
               <div className="fractals-hero__copy"><p className="fractals-eyebrow"><span className="fractals-eyebrow__dot"/><span>PROTOCOLO DE SOBREVIVÊNCIA · 01</span><span className="fractals-eyebrow__line"/></p><h2 className="fractals-title">ECOS <span>DOS</span><br/>FRACTAIS</h2><p className="fractals-hero__text">O Vazio abriu uma fenda. Atravesse as ruínas, recolha fragmentos e sobreviva ao despertar do guardião.</p><div className="fractals-hero__tags"><span>ROGUELIKE</span><span>12 MIN</span><span>COMBATE AUTOMÁTICO</span></div></div>
-              <div className="fractals-hero__sigil" aria-hidden="true"><div className="fractals-hero__sigil-ring"/><div className="fractals-hero__sigil-core"><Sparkles/><Gem/></div><span className="fractals-hero__sigil-caption">NEXUS<br/>FRACTALIS</span></div>
+              <div className="fractals-hero__sigil" aria-hidden="true"><div className="fractals-hero__sigil-ring"/><div className="fractals-hero__sigil-core"><Sparkles/><GemIcon/></div><span className="fractals-hero__sigil-caption">NEXUS<br/>FRACTALIS</span></div>
             </div>
             <div className="fractals-lobby-grid">
               <section className="fractals-panel fractals-mission-panel">
                 <div className="fractals-panel__label"><span>01 / OPERAÇÃO ATIVA</span><b>MISSÃO</b></div>
-                <div className="fractals-mission-heading"><div><h3>{mission.name}</h3><p>{mission.pathName}</p></div><div className="fractals-mission-reward"><Gem/><b>{mission.maxFractals}</b><small>FRACTAIS</small></div></div><p className="fractals-mission-lore">{mission.identity}</p><div className="fractals-mission-lock"><Shield/><span>Outras regiões serão reveladas conforme a jornada avança.</span></div>
+                <div className="fractals-mission-heading"><div><h3>{mission.name}</h3><p>{mission.pathName}</p></div><div className="fractals-mission-reward"><GemIcon/><b>{mission.maxFractals}</b><small>FRACTAIS</small></div></div><p className="fractals-mission-lore">{mission.identity}</p><div className="fractals-mission-lock"><Shield/><span>Outras regiões serão reveladas conforme a jornada avança.</span></div>
               </section>
               <section className="fractals-panel fractals-corruption-panel"><div className="fractals-panel__label"><span>02 / RISCO DA FENDA</span><b>CORRUPÇÃO</b></div>
                 <div className="fractals-corruption-grid">
