@@ -465,7 +465,6 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
   const [runId, setRunId] = useState<string | null>(null);
   const [shopBusy, setShopBusy] = useState(false);
   const [shopOpen, setShopOpen] = useState(false);
-  const [shopSection, setShopSection] = useState<"permanent" | "relics">("permanent");
   const [shopError, setShopError] = useState<string | null>(null);
   const spritesRef = useRef<SpriteMap>({});
   useEffect(() => {
@@ -749,7 +748,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               enemy.attack = 1.7;
             }
             if (enemy.type === "wraith" && d < enemy.radius + 15 && enemy.attack <= 0 && game.player.invuln <= 0) {
-              game.player.hp = Math.max(0, game.player.hp - enemy.damage); game.player.invuln = 0.72; enemy.attack = 0.8;
+              game.player.hp = Math.max(0, game.player.hp - enemy.damage); game.player.invuln = 0.72; game.player.hitFlash = 0.3; enemy.attack = 0.8;
             }
           }
         }
@@ -887,7 +886,6 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                     <div className="group relative overflow-hidden rounded-xl border border-violet-100/15 bg-gradient-to-br from-white/[0.07] to-[#171521] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition duration-200 hover:-translate-y-0.5 hover:border-violet-100/30 hover:shadow-[0_12px_25px_rgba(0,0,0,0.18)]"><p className="text-xs font-semibold">Alcance dos projéteis</p><p className="text-[10px] text-muted-foreground">Nível {purchases.projectile_range}/3 · N1: escolhas; N2: 1% de queda; N3: 3%. +10% por coleta.</p><Button size="sm" className="mt-3 h-9 w-full rounded-xl bg-gradient-to-r from-amber-200 to-yellow-300 font-bold text-[#291f12] shadow-[0_5px_18px_rgba(234,179,8,0.12)] transition hover:brightness-110" disabled={shopBusy || purchases.projectile_range>=3 || (!isMaster && fractalBalance < FRACTAL_SHOP.projectile_range[purchases.projectile_range].cost)} onClick={() => void purchaseUpgrade("projectile_range")}>{purchases.projectile_range>=3 ? "Máximo" : isMaster ? "Desbloquear grátis" : "Comprar · " + FRACTAL_SHOP.projectile_range[purchases.projectile_range].cost.toLocaleString("pt-BR")}</Button></div>
                     <div className="group relative overflow-hidden rounded-xl border border-violet-100/15 bg-gradient-to-br from-white/[0.07] to-[#171521] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition duration-200 hover:-translate-y-0.5 hover:border-violet-100/30 hover:shadow-[0_12px_25px_rgba(0,0,0,0.18)]"><p className="text-xs font-semibold">Coroa de Estilhaços</p><p className="text-[10px] text-muted-foreground">Nível {purchases.projectiles}/3 · desbloqueia até +2 projéteis, um por coleta.</p><Button size="sm" className="mt-3 h-9 w-full rounded-xl bg-gradient-to-r from-amber-200 to-yellow-300 font-bold text-[#291f12] shadow-[0_5px_18px_rgba(234,179,8,0.12)] transition hover:brightness-110" disabled={shopBusy || purchases.projectiles>=3 || (!isMaster && fractalBalance < FRACTAL_SHOP.projectiles[purchases.projectiles].cost)} onClick={() => void purchaseUpgrade("projectiles")}>{purchases.projectiles>=3 ? "Máximo" : isMaster ? "Desbloquear grátis" : "Comprar · " + FRACTAL_SHOP.projectiles[purchases.projectiles].cost.toLocaleString("pt-BR")}</Button></div>
                   </div>
-                </section>
                 </section>}
               </div>}
               <p className="fractals-vault__footnote">Relíquias têm 18% de chance de surgir nas escolhas de nível. Brutos e Elites podem derrubá-las conforme o grau de desbloqueio. Os efeitos são reiniciados ao iniciar outra expedição.</p>
