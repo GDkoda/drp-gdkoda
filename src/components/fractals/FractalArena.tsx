@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type PointerEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, Heart, Move, Pause, Play, RotateCcw, Shield, Skull, Sparkles, Swords, Zap, Maximize, UserRound, Gauge, ArrowLeft, ShoppingBag, Crown, Gem as GemIcon, MapPin, Flame, Leaf, Snowflake, Orbit, Lock, Link2, ChevronDown, Coins } from "lucide-react";
+import { AlertTriangle, Heart, Move, Pause, Play, RotateCcw, Shield, Skull, Sparkles, Swords, Zap, Maximize, UserRound, Gauge, ArrowLeft, ShoppingBag, Crown, Gem as GemIcon, MapPin, Flame, Leaf, Snowflake, Orbit, Lock, Link2, ChevronDown, Coins, Timer, Target } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { getDifficultySnapshot } from "@/lib/fractals/difficulty";
@@ -35,6 +35,8 @@ const DEFAULT_PURCHASES: PurchaseState = {
 const PROJECTILE_DURATION_MULTIPLIERS = [1, 1.25, 1.5, 2] as const;
 const PROJECTILE_BASE_LIFE = 0.8;
 const MAX_EXTRA_PROJECTILES = 2;
+const CHALLENGE_EVENT_TIMES = [240, 480] as const;
+const CHALLENGE_EVENT_DURATION = 60;
 function parsePurchaseState(raw: any): PurchaseState {
   return {
     area: Number(raw?.area ?? 0), experience: Number(raw?.experience ?? 0), rarity: Number(raw?.rarity ?? 0),
@@ -659,6 +661,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
   const gameRef = useRef<GameState | null>(null);
   const keysRef = useRef(new Set<string>());
   const joystickRef = useRef<{ x: number; y: number } | null>(null);
+  const eventRewardRemainingRef = useRef(0);
   const [missionId, setMissionId] = useState(1);
   const [missionPickerOpen, setMissionPickerOpen] = useState(false);
   const [corruptionExpanded, setCorruptionExpanded] = useState(false);
@@ -668,7 +671,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
   const [running, setRunning] = useState(false);
   const [paused, setPaused] = useState(false);
   const [levelChoices, setLevelChoices] = useState<Upgrade[]>([]);
-  const [hud, setHud] = useState({ hp: 100, maxHp: 100, xp: 0, nextXp: 12, level: 1, kills: 0, elapsed: 0, phase: "Exploração", pressure: 0 });
+  const [eventRewardStep, setEventRewardStep] = useState(0);
+  const [hud, setHud] = useState({ hp: 100, maxHp: 100, xp: 0, nextXp: 12, level: 1, kills: 0, elapsed: 0, phase: "Exploração", pressure: 0, event: null as null | { id: number; remaining: number; progress: number; inside: boolean } });
   const [result, setResult] = useState<"victory" | "defeat" | null>(null);
   const [bossMessage, setBossMessage] = useState(false);
   const [pausePanel, setPausePanel] = useState<"main" | "attributes">("main");
@@ -773,7 +777,9 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
     const height = Math.max(380, rect?.height ?? 520);
     const game = makeGame(width, height, purchases);
     gameRef.current = game;
-    setHud({ hp: game.player.hp, maxHp: game.player.maxHp, xp: 0, nextXp: 12, level: 1, kills: 0, elapsed: 0, phase: "Exploração", pressure: 0 });
+    eventRewardRemainingRef.current = 0;
+    setEventRewardStep(0);
+    setHud({ hp: game.player.hp, maxHp: game.player.maxHp, xp: 0, nextXp: 12, level: 1, kills: 0, elapsed: 0, phase: "Exploração", pressure: 0, event: null });
     setLevelChoices([]); setPaused(false); setResult(null); setBossMessage(false); setRunning(true);
   }, [corruption, purchases]);
 
@@ -794,8 +800,17 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
       game.player.hp = Math.min(game.player.maxHp, game.player.hp + previousMaxHp * 0.25 * rarityPower);
     }
     if (upgrade.id === "swift") game.player.speed *= 1 + 0.10 * rarityPower;
+    if (eventRewardRemainingRef.current > 0) {
+      eventRewardRemainingRef.current -= 1;
+      if (eventRewardRemainingRef.current > 0) {
+        setEventRewardStep(2);
+        setLevelChoices(buildLevelChoices(game, purchases.area, purchases.experience, purchases.projectile_range, purchases.projectiles, purchases.rarity));
+        return;
+      }
+      setEventRewardStep(0);
+    }
     setLevelChoices([]);
-  }, []);
+  }, [purchases]);
 
   useEffect(() => {
     if (!running) return;
@@ -833,6 +848,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         game.player.hitFlash = Math.max(0, game.player.hitFlash - dt);
         game.damageNumbers.forEach((number) => { number.life -= dt; number.y -= 24 * dt; number.x += number.drift * dt; });
         game.damageNumbers = game.damageNumbers.filter((number) => number.life > 0);
+        game.pickupLabels.forEach((label) => { label.life -= dt; label.y -= 18 * dt; });
+        game.pickupLabels = game.pickupLabels.filter((label) => label.life > 0);
         game.player.castTimer = Math.max(0, game.player.castTimer - dt);
         const keys = keysRef.current;
         let dx = (keys.has("d") || keys.has("arrowright") ? 1 : 0) - (keys.has("a") || keys.has("arrowleft") ? 1 : 0);
@@ -844,8 +861,46 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         game.player.x += (dx / mag) * game.player.speed * dt;
         game.player.y += (dy / mag) * game.player.speed * dt;
 
+        if (!game.challengeEvent && game.nextChallengeEvent < CHALLENGE_EVENT_TIMES.length && game.elapsed >= CHALLENGE_EVENT_TIMES[game.nextChallengeEvent]) {
+          const eventId = (game.nextChallengeEvent + 1) as 1 | 2;
+          const angle = Math.random() * Math.PI * 2;
+          const radius = Math.min(150, Math.max(108, Math.min(game.width, game.height) * 0.29));
+          const offset = radius * 0.55;
+          game.challengeEvent = {
+            id: eventId,
+            x: game.player.x + Math.cos(angle) * offset,
+            y: game.player.y + Math.sin(angle) * offset,
+            radius,
+            remaining: CHALLENGE_EVENT_DURATION,
+            progress: 0,
+          };
+          game.nextChallengeEvent += 1;
+          toast.info(`Anomalia ${eventId} detectada. Permaneça dentro do círculo por 60 segundos.`);
+        }
+
+        const activeEvent = game.challengeEvent;
+        if (activeEvent) {
+          activeEvent.remaining = Math.max(0, activeEvent.remaining - dt);
+          const insideEvent = distance(game.player.x, game.player.y, activeEvent.x, activeEvent.y) <= activeEvent.radius;
+          activeEvent.progress = insideEvent ? Math.min(CHALLENGE_EVENT_DURATION, activeEvent.progress + dt) : 0;
+
+          if (activeEvent.remaining <= 0) {
+            const completed = activeEvent.progress >= CHALLENGE_EVENT_DURATION - 0.5;
+            game.challengeEvent = null;
+            if (completed) {
+              eventRewardRemainingRef.current = 2;
+              setEventRewardStep(1);
+              setLevelChoices(buildLevelChoices(game, purchases.area, purchases.experience, purchases.projectile_range, purchases.projectiles, purchases.rarity));
+              toast.success("Anomalia estabilizada! Escolha dois upgrades, um de cada vez.");
+            } else {
+              toast.error("A anomalia se dissipou. Você precisa permanecer na área durante todo o minuto.");
+            }
+          }
+        }
+
         const snapshot = getDifficultySnapshot(missionId, game.elapsed, corruption);
-        const spawnInterval = clamp(1.18 / snapshot.enemySpawnScale, 0.28, 1.35);
+        const eventDensityBonus = game.challengeEvent ? 0.9 : 0;
+        const spawnInterval = clamp(1.18 / (snapshot.enemySpawnScale + eventDensityBonus), 0.22, 1.35);
         game.spawnTimer -= dt;
         if (game.spawnTimer <= 0 && game.enemies.length < 64 && game.elapsed < RUN_DURATION_SECONDS) {
           spawnEnemy(game, missionId, game.elapsed, corruption);
@@ -1039,6 +1094,13 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           const d = distance(game.player.x, game.player.y, drop.x, drop.y);
           if (d < game.player.pickupRadius) { drop.x += ((game.player.x - drop.x) / Math.max(1, d)) * 280 * dt; drop.y += ((game.player.y - drop.y) / Math.max(1, d)) * 280 * dt; }
           if (d < 18) {
+            const pickupNames: Record<SpecialDrop["kind"], string> = {
+              area: "Ímã de Fragmentos",
+              experience: "Eco do Conhecimento",
+              projectile_range: "Ressonância de Alcance",
+              projectiles: "Coroa de Estilhaços",
+            };
+            game.pickupLabels.push({ x: drop.x, y: drop.y - 22, text: pickupNames[drop.kind], life: 1.25, maxLife: 1.25 });
             if (drop.kind === "area" && game.player.specialAreaStacks < 5) { game.player.specialAreaStacks += 1; game.player.pickupRadius = 85 * (1 + game.player.specialAreaStacks * 0.10); }
             if (drop.kind === "experience" && game.player.specialExperienceStacks < 6) { game.player.specialExperienceStacks += 1; game.player.xpMultiplier = 1 + game.player.specialExperienceStacks * 0.05; }
             if (drop.kind === "projectile_range" && game.player.projectileRangeStacks < 5) { game.player.projectileRangeStacks += 1; game.player.projectileRangeMultiplier = 1 + game.player.projectileRangeStacks * 0.10; }
@@ -1058,7 +1120,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         if (game.elapsed >= RUN_DURATION_SECONDS && !game.ended && !game.bossSpawned) { spawnEnemy(game, missionId, game.elapsed, corruption, true); game.bossSpawned = true; }
         if (now - lastHud > 100) {
           lastHud = now;
-          setHud({ hp: game.player.hp, maxHp: game.player.maxHp, xp: game.player.xp, nextXp: game.player.nextXp, level: game.player.level, kills: game.kills, elapsed: game.elapsed, phase: snapshot.phaseLabel, pressure: snapshot.totalPressure });
+          setHud({ hp: game.player.hp, maxHp: game.player.maxHp, xp: game.player.xp, nextXp: game.player.nextXp, level: game.player.level, kills: game.kills, elapsed: game.elapsed, phase: snapshot.phaseLabel, pressure: snapshot.totalPressure + (game.challengeEvent ? 2 : 0), event: game.challengeEvent ? { id: game.challengeEvent.id, remaining: game.challengeEvent.remaining, progress: game.challengeEvent.progress, inside: distance(game.player.x, game.player.y, game.challengeEvent.x, game.challengeEvent.y) <= game.challengeEvent.radius } : null });
         }
       }
       drawGame(ctx, game, corruption, missionId, spritesRef.current, showPlayerHp, showDamageNumbers);
