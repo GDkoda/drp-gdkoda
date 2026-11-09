@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96">
+<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff0c5"/><stop offset=".4" stop-color="#dfb36a"/><stop offset="1" stop-color="#8046ae"/></linearGradient><filter id="b"><feGaussianBlur stdDeviation="3"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+<circle cx="48" cy="48" r="37" fill="none" stroke="#d8b26b" stroke-width="2" opacity=".7"/>
+<path d="M48 5 L54 32 L77 19 L64 42 L91 48 L64 54 L77 77 L54 64 L48 91 L42 64 L19 77 L32 54 L5 48 L32 42 L19 19 L42 32 Z" fill="#a46ad8" opacity=".17" filter="url(#b)"/>
+<path d="M48 16 L57 39 L48 47 L39 39 Z M22 48 L43 39 L48 48 L43 57 Z M74 48 L53 39 L48 48 L53 57 Z M48 80 L39 57 L48 49 L57 57 Z" fill="url(#g)" stroke="#fff0c5" stroke-width="1.7"/>
+<path d="M48 30 L60 48 L48 66 L36 48 Z" fill="#8c59ba" stroke="#f8e0ff" stroke-width="2.3"/>
+<circle cx="48" cy="48" r="6" fill="#fff4d5" stroke="#bd8ee0" stroke-width="2"/>
+<path d="M11 21 L21 27 M75 69 L85 75 M75 21 L85 15 M11 75 L21 69" stroke="#f3dcb0" stroke-width="2.3" stroke-linecap="round"/>
+</svg>

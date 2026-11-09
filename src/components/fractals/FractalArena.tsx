@@ -8,21 +8,40 @@ import { FRACTAL_SHOP, FRACTAL_RARITY_TIERS } from "@/lib/fractals/economy";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-type UpgradeId = "power" | "haste" | "vitality" | "swift" | "special_area" | "special_experience";
+type UpgradeId = "power" | "haste" | "vitality" | "swift" | "special_area" | "special_experience" | "special_projectile_range" | "special_projectiles";
 type Upgrade = { id: UpgradeId; name: string; description: string; icon: typeof Zap; rarity?: "normal" | "rare" | "epic" };
 
 type Enemy = { x: number; y: number; hp: number; maxHp: number; speed: number; radius: number; damage: number; color: string; xp: number; type: "wraith" | "brute" | "charger" | "elite" | "boss"; attack: number; flash: number; windup: number; targetX: number; targetY: number; dashTime: number; summonedAtHalf: boolean };
 type Shot = { x: number; y: number; vx: number; vy: number; damage: number; life: number };
 type Gem = { x: number; y: number; value: number; radius: number };
-type SpecialDrop = { x: number; y: number; kind: "area" | "experience"; radius: number };
+type SpecialDrop = { x: number; y: number; kind: "area" | "experience" | "projectile_range" | "projectiles"; radius: number };
 type Particle = { x: number; y: number; vx: number; vy: number; life: number; color: string };
-type SpriteKey = "boss" | "elite" | "wraith" | "charger" | "brute" | "playerIdle" | "playerMove" | "playerCast" | "xpGem" | "specialXP" | "specialArea";
+type SpriteKey = "boss" | "elite" | "wraith" | "charger" | "brute" | "playerIdle" | "playerMove" | "playerCast" | "xpGem" | "specialXP" | "specialArea" | "specialRange" | "specialProjectiles" | "projectile";
 type SpriteMap = Partial<Record<SpriteKey, HTMLImageElement>>;
 type PlayerVisualAction = "idle" | "move" | "cast";
+type PurchaseState = {
+  area: number; experience: number; rarity: number; speed_2x: boolean; speed_3x: boolean;
+  health: number; projectile_duration: number; projectile_range: number; projectiles: number;
+};
+const DEFAULT_PURCHASES: PurchaseState = {
+  area: 0, experience: 0, rarity: 0, speed_2x: false, speed_3x: false,
+  health: 0, projectile_duration: 0, projectile_range: 0, projectiles: 0,
+};
+const PROJECTILE_DURATION_MULTIPLIERS = [1, 1.25, 1.5, 2] as const;
+const PROJECTILE_BASE_LIFE = 0.8;
+const MAX_EXTRA_PROJECTILES = 2;
+function parsePurchaseState(raw: any): PurchaseState {
+  return {
+    area: Number(raw?.area ?? 0), experience: Number(raw?.experience ?? 0), rarity: Number(raw?.rarity ?? 0),
+    speed_2x: !!raw?.speed_2x, speed_3x: !!raw?.speed_3x,
+    health: Number(raw?.health ?? 0), projectile_duration: Number(raw?.projectile_duration ?? 0),
+    projectile_range: Number(raw?.projectile_range ?? 0), projectiles: Number(raw?.projectiles ?? 0),
+  };
+}
 
 type GameState = {
   width: number; height: number; last: number; elapsed: number; spawnTimer: number; shotTimer: number; bossSpawned: boolean;
-  player: { x: number; y: number; hp: number; maxHp: number; speed: number; damage: number; fireRate: number; invuln: number; xp: number; nextXp: number; level: number; pickupRadius: number; xpMultiplier: number; specialAreaStacks: number; specialExperienceStacks: number; facing: number; castFacing: number; castTimer: number; moving: boolean; spriteAction: PlayerVisualAction; spriteDirection: number; previousSpriteAction: PlayerVisualAction; previousSpriteDirection: number; spriteBlend: number };
+  player: { x: number; y: number; hp: number; maxHp: number; speed: number; damage: number; fireRate: number; invuln: number; xp: number; nextXp: number; level: number; pickupRadius: number; xpMultiplier: number; specialAreaStacks: number; specialExperienceStacks: number; projectileRangeStacks: number; projectileRangeMultiplier: number; projectileStacks: number; projectileLife: number; facing: number; castFacing: number; castTimer: number; moving: boolean; spriteAction: PlayerVisualAction; spriteDirection: number; previousSpriteAction: PlayerVisualAction; previousSpriteDirection: number; spriteBlend: number };
   enemies: Enemy[]; shots: Shot[]; gems: Gem[]; specialDrops: SpecialDrop[]; particles: Particle[]; kills: number; ended: boolean;
 };
 
@@ -34,15 +53,20 @@ const UPGRADES: Upgrade[] = [
 ];
 
 const SPECIAL_UPGRADES: Upgrade[] = [
-  { id: "special_area", name: "Ímã de Fragmentos", description: "+10% de alcance de coleta (máx. +50%).", icon: Move },
-  { id: "special_experience", name: "Eco do Conhecimento", description: "+5% de experiência recebida (máx. +30%).", icon: Sparkles },
+  { id: "special_area", name: "Ímã de Fragmentos", description: "+10% de alcance de coleta por coleta (máx. +50%).", icon: Move },
+  { id: "special_experience", name: "Eco do Conhecimento", description: "+5% de experiência por coleta (máx. +30%).", icon: Sparkles },
+  { id: "special_projectile_range", name: "Ressonância de Alcance", description: "+10% de distância dos projéteis por coleta (máx. +50%).", icon: Zap },
+  { id: "special_projectiles", name: "Coroa de Estilhaços", description: "+1 projétil por coleta. Até 2 extras por expedição.", icon: Swords },
 ];
 
-function buildLevelChoices(game: GameState, areaLevel: number, experienceLevel: number, rarityTier: number): Upgrade[] {
+function buildLevelChoices(game: GameState, areaLevel: number, experienceLevel: number, rangeLevel: number, projectilesLevel: number, rarityTier: number): Upgrade[] {
   const core = [...UPGRADES].sort(() => Math.random() - 0.5).slice(0, 3);
-  const available = SPECIAL_UPGRADES.filter((item) => item.id === "special_area"
-    ? areaLevel >= 1 && game.player.specialAreaStacks < 5
-    : experienceLevel >= 1 && game.player.specialExperienceStacks < 6);
+  const available = SPECIAL_UPGRADES.filter((item) => {
+    if (item.id === "special_area") return areaLevel >= 1 && game.player.specialAreaStacks < 5;
+    if (item.id === "special_experience") return experienceLevel >= 1 && game.player.specialExperienceStacks < 6;
+    if (item.id === "special_projectile_range") return rangeLevel >= 1 && game.player.projectileRangeStacks < 5;
+    return projectilesLevel >= 1 && game.player.projectileStacks < MAX_EXTRA_PROJECTILES;
+  });
   if (available.length && Math.random() < 0.18) {
     const special = available[Math.floor(Math.random() * available.length)];
     return [...core.slice(0, 2), special].map((upgrade) => ({ ...upgrade, rarity: upgrade.id.startsWith("special_") ? undefined : rollUpgradeRarity(rarityTier) }));
@@ -65,10 +89,28 @@ const PLAYER_DIRECTION_VECTORS = [
   { x: 1, y: 0 }, { x: Math.SQRT1_2, y: Math.SQRT1_2 },
 ];
 
-function makeGame(width: number, height: number): GameState {
+function getEnemySeparation(enemy: Enemy, enemies: Enemy[]) {
+  let sx = 0, sy = 0;
+  for (const other of enemies) {
+    if (other === enemy) continue;
+    const dx = enemy.x - other.x, dy = enemy.y - other.y;
+    const d = Math.max(0.001, Math.hypot(dx, dy));
+    const range = enemy.radius + other.radius + 12;
+    if (d < range) {
+      const weight = (range - d) / range;
+      sx += (dx / d) * weight; sy += (dy / d) * weight;
+    }
+  }
+  const magnitude = Math.hypot(sx, sy);
+  return magnitude > 0 ? { x: sx / magnitude, y: sy / magnitude } : { x: 0, y: 0 };
+}
+
+function makeGame(width: number, height: number, purchases: PurchaseState): GameState {
+  const maxHp = 100 + purchases.health * 10;
+  const projectileLife = PROJECTILE_BASE_LIFE * PROJECTILE_DURATION_MULTIPLIERS[clamp(purchases.projectile_duration, 0, 3)];
   return {
     width, height, last: 0, elapsed: 0, spawnTimer: 0.4, shotTimer: 0.25, bossSpawned: false,
-    player: { x: width / 2, y: height / 2, hp: 100, maxHp: 100, speed: 205, damage: 22, fireRate: 0.72, invuln: 0, xp: 0, nextXp: 12, level: 1, pickupRadius: 85, xpMultiplier: 1, specialAreaStacks: 0, specialExperienceStacks: 0, facing: 0, castFacing: 0, castTimer: 0, moving: false, spriteAction: "idle", spriteDirection: 0, previousSpriteAction: "idle", previousSpriteDirection: 0, spriteBlend: 1 },
+    player: { x: width / 2, y: height / 2, hp: maxHp, maxHp, speed: 205, damage: 22, fireRate: 0.72, invuln: 0, xp: 0, nextXp: 12, level: 1, pickupRadius: 85, xpMultiplier: 1, specialAreaStacks: 0, specialExperienceStacks: 0, projectileRangeStacks: 0, projectileRangeMultiplier: 1, projectileStacks: 0, projectileLife, facing: 0, castFacing: 0, castTimer: 0, moving: false, spriteAction: "idle", spriteDirection: 0, previousSpriteAction: "idle", previousSpriteDirection: 0, spriteBlend: 1 },
     enemies: [], shots: [], gems: [], specialDrops: [], particles: [], kills: 0, ended: false,
   };
 }
@@ -99,7 +141,7 @@ function spawnEnemy(game: GameState, missionId: number, elapsed: number, corrupt
   }
 }
 
-function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: number, missionId: number, sprites: SpriteMap = {}) {
+function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: number, missionId: number, sprites: SpriteMap = {}, showPlayerHp = true) {
   const { width, height, player } = game;
   ctx.clearRect(0, 0, width, height);
   // Ruínas de Último Silêncio: piso de lajes, rachaduras, pilares e cristais.
@@ -167,7 +209,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     ctx.save(); ctx.translate(drop.x, drop.y);
     const pulse = 1 + Math.sin(game.elapsed * 7 + drop.y * 0.02) * 0.09;
     const size = drop.radius * 2.8 * pulse;
-    const icon = drop.kind === "area" ? sprites.specialArea : sprites.specialXP;
+    const icon = drop.kind === "area" ? sprites.specialArea : drop.kind === "experience" ? sprites.specialXP : drop.kind === "projectile_range" ? sprites.specialRange : sprites.specialProjectiles;
     ctx.globalAlpha = 0.9 + Math.sin(game.elapsed * 5 + drop.x * 0.02) * 0.1;
     ctx.shadowColor = drop.kind === "area" ? "#e9c46a" : "#b78cff";
     ctx.shadowBlur = 17;
@@ -181,13 +223,35 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
   });
   game.shots.forEach((shot) => {
     ctx.save(); ctx.translate(shot.x, shot.y); ctx.rotate(Math.atan2(shot.vy, shot.vx));
-    ctx.strokeStyle = "rgba(177,116,255,.72)"; ctx.lineWidth = 2.2; ctx.shadowColor = "#a95cff"; ctx.shadowBlur = 12;
-    ctx.beginPath(); ctx.moveTo(-13, 0); ctx.lineTo(-3, 0); ctx.stroke();
-    ctx.fillStyle = "#f4d58a"; ctx.beginPath(); ctx.moveTo(6, 0); ctx.lineTo(0, -3.4); ctx.lineTo(-5, 0); ctx.lineTo(0, 3.4); ctx.closePath(); ctx.fill();
+    const fade = clamp(shot.life / Math.max(0.01, game.player.projectileLife), 0.25, 1);
+    ctx.globalAlpha = fade;
+    const projectile = sprites.projectile;
+    if (projectile?.complete && projectile.naturalWidth > 0) {
+      ctx.shadowColor = "#b77aff"; ctx.shadowBlur = 15;
+      ctx.drawImage(projectile, -15, -9, 30, 18);
+    } else {
+      ctx.shadowColor = "#b77aff"; ctx.shadowBlur = 15; ctx.fillStyle = "#c39aff";
+      ctx.beginPath(); ctx.moveTo(9,0); ctx.lineTo(0,-4); ctx.lineTo(-10,0); ctx.lineTo(0,4); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = "#fff1ce"; ctx.beginPath(); ctx.moveTo(5,0); ctx.lineTo(0,-1.5); ctx.lineTo(-5,0); ctx.lineTo(0,1.5); ctx.closePath(); ctx.fill();
+    }
     ctx.restore();
   });
   game.enemies.forEach((enemy) => {
-    ctx.save(); ctx.translate(enemy.x, enemy.y);
+    ctx.save();
+    const breathRate = enemy.type === "boss" ? 2.2 : enemy.type === "brute" ? 2.8 : enemy.type === "charger" ? 4.1 : enemy.type === "elite" ? 3.2 : 3.7;
+    const breath = Math.sin(game.elapsed * breathRate + enemy.x * 0.021 + enemy.y * 0.017);
+    const breathAmount = enemy.type === "boss" ? 0.045 : enemy.type === "brute" ? 0.035 : 0.025;
+    const hover = enemy.type === "wraith" || enemy.type === "elite" ? Math.sin(game.elapsed * 3.1 + enemy.y * 0.02) * 2.0 : Math.abs(breath) * 0.7;
+    ctx.translate(enemy.x, enemy.y + hover);
+    ctx.scale(1 + breath * breathAmount, 1 - breath * breathAmount * 0.72);
+    if (enemy.type === "charger" && enemy.dashTime > 0) {
+      ctx.rotate(Math.atan2(enemy.targetY, enemy.targetX) * 0.12);
+      ctx.scale(1.12, 0.9);
+    } else if (enemy.type === "brute" && enemy.windup > 0) {
+      ctx.scale(1.06, 0.9);
+    } else if (enemy.type === "boss" && enemy.windup > 0) {
+      ctx.scale(1.04, 0.96);
+    }
     if (enemy.type === "boss" && enemy.windup > 0) { ctx.save(); ctx.globalAlpha = 0.25 + Math.sin(game.elapsed * 18) * 0.08; ctx.strokeStyle = "#d8b5ff"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(enemy.targetX - enemy.x, enemy.targetY - enemy.y, 88, 0, Math.PI * 2); ctx.stroke(); ctx.fillStyle = "rgba(177,112,220,.12)"; ctx.beginPath(); ctx.arc(enemy.targetX - enemy.x, enemy.targetY - enemy.y, 88, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
     if (enemy.type === "brute" && enemy.windup > 0) { ctx.save(); ctx.globalAlpha = .25 + Math.sin(game.elapsed * 20) * .2; ctx.strokeStyle = "#ffb36b"; ctx.lineWidth = 3; ctx.setLineDash([6, 5]); ctx.beginPath(); ctx.arc(0, 0, 78, 0, Math.PI * 2); ctx.stroke(); ctx.fillStyle = "rgba(255,150,75,.13)"; ctx.fill(); ctx.restore(); }
     if (enemy.type === "charger" && enemy.windup > 0) { ctx.save(); ctx.rotate(Math.atan2(enemy.targetY - enemy.y, enemy.targetX - enemy.x)); ctx.globalAlpha = .55 + Math.sin(game.elapsed * 24) * .2; ctx.strokeStyle = "#ffc477"; ctx.lineWidth = 3; ctx.setLineDash([5, 4]); ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(125, 0); ctx.stroke(); ctx.restore(); }
@@ -254,6 +318,13 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
   ctx.fillStyle = "rgba(0,0,0,.42)";
   ctx.beginPath(); ctx.ellipse(0, 13, 17, 7, 0, 0, Math.PI * 2); ctx.fill();
   ctx.translate(0, bob);
+  const auraPulse = 0.94 + Math.sin(game.elapsed * 4.4) * 0.07;
+  const energyAura = ctx.createRadialGradient(0, 2, 3, 0, 2, 31 * auraPulse);
+  energyAura.addColorStop(0, "rgba(190,139,255,.34)");
+  energyAura.addColorStop(0.42, "rgba(128,82,221,.18)");
+  energyAura.addColorStop(1, "rgba(83,146,255,0)");
+  ctx.save(); ctx.globalAlpha = 0.9; ctx.fillStyle = energyAura;
+  ctx.beginPath(); ctx.ellipse(0, 2, 28 * auraPulse, 34 * auraPulse, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore();
   const getPlayerSheet = (action: PlayerVisualAction) =>
     action === "cast" ? sprites.playerCast : action === "move" ? sprites.playerMove : sprites.playerIdle;
   const isPlayerSheetReady = (sheet?: HTMLImageElement) =>
@@ -299,8 +370,15 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     ctx.fillStyle="#d5a7ff";ctx.shadowColor="#bd7cff";ctx.shadowBlur=16;ctx.beginPath();ctx.arc(18,-13,3.5,0,Math.PI*2);ctx.fill();
   }
   ctx.shadowBlur=0; ctx.globalAlpha=1;
-  ctx.strokeStyle="#f2d6ff";ctx.lineWidth=1.2;
-  ctx.beginPath();ctx.arc(0,0,18+Math.sin(game.elapsed*4)*1.1,0,Math.PI*2);ctx.stroke();
+  if (showPlayerHp) {
+    const barW = 42, barY = -44, ratio = clamp(player.hp / Math.max(1, player.maxHp), 0, 1);
+    ctx.fillStyle = "rgba(8,6,15,.82)"; ctx.fillRect(-barW / 2 - 1, barY - 1, barW + 2, 6);
+    ctx.fillStyle = "rgba(104,33,55,.95)"; ctx.fillRect(-barW / 2, barY, barW, 4);
+    const hpGradient = ctx.createLinearGradient(-barW / 2, 0, barW / 2, 0);
+    hpGradient.addColorStop(0, "#f08a9c"); hpGradient.addColorStop(1, "#ff526f");
+    ctx.fillStyle = hpGradient; ctx.fillRect(-barW / 2, barY, barW * ratio, 4);
+    ctx.strokeStyle = "rgba(255,225,232,.68)"; ctx.lineWidth = 0.7; ctx.strokeRect(-barW / 2, barY, barW, 4);
+  }
   ctx.restore();
 
   if (corruption > 0) {
@@ -327,7 +405,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
   const [fractalBalance, setFractalBalance] = useState(0);
   const [unlockedCorruption, setUnlockedCorruption] = useState(0);
   const [completedCorruptions, setCompletedCorruptions] = useState<number[]>([]);
-  const [purchases, setPurchases] = useState({ area: 0, experience: 0, rarity: 0, speed_2x: false, speed_3x: false });
+  const [purchases, setPurchases] = useState<PurchaseState>(DEFAULT_PURCHASES);
+  const [showPlayerHp, setShowPlayerHp] = useState(true);
   const [runId, setRunId] = useState<string | null>(null);
   const [shopBusy, setShopBusy] = useState(false);
   const [shopOpen, setShopOpen] = useState(false);
@@ -347,6 +426,9 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
       xpGem: "/fractals/sprites/drops/xp-gem.svg",
       specialXP: "/fractals/sprites/drops/special-xp.svg",
       specialArea: "/fractals/sprites/drops/special-area.svg",
+      specialRange: "/fractals/sprites/drops/special-range.svg",
+      specialProjectiles: "/fractals/sprites/drops/special-projectiles.svg",
+      projectile: "/fractals/sprites/projectile.svg",
     };
     (Object.entries(assets) as [SpriteKey, string][]).forEach(([key, src]) => {
       const image = new Image();
@@ -364,8 +446,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
     setFractalBalance(Number(data?.fractals ?? 0));
     setUnlockedCorruption(Number(data?.corruptionUnlocked ?? 0));
     setCompletedCorruptions(Array.isArray(data?.completedCorruptions) ? data.completedCorruptions : []);
-    const owned = data?.purchasedUpgrades ?? {};
-    setPurchases({ area: Number(owned.area ?? 0), experience: Number(owned.experience ?? 0), rarity: Number(owned.rarity ?? 0), speed_2x: !!owned.speed_2x, speed_3x: !!owned.speed_3x });
+    setPurchases(parsePurchaseState(data?.purchasedUpgrades));
   }, []);
 
   useEffect(() => { void refreshFractalState(); }, [refreshFractalState]);
@@ -376,8 +457,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
       const { data, error } = await (supabase.rpc as any)("purchase_fractal_upgrade", { _upgrade: upgrade });
       if (error) throw error;
       setFractalBalance(Number(data?.fractals ?? 0));
-      const owned = data?.purchasedUpgrades ?? {};
-      setPurchases({ area: Number(owned.area ?? 0), experience: Number(owned.experience ?? 0), rarity: Number(owned.rarity ?? 0), speed_2x: !!owned.speed_2x, speed_3x: !!owned.speed_3x });
+      setPurchases(parsePurchaseState(data?.purchasedUpgrades));
       toast.success("Melhoria comprada permanentemente.");
     } catch (error: any) { toast.error(error?.message ?? "Não foi possível comprar."); }
     finally { setShopBusy(false); }
@@ -390,11 +470,11 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
     const rect = canvasRef.current?.getBoundingClientRect();
     const width = Math.max(320, rect?.width ?? 760);
     const height = Math.max(380, rect?.height ?? 520);
-    const game = makeGame(width, height);
+    const game = makeGame(width, height, purchases);
     gameRef.current = game;
-    setHud({ hp: 100, maxHp: 100, xp: 0, nextXp: 12, level: 1, kills: 0, elapsed: 0, phase: "Exploração", pressure: 0 });
+    setHud({ hp: game.player.hp, maxHp: game.player.maxHp, xp: 0, nextXp: 12, level: 1, kills: 0, elapsed: 0, phase: "Exploração", pressure: 0 });
     setLevelChoices([]); setPaused(false); setResult(null); setBossMessage(false); setRunning(true);
-  }, [corruption, purchases.area, purchases.experience]);
+  }, [corruption, purchases]);
 
   const chooseUpgrade = useCallback((upgrade: Upgrade) => {
     const game = gameRef.current;
@@ -402,6 +482,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
     const rarityPower = upgrade.rarity === "epic" ? 1.5 : upgrade.rarity === "rare" ? 1.25 : 1;
     if (upgrade.id === "special_area" && game.player.specialAreaStacks < 5) { game.player.specialAreaStacks += 1; game.player.pickupRadius = 85 * (1 + game.player.specialAreaStacks * 0.10); }
     if (upgrade.id === "special_experience" && game.player.specialExperienceStacks < 6) { game.player.specialExperienceStacks += 1; game.player.xpMultiplier = 1 + game.player.specialExperienceStacks * 0.05; }
+    if (upgrade.id === "special_projectile_range" && game.player.projectileRangeStacks < 5) { game.player.projectileRangeStacks += 1; game.player.projectileRangeMultiplier = 1 + game.player.projectileRangeStacks * 0.10; }
+    if (upgrade.id === "special_projectiles" && game.player.projectileStacks < MAX_EXTRA_PROJECTILES) game.player.projectileStacks += 1;
     if (upgrade.id === "power") game.player.damage *= 1 + 0.30 * rarityPower;
     if (upgrade.id === "haste") game.player.fireRate *= 1 - 0.18 * rarityPower;
     if (upgrade.id === "vitality") { game.player.maxHp *= 1 + 0.15 * rarityPower; game.player.hp = Math.min(game.player.maxHp, game.player.hp + game.player.maxHp * 0.25 * rarityPower); }
@@ -466,13 +548,28 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         }
         game.shotTimer -= dt;
         if (game.shotTimer <= 0 && game.enemies.length > 0) {
-          let target = game.enemies[0]; let best = Infinity;
-          for (const enemy of game.enemies) { const d = distance(game.player.x, game.player.y, enemy.x, enemy.y); if (d < best) { best = d; target = enemy; } }
+          let target = game.enemies[0]; let bestScore = Infinity;
+          for (const enemy of game.enemies) {
+            const d = distance(game.player.x, game.player.y, enemy.x, enemy.y);
+            const priority = enemy.type === "boss" ? 95 : enemy.type === "elite" ? 28 : enemy.type === "charger" ? 12 : 0;
+            const score = d - priority;
+            if (score < bestScore) { bestScore = score; target = enemy; }
+          }
           const d = Math.max(1, distance(game.player.x, game.player.y, target.x, target.y));
-          const speed = 440;
+          const baseAngle = Math.atan2(target.y - game.player.y, target.x - game.player.x);
+          const projectileCount = 1 + game.player.projectileStacks;
+          const spread = projectileCount === 1 ? [0] : projectileCount === 2 ? [-0.095, 0.095] : [-0.16, 0, 0.16];
+          const speed = 440 * game.player.projectileRangeMultiplier;
+          const damageScale = projectileCount === 1 ? 1 : 0.68;
           game.player.castFacing = directionFromVector(target.x - game.player.x, target.y - game.player.y);
           game.player.castTimer = 0.24;
-          game.shots.push({ x: game.player.x, y: game.player.y, vx: ((target.x - game.player.x) / d) * speed, vy: ((target.y - game.player.y) / d) * speed, damage: game.player.damage, life: 1.6 });
+          for (const angleOffset of spread) {
+            const angle = baseAngle + angleOffset;
+            game.shots.push({
+              x: game.player.x, y: game.player.y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
+              damage: game.player.damage * damageScale, life: game.player.projectileLife,
+            });
+          }
           game.shotTimer = game.player.fireRate;
         }
         const desiredAction: PlayerVisualAction = game.player.castTimer > 0 ? "cast" : game.player.moving ? "move" : "idle";
@@ -499,7 +596,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                 game.player.hp = Math.max(0, game.player.hp - 28); game.player.invuln = 0.85;
               }
             } else if (enemy.attack <= 0) {
-              enemy.targetX = game.player.x; enemy.targetY = game.player.y; enemy.windup = 1.05; enemy.attack = 5.1;
+              const phaseTwo = enemy.hp <= enemy.maxHp * 0.5;
+              enemy.targetX = game.player.x; enemy.targetY = game.player.y; enemy.windup = phaseTwo ? 0.82 : 1.05; enemy.attack = phaseTwo ? 3.8 : 5.1;
             }
             if (enemy.hp <= enemy.maxHp * 0.5 && !enemy.summonedAtHalf) {
               enemy.summonedAtHalf = true;
@@ -508,22 +606,35 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                 game.enemies.push({ x: enemy.x + Math.cos(angle) * 58, y: enemy.y + Math.sin(angle) * 58, hp: 34, maxHp: 34, speed: 62, radius: 10, damage: 8, color: "#9b91b4", xp: 2, type: "wraith", attack: 0, flash: 0, windup: 0, targetX: 0, targetY: 0, dashTime: 0, summonedAtHalf: false });
               }
             }
-            enemy.x += ((game.player.x - enemy.x) / d) * enemy.speed * dt;
-            enemy.y += ((game.player.y - enemy.y) / d) * enemy.speed * dt;
+            const separation = getEnemySeparation(enemy, game.enemies);
+            const steerX = (game.player.x - enemy.x) / d + separation.x * 0.28;
+            const steerY = (game.player.y - enemy.y) / d + separation.y * 0.28;
+            const steerLength = Math.max(1, Math.hypot(steerX, steerY));
+            const phaseTwoSpeed = enemy.hp <= enemy.maxHp * 0.5 ? 1.16 : 1;
+            enemy.x += (steerX / steerLength) * enemy.speed * phaseTwoSpeed * dt;
+            enemy.y += (steerY / steerLength) * enemy.speed * phaseTwoSpeed * dt;
           } else if (enemy.type === "charger") {
             if (enemy.dashTime > 0) {
               enemy.dashTime = Math.max(0, enemy.dashTime - dt);
               enemy.x += enemy.targetX * 390 * dt; enemy.y += enemy.targetY * 390 * dt;
-              if (d < enemy.radius + 20 && game.player.invuln <= 0) { game.player.hp = Math.max(0, game.player.hp - enemy.damage); game.player.invuln = .65; enemy.dashTime = 0; }
+              const dashDistance = distance(game.player.x, game.player.y, enemy.x, enemy.y);
+              if (dashDistance < enemy.radius + 20 && game.player.invuln <= 0) { game.player.hp = Math.max(0, game.player.hp - enemy.damage); game.player.invuln = .65; enemy.dashTime = 0; }
             } else if (enemy.windup > 0) {
               enemy.windup = Math.max(0, enemy.windup - dt);
               if (enemy.windup === 0) { enemy.dashTime = .34; enemy.attack = 2.25; }
             } else if (enemy.attack <= 0 && d < 245) {
-              enemy.targetX = (game.player.x - enemy.x) / d; enemy.targetY = (game.player.y - enemy.y) / d;
+              const predictedX = game.player.x + dx * game.player.speed * 0.18;
+              const predictedY = game.player.y + dy * game.player.speed * 0.18;
+              const aimDistance = Math.max(1, distance(enemy.x, enemy.y, predictedX, predictedY));
+              enemy.targetX = (predictedX - enemy.x) / aimDistance; enemy.targetY = (predictedY - enemy.y) / aimDistance;
               enemy.windup = .52;
             } else {
-              enemy.x += ((game.player.x - enemy.x) / d) * enemy.speed * dt;
-              enemy.y += ((game.player.y - enemy.y) / d) * enemy.speed * dt;
+              const separation = getEnemySeparation(enemy, game.enemies);
+              const steerX = (game.player.x - enemy.x) / d + separation.x * 0.22;
+              const steerY = (game.player.y - enemy.y) / d + separation.y * 0.22;
+              const steerLength = Math.max(1, Math.hypot(steerX, steerY));
+              enemy.x += (steerX / steerLength) * enemy.speed * dt;
+              enemy.y += (steerY / steerLength) * enemy.speed * dt;
               if (d < enemy.radius + 15 && enemy.attack <= 0 && game.player.invuln <= 0) { game.player.hp = Math.max(0, game.player.hp - enemy.damage); game.player.invuln = .65; enemy.attack = 1.1; }
             }
           } else if (enemy.type === "brute") {
@@ -535,14 +646,40 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                 enemy.attack = 2.7;
               }
             } else {
-              enemy.x += ((game.player.x - enemy.x) / d) * enemy.speed * dt;
-              enemy.y += ((game.player.y - enemy.y) / d) * enemy.speed * dt;
               if (d < 112 && enemy.attack <= 0) enemy.windup = .72;
-              else if (d < enemy.radius + 15 && enemy.attack <= 0 && game.player.invuln <= 0) { game.player.hp = Math.max(0, game.player.hp - enemy.damage); game.player.invuln = .72; enemy.attack = 1.2; }
+              else {
+                const separation = getEnemySeparation(enemy, game.enemies);
+                const approach = d < 88 ? 0.32 : 1;
+                const steerX = (game.player.x - enemy.x) / d * approach + separation.x * 0.26;
+                const steerY = (game.player.y - enemy.y) / d * approach + separation.y * 0.26;
+                const steerLength = Math.max(1, Math.hypot(steerX, steerY));
+                enemy.x += (steerX / steerLength) * enemy.speed * dt;
+                enemy.y += (steerY / steerLength) * enemy.speed * dt;
+              }
+              if (d < enemy.radius + 15 && enemy.attack <= 0 && game.player.invuln <= 0) { game.player.hp = Math.max(0, game.player.hp - enemy.damage); game.player.invuln = .72; enemy.attack = 1.2; }
             }
           } else {
-            enemy.x += ((game.player.x - enemy.x) / d) * enemy.speed * dt;
-            enemy.y += ((game.player.y - enemy.y) / d) * enemy.speed * dt;
+            const separation = getEnemySeparation(enemy, game.enemies);
+            const ux = (game.player.x - enemy.x) / d, uy = (game.player.y - enemy.y) / d;
+            if (enemy.type === "wraith") {
+              const side = Math.sin(enemy.x * 0.026 + enemy.y * 0.019) >= 0 ? 1 : -1;
+              const tangentX = -uy * side, tangentY = ux * side;
+              const approach = d < 62 ? 0.34 : d > 150 ? 1 : 0.72;
+              const steerX = ux * approach + tangentX * 0.34 + separation.x * 0.48;
+              const steerY = uy * approach + tangentY * 0.34 + separation.y * 0.48;
+              const steerLength = Math.max(1, Math.hypot(steerX, steerY));
+              enemy.x += (steerX / steerLength) * enemy.speed * dt;
+              enemy.y += (steerY / steerLength) * enemy.speed * dt;
+            } else {
+              const targetRadius = 92;
+              const approach = clamp((d - targetRadius) / 65, -0.42, 0.72);
+              const side = Math.sin(enemy.x * 0.017 - enemy.y * 0.023) >= 0 ? 1 : -1;
+              const steerX = ux * approach - uy * side * 0.48 + separation.x * 0.38;
+              const steerY = uy * approach + ux * side * 0.48 + separation.y * 0.38;
+              const steerLength = Math.max(1, Math.hypot(steerX, steerY));
+              enemy.x += (steerX / steerLength) * enemy.speed * dt;
+              enemy.y += (steerY / steerLength) * enemy.speed * dt;
+            }
             if (enemy.type === "elite" && enemy.attack <= 0) {
               if (d < 105 && game.player.invuln <= 0) { game.player.hp = Math.max(0, game.player.hp - 7); game.player.invuln = 0.35; }
               enemy.attack = 1.7;
@@ -560,12 +697,14 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                 game.kills += 1;
                 if (enemy.type !== "boss") {
                   game.gems.push({ x: enemy.x, y: enemy.y, value: enemy.xp, radius: 5 });
-                  const specialDropTier = Math.max(purchases.area, purchases.experience);
+                  const specialDropTier = Math.max(purchases.area, purchases.experience, purchases.projectile_range, purchases.projectiles);
                   const specialDropChance = specialDropTier >= 3 ? 0.03 : specialDropTier >= 2 ? 0.01 : 0;
                   if ((enemy.type === "elite" || enemy.type === "brute") && specialDropChance > 0 && Math.random() < specialDropChance) {
                     const eligible: SpecialDrop["kind"][] = [];
                     if (purchases.area >= 1 && game.player.specialAreaStacks < 5) eligible.push("area");
                     if (purchases.experience >= 1 && game.player.specialExperienceStacks < 6) eligible.push("experience");
+                    if (purchases.projectile_range >= 1 && game.player.projectileRangeStacks < 5) eligible.push("projectile_range");
+                    if (purchases.projectiles >= 1 && game.player.projectileStacks < MAX_EXTRA_PROJECTILES) eligible.push("projectiles");
                     if (eligible.length) game.specialDrops.push({ x: enemy.x, y: enemy.y, kind: eligible[Math.floor(Math.random() * eligible.length)], radius: 13 });
                   }
                 } else { game.ended = true; setResult("victory"); if (runId) void (supabase.rpc as any)("finish_fractal_run", { _run_id: runId, _victory: true }).then(({ data, error }: any) => { if (error) toast.error(error.message); else { setFractalBalance(Number(data?.fractals ?? 0)); setUnlockedCorruption(Number(data?.corruptionUnlocked ?? 0)); setCompletedCorruptions(Array.isArray(data?.completedCorruptions) ? data.completedCorruptions : []); toast.success("Corrupção concluída. O próximo nível foi liberado."); } }); }
@@ -590,6 +729,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           if (d < 18) {
             if (drop.kind === "area" && game.player.specialAreaStacks < 5) { game.player.specialAreaStacks += 1; game.player.pickupRadius = 85 * (1 + game.player.specialAreaStacks * 0.10); }
             if (drop.kind === "experience" && game.player.specialExperienceStacks < 6) { game.player.specialExperienceStacks += 1; game.player.xpMultiplier = 1 + game.player.specialExperienceStacks * 0.05; }
+            if (drop.kind === "projectile_range" && game.player.projectileRangeStacks < 5) { game.player.projectileRangeStacks += 1; game.player.projectileRangeMultiplier = 1 + game.player.projectileRangeStacks * 0.10; }
+            if (drop.kind === "projectiles" && game.player.projectileStacks < MAX_EXTRA_PROJECTILES) game.player.projectileStacks += 1;
             drop.radius = 0;
           }
         });
@@ -599,7 +740,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         if (game.player.xp >= game.player.nextXp && !game.ended) {
           game.player.xp -= game.player.nextXp; game.player.level += 1; game.player.nextXp = Math.floor(game.player.nextXp * 1.32 + 5);
           
-          setLevelChoices(buildLevelChoices(game, purchases.area, purchases.experience, purchases.rarity));
+          setLevelChoices(buildLevelChoices(game, purchases.area, purchases.experience, purchases.projectile_range, purchases.projectiles, purchases.rarity));
         }
         if (game.player.hp <= 0 && !game.ended) { game.ended = true; setResult("defeat"); if (runId) void (supabase.rpc as any)("finish_fractal_run", { _run_id: runId, _victory: false }).then(({ error }: any) => { if (error) toast.error(error.message); }); }
         if (game.elapsed >= RUN_DURATION_SECONDS && !game.ended && !game.bossSpawned) { spawnEnemy(game, missionId, game.elapsed, corruption, true); game.bossSpawned = true; }
@@ -608,12 +749,12 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           setHud({ hp: game.player.hp, maxHp: game.player.maxHp, xp: game.player.xp, nextXp: game.player.nextXp, level: game.player.level, kills: game.kills, elapsed: game.elapsed, phase: snapshot.phaseLabel, pressure: snapshot.totalPressure });
         }
       }
-      drawGame(ctx, game, corruption, missionId, spritesRef.current);
+      drawGame(ctx, game, corruption, missionId, spritesRef.current, showPlayerHp);
       frame = requestAnimationFrame(tick);
     };
     frame = requestAnimationFrame(tick);
     return () => { cancelAnimationFrame(frame); window.removeEventListener("resize", resize); window.removeEventListener("keydown", onKeyDown); window.removeEventListener("keyup", onKeyUp); };
-  }, [running, paused, levelChoices.length, missionId, corruption, speedMultiplier, runId, purchases.rarity, purchases.area, purchases.experience]);
+  }, [running, paused, levelChoices.length, missionId, corruption, speedMultiplier, runId, purchases, showPlayerHp]);
 
   const pointerStart = (event: PointerEvent<HTMLCanvasElement>) => {
     const rect = event.currentTarget.getBoundingClientRect();
@@ -669,14 +810,28 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                 <Button size="sm" variant="outline" onClick={() => setShopOpen((v) => !v)}>{shopOpen ? "Fechar" : "Abrir loja"}</Button>
               </div>
               {shopError && <p className="mt-2 text-xs text-amber-300">{shopError}</p>}
-              {shopOpen && <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                <div className="rounded-lg border p-2"><p className="text-xs font-semibold">Área de coleta</p><p className="text-[10px] text-muted-foreground">Nível {purchases.area}/3 · N1: escolhas; N2: 1% de queda; N3: 3%.</p><Button size="sm" className="mt-2 w-full" disabled={shopBusy || purchases.area>=3 || (!isMaster && fractalBalance < FRACTAL_SHOP.area[purchases.area].cost)} onClick={() => void purchaseUpgrade("area")}>{purchases.area>=3 ? "Máximo" : isMaster ? "Desbloquear grátis" : "Comprar · " + FRACTAL_SHOP.area[purchases.area].cost.toLocaleString("pt-BR")}</Button></div>
-                <div className="rounded-lg border p-2"><p className="text-xs font-semibold">Afinidade de experiência</p><p className="text-[10px] text-muted-foreground">Nível {purchases.experience}/3 · N1: escolhas; N2: 1% de queda; N3: 3%.</p><Button size="sm" className="mt-2 w-full" disabled={shopBusy || purchases.experience>=3 || (!isMaster && fractalBalance < FRACTAL_SHOP.experience[purchases.experience].cost)} onClick={() => void purchaseUpgrade("experience")}>{purchases.experience>=3 ? "Máximo" : isMaster ? "Desbloquear grátis" : "Comprar · " + FRACTAL_SHOP.experience[purchases.experience].cost.toLocaleString("pt-BR")}</Button></div>
-                <div className="rounded-lg border p-2"><p className="text-xs font-semibold">Ressonância de raridade</p><p className="text-[10px] text-muted-foreground">Tier {purchases.rarity}/3 · Normal, Rara e Épica</p><Button size="sm" className="mt-2 w-full" disabled={shopBusy || purchases.rarity>=3 || (!isMaster && fractalBalance < FRACTAL_SHOP.rarity[purchases.rarity].cost)} onClick={() => void purchaseUpgrade("rarity")}>{purchases.rarity>=3 ? "Máximo" : isMaster ? "Desbloquear grátis" : "Comprar · " + FRACTAL_SHOP.rarity[purchases.rarity].cost.toLocaleString("pt-BR")}</Button></div>
-                <div className="rounded-lg border p-2"><p className="text-xs font-semibold">Velocidade 2x</p><p className="text-[10px] text-muted-foreground">Desbloqueio permanente</p><Button size="sm" className="mt-2 w-full" disabled={shopBusy || purchases.speed_2x || (!isMaster && fractalBalance < FRACTAL_SHOP.speed.double.cost)} onClick={() => void purchaseUpgrade("speed_2x")}>{purchases.speed_2x ? "Adquirido" : isMaster ? "Grátis" : "Comprar · 1.000"}</Button></div>
-                <div className="rounded-lg border p-2"><p className="text-xs font-semibold">Velocidade 3x</p><p className="text-[10px] text-muted-foreground">Requer 2x · Desbloqueio permanente</p><Button size="sm" className="mt-2 w-full" disabled={shopBusy || purchases.speed_3x || (!isMaster && (!purchases.speed_2x || fractalBalance < FRACTAL_SHOP.speed.triple.cost))} onClick={() => void purchaseUpgrade("speed_3x")}>{purchases.speed_3x ? "Adquirido" : isMaster ? "Grátis" : "Comprar · 2.000"}</Button></div>
-              </div>}
-              <p className="mt-2 text-[10px] text-muted-foreground">Coletáveis Especiais: 18% de chance de uma opção especial por subida de nível. Área: +10% por coleta (máx. +50%); XP: +5% por coleta (máx. +30%). Efeitos reiniciam a cada expedição.</p>
+              {shopOpen && <div className="mt-3 space-y-4">
+                <section>
+                  <div className="mb-2 flex items-center justify-between"><p className="text-xs font-bold uppercase tracking-wider text-amber-200">Atributos permanentes</p><span className="text-[10px] text-muted-foreground">Aplicados em toda expedição</span></div>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <div className="rounded-lg border border-rose-300/20 bg-rose-400/5 p-2"><p className="text-xs font-semibold">Vida reforçada</p><p className="text-[10px] text-muted-foreground">Nível {purchases.health}/5 · +10 HP máximo por nível (máx. +50).</p><Button size="sm" className="mt-2 w-full" disabled={shopBusy || purchases.health>=5 || (!isMaster && fractalBalance < FRACTAL_SHOP.health[purchases.health].cost)} onClick={() => void purchaseUpgrade("health")}>{purchases.health>=5 ? "Máximo" : isMaster ? "Melhorar grátis" : "Comprar · " + FRACTAL_SHOP.health[purchases.health].cost.toLocaleString("pt-BR")}</Button></div>
+                    <div className="rounded-lg border border-violet-300/20 bg-violet-400/5 p-2"><p className="text-xs font-semibold">Duração dos projéteis</p><p className="text-[10px] text-muted-foreground">Nível {purchases.projectile_duration}/3 · 0,8 s até 1,6 s (+25%, +50%, +100%).</p><Button size="sm" className="mt-2 w-full" disabled={shopBusy || purchases.projectile_duration>=3 || (!isMaster && fractalBalance < FRACTAL_SHOP.projectile_duration[purchases.projectile_duration].cost)} onClick={() => void purchaseUpgrade("projectile_duration")}>{purchases.projectile_duration>=3 ? "Máximo" : isMaster ? "Melhorar grátis" : "Comprar · " + FRACTAL_SHOP.projectile_duration[purchases.projectile_duration].cost.toLocaleString("pt-BR")}</Button></div>
+                    <div className="rounded-lg border p-2"><p className="text-xs font-semibold">Ressonância de raridade</p><p className="text-[10px] text-muted-foreground">Tier {purchases.rarity}/3 · Normal, Rara e Épica</p><Button size="sm" className="mt-2 w-full" disabled={shopBusy || purchases.rarity>=3 || (!isMaster && fractalBalance < FRACTAL_SHOP.rarity[purchases.rarity].cost)} onClick={() => void purchaseUpgrade("rarity")}>{purchases.rarity>=3 ? "Máximo" : isMaster ? "Desbloquear grátis" : "Comprar · " + FRACTAL_SHOP.rarity[purchases.rarity].cost.toLocaleString("pt-BR")}</Button></div>
+                    <div className="rounded-lg border p-2"><p className="text-xs font-semibold">Velocidade 2x</p><p className="text-[10px] text-muted-foreground">Desbloqueio permanente</p><Button size="sm" className="mt-2 w-full" disabled={shopBusy || purchases.speed_2x || (!isMaster && fractalBalance < FRACTAL_SHOP.speed.double.cost)} onClick={() => void purchaseUpgrade("speed_2x")}>{purchases.speed_2x ? "Adquirido" : isMaster ? "Grátis" : "Comprar · 1.000"}</Button></div>
+                    <div className="rounded-lg border p-2"><p className="text-xs font-semibold">Velocidade 3x</p><p className="text-[10px] text-muted-foreground">Requer 2x · Desbloqueio permanente</p><Button size="sm" className="mt-2 w-full" disabled={shopBusy || purchases.speed_3x || (!isMaster && (!purchases.speed_2x || fractalBalance < FRACTAL_SHOP.speed.triple.cost))} onClick={() => void purchaseUpgrade("speed_3x")}>{purchases.speed_3x ? "Adquirido" : isMaster ? "Grátis" : "Comprar · 2.000"}</Button></div>
+                  </div>
+                </section>
+                <section>
+                  <div className="mb-2 flex items-center justify-between"><p className="text-xs font-bold uppercase tracking-wider text-violet-200">Coletáveis especiais</p><span className="text-[10px] text-muted-foreground">Efeitos temporários por expedição</span></div>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <div className="rounded-lg border p-2"><p className="text-xs font-semibold">Área de coleta</p><p className="text-[10px] text-muted-foreground">Nível {purchases.area}/3 · N1: escolhas; N2: 1% de queda; N3: 3%.</p><Button size="sm" className="mt-2 w-full" disabled={shopBusy || purchases.area>=3 || (!isMaster && fractalBalance < FRACTAL_SHOP.area[purchases.area].cost)} onClick={() => void purchaseUpgrade("area")}>{purchases.area>=3 ? "Máximo" : isMaster ? "Desbloquear grátis" : "Comprar · " + FRACTAL_SHOP.area[purchases.area].cost.toLocaleString("pt-BR")}</Button></div>
+                    <div className="rounded-lg border p-2"><p className="text-xs font-semibold">Afinidade de experiência</p><p className="text-[10px] text-muted-foreground">Nível {purchases.experience}/3 · N1: escolhas; N2: 1% de queda; N3: 3%.</p><Button size="sm" className="mt-2 w-full" disabled={shopBusy || purchases.experience>=3 || (!isMaster && fractalBalance < FRACTAL_SHOP.experience[purchases.experience].cost)} onClick={() => void purchaseUpgrade("experience")}>{purchases.experience>=3 ? "Máximo" : isMaster ? "Desbloquear grátis" : "Comprar · " + FRACTAL_SHOP.experience[purchases.experience].cost.toLocaleString("pt-BR")}</Button></div>
+                    <div className="rounded-lg border p-2"><p className="text-xs font-semibold">Alcance dos projéteis</p><p className="text-[10px] text-muted-foreground">Nível {purchases.projectile_range}/3 · N1: escolhas; N2: 1% de queda; N3: 3%. +10% por coleta.</p><Button size="sm" className="mt-2 w-full" disabled={shopBusy || purchases.projectile_range>=3 || (!isMaster && fractalBalance < FRACTAL_SHOP.projectile_range[purchases.projectile_range].cost)} onClick={() => void purchaseUpgrade("projectile_range")}>{purchases.projectile_range>=3 ? "Máximo" : isMaster ? "Desbloquear grátis" : "Comprar · " + FRACTAL_SHOP.projectile_range[purchases.projectile_range].cost.toLocaleString("pt-BR")}</Button></div>
+                    <div className="rounded-lg border p-2"><p className="text-xs font-semibold">Coroa de Estilhaços</p><p className="text-[10px] text-muted-foreground">Nível {purchases.projectiles}/3 · desbloqueia até +2 projéteis, um por coleta.</p><Button size="sm" className="mt-2 w-full" disabled={shopBusy || purchases.projectiles>=3 || (!isMaster && fractalBalance < FRACTAL_SHOP.projectiles[purchases.projectiles].cost)} onClick={() => void purchaseUpgrade("projectiles")}>{purchases.projectiles>=3 ? "Máximo" : isMaster ? "Desbloquear grátis" : "Comprar · " + FRACTAL_SHOP.projectiles[purchases.projectiles].cost.toLocaleString("pt-BR")}</Button></div>
+                  </div>
+                </section>
+              </div>}}
+              <p className="mt-2 text-[10px] text-muted-foreground">Coletáveis especiais: 18% de chance de aparecerem nas escolhas de nível; Brutos e Elites podem derrubá-los conforme o nível de desbloqueio. Alcance: +10% por coleta; projéteis: +1 por coleta, até 3 no total. Efeitos reiniciam a cada expedição.</p>
             </div>
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-muted/35 p-3">
               <div><p className="text-sm font-semibold">12 minutos de sobrevivência</p><p className="text-xs text-muted-foreground">Chefe corrompido surge aos 11 minutos. Derrotá-lo encerra a expedição.</p></div>
@@ -705,11 +860,11 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
  <div className="w-full max-w-md rounded-2xl border border-white/15 bg-[#191824] p-4 shadow-2xl">
   <div className="mb-4 flex items-center justify-between"><div><p className="text-[10px] uppercase tracking-[.2em] text-violet-200">Ecos dos Fractais</p><h3 className="font-display text-2xl">Expedição pausada</h3></div><Pause className="h-7 w-7 text-amber-200"/></div>
   {pausePanel === "main" ? <>
-   <div className="grid grid-cols-2 gap-2"><Button variant="outline" className="h-auto justify-start gap-2 border-white/15 bg-white/5 py-3 text-white hover:bg-white/10" onClick={() => setPausePanel("attributes")}><UserRound className="h-4 w-4"/> Atributos</Button><Button variant="outline" className="h-auto justify-start gap-2 border-white/15 bg-white/5 py-3 text-white hover:bg-white/10" onClick={toggleFullscreen}><Maximize className="h-4 w-4"/> Tela cheia</Button></div>
+   <div className="grid grid-cols-2 gap-2"><Button variant="outline" className="h-auto justify-start gap-2 border-white/15 bg-white/5 py-3 text-white hover:bg-white/10" onClick={() => setPausePanel("attributes")}><UserRound className="h-4 w-4"/> Atributos</Button><Button variant="outline" className="h-auto justify-start gap-2 border-white/15 bg-white/5 py-3 text-white hover:bg-white/10" onClick={toggleFullscreen}><Maximize className="h-4 w-4"/> Tela cheia</Button><Button variant="outline" className="h-auto justify-start gap-2 border-white/15 bg-white/5 py-3 text-white hover:bg-white/10" onClick={() => setShowPlayerHp((v) => !v)}><Heart className="h-4 w-4 text-rose-300"/> HP: {showPlayerHp ? "visível" : "oculto"}</Button></div>
    <div className="mt-3 rounded-xl border border-white/10 p-3"><div className="mb-2 flex items-center gap-2 text-xs font-semibold text-white/75"><Gauge className="h-4 w-4"/> Velocidade da expedição</div><div className="grid grid-cols-3 gap-2">{([1,2,3] as const).map((speed) => <Button key={speed} size="sm" variant={speedMultiplier===speed?"default":"outline"} disabled={!isMaster && (speed===2 ? !purchases.speed_2x : speed===3 ? !purchases.speed_3x : false)} className={!isMaster && speed>1?"border-white/10 opacity-45":""} onClick={()=>setSpeedMultiplier(speed)}>{speed}x{!isMaster && (speed===2 ? !purchases.speed_2x : speed===3 ? !purchases.speed_3x : false)?" 🔒":""}</Button>)}</div>{!isMaster && <p className="mt-2 text-[10px] text-white/45">Desbloqueie 2x e 3x na loja de fractais.</p>}{isMaster && <p className="mt-2 text-[10px] text-emerald-200/70">Acesso de mestre: todas as velocidades liberadas para testes.</p>}</div>
    <Button className="mt-3 w-full" onClick={() => {setPausePanel("main");setPaused(false)}}><Play className="mr-2 h-4 w-4"/> Retomar expedição</Button>
   </> : <>
-   <div className="mb-3 grid grid-cols-2 gap-2">{[["Vida",`${Math.ceil(gameRef.current?.player.hp ?? hud.hp)} / ${Math.ceil(gameRef.current?.player.maxHp ?? hud.maxHp)}`],["Dano",`${(gameRef.current?.player.damage ?? 0).toFixed(1)}`],["Velocidade",`${(gameRef.current?.player.speed ?? 0).toFixed(0)}`],["Intervalo de ataque",`${(gameRef.current?.player.fireRate ?? 0).toFixed(2)}s`],["Nível",`${gameRef.current?.player.level ?? hud.level}`],["Experiência",`${gameRef.current?.player.xp ?? hud.xp} / ${gameRef.current?.player.nextXp ?? hud.nextXp}`],["Abates",`${gameRef.current?.kills ?? hud.kills}`],["Multiplicador",`${speedMultiplier}x`]].map(([label,value])=><div key={label} className="rounded-lg border border-white/10 bg-white/5 p-2"><p className="text-[10px] text-white/45">{label}</p><p className="text-sm font-semibold tabular-nums text-white">{value}</p></div>)}</div>
+   <div className="mb-3 grid grid-cols-2 gap-2">{[["Vida",`${Math.ceil(gameRef.current?.player.hp ?? hud.hp)} / ${Math.ceil(gameRef.current?.player.maxHp ?? hud.maxHp)}`],["Dano",`${(gameRef.current?.player.damage ?? 0).toFixed(1)}`],["Velocidade",`${(gameRef.current?.player.speed ?? 0).toFixed(0)}`],["Intervalo de ataque",`${(gameRef.current?.player.fireRate ?? 0).toFixed(2)}s`],["Nível",`${gameRef.current?.player.level ?? hud.level}`],["Projéteis",`${1 + (gameRef.current?.player.projectileStacks ?? 0)}`],["Alcance",`+${Math.round((gameRef.current?.player.projectileRangeMultiplier ?? 1) * 100 - 100)}%`],["Experiência",`${gameRef.current?.player.xp ?? hud.xp} / ${gameRef.current?.player.nextXp ?? hud.nextXp}`],["Abates",`${gameRef.current?.kills ?? hud.kills}`],["Multiplicador",`${speedMultiplier}x`]].map(([label,value])=><div key={label} className="rounded-lg border border-white/10 bg-white/5 p-2"><p className="text-[10px] text-white/45">{label}</p><p className="text-sm font-semibold tabular-nums text-white">{value}</p></div>)}</div>
    <Button variant="outline" className="w-full border-white/15 text-white hover:bg-white/10" onClick={()=>setPausePanel("main")}><ArrowLeft className="mr-2 h-4 w-4"/> Voltar ao menu</Button>
   </>}
  </div>

@@ -132,3 +132,27 @@ A interface de aceleração bloqueia 2x/3x para contas comuns até a compra perm
 ## Ajuste das raridades
 
 Bônus normal = 100% do valor-base; rara = 125%; épica = 150%. Evoluções permanecem sempre lendárias.
+
+
+## Atualização de combate e loja — novembro de 2026
+
+### Atributos permanentes
+- Vida reforçada: +10 HP máximo por nível, até 5 níveis (+50 HP).
+- Duração de projéteis: duração-base reduzida de 1,6 s para 0,8 s; 3 níveis permanentes aumentam a duração para 1,0 s, 1,2 s e 1,6 s (máximo: o dobro da nova duração-base).
+- Vida e duração são aplicadas ao iniciar cada expedição.
+
+### Coletáveis especiais adicionais
+- Alcance dos projéteis: +10% de velocidade/distância por coleta, limitado a +50% por expedição.
+- Coroa de Estilhaços: cada coleta adiciona um projétil; máximo de 2 extras (3 no total).
+- Os dois desbloqueios seguem a progressão dos coletáveis: nível 1 libera a opção de melhoria; nível 2 habilita 1% de queda de Brutos/Elites; nível 3 habilita 3%. A chance é compartilhada pela categoria de coletáveis especiais.
+- Quando há projéteis extras, cada disparo individual causa 68% do dano normal, e a arma distribui os tiros em leque para compensar parte do ganho de cobertura.
+
+### IA e apresentação
+- Inimigos respiram/deformam suavemente e os espectros/Elites flutuam.
+- Ecos usam aproximação com flanqueamento; Carregadores antecipam levemente a direção do jogador; Brutos reduzem a aproximação para preparar o golpe; inimigos usam separação para não se sobrepor.
+- O chefe ganha uma segunda fase mais agressiva abaixo de 50% de vida.
+- A vida do protagonista pode ser mostrada/ocultada no menu de pausa.
+- O projétil usa um fragmento cristalino violetado com brilho colorido; o círculo permanente acima do protagonista foi removido e substituído por uma aura difusa.
+
+### Observação de instalação
+A nova loja exige executar `drizzle/migrations/0006_fractal_shop_attributes_and_specials.sql` depois da migração `0005_fractal_shop_state.sql`. Sem a 0006, os novos botões de compra retornarão erro de melhoria inválida.

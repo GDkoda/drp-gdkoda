@@ -21,6 +21,28 @@ export const FRACTAL_SHOP = {
     { level: 2, cost: 500, label: "Afinidade II" },
     { level: 3, cost: 900, label: "Afinidade III" },
   ],
+  health: [
+    { level: 1, cost: 500, label: "Vida reforçada I" },
+    { level: 2, cost: 800, label: "Vida reforçada II" },
+    { level: 3, cost: 1200, label: "Vida reforçada III" },
+    { level: 4, cost: 1700, label: "Vida reforçada IV" },
+    { level: 5, cost: 2300, label: "Vida reforçada V" },
+  ],
+  projectile_duration: [
+    { level: 1, cost: 600, label: "Duração I" },
+    { level: 2, cost: 1000, label: "Duração II" },
+    { level: 3, cost: 1600, label: "Duração III" },
+  ],
+  projectile_range: [
+    { level: 1, cost: 350, label: "Alcance I" },
+    { level: 2, cost: 600, label: "Alcance II" },
+    { level: 3, cost: 1000, label: "Alcance III" },
+  ],
+  projectiles: [
+    { level: 1, cost: 700, label: "Estilhaços I" },
+    { level: 2, cost: 1200, label: "Estilhaços II" },
+    { level: 3, cost: 1800, label: "Estilhaços III" },
+  ],
   rarity: [
     { level: 1, cost: 400, tier: 1, label: "Acesso raro" },
     { level: 2, cost: 800, tier: 2, label: "Acesso épico" },
