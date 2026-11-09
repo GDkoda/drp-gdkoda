@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type PointerEvent } from "react";
-import { AlertTriangle, Heart, Move, Pause, Play, RotateCcw, Shield, Skull, Sparkles, Swords, Zap, Maximize, UserRound, Gauge, ArrowLeft, ShoppingBag, Crown, Gem as GemIcon } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { AlertTriangle, Heart, Move, Pause, Play, RotateCcw, Shield, Skull, Sparkles, Swords, Zap, Maximize, UserRound, Gauge, ArrowLeft, ShoppingBag, Crown, Gem as GemIcon, MapPin, Flame, Leaf, Snowflake, Orbit, Lock, Link2, ChevronDown, Coins } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { getDifficultySnapshot } from "@/lib/fractals/difficulty";
@@ -572,10 +573,15 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
 
 export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const queryClient = useQueryClient();
   const gameRef = useRef<GameState | null>(null);
   const keysRef = useRef(new Set<string>());
   const joystickRef = useRef<{ x: number; y: number } | null>(null);
   const [missionId, setMissionId] = useState(1);
+  const [missionPickerOpen, setMissionPickerOpen] = useState(false);
+  const [corruptionExpanded, setCorruptionExpanded] = useState(false);
+  const [exchangeAmount, setExchangeAmount] = useState("10");
+  const [coinBalance, setCoinBalance] = useState(0);
   const [corruption, setCorruption] = useState(0);
   const [running, setRunning] = useState(false);
   const [paused, setPaused] = useState(false);
@@ -594,7 +600,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
   const [shopSection, setShopSection] = useState<"permanent" | "relics">("permanent");
   const [runId, setRunId] = useState<string | null>(null);
   const [shopBusy, setShopBusy] = useState(false);
-  const [shopOpen, setShopOpen] = useState(false);
+  const [shopOpen, setShopOpen] = useState(true);
   const [shopError, setShopError] = useState<string | null>(null);
   const spritesRef = useRef<SpriteMap>({});
   useEffect(() => {
@@ -629,6 +635,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
     const { data, error } = await (supabase.rpc as any)("get_fractal_state");
     if (error) { setShopError("Aplique a migração SQL 0005 para ativar loja e progressão."); return; }
     setFractalBalance(Number(data?.fractals ?? 0));
+    setCoinBalance(Number(data?.coins ?? 0));
     setUnlockedCorruption(Number(data?.corruptionUnlocked ?? 0));
     setCompletedCorruptions(Array.isArray(data?.completedCorruptions) ? data.completedCorruptions : []);
     setPurchases(parsePurchaseState(data?.purchasedUpgrades));
@@ -642,10 +649,36 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
       const { data, error } = await (supabase.rpc as any)("purchase_fractal_upgrade", { _upgrade: upgrade });
       if (error) throw error;
       setFractalBalance(Number(data?.fractals ?? 0));
+      setCoinBalance(Number(data?.coins ?? coinBalance));
       setPurchases(parsePurchaseState(data?.purchasedUpgrades));
       toast.success("Melhoria comprada permanentemente.");
     } catch (error: any) { toast.error(error?.message ?? "Não foi possível comprar."); }
     finally { setShopBusy(false); }
+  };
+
+  const exchangeFractals = async () => {
+    const amount = Number(exchangeAmount);
+    if (!Number.isInteger(amount) || amount < 10 || amount % 10 !== 0) {
+      toast.error("Escolha uma quantidade em múltiplos de 10 fractais.");
+      return;
+    }
+    if (amount > fractalBalance) {
+      toast.error("Você não possui fractais suficientes.");
+      return;
+    }
+    setShopBusy(true);
+    try {
+      const { data, error } = await (supabase.rpc as any)("exchange_fractals_for_coins", { _fractals: amount });
+      if (error) throw error;
+      setFractalBalance(Number(data?.fractals ?? 0));
+      setCoinBalance(Number(data?.coins ?? 0));
+      await queryClient.invalidateQueries({ queryKey: ["me"] });
+      toast.success(amount.toLocaleString("pt-BR") + " fractais convertidos em " + (amount / 10).toLocaleString("pt-BR") + " moedas.");
+    } catch (error: any) {
+      toast.error(error?.message ?? "Não foi possível converter os fractais.");
+    } finally {
+      setShopBusy(false);
+    }
   };
 
   const start = useCallback(async () => {
@@ -903,7 +936,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                     if (purchases.projectiles >= 1 && game.player.projectileStacks < MAX_EXTRA_PROJECTILES) eligible.push("projectiles");
                     if (eligible.length) game.specialDrops.push({ x: enemy.x, y: enemy.y, kind: eligible[Math.floor(Math.random() * eligible.length)], radius: 13 });
                   }
-                } else { game.ended = true; setResult("victory"); if (runId) void (supabase.rpc as any)("finish_fractal_run", { _run_id: runId, _victory: true }).then(({ data, error }: any) => { if (error) toast.error(error.message); else { setFractalBalance(Number(data?.fractals ?? 0)); setUnlockedCorruption(Number(data?.corruptionUnlocked ?? 0)); setCompletedCorruptions(Array.isArray(data?.completedCorruptions) ? data.completedCorruptions : []); toast.success("Corrupção concluída. O próximo nível foi liberado."); } }); }
+                } else { game.ended = true; setResult("victory"); if (runId) void (supabase.rpc as any)("finish_fractal_run", { _run_id: runId, _victory: true }).then(({ data, error }: any) => { if (error) toast.error(error.message); else { setFractalBalance(Number(data?.fractals ?? 0)); setCoinBalance(Number(data?.coins ?? 0)); setUnlockedCorruption(Number(data?.corruptionUnlocked ?? 0)); setCompletedCorruptions(Array.isArray(data?.completedCorruptions) ? data.completedCorruptions : []); toast.success("Corrupção concluída. O próximo nível foi liberado."); } }); }
                 for (let i = 0; i < 5; i++) game.particles.push({ x: enemy.x, y: enemy.y, vx: (Math.random() - 0.5) * 100, vy: (Math.random() - 0.5) * 100, life: 0.45, color: enemy.color });
               }
               break;
@@ -965,6 +998,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
   const pointerEnd = () => { joystickRef.current = null; };
   const formatTime = (seconds: number) => `${Math.floor(seconds / 60).toString().padStart(2, "0")}:${Math.floor(seconds % 60).toString().padStart(2, "0")}`;
   const mission = FRACTAL_MISSIONS.find((item) => item.id === missionId)!;
+  const exchangeValue = Number(exchangeAmount);
+  const exchangeValid = Number.isInteger(exchangeValue) && exchangeValue >= 10 && exchangeValue % 10 === 0 && exchangeValue <= fractalBalance;
   const toggleFullscreen = async () => {
     const target = canvasRef.current?.closest("[data-fractal-arena]") as HTMLElement | null;
     try { if (!document.fullscreenElement) await target?.requestFullscreen(); else await document.exitFullscreen(); } catch { /* Fullscreen may be unavailable in embedded browsers. */ }
