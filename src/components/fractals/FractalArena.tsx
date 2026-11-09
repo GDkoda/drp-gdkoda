@@ -74,7 +74,31 @@ function buildLevelChoices(game: GameState, areaLevel: number, experienceLevel: 
   return core.map((upgrade) => ({ ...upgrade, rarity: rollUpgradeRarity(rarityTier) }));
 }
 
-function rollUpgradeRarity(tier: number): "normal" | "rare" | "epic" { const odds = FRACTAL_RARITY_TIERS[Math.max(0, Math.min(3, tier))]; const roll = Math.random() * 100; if (roll < odds.epic) return "epic"; if (roll < odds.epic + odds.rare) return "rare"; return "normal"; }
+function rollUpgradeRarity(tier: number): "normal" | "rare" | "epic" {
+  const odds = FRACTAL_RARITY_TIERS[Math.max(0, Math.min(3, tier))];
+  const roll = Math.random() * 100;
+  if (roll < odds.epic) return "epic";
+  if (roll < odds.epic + odds.rare) return "rare";
+  return "normal";
+}
+
+const UPGRADE_RARITY_MULTIPLIERS = { normal: 1, rare: 1.25, epic: 1.5 } as const;
+function getUpgradeRarityMultiplier(rarity: Upgrade["rarity"]): number {
+  return UPGRADE_RARITY_MULTIPLIERS[rarity ?? "normal"];
+}
+function formatUpgradePercent(value: number): string {
+  return value.toLocaleString("pt-BR", { maximumFractionDigits: 1 });
+}
+function getUpgradeDescription(upgrade: Upgrade): string {
+  const multiplier = getUpgradeRarityMultiplier(upgrade.rarity);
+  switch (upgrade.id) {
+    case "power": return `Dano dos disparos +${formatUpgradePercent(30 * multiplier)}%.`;
+    case "haste": return `Velocidade de ataque +${formatUpgradePercent(18 * multiplier)}% (intervalo entre disparos menor).`;
+    case "vitality": return `Vida máxima +${formatUpgradePercent(15 * multiplier)}% e cura ${formatUpgradePercent(25 * multiplier)}% da vida máxima anterior.`;
+    case "swift": return `Velocidade de movimento +${formatUpgradePercent(10 * multiplier)}%.`;
+    default: return upgrade.description;
+  }
+}
 const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(max, n));
 const distance = (ax: number, ay: number, bx: number, by: number) => Math.hypot(ax - bx, ay - by);
 const directionFromVector = (x: number, y: number) => {
@@ -479,14 +503,19 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
   const chooseUpgrade = useCallback((upgrade: Upgrade) => {
     const game = gameRef.current;
     if (!game) return;
-    const rarityPower = upgrade.rarity === "epic" ? 1.5 : upgrade.rarity === "rare" ? 1.25 : 1;
+    const rarityPower = getUpgradeRarityMultiplier(upgrade.rarity);
     if (upgrade.id === "special_area" && game.player.specialAreaStacks < 5) { game.player.specialAreaStacks += 1; game.player.pickupRadius = 85 * (1 + game.player.specialAreaStacks * 0.10); }
     if (upgrade.id === "special_experience" && game.player.specialExperienceStacks < 6) { game.player.specialExperienceStacks += 1; game.player.xpMultiplier = 1 + game.player.specialExperienceStacks * 0.05; }
     if (upgrade.id === "special_projectile_range" && game.player.projectileRangeStacks < 5) { game.player.projectileRangeStacks += 1; game.player.projectileRangeMultiplier = 1 + game.player.projectileRangeStacks * 0.10; }
     if (upgrade.id === "special_projectiles" && game.player.projectileStacks < MAX_EXTRA_PROJECTILES) game.player.projectileStacks += 1;
     if (upgrade.id === "power") game.player.damage *= 1 + 0.30 * rarityPower;
-    if (upgrade.id === "haste") game.player.fireRate *= 1 - 0.18 * rarityPower;
-    if (upgrade.id === "vitality") { game.player.maxHp *= 1 + 0.15 * rarityPower; game.player.hp = Math.min(game.player.maxHp, game.player.hp + game.player.maxHp * 0.25 * rarityPower); }
+    // Attack speed uses a direct rate multiplier, so the displayed bonus matches the real effect.
+    if (upgrade.id === "haste") game.player.fireRate /= 1 + 0.18 * rarityPower;
+    if (upgrade.id === "vitality") {
+      const previousMaxHp = game.player.maxHp;
+      game.player.maxHp = previousMaxHp * (1 + 0.15 * rarityPower);
+      game.player.hp = Math.min(game.player.maxHp, game.player.hp + previousMaxHp * 0.25 * rarityPower);
+    }
     if (upgrade.id === "swift") game.player.speed *= 1 + 0.10 * rarityPower;
     setLevelChoices([]);
   }, []);
@@ -869,7 +898,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
   </>}
  </div>
 </div>}
-            {levelChoices.length > 0 && <div className="absolute inset-0 grid place-items-center bg-black/80 p-3 sm:p-6"><div className="w-full max-w-2xl space-y-3"><div className="text-center"><p className="text-xs uppercase tracking-[.22em] text-violet-200">A energia do fractal responde</p><h3 className="font-display text-2xl">Escolha uma dádiva</h3></div><div className="grid gap-2 sm:grid-cols-3">{levelChoices.map((upgrade) => {const Icon=upgrade.icon;return <button key={upgrade.id} onClick={()=>chooseUpgrade(upgrade)} className="rounded-xl border border-violet-200/20 bg-white/5 p-3 text-left transition hover:border-violet-200/60 hover:bg-violet-500/15"><Icon className="mb-2 h-5 w-5 text-amber-200"/><p className="text-sm font-semibold">{upgrade.name}</p><p className={"mt-0.5 text-[10px] font-bold uppercase tracking-wider " + (upgrade.rarity === "epic" ? "text-fuchsia-300" : upgrade.rarity === "rare" ? "text-sky-300" : "text-white/45")}>{upgrade.rarity === "epic" ? "Épica" : upgrade.rarity === "rare" ? "Rara" : "Normal"}</p><p className="mt-1 text-xs leading-relaxed text-white/65">{upgrade.description}</p></button>;})}</div></div></div>}
+            {levelChoices.length > 0 && <div className="absolute inset-0 grid place-items-center bg-black/80 p-3 sm:p-6"><div className="w-full max-w-2xl space-y-3"><div className="text-center"><p className="text-[9px] font-black uppercase tracking-[.24em] text-violet-200/65">O fractal oferece seu poder</p><h3 className="mt-1 font-display text-2xl text-white sm:text-3xl">Escolha uma dádiva</h3><p className="mt-1 text-[10px] text-white/40">Raras são 25% mais fortes · Épicas são 50% mais fortes.</p></div><div className="grid gap-2 sm:grid-cols-3">{levelChoices.map((upgrade) => {const Icon=upgrade.icon;const rarity=upgrade.rarity??"normal";const style=rarity==="epic"?"border-fuchsia-300/65 bg-gradient-to-br from-fuchsia-400/[0.18] via-violet-500/[0.10] to-[#171020] shadow-[0_0_35px_rgba(217,70,239,0.16)] hover:border-fuchsia-200":rarity==="rare"?"border-sky-200/45 bg-gradient-to-br from-sky-300/[0.13] via-cyan-500/[0.06] to-[#111a23] shadow-[0_0_26px_rgba(56,189,248,0.10)] hover:border-sky-100":"border-white/15 bg-gradient-to-br from-white/[0.07] to-[#17151f] hover:border-white/30";const label=rarity==="epic"?"ÉPICA · 150% DE POTÊNCIA":rarity==="rare"?"RARA · 125% DE POTÊNCIA":"NORMAL · 100%";return <button key={upgrade.id} onClick={()=>chooseUpgrade(upgrade)} className={"group relative overflow-hidden rounded-2xl border p-4 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition-all duration-200 hover:-translate-y-1 hover:brightness-125 "+style}><div className={"pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full blur-2xl "+(rarity==="epic"?"bg-fuchsia-400/20":rarity==="rare"?"bg-sky-300/15":"bg-white/5")}/><div className="relative"><div className="mb-3 flex items-start justify-between gap-2"><div className={"grid h-11 w-11 place-items-center rounded-xl border "+(rarity==="epic"?"border-fuchsia-200/30 bg-fuchsia-300/10 text-fuchsia-100":rarity==="rare"?"border-sky-200/30 bg-sky-300/10 text-sky-100":"border-amber-100/15 bg-amber-100/[0.06] text-amber-100")}><Icon className="h-5 w-5"/></div><span className={"rounded-full border px-2 py-1 text-[8px] font-black tracking-[.14em] "+(rarity==="epic"?"border-fuchsia-200/30 bg-fuchsia-300/10 text-fuchsia-100":rarity==="rare"?"border-sky-200/30 bg-sky-300/10 text-sky-100":"border-white/10 bg-white/5 text-white/45")}>{label}</span></div><p className="text-sm font-bold text-white">{upgrade.name}</p><p className="mt-2 min-h-[3.25rem] text-xs leading-relaxed text-white/70">{getUpgradeDescription(upgrade)}</p><div className="mt-3 flex items-center justify-between border-t border-white/10 pt-2 text-[9px] uppercase tracking-wider text-white/35"><span>{rarity==="epic"?"Dádiva exaltada":rarity==="rare"?"Dádiva aprimorada":"Dádiva estável"}</span><span className="font-bold text-white/55">Escolher ↗</span></div></div></button>;})}</div></div></div>}
             {result && <div className="absolute inset-0 grid place-items-center bg-black/80 p-4"><div className="max-w-sm text-center"><div className="mx-auto mb-3 grid h-14 w-14 place-items-center rounded-2xl border border-violet-200/20 bg-violet-400/10">{result==="victory"?<Sparkles className="h-7 w-7 text-amber-200"/>:<Skull className="h-7 w-7 text-rose-300"/>}</div><p className="text-xs uppercase tracking-[.22em] text-violet-200">{result==="victory"?"Guardião derrotado":"Expedição encerrada"}</p><h3 className="mt-1 font-display text-2xl">{result==="victory"?"O fractal silenciou":"O Vazio prevaleceu"}</h3><p className="mt-2 text-sm text-white/65">Nível {hud.level} · {hud.kills} criaturas derrotadas · {formatTime(hud.elapsed)}</p><p className="mt-2 text-xs text-amber-100/80">Recompensas e fractais ainda não são creditados neste protótipo; serão conectados após a validação segura no servidor.</p><Button className="mt-4 gap-2" onClick={()=>{setRunning(false);setResult(null);setBossMessage(false);gameRef.current=null;}}><RotateCcw className="h-4 w-4"/> Voltar à expedição</Button></div></div>}
           </div>
           <div className="flex flex-wrap items-center justify-between gap-2 border-t border-white/10 px-3 py-2 text-[10px] text-white/45 sm:px-4"><span>Arma automática: projétil perseguidor</span><span>Protótipo sem persistência de recompensas</span></div>
