@@ -944,7 +944,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             }
           }
         }
-        game.enemies = game.enemies.filter((enemy) => enemy.hp > 0 && distance(enemy.x, enemy.y, game.player.x, game.player.y) < Math.max(game.width, game.height) * 1.45);
+        game.enemies = game.enemies.filter((enemy) => enemy.hp > 0 && (enemy.type === "boss" || distance(enemy.x, enemy.y, game.player.x, game.player.y) < Math.max(game.width, game.height) * 1.45));
         game.gems.forEach((gem) => {
           const d = distance(game.player.x, game.player.y, gem.x, gem.y);
           if (d < game.player.pickupRadius) { gem.x += ((game.player.x - gem.x) / Math.max(1, d)) * 260 * dt; gem.y += ((game.player.y - gem.y) / Math.max(1, d)) * 260 * dt; }
