@@ -445,22 +445,6 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     }
     ctx.restore();
   });
-  game.pickupLabels.forEach((label) => {
-    const alpha = clamp(label.life / label.maxLife, 0, 1);
-    ctx.save();
-    ctx.globalAlpha = alpha;
-    ctx.font = "900 13px Inter, ui-sans-serif, system-ui, sans-serif";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.lineWidth = 3.5;
-    ctx.strokeStyle = "rgba(12,7,20,.94)";
-    ctx.shadowColor = "rgba(228,190,255,.85)";
-    ctx.shadowBlur = 12;
-    ctx.strokeText(label.text, label.x, label.y);
-    ctx.fillStyle = "#ffe6ae";
-    ctx.fillText(label.text, label.x, label.y);
-    ctx.restore();
-  });
   game.shots.forEach((shot) => {
     ctx.save(); ctx.translate(shot.x, shot.y); ctx.rotate(Math.atan2(shot.vy, shot.vx));
     const fade = clamp(shot.life / Math.max(0.01, game.player.projectileLife), 0.25, 1);
@@ -647,6 +631,22 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     ctx.strokeStyle = "rgba(255,225,232,.68)"; ctx.lineWidth = 0.7; ctx.strokeRect(-barW / 2, barY, barW, 4);
   }
   ctx.restore();
+  game.pickupLabels.forEach((label) => {
+    const alpha = clamp(label.life / label.maxLife, 0, 1);
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.font = "900 13px Inter, ui-sans-serif, system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.lineWidth = 3.5;
+    ctx.strokeStyle = "rgba(12,7,20,.94)";
+    ctx.shadowColor = "rgba(228,190,255,.85)";
+    ctx.shadowBlur = 12;
+    ctx.strokeText(label.text, label.x, label.y);
+    ctx.fillStyle = "#ffe6ae";
+    ctx.fillText(label.text, label.x, label.y);
+    ctx.restore();
+  });
   ctx.restore();
 
   if (corruption > 0) {
