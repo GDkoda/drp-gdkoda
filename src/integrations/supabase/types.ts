@@ -1042,10 +1042,13 @@ export type Database = {
         Returns: number
       }
       daily_checkin: { Args: never; Returns: number }
-      exchange_fractals_for_coins: { Args: { _fractals: number }; Returns: Json }
       equip_item: {
         Args: { _char: string; _chest: string }
         Returns: undefined
+      }
+      exchange_fractals_for_coins: {
+        Args: { _fractals: number }
+        Returns: Json
       }
       expire_puzzle: { Args: { _id: string }; Returns: Json }
       finish_farkle_game: {
