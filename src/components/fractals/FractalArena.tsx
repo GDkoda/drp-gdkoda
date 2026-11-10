@@ -1001,7 +1001,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         game.shots.forEach((shot) => { shot.x += shot.vx * dt; shot.y += shot.vy * dt; shot.life -= dt; });
         const currentZoom = zoomRef.current;
         const cameraLeft = game.player.x - game.width / (2 * currentZoom), cameraTop = game.player.y - game.height / (2 * currentZoom);
-        game.shots = game.shots.filter((shot) => shot.life > 0 && shot.x > cameraLeft - 20 && shot.x < cameraLeft + game.width + 20 && shot.y > cameraTop - 20 && shot.y < cameraTop + game.height + 20);
+        game.shots = game.shots.filter((shot) => shot.life > 0 && shot.x > cameraLeft - 20 && shot.x < cameraLeft + game.width / currentZoom + 20 && shot.y > cameraTop - 20 && shot.y < cameraTop + game.height / currentZoom + 20);
         const movementGrid = buildEnemySpatialGrid(game.enemies);
         for (const enemy of game.enemies) {
           const d = Math.max(1, distance(game.player.x, game.player.y, enemy.x, enemy.y));
@@ -1168,6 +1168,12 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         game.specialDrops = game.specialDrops.filter((drop) => drop.radius > 0 && distance(drop.x, drop.y, game.player.x, game.player.y) < Math.max(game.width, game.height) * 1.6);
         game.particles.forEach((p) => { p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; });
         game.particles = game.particles.filter((p) => p.life > 0);
+        if (game.particles.length > 120) game.particles.splice(0, game.particles.length - 120);
+        if (game.gems.length > 180) {
+          const overflow = game.gems.splice(0, game.gems.length - 180);
+          const retainedGem = game.gems[0];
+          if (retainedGem) retainedGem.value += overflow.reduce((total, gem) => total + gem.value, 0);
+        }
         if (game.player.xp >= game.player.nextXp && !game.ended && eventRewardRemainingRef.current === 0) {
           game.player.xp -= game.player.nextXp; game.player.level += 1; game.player.nextXp = Math.floor(game.player.nextXp * 1.32 + 5);
           
