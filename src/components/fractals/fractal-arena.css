@@ -2549,3 +2549,406 @@
     0 18px 55px rgba(0,0,0,.48),
     0 0 20px rgba(229,183,89,.075) !important;
 }
+
+
+/* ==========================================================================
+   PRESTIGE GOLD — FULL-GAME FINISH
+   Carries the forge's gold metalwork through mission selection, pause,
+   attributes, reward cards, game frame, result screen and arena details.
+   Rarity colors and combat-state colors remain distinct.
+   ========================================================================== */
+
+.fractals-hub {
+  --fx-prestige-gold: #f5d78e;
+  --fx-prestige-gold-bright: #ffe9b2;
+  --fx-prestige-gold-deep: #9c7137;
+  --fx-prestige-gold-line: rgba(245,215,142,.34);
+  --fx-prestige-gold-glow: rgba(229,183,89,.18);
+}
+
+/* Shared metal edge for every in-game modal and frame. */
+.fractals-game-shell {
+  overflow: hidden;
+  border: 1px solid rgba(245,215,142,.42) !important;
+  border-radius: 6px !important;
+  background: #08060f !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(255,238,194,.08),
+    0 20px 60px rgba(0,0,0,.55),
+    0 0 22px rgba(229,183,89,.08) !important;
+}
+.fractals-arena-frame {
+  border-color: rgba(245,215,142,.46);
+  box-shadow:
+    inset 0 0 0 1px rgba(255,238,194,.09),
+    inset 0 0 35px rgba(240,210,141,.025),
+    0 12px 38px rgba(0,0,0,.42);
+}
+.fractals-arena-frame::before,
+.fractals-arena-frame::after {
+  content: "";
+  position: absolute;
+  z-index: 8;
+  width: 18px;
+  height: 18px;
+  border-color: rgba(245,215,142,.75);
+  border-style: solid;
+  pointer-events: none;
+  filter: drop-shadow(0 0 5px rgba(229,183,89,.25));
+}
+.fractals-arena-frame::before {
+  top: 3px;
+  left: 3px;
+  border-width: 1px 0 0 1px;
+}
+.fractals-arena-frame::after {
+  right: 3px;
+  bottom: 3px;
+  border-width: 0 1px 1px 0;
+}
+
+/* Pause menu: gold title rail, stat plaques, switches and action buttons. */
+.fractals-pause-panel {
+  border-color: rgba(245,215,142,.52) !important;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(178,112,255,.12), transparent 55%),
+    radial-gradient(ellipse at 50% 100%, rgba(240,210,141,.055), transparent 52%),
+    #0d0916 padding-box,
+    linear-gradient(135deg, rgba(255,233,178,.68), rgba(156,113,55,.42), rgba(255,233,178,.42)) border-box !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(255,238,194,.12),
+    inset 0 1px rgba(255,255,255,.13),
+    0 28px 85px rgba(0,0,0,.72),
+    0 0 23px rgba(229,183,89,.11) !important;
+}
+.fractals-pause-panel::before {
+  border-color: rgba(245,215,142,.22);
+}
+.fractals-pause-header {
+  position: relative;
+  border-bottom: 1px solid rgba(245,215,142,.28) !important;
+}
+.fractals-pause-header::after {
+  content: "◆";
+  position: absolute;
+  left: 50%;
+  bottom: -7px;
+  padding: 0 8px;
+  background: #100b18;
+  color: #f5d78e;
+  font-size: 9px;
+  line-height: 13px;
+  text-shadow: 0 0 10px rgba(245,215,142,.8);
+  transform: translateX(-50%);
+}
+.fractals-pause-header p { color: rgba(245,215,142,.78) !important; }
+.fractals-pause-header h3 {
+  color: #fff3d7;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  text-shadow: 0 0 16px rgba(229,183,89,.12);
+}
+.fractals-pause-header > div:last-child {
+  border-color: rgba(245,215,142,.48) !important;
+  border-radius: 5px !important;
+  background: linear-gradient(145deg, rgba(240,210,141,.2), rgba(75,47,119,.22)) !important;
+  color: #ffe9b2 !important;
+  box-shadow: 0 0 15px rgba(229,183,89,.12), inset 0 1px rgba(255,255,255,.18) !important;
+}
+.fractals-pause-actions button,
+.fractals-pause-speed button,
+.fractals-pause-panel > div > button:not(.fractals-pause-resume) {
+  min-height: 40px;
+  border: 1px solid rgba(245,215,142,.3) !important;
+  border-radius: 4px !important;
+  background: linear-gradient(180deg, rgba(54,37,69,.94), rgba(19,12,28,.98)) !important;
+  color: #f4e7c7 !important;
+  box-shadow: inset 0 1px rgba(255,255,255,.1), 0 4px 12px rgba(0,0,0,.24) !important;
+  transition: border-color .18s, box-shadow .18s, filter .18s, transform .18s;
+}
+.fractals-pause-actions button:hover,
+.fractals-pause-speed button:hover:not(:disabled),
+.fractals-pause-panel > div > button:not(.fractals-pause-resume):hover {
+  border-color: rgba(255,233,178,.78) !important;
+  background: linear-gradient(180deg, #63477f, #2a193c) !important;
+  box-shadow: 0 0 15px rgba(229,183,89,.16), inset 0 1px rgba(255,255,255,.18) !important;
+}
+.fractals-pause-speed {
+  border: 1px solid rgba(245,215,142,.28);
+  border-radius: 5px !important;
+  background: linear-gradient(145deg, rgba(240,210,141,.06), rgba(0,0,0,.34)) !important;
+}
+.fractals-pause-speed > div:first-child { color: #ead5a7 !important; }
+.fractals-pause-speed button[aria-pressed="true"],
+.fractals-pause-speed button[data-state="on"] {
+  border-color: #f5d78e !important;
+  background: linear-gradient(180deg, #80613a, #3b281b) !important;
+  color: #fff1c9 !important;
+  box-shadow: 0 0 14px rgba(229,183,89,.22) !important;
+}
+.fractals-pause-panel .grid.grid-cols-2 > div {
+  border: 1px solid rgba(245,215,142,.2);
+  border-radius: 4px;
+  background: linear-gradient(145deg, rgba(240,210,141,.07), rgba(255,255,255,.02)), #100b18;
+  box-shadow: inset 0 1px rgba(255,238,194,.05);
+}
+.fractals-pause-panel .grid.grid-cols-2 > div p:first-child {
+  color: rgba(245,215,142,.65) !important;
+  font-size: 10px;
+}
+.fractals-pause-panel .grid.grid-cols-2 > div p:last-child { color: #fff0ce !important; }
+.fractals-pause-panel .text-emerald-200\/70 { color: rgba(240,210,141,.78) !important; }
+.fractals-pause-panel button:disabled { opacity: .4; }
+
+/* Mission picker: metallic title rail, gold card corners and selection state. */
+.fractals-mission-picker {
+  border-color: rgba(245,215,142,.52) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(255,238,194,.1),
+    0 28px 90px rgba(0,0,0,.76),
+    0 0 22px rgba(229,183,89,.1) !important;
+}
+.fractals-mission-picker__header {
+  position: relative;
+  border-bottom-color: rgba(245,215,142,.3) !important;
+}
+.fractals-mission-picker__header p { color: rgba(245,215,142,.78) !important; }
+.fractals-mission-picker__header h3 { color: #fff2d2 !important; }
+.fractals-mission-picker__header > button {
+  border-color: rgba(245,215,142,.45) !important;
+  background: linear-gradient(180deg, #382456, #1a102b) !important;
+  color: #ffe9b2 !important;
+}
+.fractals-mission-card {
+  position: relative;
+  border: 1px solid rgba(245,215,142,.24) !important;
+  border-radius: 5px !important;
+  background:
+    linear-gradient(145deg, rgba(240,210,141,.055), rgba(178,112,255,.045)),
+    #100b18 !important;
+  box-shadow: inset 0 1px rgba(255,238,194,.055), 0 7px 17px rgba(0,0,0,.25);
+}
+.fractals-mission-card::before {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border: 1px solid rgba(245,215,142,.08);
+  border-radius: 2px;
+  pointer-events: none;
+}
+.fractals-mission-card.is-available:hover,
+.fractals-mission-card.is-current {
+  border-color: rgba(255,233,178,.82) !important;
+  box-shadow: 0 0 0 1px rgba(245,215,142,.18), 0 0 20px rgba(229,183,89,.16), inset 0 1px rgba(255,255,255,.12) !important;
+}
+.fractals-mission-card__icon {
+  border-color: rgba(245,215,142,.48) !important;
+  border-radius: 4px !important;
+  background: linear-gradient(145deg, rgba(240,210,141,.18), rgba(68,40,91,.62)) !important;
+  color: #ffe7ae !important;
+}
+.fractals-mission-card__status { color: #f0d28d !important; }
+.fractals-mission-card__chains { color: #f5d78e !important; }
+.fractals-mission-card__footer {
+  border-top: 1px solid rgba(245,215,142,.17);
+  color: rgba(245,215,142,.72);
+}
+
+/* Dádivas: gold filigree surrounds every rarity, but rarity hues remain visible. */
+.fractals-upgrade-overlay {
+  background:
+    radial-gradient(ellipse at 50% 38%, rgba(178,112,255,.34), transparent 42%),
+    radial-gradient(ellipse at 50% 100%, rgba(240,210,141,.085), transparent 62%),
+    rgba(4,2,9,.96) !important;
+}
+.fractals-upgrade-panel {
+  border-color: rgba(245,215,142,.54) !important;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(178,112,255,.14), transparent 55%),
+    radial-gradient(ellipse at 50% 100%, rgba(240,210,141,.045), transparent 60%),
+    #0d0916 padding-box,
+    linear-gradient(135deg, rgba(255,233,178,.75), rgba(156,113,55,.4), rgba(255,233,178,.52)) border-box !important;
+  box-shadow: 0 26px 90px rgba(0,0,0,.78), 0 0 26px rgba(229,183,89,.11), inset 0 1px rgba(255,255,255,.12) !important;
+}
+.fractals-upgrade-panel > div:first-child {
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(245,215,142,.2);
+}
+.fractals-upgrade-panel > div:first-child::after {
+  content: "◆";
+  display: block;
+  position: relative;
+  margin: 5px auto -15px;
+  width: 18px;
+  color: #f5d78e;
+  font-size: 8px;
+  text-shadow: 0 0 10px rgba(245,215,142,.85);
+}
+.fractals-upgrade-panel > div:first-child p:first-child { color: rgba(245,215,142,.84) !important; }
+.fractals-upgrade-panel > div:first-child h3 { color: #fff2d3; }
+.fractals-upgrade-panel > div:first-child p:last-child { color: rgba(235,224,245,.67) !important; }
+.fractals-upgrade-panel [role="button"] {
+  border-radius: 5px !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(245,215,142,.12),
+    inset 0 1px rgba(255,255,255,.08),
+    0 7px 18px rgba(0,0,0,.28);
+}
+.fractals-upgrade-panel [role="button"]::after {
+  inset: 4px;
+  border-color: rgba(245,215,142,.15);
+  border-radius: 2px;
+}
+.fractals-upgrade-panel [role="button"]::before {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  inset: 3px;
+  background:
+    linear-gradient(#f5d78e,#f5d78e) left top/10px 1px no-repeat,
+    linear-gradient(#f5d78e,#f5d78e) left top/1px 10px no-repeat,
+    linear-gradient(#f5d78e,#f5d78e) right bottom/10px 1px no-repeat,
+    linear-gradient(#f5d78e,#f5d78e) right bottom/1px 10px no-repeat;
+  opacity: .48;
+  pointer-events: none;
+}
+.fractals-upgrade-panel [role="button"]:hover {
+  border-color: rgba(255,233,178,.62);
+  box-shadow: 0 0 18px rgba(229,183,89,.13), inset 0 1px rgba(255,255,255,.14);
+}
+.fractals-upgrade-panel [role="button"][aria-pressed="true"] {
+  border-color: #ffe9b2 !important;
+  box-shadow: 0 0 0 2px rgba(245,215,142,.72), 0 0 25px rgba(229,183,89,.24), inset 0 0 20px rgba(240,210,141,.075) !important;
+}
+.fractals-upgrade-panel [role="button"] > button {
+  border-color: rgba(245,215,142,.58);
+  background: linear-gradient(180deg, #49315d, #1a102b);
+  color: #ffe9b2;
+}
+.fractals-upgrade-panel > div:last-child button:not(:disabled) {
+  border: 1px solid rgba(255,233,178,.8) !important;
+  border-radius: 4px !important;
+  background: linear-gradient(180deg, #957342, #59401f) !important;
+  color: #fff2d1 !important;
+  box-shadow: inset 0 1px rgba(255,255,255,.24), 0 0 20px rgba(229,183,89,.2) !important;
+}
+.fractals-upgrade-panel > div:last-child button:not(:disabled):hover {
+  filter: brightness(1.14);
+  box-shadow: inset 0 1px rgba(255,255,255,.3), 0 0 27px rgba(229,183,89,.3) !important;
+}
+
+/* Result screen gets the same prestige framing as the other modal panels. */
+.fractals-result-overlay {
+  background:
+    radial-gradient(ellipse at 50% 40%, rgba(178,112,255,.25), transparent 48%),
+    radial-gradient(ellipse at 50% 100%, rgba(240,210,141,.09), transparent 60%),
+    rgba(4,2,9,.96) !important;
+  backdrop-filter: blur(9px) saturate(1.15);
+}
+.fractals-result-panel {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid transparent !important;
+  border-radius: 6px !important;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(178,112,255,.15), transparent 58%),
+    linear-gradient(160deg, #171022, #0b0812 65%, #15101d) padding-box,
+    linear-gradient(135deg, rgba(255,233,178,.75), rgba(156,113,55,.4), rgba(255,233,178,.55)) border-box !important;
+  box-shadow: inset 0 0 0 1px rgba(255,238,194,.1), 0 28px 90px rgba(0,0,0,.75), 0 0 25px rgba(229,183,89,.11) !important;
+}
+.fractals-result-panel::before {
+  content: "";
+  position: absolute;
+  inset: 5px;
+  border: 1px solid rgba(245,215,142,.14);
+  pointer-events: none;
+}
+.fractals-result-icon {
+  border-color: rgba(245,215,142,.55) !important;
+  border-radius: 5px !important;
+  background: linear-gradient(145deg, rgba(240,210,141,.22), rgba(92,54,137,.38), #100a1b) !important;
+  color: #ffe9b2 !important;
+  box-shadow: 0 0 28px rgba(229,183,89,.17), inset 0 1px rgba(255,255,255,.2) !important;
+}
+.fractals-result-kicker {
+  color: #f0d28d !important;
+  letter-spacing: .2em;
+}
+.fractals-result-title { color: #fff0cf !important; text-shadow: 0 0 20px rgba(229,183,89,.1); }
+.fractals-result-stats { color: rgba(244,231,205,.76) !important; }
+.fractals-result-note { color: rgba(245,215,142,.82) !important; }
+.fractals-result-button {
+  min-height: 44px;
+  border: 1px solid rgba(255,233,178,.74) !important;
+  border-radius: 4px !important;
+  background: linear-gradient(180deg, #80613a, #3d291a) !important;
+  color: #fff1c9 !important;
+  box-shadow: inset 0 1px rgba(255,255,255,.2), 0 0 18px rgba(229,183,89,.14);
+}
+.fractals-result-button:hover { filter: brightness(1.14); }
+
+/* Arena footer and lore note: small but consistent with the gold frame. */
+.fractals-arena-footer {
+  border-top: 1px solid rgba(245,215,142,.2) !important;
+  background: linear-gradient(90deg, rgba(240,210,141,.035), transparent 45%, rgba(240,210,141,.035));
+  color: rgba(245,226,190,.62) !important;
+}
+.fractals-lore-note {
+  border-color: rgba(245,215,142,.27) !important;
+  background: linear-gradient(90deg, rgba(240,210,141,.075), rgba(178,112,255,.04), transparent) !important;
+  color: rgba(235,224,245,.76) !important;
+}
+.fractals-lore-note > svg { color: #f0d28d !important; }
+
+/* Rune-gold focus and compact touch feedback across the game chrome. */
+.fractals-hub button:focus-visible,
+.fractals-hub input:focus-visible {
+  outline-color: #ffe9b2;
+  box-shadow: 0 0 0 3px rgba(245,215,142,.2), 0 0 14px rgba(229,183,89,.15);
+}
+.fractals-hud-bar { border-color: rgba(245,215,142,.38); }
+.fractals-hud-zone--center { border-inline-color: rgba(245,215,142,.24); }
+.fractals-hud-control-group { border-left-color: rgba(245,215,142,.25); }
+.fractals-hud-control-group button,
+.fractals-hud-pause,
+.fractals-arena-zoom button {
+  border-color: rgba(245,215,142,.42);
+  box-shadow: inset 0 1px rgba(255,238,194,.1);
+}
+.fractals-hud-control-group button:hover:not(:disabled),
+.fractals-hud-pause:hover,
+.fractals-arena-zoom button:hover:not(:disabled) {
+  border-color: #ffe9b2;
+  box-shadow: 0 0 13px rgba(229,183,89,.2);
+}
+.fractals-hud-kills svg,
+.fractals-hud-clock svg { color: #f0d28d; }
+.fractals-hud-label svg { color: rgba(240,210,141,.9); }
+.fractals-hud-track { border-color: rgba(245,215,142,.25); }
+.fractals-event-hud { border-color: rgba(245,215,142,.4); }
+.fractals-arena-hint { border-color: rgba(245,215,142,.26); }
+
+@media (max-width: 680px) {
+  .fractals-pause-panel { padding: 12px !important; }
+  .fractals-pause-actions { gap: 6px; }
+  .fractals-pause-actions button { min-height: 42px; padding: 9px !important; font-size: 11px; }
+  .fractals-pause-speed { padding: 10px !important; }
+  .fractals-pause-panel .grid.grid-cols-2 > div { padding: 8px; }
+  .fractals-mission-picker { width: calc(100% - 12px); max-height: calc(100dvh - 24px); overflow-y: auto; }
+  .fractals-mission-picker__grid { gap: 7px; }
+  .fractals-mission-card { padding: 9px; }
+  .fractals-upgrade-panel { width: calc(100% - 8px); }
+  .fractals-result-panel { padding: 16px !important; }
+  .fractals-result-icon { width: 54px !important; height: 54px !important; }
+  .fractals-result-title { font-size: 21px !important; }
+  .fractals-arena-footer { font-size: 9px !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fractals-hub .fractals-shop-item,
+  .fractals-hub .fractals-shop-buy-btn,
+  .fractals-hub .fractals-pause-panel button,
+  .fractals-hub .fractals-mission-card,
+  .fractals-hub .fractals-upgrade-panel [role="button"] {
+    transition-duration: .01ms !important;
+  }
+}
