@@ -848,3 +848,35 @@
   .fractals-hud-performance b { font-size:8px; }
   .fractals-hud-performance small,.fractals-hud-performance i { font-size:5px; }
 }
+
+
+/* Fine fit for the 320–360px range: preserve all three HUD zones without wrapping. */
+@media (max-width:360px) {
+  .fractals-hud-bar {
+    grid-template-columns:minmax(0,.92fr) minmax(68px,.68fr) minmax(0,1.4fr);
+    gap:1px;
+    padding:4px 3px 5px;
+  }
+  .fractals-hud-zone--left { gap:2px; }
+  .fractals-hud-meter { min-width:29px; gap:1px 2px; }
+  .fractals-hud-label { font-size:5px; letter-spacing:0; }
+  .fractals-hud-label svg { width:7px; height:7px; }
+  .fractals-hud-meter > b { font-size:7px; }
+  .fractals-hud-kills { gap:0 1px; }
+  .fractals-hud-kills svg { width:8px; height:8px; }
+  .fractals-hud-kills b { font-size:9px; }
+  .fractals-hud-zone--center { gap:3px; padding:0 2px; }
+  .fractals-hud-clock b { font-size:10px; }
+  .fractals-hud-density b { font-size:7px; }
+  .fractals-hud-performance { gap:1px; }
+  .fractals-hud-performance b { font-size:7px; }
+  .fractals-hud-performance i { font-size:5px; margin-left:0; }
+  .fractals-hud-mission { max-width:38px; }
+  .fractals-hud-mission b { font-size:7px; }
+  .fractals-hud-control-group { gap:0; padding-left:1px; }
+  .fractals-hud-control-group > b { min-width:10px; font-size:7px; }
+  .fractals-hud-control-group button { width:14px; height:15px; font-size:9px; }
+  .fractals-hud-control-group button svg { width:8px; height:8px; }
+  .fractals-hud-pause { width:15px; height:15px !important; min-height:15px !important; }
+  .fractals-hud-pause svg { width:8px; height:8px; }
+}
