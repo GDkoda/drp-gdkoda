@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type PointerEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, Heart, Move, Pause, Play, RotateCcw, Shield, Skull, Sparkles, Swords, Zap, Maximize, UserRound, Gauge, ArrowLeft, ShoppingBag, Crown, Gem as GemIcon, MapPin, Flame, Leaf, Snowflake, Orbit, Lock, Link2, ChevronDown, Coins, Timer, Target, ZoomIn, ZoomOut } from "lucide-react";
+import { AlertTriangle, Heart, Move, Pause, Play, RotateCcw, RotateCw, Check, Shield, Skull, Sparkles, Swords, Zap, Maximize, UserRound, Gauge, ArrowLeft, ShoppingBag, Crown, Gem as GemIcon, MapPin, Flame, Leaf, Snowflake, Orbit, Lock, Link2, ChevronDown, Coins, Timer, Target, ZoomIn, ZoomOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { getDifficultySnapshot } from "@/lib/fractals/difficulty";
@@ -696,6 +696,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
   const [running, setRunning] = useState(false);
   const [paused, setPaused] = useState(false);
   const [levelChoices, setLevelChoices] = useState<Upgrade[]>([]);
+  const [selectedUpgrade, setSelectedUpgrade] = useState<Upgrade | null>(null);
+  const [flippedCardId, setFlippedCardId] = useState<string | null>(null);
   const [eventRewardStep, setEventRewardStep] = useState(0);
   const [hud, setHud] = useState({ hp: 100, maxHp: 100, xp: 0, nextXp: 12, level: 1, kills: 0, elapsed: 0, moveSpeed: 205, fps: 0, visibleEnemies: 0, phase: "Exploração", pressure: 0, event: null as null | { id: number; remaining: number; progress: number; inside: boolean } });
   const [result, setResult] = useState<"victory" | "defeat" | null>(null);
@@ -807,10 +809,12 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
     eventRewardRemainingRef.current = 0;
     setEventRewardStep(0);
     setHud({ hp: game.player.hp, maxHp: game.player.maxHp, xp: 0, nextXp: 12, level: 1, kills: 0, elapsed: 0, moveSpeed: Math.round(game.player.speed), fps: 0, visibleEnemies: 0, phase: "Exploração", pressure: 0, event: null });
-    setLevelChoices([]); setPaused(false); setResult(null); setBossMessage(false); setRunning(true);
+    setLevelChoices([]); setSelectedUpgrade(null); setFlippedCardId(null); setPaused(false); setResult(null); setBossMessage(false); setRunning(true);
   }, [corruption, purchases]);
 
   const chooseUpgrade = useCallback((upgrade: Upgrade) => {
+    setSelectedUpgrade(null);
+    setFlippedCardId(null);
     const game = gameRef.current;
     if (!game) return;
     const rarityPower = getUpgradeRarityMultiplier(upgrade.rarity);
@@ -831,7 +835,9 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
       eventRewardRemainingRef.current -= 1;
       if (eventRewardRemainingRef.current > 0) {
         setEventRewardStep(2);
-        setLevelChoices(buildLevelChoices(game, purchases.area, purchases.experience, purchases.projectile_range, purchases.projectiles, purchases.rarity));
+        setSelectedUpgrade(null);
+              setFlippedCardId(null);
+              setLevelChoices(buildLevelChoices(game, purchases.area, purchases.experience, purchases.projectile_range, purchases.projectiles, purchases.rarity));
         return;
       }
       setEventRewardStep(0);
@@ -923,6 +929,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             if (completed) {
               eventRewardRemainingRef.current = 2;
               setEventRewardStep(1);
+              setSelectedUpgrade(null);
+              setFlippedCardId(null);
               setLevelChoices(buildLevelChoices(game, purchases.area, purchases.experience, purchases.projectile_range, purchases.projectiles, purchases.rarity));
               toast.success("Anomalia estabilizada! Escolha dois upgrades, um de cada vez.");
             } else {
@@ -1164,7 +1172,9 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         if (game.player.xp >= game.player.nextXp && !game.ended && eventRewardRemainingRef.current === 0) {
           game.player.xp -= game.player.nextXp; game.player.level += 1; game.player.nextXp = Math.floor(game.player.nextXp * 1.32 + 5);
           
-          setLevelChoices(buildLevelChoices(game, purchases.area, purchases.experience, purchases.projectile_range, purchases.projectiles, purchases.rarity));
+          setSelectedUpgrade(null);
+              setFlippedCardId(null);
+              setLevelChoices(buildLevelChoices(game, purchases.area, purchases.experience, purchases.projectile_range, purchases.projectiles, purchases.rarity));
         }
         if (game.player.hp <= 0 && !game.ended) { game.ended = true; setResult("defeat"); if (runId) void (supabase.rpc as any)("finish_fractal_run", { _run_id: runId, _victory: false }).then(({ error }: any) => { if (error) toast.error(error.message); }); }
         if (game.elapsed >= RUN_DURATION_SECONDS && !game.ended && !game.bossSpawned) { spawnEnemy(game, missionId, game.elapsed, corruption, true); game.bossSpawned = true; }
@@ -1390,171 +1400,134 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
  </div>
 </div>}
             {levelChoices.length > 0 && (
-              <div className="fractals-upgrade-overlay absolute inset-0 z-30 grid place-items-center overflow-y-auto bg-[radial-gradient(ellipse_at_center,rgba(91,46,133,0.24),rgba(5,4,10,0.97)_75%)] p-3 backdrop-blur-md sm:p-6">
-                <div className="fractals-upgrade-panel relative my-auto w-full max-w-5xl space-y-5 rounded-2xl border border-amber-200/15 bg-[#100d18]/95 p-3 shadow-[0_30px_100px_rgba(0,0,0,0.8)] sm:space-y-6 sm:rounded-[1.8rem] sm:p-6">
-                  <div className="relative text-center">
-                    <div className="mx-auto mb-3 flex w-fit items-center gap-3 text-amber-200/40">
-                      <span className="h-px w-10 bg-gradient-to-r from-transparent to-amber-200/50" />
-                      <span className="text-sm">✧</span>
-                      <span className="text-[8px] font-black uppercase tracking-[.35em]">Arquivos do destino</span>
-                      <span className="text-sm">✧</span>
-                      <span className="h-px w-10 bg-gradient-to-l from-transparent to-amber-200/50" />
-                    </div>
-                    <p className="text-[9px] font-black uppercase tracking-[.3em] text-violet-200/60">
-                      {eventRewardStep > 0 ? `DESAFIO DA FENDA · DÁDIVA ${eventRewardStep}/2` : "O FRACTAL OFERECE SEU PODER"}
+              <div className="fractals-upgrade-overlay absolute inset-0 z-50 grid place-items-center overflow-y-auto bg-[radial-gradient(ellipse_at_center,rgba(91,46,133,0.38),rgba(5,4,10,0.96)_75%)] p-2 backdrop-blur-md sm:p-4">
+                <div className="fractals-upgrade-panel w-full max-w-xl space-y-3 rounded-2xl border border-violet-200/20 bg-[#14101d]/95 p-3 shadow-[0_24px_70px_rgba(0,0,0,0.75)] sm:p-4">
+                  <div className="text-center">
+                    <p className="text-[8px] font-black uppercase tracking-[.22em] text-violet-200/70 sm:text-[9px]">
+                      {eventRewardStep > 0 ? `DESAFIO DA FENDA · DÁDIVA ${eventRewardStep}/2` : "O FRACTAL DESPERTA"}
                     </p>
-                    <h3 className="mt-2 font-display text-2xl tracking-wide text-white drop-shadow-[0_2px_12px_rgba(196,181,253,0.3)] sm:text-4xl">
-                      {eventRewardStep > 0 ? "Reivindique sua recompensa" : "Escolha uma dádiva"}
+                    <h3 className="mt-0.5 font-display text-lg text-white sm:text-2xl">
+                      {eventRewardStep > 0 ? "Escolha sua recompensa" : "Selecione uma Dádiva"}
                     </h3>
-                    <p className="mt-2 text-[10px] tracking-wide text-white/40 sm:text-xs">Cada escolha altera o curso da sua expedição.</p>
-                    <div className="mx-auto mt-4 flex max-w-xs items-center gap-3">
-                      <span className="h-px flex-1 bg-gradient-to-r from-transparent to-violet-300/30" />
-                      <span className="text-[10px] text-violet-200/50">◆</span>
-                      <span className="h-px flex-1 bg-gradient-to-l from-transparent to-violet-300/30" />
-                    </div>
+                    <p className="text-[9px] text-white/45">Toque para selecionar · Use o ícone de giro para ler os detalhes</p>
                   </div>
 
-                  <div className="fractals-upgrade-grid grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
+                  <div className="grid grid-cols-3 gap-1.5 sm:gap-3">
                     {levelChoices.map((upgrade) => {
                       const Icon = upgrade.icon;
                       const rarity = upgrade.rarity ?? "normal";
-                      const isEpic = rarity === "epic";
-                      const isRare = rarity === "rare";
+                      const isSelected = selectedUpgrade?.id === upgrade.id;
+                      const isFlipped = flippedCardId === upgrade.id;
 
-                      const palette = isEpic
-                        ? {
-                            border: "border-amber-300/65", inner: "border-amber-200/25",
-                            icon: "border-amber-200/35 bg-amber-300/10 text-amber-100",
-                            badge: "border-amber-200/40 bg-amber-300/15 text-amber-100",
-                            glow: "bg-fuchsia-500/15",
-                            shadow: "hover:shadow-[0_0_45px_rgba(217,70,239,0.28),0_0_20px_rgba(251,191,36,0.16)]",
-                            title: "text-amber-100", accent: "text-amber-300/70",
-                            background: "from-[#362044] via-[#21152d] to-[#120f1d]",
-                            corner: "border-amber-200/50", line: "bg-amber-200/25",
-                            footer: "border-amber-200/20 text-amber-100",
-                          }
-                        : isRare
-                        ? {
-                            border: "border-cyan-300/55", inner: "border-sky-200/25",
-                            icon: "border-cyan-200/35 bg-cyan-300/10 text-cyan-100",
-                            badge: "border-cyan-200/35 bg-cyan-300/10 text-cyan-100",
-                            glow: "bg-cyan-400/15",
-                            shadow: "hover:shadow-[0_0_40px_rgba(34,211,238,0.25)]",
-                            title: "text-cyan-100", accent: "text-sky-200/70",
-                            background: "from-[#17303b] via-[#14212e] to-[#10131f]",
-                            corner: "border-cyan-200/45", line: "bg-cyan-200/25",
-                            footer: "border-cyan-200/20 text-cyan-100",
-                          }
-                        : {
-                            border: "border-[#a98a62]/55", inner: "border-amber-100/15",
-                            icon: "border-amber-100/20 bg-amber-100/[0.06] text-amber-200",
-                            badge: "border-amber-100/20 bg-amber-100/[0.06] text-amber-100/70",
-                            glow: "bg-amber-200/[0.07]",
-                            shadow: "hover:shadow-[0_0_32px_rgba(180,130,75,0.18)]",
-                            title: "text-[#e9d4b0]", accent: "text-amber-100/45",
-                            background: "from-[#30251f] via-[#201a20] to-[#13121b]",
-                            corner: "border-amber-200/30", line: "bg-amber-100/15",
-                            footer: "border-amber-100/15 text-amber-100/80",
-                          };
+                      const rarityBorder = rarity === "epic"
+                        ? "border-fuchsia-400/50 bg-gradient-to-b from-fuchsia-500/15 to-[#1c1226]"
+                        : rarity === "rare"
+                        ? "border-sky-300/40 bg-gradient-to-b from-sky-500/10 to-[#101724]"
+                        : "border-amber-200/20 bg-gradient-to-b from-white/[0.05] to-[#181420]";
 
-                      const label = isEpic ? "ÉPICA" : isRare ? "RARA" : "NORMAL";
-                      const bonus = isEpic ? "+50% POTÊNCIA" : isRare ? "+25% POTÊNCIA" : "POTÊNCIA BASE";
+                      const rarityTag = rarity === "epic"
+                        ? "text-fuchsia-200 border-fuchsia-300/30 bg-fuchsia-400/10"
+                        : rarity === "rare"
+                        ? "text-sky-200 border-sky-300/30 bg-sky-400/10"
+                        : "text-amber-100/70 border-white/10 bg-white/5";
+
+                      const iconStyle = rarity === "epic"
+                        ? "border-fuchsia-300/40 bg-fuchsia-400/20 text-fuchsia-100"
+                        : rarity === "rare"
+                        ? "border-sky-300/40 bg-sky-400/20 text-sky-100"
+                        : "border-amber-200/20 bg-amber-200/10 text-amber-100";
 
                       return (
-                        <button
+                        <div
                           key={upgrade.id}
-                          type="button"
-                          onClick={() => chooseUpgrade(upgrade)}
-                          className={[
-                            "fractals-upgrade-card group relative isolate flex min-h-[260px] w-full min-w-0 flex-col overflow-hidden rounded-xl border bg-gradient-to-br p-[5px] text-left",
-                            "transition-all duration-300 ease-out active:-translate-y-1 active:scale-[0.99] active:brightness-125",
-                            "hover:-translate-y-2 hover:brightness-125 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#100d18]",
-                            palette.border, palette.background, palette.shadow,
-                            isRare ? "fractals-card-rare" : "",
-                            isEpic ? "fractals-card-epic" : "",
-                          ].join(" ")}
+                          role="button"
+                          tabIndex={0}
+                          aria-pressed={isSelected}
+                          onClick={() => setSelectedUpgrade(upgrade)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              setSelectedUpgrade(upgrade);
+                            }
+                          }}
+                          className={`group relative flex min-h-[140px] cursor-pointer select-none flex-col justify-between rounded-xl border p-2 text-left transition-all duration-200 sm:min-h-[160px] ${rarityBorder} ${
+                            isSelected
+                              ? "ring-2 ring-amber-300 scale-[1.02] shadow-[0_0_20px_rgba(252,211,77,0.35)] -translate-y-1 brightness-110"
+                              : "hover:border-white/30 hover:-translate-y-0.5"
+                          }`}
                         >
-                          <div className={`pointer-events-none absolute -inset-8 -z-10 rounded-full blur-3xl ${palette.glow}`} />
-                          <div className={`pointer-events-none absolute inset-[5px] rounded-lg border ${palette.inner}`} />
+                          <button
+                            type="button"
+                            title={isFlipped ? "Ver frente" : "Ver descrição do efeito"}
+                            aria-label={isFlipped ? "Ver frente da carta" : "Ver verso da carta"}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setFlippedCardId(isFlipped ? null : upgrade.id);
+                            }}
+                            className="absolute right-1.5 top-1.5 z-10 flex h-6 w-6 items-center justify-center rounded-full border border-white/20 bg-black/40 text-white/70 backdrop-blur-sm transition hover:bg-white/20 hover:text-white"
+                          >
+                            <RotateCw className={`h-3 w-3 transition-transform duration-300 ${isFlipped ? "rotate-180 text-amber-300" : ""}`} />
+                          </button>
 
-                          <div className={`pointer-events-none absolute left-2 top-2 h-5 w-5 border-l border-t ${palette.corner}`} />
-                          <div className={`pointer-events-none absolute right-2 top-2 h-5 w-5 border-r border-t ${palette.corner}`} />
-                          <div className={`pointer-events-none absolute bottom-2 left-2 h-5 w-5 border-b border-l ${palette.corner}`} />
-                          <div className={`pointer-events-none absolute bottom-2 right-2 h-5 w-5 border-b border-r ${palette.corner}`} />
-
-                          <div className="pointer-events-none absolute left-1/2 top-2 flex -translate-x-1/2 items-center gap-2">
-                            <span className={`h-px w-8 ${palette.line}`} />
-                            <span className={`text-[9px] ${palette.accent}`}>✦</span>
-                            <span className={`h-px w-8 ${palette.line}`} />
-                          </div>
-                          <div className="pointer-events-none absolute bottom-2 left-1/2 -translate-x-1/2">
-                            <span className={`text-[9px] ${palette.accent}`}>✧</span>
-                          </div>
-
-                          <div className="relative flex h-full flex-1 flex-col px-3 pb-4 pt-5 sm:px-4">
-                            <div className="mb-4 flex items-center justify-between gap-2">
-                              <span className={`rounded-full border px-2.5 py-1 text-[8px] font-black uppercase tracking-[.2em] ${palette.badge}`}>{label}</span>
-                              <span className={`text-[8px] font-black tracking-[.13em] ${palette.accent}`}>{bonus}</span>
+                          {isSelected && (
+                            <div className="absolute left-1.5 top-1.5 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-amber-400 text-black shadow-md">
+                              <Check className="h-3 w-3 stroke-[3]" />
                             </div>
+                          )}
 
-                            <div className="relative mx-auto mb-4">
-                              <div className={`absolute -inset-3 rounded-full blur-xl ${palette.glow}`} />
-                              <div className={`relative grid h-[76px] w-[76px] place-items-center rounded-full border ${palette.inner} bg-black/20`}>
-                                <div className={`absolute inset-1 rounded-full border ${palette.corner}`} />
-                                <div className={`absolute inset-0 rounded-full ${isEpic ? "bg-[radial-gradient(circle,rgba(251,191,36,0.22),transparent_70%)]" : isRare ? "bg-[radial-gradient(circle,rgba(34,211,238,0.2),transparent_70%)]" : "bg-[radial-gradient(circle,rgba(217,180,130,0.12),transparent_70%)]"}`} />
-                                <Icon className={`relative h-9 w-9 ${palette.title} drop-shadow-[0_0_10px_currentColor]`} />
+                          {!isFlipped ? (
+                            <div className="my-auto flex flex-col items-center justify-center pt-2 text-center">
+                              <div className={`mb-2 grid h-10 w-10 place-items-center rounded-xl border shadow-inner ${iconStyle}`}>
+                                <Icon className="h-5 w-5" />
                               </div>
-                              <span className={`absolute -left-4 top-1/2 -translate-y-1/2 text-xs ${palette.accent}`}>◇</span>
-                              <span className={`absolute -right-4 top-1/2 -translate-y-1/2 text-xs ${palette.accent}`}>◇</span>
-                            </div>
-
-                            <div className="text-center">
-                              <p className={`text-[9px] font-black uppercase tracking-[.24em] ${palette.accent}`}>
-                                {isEpic ? "Bênção transcendente" : isRare ? "Essência desperta" : "Fragmento ancestral"}
+                              <p className="line-clamp-2 text-xs font-bold leading-tight text-white sm:text-sm">
+                                {upgrade.name}
                               </p>
-                              <h4 className={`mt-2 font-display text-lg font-bold leading-tight sm:text-xl ${palette.title}`}>{upgrade.name}</h4>
+                              <span className={`mt-2 rounded-full border px-1.5 py-0.5 text-[7px] font-black uppercase tracking-wider sm:text-[8px] ${rarityTag}`}>
+                                {rarity === "epic" ? "Épica" : rarity === "rare" ? "Rara" : "Normal"}
+                              </span>
                             </div>
-
-                            <div className="my-3 flex items-center gap-2">
-                              <span className={`h-px flex-1 ${palette.line}`} />
-                              <span className={`text-[9px] ${palette.accent}`}>✧</span>
-                              <span className={`h-px flex-1 ${palette.line}`} />
+                          ) : (
+                            <div className="my-auto flex flex-col justify-between pt-4 text-center">
+                              <p className="text-[10px] leading-relaxed text-white/90 sm:text-xs">
+                                {getUpgradeDescription(upgrade)}
+                              </p>
+                              <span className="mt-2 text-[7px] font-bold uppercase tracking-wider text-amber-200/80 sm:text-[8px]">
+                                {rarity === "epic" ? "+50% Potência" : rarity === "rare" ? "+25% Potência" : "100% Padrão"}
+                              </span>
                             </div>
+                          )}
 
-                            <p className="flex-1 text-center text-[11px] leading-relaxed text-white/65 sm:text-xs">
-                              {getUpgradeDescription(upgrade)}
-                            </p>
-
-                            <div className={`mt-4 flex items-center justify-center gap-2 rounded-lg border bg-black/20 px-3 py-2.5 text-[9px] font-black uppercase tracking-[.2em] transition-all duration-300 group-hover:bg-white/[0.07] ${palette.footer}`}>
-                              <span>{isEpic ? "Reivindicar" : "Selar destino"}</span>
-                              <span className="text-sm transition-transform duration-300 group-hover:translate-x-1">↗</span>
-                            </div>
+                          <div className="mt-1 border-t border-white/10 pt-1 text-center">
+                            <span className="text-[8px] font-semibold uppercase tracking-wider text-white/40">
+                              {isSelected ? "Selecionado" : "Tocar p/ escolher"}
+                            </span>
                           </div>
-                        </button>
+                        </div>
                       );
                     })}
                   </div>
 
-                  <div className="flex items-center justify-center gap-2 pb-1 text-[8px] font-bold uppercase tracking-[.22em] text-white/25">
-                    <span>✧</span><span>O destino não oferece uma segunda escolha</span><span>✧</span>
+                  <div className="pt-2">
+                    <Button
+                      disabled={!selectedUpgrade}
+                      onClick={() => {
+                        if (selectedUpgrade) {
+                          chooseUpgrade(selectedUpgrade);
+                          setSelectedUpgrade(null);
+                          setFlippedCardId(null);
+                        }
+                      }}
+                      className={`h-11 w-full rounded-xl font-display text-sm font-bold uppercase tracking-wider transition-all duration-200 ${
+                        selectedUpgrade
+                          ? "bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-500 text-black shadow-[0_0_25px_rgba(245,158,11,0.4)] hover:brightness-110 active:scale-[0.98]"
+                          : "cursor-not-allowed border border-white/10 bg-white/5 text-white/30"
+                      }`}
+                    >
+                      {selectedUpgrade ? "Reivindicar Dádiva Selecionada" : "Selecione uma dádiva"}
+                    </Button>
                   </div>
                 </div>
-
-                <style>{`
-                  @keyframes fractalRarePulse {
-                    0%, 100% { box-shadow: 0 0 12px rgba(34,211,238,0.08); }
-                    50% { box-shadow: 0 0 24px rgba(34,211,238,0.2); }
-                  }
-                  @keyframes fractalEpicPulse {
-                    0%, 100% { box-shadow: 0 0 14px rgba(217,70,239,0.10); }
-                    50% { box-shadow: 0 0 26px rgba(251,191,36,0.18), 0 0 35px rgba(217,70,239,0.12); }
-                  }
-                  .fractals-card-rare { animation: fractalRarePulse 3s ease-in-out infinite; }
-                  .fractals-card-epic { animation: fractalEpicPulse 3.5s ease-in-out infinite; }
-                  @media (prefers-reduced-motion: reduce) {
-                    .fractals-card-rare, .fractals-card-epic { animation: none; }
-                  }
-                `}</style>
               </div>
             )}
             {result && <div className="absolute inset-0 grid place-items-center overflow-y-auto bg-[radial-gradient(ellipse_at_center,rgba(91,46,133,0.28),rgba(5,4,10,0.95)_72%)] p-4 backdrop-blur-md"><div className="w-full max-w-sm rounded-[1.6rem] border border-violet-200/20 bg-[#171320]/95 p-5 text-center shadow-[0_30px_100px_rgba(0,0,0,0.7)]"><div className="mx-auto mb-3 grid h-16 w-16 place-items-center rounded-2xl border border-amber-200/20 bg-gradient-to-br from-amber-200/15 via-violet-400/15 to-violet-950/70 shadow-[0_0_36px_rgba(167,139,250,0.18)]">{result==="victory"?<Sparkles className="h-7 w-7 text-amber-200"/>:<Skull className="h-7 w-7 text-rose-300"/>}</div><p className="text-xs uppercase tracking-[.22em] text-violet-200">{result==="victory"?"Guardião derrotado":"Expedição encerrada"}</p><h3 className="mt-1 font-display text-2xl">{result==="victory"?"O fractal silenciou":"O Vazio prevaleceu"}</h3><p className="mt-2 text-sm text-white/65">Nível {hud.level} · {hud.kills} criaturas derrotadas · {formatTime(hud.elapsed)}</p><p className="mt-2 text-xs text-amber-100/80">Recompensas e fractais ainda não são creditados neste protótipo; serão conectados após a validação segura no servidor.</p><Button className="mt-4 gap-2" onClick={()=>{setRunning(false);setResult(null);setBossMessage(false);gameRef.current=null;}}><RotateCcw className="h-4 w-4"/> Voltar à expedição</Button></div></div>}
