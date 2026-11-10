@@ -222,7 +222,7 @@ function preloadCemeteryImage(src: string): Promise<void> {
     const finish = () => {
       if (settled) return;
       settled = true;
-      resolve();
+      void image.decode().catch(() => undefined).then(resolve);
     };
     image.addEventListener("load", finish, { once: true });
     image.addEventListener("error", finish, { once: true });
