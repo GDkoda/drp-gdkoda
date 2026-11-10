@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type PointerEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, Heart, Move, Pause, Play, RotateCcw, Shield, Skull, Sparkles, Swords, Zap, Maximize, UserRound, Gauge, ArrowLeft, ShoppingBag, Crown, Gem as GemIcon, MapPin, Flame, Leaf, Snowflake, Orbit, Lock, Link2, ChevronDown, Coins, Timer, Target } from "lucide-react";
+import { AlertTriangle, Heart, Move, Pause, Play, RotateCcw, Shield, Skull, Sparkles, Swords, Zap, Maximize, UserRound, Gauge, ArrowLeft, ShoppingBag, Crown, Gem as GemIcon, MapPin, Flame, Leaf, Snowflake, Orbit, Lock, Link2, ChevronDown, Coins, Timer, Target, ZoomIn, ZoomOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { getDifficultySnapshot } from "@/lib/fractals/difficulty";
@@ -120,16 +120,55 @@ const PLAYER_DIRECTION_VECTORS = [
   { x: 1, y: 0 }, { x: Math.SQRT1_2, y: Math.SQRT1_2 },
 ];
 
-function getEnemySeparation(enemy: Enemy, enemies: Enemy[]) {
+const ENEMY_GRID_CELL_SIZE = 96;
+type EnemySpatialGrid = Map<string, Enemy[]>;
+
+function buildEnemySpatialGrid(enemies: Enemy[]): EnemySpatialGrid {
+  const grid: EnemySpatialGrid = new Map();
+  for (const enemy of enemies) {
+    const cellX = Math.floor(enemy.x / ENEMY_GRID_CELL_SIZE);
+    const cellY = Math.floor(enemy.y / ENEMY_GRID_CELL_SIZE);
+    const key = cellX + ":" + cellY;
+    const bucket = grid.get(key);
+    if (bucket) bucket.push(enemy);
+    else grid.set(key, [enemy]);
+  }
+  return grid;
+}
+
+function getNearbyEnemies(x: number, y: number, grid: EnemySpatialGrid): Enemy[] {
+  const nearby: Enemy[] = [];
+  const cellX = Math.floor(x / ENEMY_GRID_CELL_SIZE);
+  const cellY = Math.floor(y / ENEMY_GRID_CELL_SIZE);
+  for (let offsetY = -1; offsetY <= 1; offsetY++) {
+    for (let offsetX = -1; offsetX <= 1; offsetX++) {
+      const bucket = grid.get((cellX + offsetX) + ":" + (cellY + offsetY));
+      if (bucket) nearby.push(...bucket);
+    }
+  }
+  return nearby;
+}
+
+function getEnemySeparation(enemy: Enemy, grid: EnemySpatialGrid) {
   let sx = 0, sy = 0;
-  for (const other of enemies) {
-    if (other === enemy) continue;
-    const dx = enemy.x - other.x, dy = enemy.y - other.y;
-    const d = Math.max(0.001, Math.hypot(dx, dy));
-    const range = enemy.radius + other.radius + 12;
-    if (d < range) {
-      const weight = (range - d) / range;
-      sx += (dx / d) * weight; sy += (dy / d) * weight;
+  const cellX = Math.floor(enemy.x / ENEMY_GRID_CELL_SIZE);
+  const cellY = Math.floor(enemy.y / ENEMY_GRID_CELL_SIZE);
+  for (let offsetY = -1; offsetY <= 1; offsetY++) {
+    for (let offsetX = -1; offsetX <= 1; offsetX++) {
+      const bucket = grid.get((cellX + offsetX) + ":" + (cellY + offsetY));
+      if (!bucket) continue;
+      for (const other of bucket) {
+        if (other === enemy) continue;
+        const dx = enemy.x - other.x, dy = enemy.y - other.y;
+        const distanceSquared = dx * dx + dy * dy;
+        const range = enemy.radius + other.radius + 12;
+        if (distanceSquared > 0.000001 && distanceSquared < range * range) {
+          const d = Math.sqrt(distanceSquared);
+          const weight = (range - d) / range;
+          sx += (dx / d) * weight;
+          sy += (dy / d) * weight;
+        }
+      }
     }
   }
   const magnitude = Math.hypot(sx, sy);
