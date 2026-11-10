@@ -1320,55 +1320,139 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               </section>
             </div>
 
-            <section className="rounded-xl border border-amber-300/20 bg-black/20 p-3 sm:p-4">
+            <section className="fractals-gold-frame fractals-gold-corners fractals-forge-panel rounded-xl p-3.5 sm:p-5">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-3">
-                  <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-amber-300/25 bg-amber-400/10 text-amber-200"><ShoppingBag className="h-5 w-5" /></div>
+                  <div className="fractals-shop-item__slot !h-11 !w-11">
+                    <ShoppingBag className="h-5 w-5 text-amber-200" />
+                  </div>
                   <div className="min-w-0">
-                    <h3 className="font-display text-base font-bold text-white sm:text-lg">Arsenal de Fractais</h3>
-                    <p className="text-xs text-white/55">Melhorias permanentes e relíquias para suas expedições.</p>
+                    <h3 className="font-display text-base font-bold uppercase tracking-wider text-amber-100 sm:text-lg">Arsenal de Fractais</h3>
+                    <p className="text-xs text-violet-200/70">Melhorias permanentes e relíquias rúnicas de expedição.</p>
                   </div>
                 </div>
-                <Button size="sm" variant="outline" onClick={() => setShopOpen((value) => !value)} className="h-10 border-amber-300/30 px-4 text-xs font-bold text-amber-100 hover:bg-amber-400/10">
-                  {shopOpen ? "FECHAR LOJA" : "ABRIR LOJA"} <ChevronDown className={`ml-2 h-4 w-4 transition-transform ${shopOpen ? "rotate-180" : ""}`} />
+                <Button size="sm" variant="outline" onClick={() => setShopOpen((value) => !value)} className="h-9 border-amber-300/40 bg-amber-400/10 px-4 text-xs font-black uppercase tracking-wider text-amber-100 shadow-[0_0_12px_rgba(245,158,11,0.15)] hover:bg-amber-400/20">
+                  {shopOpen ? "Fechar Arsenal" : "Abrir Arsenal"}
+                  <ChevronDown className={shopOpen ? "ml-2 h-4 w-4 rotate-180 transition-transform duration-300" : "ml-2 h-4 w-4 transition-transform duration-300"} />
                 </Button>
               </div>
-              {shopError && <p className="mt-3 rounded-lg border border-amber-300/20 bg-amber-400/10 p-2 text-xs text-amber-200">{shopError}</p>}
+
+              {shopError && <p className="mt-3 rounded-lg border border-rose-400/40 bg-rose-500/15 p-2.5 text-xs text-rose-200">{shopError}</p>}
+
               {shopOpen && (
-                <div className="mt-4 space-y-3 border-t border-white/10 pt-3">
-                  <div className="grid gap-2 rounded-xl border border-white/10 bg-white/[0.035] p-3 sm:grid-cols-[1fr_auto] sm:items-center">
+                <div className="mt-4 space-y-4 border-t border-amber-300/20 pt-4">
+                  <div className="flex flex-col justify-between gap-3 rounded-lg border border-amber-300/25 bg-black/40 p-3 sm:flex-row sm:items-center">
                     <div>
-                      <div className="flex items-center gap-2 text-sm font-bold text-white"><Coins className="h-4 w-4 text-amber-300" /> Troca de moedas</div>
-                      <p className="mt-1 text-xs text-white/60">Converta 10 fractais em 1 moeda de ouro. Saldo: {coinBalance.toLocaleString("pt-BR")} moedas.</p>
+                      <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-amber-200"><Coins className="h-4 w-4 text-amber-300" /> Troca de Moedas</div>
+                      <p className="mt-1 text-xs text-white/65">Converta 10 fractais em 1 moeda de ouro. Saldo: <strong className="text-amber-300">{coinBalance.toLocaleString("pt-BR")} moedas</strong></p>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <input type="number" min={10} max={fractalBalance} step={10} inputMode="numeric" value={exchangeAmount} onChange={(event) => setExchangeAmount(event.target.value)} aria-label="Quantidade de fractais para converter" className="h-10 w-24 rounded-lg border border-white/15 bg-black/40 px-2 text-sm text-white" placeholder="FR" />
-                      <span className="text-xs text-white/65">= {Math.floor(Math.max(0, exchangeValue) / 10).toLocaleString("pt-BR")} moedas</span>
-                      <Button size="sm" disabled={shopBusy || !exchangeValid} onClick={() => void exchangeFractals()} className="h-10 bg-amber-300 px-4 text-xs font-black text-black hover:bg-amber-200">TROCAR</Button>
+                      <input type="number" min={10} max={fractalBalance} step={10} inputMode="numeric" value={exchangeAmount} onChange={(event) => setExchangeAmount(event.target.value)} aria-label="Quantidade de fractais para converter" className="h-9 w-20 rounded border border-amber-300/30 bg-black/60 px-2 text-center text-xs font-bold text-amber-100 focus:outline-none focus:ring-1 focus:ring-amber-300" placeholder="FR" />
+                      <span className="text-xs font-semibold text-amber-200/80">= {Math.floor(Math.max(0, exchangeValue) / 10).toLocaleString("pt-BR")} moedas</span>
+                      <Button size="sm" disabled={shopBusy || !exchangeValid} onClick={() => void exchangeFractals()} className="h-9 border border-amber-300 bg-gradient-to-b from-amber-300 to-amber-500 px-3 text-xs font-black text-black hover:brightness-110">CONVERTER</Button>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2">
-                    <button type="button" role="tab" aria-selected={shopSection === "permanent"} onClick={() => setShopSection("permanent")} className={`flex min-h-10 items-center justify-center gap-2 rounded-lg border px-2 text-xs font-bold transition ${shopSection === "permanent" ? "border-amber-300/50 bg-amber-400/15 text-amber-100" : "border-white/10 bg-white/[0.025] text-white/60 hover:text-white"}`}><Crown className="h-4 w-4" /> Forja permanente</button>
-                    <button type="button" role="tab" aria-selected={shopSection === "relics"} onClick={() => setShopSection("relics")} className={`flex min-h-10 items-center justify-center gap-2 rounded-lg border px-2 text-xs font-bold transition ${shopSection === "relics" ? "border-amber-300/50 bg-amber-400/15 text-amber-100" : "border-white/10 bg-white/[0.025] text-white/60 hover:text-white"}`}><Sparkles className="h-4 w-4" /> Relíquias de campo</button>
+                  <div className="fractals-shop-tabs grid grid-cols-2 gap-2" role="tablist" aria-label="Categorias do Arsenal">
+                    <button type="button" role="tab" aria-selected={shopSection === "permanent"} onClick={() => setShopSection("permanent")} className={shopSection === "permanent" ? "is-active" : ""}><Crown className="h-4 w-4 text-amber-300" /> Forja Permanente</button>
+                    <button type="button" role="tab" aria-selected={shopSection === "relics"} onClick={() => setShopSection("relics")} className={shopSection === "relics" ? "is-active" : ""}><Sparkles className="h-4 w-4 text-amber-300" /> Relíquias de Campo</button>
                   </div>
 
                   {shopSection === "permanent" && (
-                    <div className="grid gap-2 sm:grid-cols-2">
-                      <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3"><div className="flex items-center justify-between gap-2"><p className="text-sm font-bold">Vida reforçada</p><span className="text-xs font-bold text-amber-200">Nível {purchases.health}/5</span></div><p className="mt-1 text-xs text-white/60">+10 de vida máxima permanente por nível.</p><Button size="sm" className="mt-3 h-10 w-full bg-amber-300 text-xs font-black text-black hover:bg-amber-200" disabled={shopBusy || purchases.health >= 5 || (!isMaster && fractalBalance < FRACTAL_SHOP.health[purchases.health].cost)} onClick={() => void purchaseUpgrade("health")}>{purchases.health >= 5 ? "NÍVEL MÁXIMO" : isMaster ? "MELHORAR GRÁTIS" : `COMPRAR · ${FRACTAL_SHOP.health[purchases.health].cost.toLocaleString("pt-BR")} FR`}</Button></div>
-                      <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3"><div className="flex items-center justify-between gap-2"><p className="text-sm font-bold">Duração dos projéteis</p><span className="text-xs font-bold text-amber-200">Nível {purchases.projectile_duration}/3</span></div><p className="mt-1 text-xs text-white/60">Projéteis permanecem ativos por mais tempo.</p><Button size="sm" className="mt-3 h-10 w-full bg-amber-300 text-xs font-black text-black hover:bg-amber-200" disabled={shopBusy || purchases.projectile_duration >= 3 || (!isMaster && fractalBalance < FRACTAL_SHOP.projectile_duration[purchases.projectile_duration].cost)} onClick={() => void purchaseUpgrade("projectile_duration")}>{purchases.projectile_duration >= 3 ? "NÍVEL MÁXIMO" : isMaster ? "MELHORAR GRÁTIS" : `COMPRAR · ${FRACTAL_SHOP.projectile_duration[purchases.projectile_duration].cost.toLocaleString("pt-BR")} FR`}</Button></div>
-                      <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3"><div className="flex items-center justify-between gap-2"><p className="text-sm font-bold">Ressonância de raridade</p><span className="text-xs font-bold text-amber-200">Nível {purchases.rarity}/3</span></div><p className="mt-1 text-xs text-white/60">Aumenta as chances de dádivas Raras e Épicas.</p><Button size="sm" className="mt-3 h-10 w-full bg-amber-300 text-xs font-black text-black hover:bg-amber-200" disabled={shopBusy || purchases.rarity >= 3 || (!isMaster && fractalBalance < FRACTAL_SHOP.rarity[purchases.rarity].cost)} onClick={() => void purchaseUpgrade("rarity")}>{purchases.rarity >= 3 ? "NÍVEL MÁXIMO" : isMaster ? "DESBLOQUEAR GRÁTIS" : `COMPRAR · ${FRACTAL_SHOP.rarity[purchases.rarity].cost.toLocaleString("pt-BR")} FR`}</Button></div>
-                      <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3"><div className="flex items-center justify-between gap-2"><p className="text-sm font-bold">Velocidade 2x</p><span className="text-xs font-bold text-amber-200">{purchases.speed_2x ? "Adquirido" : "Bloqueado"}</span></div><p className="mt-1 text-xs text-white/60">Desbloqueia a velocidade 2x nas expedições.</p><Button size="sm" className="mt-3 h-10 w-full bg-amber-300 text-xs font-black text-black hover:bg-amber-200" disabled={shopBusy || purchases.speed_2x || (!isMaster && fractalBalance < FRACTAL_SHOP.speed.double.cost)} onClick={() => void purchaseUpgrade("speed_2x")}>{purchases.speed_2x ? "ADQUIRIDO" : isMaster ? "LIBERAR GRÁTIS" : "COMPRAR · 1.000 FR"}</Button></div>
-                      <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3"><div className="flex items-center justify-between gap-2"><p className="text-sm font-bold">Velocidade 3x</p><span className="text-xs font-bold text-amber-200">{purchases.speed_3x ? "Adquirido" : purchases.speed_2x ? "Disponível" : "Requer 2x"}</span></div><p className="mt-1 text-xs text-white/60">Desbloqueia a velocidade 3x. Requer a melhoria 2x.</p><Button size="sm" className="mt-3 h-10 w-full bg-amber-300 text-xs font-black text-black hover:bg-amber-200" disabled={shopBusy || purchases.speed_3x || (!isMaster && (!purchases.speed_2x || fractalBalance < FRACTAL_SHOP.speed.triple.cost))} onClick={() => void purchaseUpgrade("speed_3x")}>{purchases.speed_3x ? "ADQUIRIDO" : isMaster ? "LIBERAR GRÁTIS" : "COMPRAR · 2.000 FR"}</Button></div>
+                    <div className="fractals-shop-grid">
+                      <article className="fractals-shop-item">
+                        <div className="fractals-shop-item__slot"><Heart className="h-5 w-5 text-rose-300" /></div>
+                        <div className="min-w-0">
+                          <p className="fractals-shop-item__name">Vida Reforçada</p>
+                          <p className="fractals-shop-item__description">+10 de vida máxima permanente por nível.</p>
+                          <div className="fractals-shop-pips" aria-label={"Nível " + purchases.health + " de 5"}>{Array.from({ length: 5 }).map((_, i) => <i key={i} className={i < purchases.health ? "fractals-shop-pip is-filled" : "fractals-shop-pip"} />)}<span>{purchases.health}/5</span></div>
+                        </div>
+                        <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || purchases.health >= 5 || (!isMaster && fractalBalance < FRACTAL_SHOP.health[purchases.health]?.cost)} onClick={() => void purchaseUpgrade("health")}>{purchases.health >= 5 ? "MAX" : isMaster ? "GRÁTIS" : FRACTAL_SHOP.health[purchases.health]?.cost.toLocaleString("pt-BR") + " FR"}</button>
+                      </article>
+
+                      <article className="fractals-shop-item">
+                        <div className="fractals-shop-item__slot"><Timer className="h-5 w-5 text-sky-300" /></div>
+                        <div className="min-w-0">
+                          <p className="fractals-shop-item__name">Duração de Projéteis</p>
+                          <p className="fractals-shop-item__description">Disparos permanecem ativos por mais tempo.</p>
+                          <div className="fractals-shop-pips" aria-label={"Nível " + purchases.projectile_duration + " de 3"}>{Array.from({ length: 3 }).map((_, i) => <i key={i} className={i < purchases.projectile_duration ? "fractals-shop-pip is-filled" : "fractals-shop-pip"} />)}<span>{purchases.projectile_duration}/3</span></div>
+                        </div>
+                        <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || purchases.projectile_duration >= 3 || (!isMaster && fractalBalance < FRACTAL_SHOP.projectile_duration[purchases.projectile_duration]?.cost)} onClick={() => void purchaseUpgrade("projectile_duration")}>{purchases.projectile_duration >= 3 ? "MAX" : isMaster ? "GRÁTIS" : FRACTAL_SHOP.projectile_duration[purchases.projectile_duration]?.cost.toLocaleString("pt-BR") + " FR"}</button>
+                      </article>
+
+                      <article className="fractals-shop-item">
+                        <div className="fractals-shop-item__slot"><GemIcon className="h-5 w-5 text-fuchsia-300" /></div>
+                        <div className="min-w-0">
+                          <p className="fractals-shop-item__name">Ressonância Rara</p>
+                          <p className="fractals-shop-item__description">Aumenta as chances de dádivas Raras e Épicas.</p>
+                          <div className="fractals-shop-pips" aria-label={"Nível " + purchases.rarity + " de 3"}>{Array.from({ length: 3 }).map((_, i) => <i key={i} className={i < purchases.rarity ? "fractals-shop-pip is-filled" : "fractals-shop-pip"} />)}<span>{purchases.rarity}/3</span></div>
+                        </div>
+                        <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || purchases.rarity >= 3 || (!isMaster && fractalBalance < FRACTAL_SHOP.rarity[purchases.rarity]?.cost)} onClick={() => void purchaseUpgrade("rarity")}>{purchases.rarity >= 3 ? "MAX" : isMaster ? "GRÁTIS" : FRACTAL_SHOP.rarity[purchases.rarity]?.cost.toLocaleString("pt-BR") + " FR"}</button>
+                      </article>
+
+                      <article className="fractals-shop-item">
+                        <div className="fractals-shop-item__slot"><Gauge className="h-5 w-5 text-emerald-300" /></div>
+                        <div className="min-w-0">
+                          <p className="fractals-shop-item__name">Aceleração 2x</p>
+                          <p className="fractals-shop-item__description">Habilita velocidade 2x nas expedições.</p>
+                          <span className="fractals-shop-item__status">{purchases.speed_2x ? "Desbloqueado" : "Nível 0/1 · 1.000 FR"}</span>
+                        </div>
+                        <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || purchases.speed_2x || (!isMaster && fractalBalance < FRACTAL_SHOP.speed.double.cost)} onClick={() => void purchaseUpgrade("speed_2x")}>{purchases.speed_2x ? "ADQUIRIDO" : isMaster ? "GRÁTIS" : "1.000 FR"}</button>
+                      </article>
+
+                      <article className="fractals-shop-item">
+                        <div className="fractals-shop-item__slot"><Flame className="h-5 w-5 text-amber-300" /></div>
+                        <div className="min-w-0">
+                          <p className="fractals-shop-item__name">Aceleração 3x</p>
+                          <p className="fractals-shop-item__description">Habilita velocidade 3x. Requer 2x.</p>
+                          <span className="fractals-shop-item__status">{purchases.speed_3x ? "Desbloqueado" : purchases.speed_2x ? "Nível 0/1 · 2.000 FR" : "Bloqueado · requer 2x"}</span>
+                        </div>
+                        <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || purchases.speed_3x || (!isMaster && (!purchases.speed_2x || fractalBalance < FRACTAL_SHOP.speed.triple.cost))} onClick={() => void purchaseUpgrade("speed_3x")}>{purchases.speed_3x ? "ADQUIRIDO" : isMaster ? "GRÁTIS" : "2.000 FR"}</button>
+                      </article>
                     </div>
                   )}
 
                   {shopSection === "relics" && (
-                    <div className="grid gap-2 sm:grid-cols-2">
-                      <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3"><div className="flex items-center justify-between gap-2"><p className="text-sm font-bold">Área de coleta</p><span className="text-xs font-bold text-amber-200">Nível {purchases.area}/3</span></div><p className="mt-1 text-xs text-white/60">Amplia o raio de atração de gemas e relíquias.</p><Button size="sm" className="mt-3 h-10 w-full bg-amber-300 text-xs font-black text-black hover:bg-amber-200" disabled={shopBusy || purchases.area >= 3 || (!isMaster && fractalBalance < FRACTAL_SHOP.area[purchases.area].cost)} onClick={() => void purchaseUpgrade("area")}>{purchases.area >= 3 ? "NÍVEL MÁXIMO" : isMaster ? "DESBLOQUEAR GRÁTIS" : `COMPRAR · ${FRACTAL_SHOP.area[purchases.area].cost.toLocaleString("pt-BR")} FR`}</Button></div>
-                      <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3"><div className="flex items-center justify-between gap-2"><p className="text-sm font-bold">Afinidade de experiência</p><span className="text-xs font-bold text-amber-200">Nível {purchases.experience}/3</span></div><p className="mt-1 text-xs text-white/60">+5% de XP por fragmento coletado.</p><Button size="sm" className="mt-3 h-10 w-full bg-amber-300 text-xs font-black text-black hover:bg-amber-200" disabled={shopBusy || purchases.experience >= 3 || (!isMaster && fractalBalance < FRACTAL_SHOP.experience[purchases.experience].cost)} onClick={() => void purchaseUpgrade("experience")}>{purchases.experience >= 3 ? "NÍVEL MÁXIMO" : isMaster ? "DESBLOQUEAR GRÁTIS" : `COMPRAR · ${FRACTAL_SHOP.experience[purchases.experience].cost.toLocaleString("pt-BR")} FR`}</Button></div>
-                      <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3"><div className="flex items-center justify-between gap-2"><p className="text-sm font-bold">Alcance dos projéteis</p><span className="text-xs font-bold text-amber-200">Nível {purchases.projectile_range}/3</span></div><p className="mt-1 text-xs text-white/60">Seus disparos alcançam monstros mais distantes.</p><Button size="sm" className="mt-3 h-10 w-full bg-amber-300 text-xs font-black text-black hover:bg-amber-200" disabled={shopBusy || purchases.projectile_range >= 3 || (!isMaster && fractalBalance < FRACTAL_SHOP.projectile_range[purchases.projectile_range].cost)} onClick={() => void purchaseUpgrade("projectile_range")}>{purchases.projectile_range >= 3 ? "NÍVEL MÁXIMO" : isMaster ? "DESBLOQUEAR GRÁTIS" : `COMPRAR · ${FRACTAL_SHOP.projectile_range[purchases.projectile_range].cost.toLocaleString("pt-BR")} FR`}</Button></div>
-                      <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3"><div className="flex items-center justify-between gap-2"><p className="text-sm font-bold">Coroa de Estilhaços</p><span className="text-xs font-bold text-amber-200">Nível {purchases.projectiles}/3</span></div><p className="mt-1 text-xs text-white/60">Libera até +2 projéteis extras simultâneos.</p><Button size="sm" className="mt-3 h-10 w-full bg-amber-300 text-xs font-black text-black hover:bg-amber-200" disabled={shopBusy || purchases.projectiles >= 3 || (!isMaster && fractalBalance < FRACTAL_SHOP.projectiles[purchases.projectiles].cost)} onClick={() => void purchaseUpgrade("projectiles")}>{purchases.projectiles >= 3 ? "NÍVEL MÁXIMO" : isMaster ? "DESBLOQUEAR GRÁTIS" : `COMPRAR · ${FRACTAL_SHOP.projectiles[purchases.projectiles].cost.toLocaleString("pt-BR")} FR`}</Button></div>
+                    <div className="fractals-shop-grid">
+                      <article className="fractals-shop-item">
+                        <div className="fractals-shop-item__slot"><Orbit className="h-5 w-5 text-violet-300" /></div>
+                        <div className="min-w-0">
+                          <p className="fractals-shop-item__name">Vórtice Coletor</p>
+                          <p className="fractals-shop-item__description">Amplia o raio de atração de fragmentos.</p>
+                          <div className="fractals-shop-pips" aria-label={"Nível " + purchases.area + " de 3"}>{Array.from({ length: 3 }).map((_, i) => <i key={i} className={i < purchases.area ? "fractals-shop-pip is-filled" : "fractals-shop-pip"} />)}<span>{purchases.area}/3</span></div>
+                        </div>
+                        <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || purchases.area >= 3 || (!isMaster && fractalBalance < FRACTAL_SHOP.area[purchases.area]?.cost)} onClick={() => void purchaseUpgrade("area")}>{purchases.area >= 3 ? "MAX" : isMaster ? "GRÁTIS" : FRACTAL_SHOP.area[purchases.area]?.cost.toLocaleString("pt-BR") + " FR"}</button>
+                      </article>
+
+                      <article className="fractals-shop-item">
+                        <div className="fractals-shop-item__slot"><Sparkles className="h-5 w-5 text-amber-300" /></div>
+                        <div className="min-w-0">
+                          <p className="fractals-shop-item__name">Afinidade de XP</p>
+                          <p className="fractals-shop-item__description">+5% de XP por fragmento coletado.</p>
+                          <div className="fractals-shop-pips" aria-label={"Nível " + purchases.experience + " de 3"}>{Array.from({ length: 3 }).map((_, i) => <i key={i} className={i < purchases.experience ? "fractals-shop-pip is-filled" : "fractals-shop-pip"} />)}<span>{purchases.experience}/3</span></div>
+                        </div>
+                        <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || purchases.experience >= 3 || (!isMaster && fractalBalance < FRACTAL_SHOP.experience[purchases.experience]?.cost)} onClick={() => void purchaseUpgrade("experience")}>{purchases.experience >= 3 ? "MAX" : isMaster ? "GRÁTIS" : FRACTAL_SHOP.experience[purchases.experience]?.cost.toLocaleString("pt-BR") + " FR"}</button>
+                      </article>
+
+                      <article className="fractals-shop-item">
+                        <div className="fractals-shop-item__slot"><Target className="h-5 w-5 text-teal-300" /></div>
+                        <div className="min-w-0">
+                          <p className="fractals-shop-item__name">Alcance Arcano</p>
+                          <p className="fractals-shop-item__description">Disparos alcançam inimigos mais distantes.</p>
+                          <div className="fractals-shop-pips" aria-label={"Nível " + purchases.projectile_range + " de 3"}>{Array.from({ length: 3 }).map((_, i) => <i key={i} className={i < purchases.projectile_range ? "fractals-shop-pip is-filled" : "fractals-shop-pip"} />)}<span>{purchases.projectile_range}/3</span></div>
+                        </div>
+                        <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || purchases.projectile_range >= 3 || (!isMaster && fractalBalance < FRACTAL_SHOP.projectile_range[purchases.projectile_range]?.cost)} onClick={() => void purchaseUpgrade("projectile_range")}>{purchases.projectile_range >= 3 ? "MAX" : isMaster ? "GRÁTIS" : FRACTAL_SHOP.projectile_range[purchases.projectile_range]?.cost.toLocaleString("pt-BR") + " FR"}</button>
+                      </article>
+
+                      <article className="fractals-shop-item">
+                        <div className="fractals-shop-item__slot"><Swords className="h-5 w-5 text-indigo-300" /></div>
+                        <div className="min-w-0">
+                          <p className="fractals-shop-item__name">Coroa de Estilhaços</p>
+                          <p className="fractals-shop-item__description">Libera até +2 projéteis extras simultâneos.</p>
+                          <div className="fractals-shop-pips" aria-label={"Nível " + purchases.projectiles + " de 3"}>{Array.from({ length: 3 }).map((_, i) => <i key={i} className={i < purchases.projectiles ? "fractals-shop-pip is-filled" : "fractals-shop-pip"} />)}<span>{purchases.projectiles}/3</span></div>
+                        </div>
+                        <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || purchases.projectiles >= 3 || (!isMaster && fractalBalance < FRACTAL_SHOP.projectiles[purchases.projectiles]?.cost)} onClick={() => void purchaseUpgrade("projectiles")}>{purchases.projectiles >= 3 ? "MAX" : isMaster ? "GRÁTIS" : FRACTAL_SHOP.projectiles[purchases.projectiles]?.cost.toLocaleString("pt-BR") + " FR"}</button>
+                      </article>
                     </div>
                   )}
                 </div>
