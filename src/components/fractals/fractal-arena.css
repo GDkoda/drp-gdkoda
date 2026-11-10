@@ -2952,3 +2952,81 @@
     transition-duration: .01ms !important;
   }
 }
+
+
+/* Active roguelike runes: compact floating build summary. */
+.fractals-rune-bar {
+  pointer-events: none;
+  max-width: calc(100% - 1rem);
+}
+.fractals-rune-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 25px;
+  padding: 4px 8px;
+  border: 1px solid rgba(245,215,142,.27);
+  border-radius: 4px;
+  background: linear-gradient(145deg, rgba(20,14,30,.94), rgba(8,8,17,.9));
+  color: rgba(248,237,215,.88);
+  box-shadow: inset 0 1px rgba(255,255,255,.06), 0 3px 10px rgba(0,0,0,.25);
+  font-size: 10px;
+  line-height: 1;
+  backdrop-filter: blur(8px);
+}
+.fractals-rune-pill > b { color: #f5d78e; font-size: 12px; }
+.fractals-rune-pill > strong { color: #fff0bd; font-size: 10px; }
+.fractals-rune-pill.rarity-rare { border-color: rgba(105,190,255,.42); }
+.fractals-rune-pill.rarity-epic { border-color: rgba(218,125,255,.55); box-shadow: inset 0 1px rgba(255,255,255,.08), 0 0 12px rgba(185,104,255,.13); }
+
+/* The awakening alert is deliberately brief and unmistakable. */
+.fractals-boss-alert { animation: fractals-boss-alert-in 5.2s ease both; }
+.fractals-boss-alert > span {
+  display: inline-block;
+  padding: 12px 22px;
+  border: 1px solid rgba(255,103,91,.9);
+  border-radius: 5px;
+  background: linear-gradient(100deg, rgba(43,5,17,.96), rgba(105,12,27,.94), rgba(35,5,17,.96));
+  color: #fff0dc;
+  font-size: clamp(11px, 2vw, 16px);
+  font-weight: 1000;
+  letter-spacing: .12em;
+  text-shadow: 0 0 14px rgba(255,71,71,.8);
+  box-shadow: 0 0 0 1px rgba(255,184,123,.16), 0 0 28px rgba(220,24,49,.48), inset 0 0 22px rgba(255,91,69,.13);
+  animation: fractals-boss-alert-pulse .72s ease-in-out infinite alternate;
+}
+@keyframes fractals-boss-alert-in {
+  0% { opacity: 0; transform: translateY(12px) scale(.94); }
+  10%, 82% { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-8px) scale(.97); }
+}
+@keyframes fractals-boss-alert-pulse {
+  from { filter: brightness(.88); box-shadow: 0 0 0 1px rgba(255,184,123,.12), 0 0 18px rgba(220,24,49,.3), inset 0 0 18px rgba(255,91,69,.1); }
+  to { filter: brightness(1.18); box-shadow: 0 0 0 1px rgba(255,184,123,.24), 0 0 32px rgba(220,24,49,.58), inset 0 0 26px rgba(255,91,69,.18); }
+}
+
+/* End-of-run stat tiles share the same restrained gold filigree. */
+.fractals-stat-tile {
+  display: grid;
+  grid-template-columns: 18px 1fr;
+  align-items: center;
+  gap: 3px 7px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid rgba(245,215,142,.3);
+  border-radius: 5px;
+  background: linear-gradient(145deg, rgba(240,210,141,.075), rgba(178,112,255,.035)), #100b18;
+  box-shadow: inset 0 1px rgba(255,238,194,.06), 0 5px 14px rgba(0,0,0,.22);
+}
+.fractals-stat-tile > svg { width: 16px; height: 16px; color: #f0d28d; grid-row: span 2; }
+.fractals-stat-tile > span { overflow: hidden; color: rgba(245,226,190,.67); font-size: 9px; font-weight: 800; line-height: 1.25; text-transform: uppercase; letter-spacing: .045em; }
+.fractals-stat-tile > b { color: #fff0ce; font-size: 16px; font-variant-numeric: tabular-nums; line-height: 1.1; }
+@media (max-width: 420px) {
+  .fractals-rune-pill { min-height: 23px; padding: 4px 6px; font-size: 9px; }
+  .fractals-rune-pill > span { max-width: 92px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .fractals-stat-tile { padding: 8px; }
+  .fractals-stat-tile > b { font-size: 14px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fractals-boss-alert, .fractals-boss-alert > span { animation: none !important; }
+}
