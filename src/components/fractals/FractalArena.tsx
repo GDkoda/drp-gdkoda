@@ -1,217 +1,3 @@
-import { useCallback, useEffect, useRef, useState, type PointerEvent } from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, Heart, Move, Pause, Play, RotateCcw, Shield, Skull, Sparkles, Swords, Zap, Maximize, UserRound, Gauge, ArrowLeft, ShoppingBag, Crown, Gem as GemIcon, MapPin, Flame, Leaf, Snowflake, Orbit, Lock, Link2, ChevronDown, Coins, Timer, Target, ZoomIn, ZoomOut } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { getDifficultySnapshot } from "@/lib/fractals/difficulty";
-import { CORRUPTION_LEVELS, FRACTAL_MISSIONS, RUN_DURATION_SECONDS } from "@/lib/fractals/config";
-import { FRACTAL_SHOP, FRACTAL_RARITY_TIERS } from "@/lib/fractals/economy";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
-import "./fractal-arena.css";
-
-type UpgradeId = "power" | "haste" | "vitality" | "swift" | "special_area" | "special_experience" | "special_projectile_range" | "special_projectiles";
-type Upgrade = { id: UpgradeId; name: string; description: string; icon: typeof Zap; rarity?: "normal" | "rare" | "epic" };
-
-type Enemy = { x: number; y: number; hp: number; maxHp: number; speed: number; radius: number; damage: number; color: string; xp: number; type: "wraith" | "brute" | "charger" | "elite" | "boss"; attack: number; flash: number; windup: number; targetX: number; targetY: number; dashTime: number; summonedAtHalf: boolean };
-type Shot = { x: number; y: number; vx: number; vy: number; damage: number; life: number };
-type Gem = { x: number; y: number; value: number; radius: number };
-type SpecialDrop = { x: number; y: number; kind: "area" | "experience" | "projectile_range" | "projectiles"; radius: number };
-type Particle = { x: number; y: number; vx: number; vy: number; life: number; color: string };
-type DamageNumber = { x: number; y: number; value: number; life: number; maxLife: number; drift: number };
-type PickupLabel = { x: number; y: number; text: string; life: number; maxLife: number };
-type ChallengeEvent = { id: 1 | 2; x: number; y: number; radius: number; remaining: number; progress: number };
-type SpriteKey = "boss" | "elite" | "wraith" | "charger" | "brute" | "playerIdle" | "playerMove" | "playerCast" | "xpGem" | "specialXP" | "specialArea" | "specialRange" | "specialProjectiles" | "projectile";
-type SpriteMap = Partial<Record<SpriteKey, HTMLImageElement>>;
-type PlayerVisualAction = "idle" | "move" | "cast";
-type PurchaseState = {
-  area: number; experience: number; rarity: number; speed_2x: boolean; speed_3x: boolean;
-  health: number; projectile_duration: number; projectile_range: number; projectiles: number;
-};
-const DEFAULT_PURCHASES: PurchaseState = {
-  area: 0, experience: 0, rarity: 0, speed_2x: false, speed_3x: false,
-  health: 0, projectile_duration: 0, projectile_range: 0, projectiles: 0,
-};
-const PROJECTILE_DURATION_MULTIPLIERS = [1, 1.25, 1.5, 2] as const;
-const PROJECTILE_BASE_LIFE = 0.8;
-const MAX_EXTRA_PROJECTILES = 2;
-const CHALLENGE_EVENT_TIMES = [240, 480] as const;
-const CHALLENGE_EVENT_DURATION = 60;
-function parsePurchaseState(raw: any): PurchaseState {
-  return {
-    area: Number(raw?.area ?? 0), experience: Number(raw?.experience ?? 0), rarity: Number(raw?.rarity ?? 0),
-    speed_2x: !!raw?.speed_2x, speed_3x: !!raw?.speed_3x,
-    health: Number(raw?.health ?? 0), projectile_duration: Number(raw?.projectile_duration ?? 0),
-    projectile_range: Number(raw?.projectile_range ?? 0), projectiles: Number(raw?.projectiles ?? 0),
-  };
-}
-
-type GameState = {
-  width: number; height: number; last: number; elapsed: number; spawnTimer: number; shotTimer: number; bossSpawned: boolean;
-  player: { x: number; y: number; hp: number; maxHp: number; speed: number; damage: number; fireRate: number; invuln: number; hitFlash: number; xp: number; nextXp: number; level: number; pickupRadius: number; xpMultiplier: number; specialAreaStacks: number; specialExperienceStacks: number; projectileRangeStacks: number; projectileRangeMultiplier: number; projectileStacks: number; projectileLife: number; facing: number; castFacing: number; castTimer: number; moving: boolean; spriteAction: PlayerVisualAction; spriteDirection: number; previousSpriteAction: PlayerVisualAction; previousSpriteDirection: number; spriteBlend: number };
-  enemies: Enemy[]; shots: Shot[]; gems: Gem[]; specialDrops: SpecialDrop[]; particles: Particle[]; damageNumbers: DamageNumber[]; pickupLabels: PickupLabel[]; challengeEvent: ChallengeEvent | null; nextChallengeEvent: number; kills: number; ended: boolean;
-};
-
-const UPGRADES: Upgrade[] = [
-  { id: "power", name: "Estilhaço Voraz", description: "Aumenta o dano dos disparos em 30%.", icon: Swords },
-  { id: "haste", name: "Pulso Acelerado", description: "Dispara 18% mais rápido.", icon: Zap },
-  { id: "vitality", name: "Casca de Cristal", description: "Recupera 25% da vida máxima e aumenta a vida em 15%.", icon: Shield },
-  { id: "swift", name: "Passos do Errante", description: "Aumenta a velocidade de movimento em 10%.", icon: Move },
-];
-
-const SPECIAL_UPGRADES: Upgrade[] = [
-  { id: "special_area", name: "Ímã de Fragmentos", description: "+10% de alcance de coleta por coleta (máx. +50%).", icon: Move },
-  { id: "special_experience", name: "Eco do Conhecimento", description: "+5% de experiência por coleta (máx. +30%).", icon: Sparkles },
-  { id: "special_projectile_range", name: "Ressonância de Alcance", description: "+10% de distância dos projéteis por coleta (máx. +50%).", icon: Zap },
-  { id: "special_projectiles", name: "Coroa de Estilhaços", description: "+1 projétil por coleta. Até 2 extras por expedição.", icon: Swords },
-];
-
-function buildLevelChoices(game: GameState, areaLevel: number, experienceLevel: number, rangeLevel: number, projectilesLevel: number, rarityTier: number): Upgrade[] {
-  const core = [...UPGRADES].sort(() => Math.random() - 0.5).slice(0, 3);
-  const available = SPECIAL_UPGRADES.filter((item) => {
-    if (item.id === "special_area") return areaLevel >= 1 && game.player.specialAreaStacks < 5;
-    if (item.id === "special_experience") return experienceLevel >= 1 && game.player.specialExperienceStacks < 6;
-    if (item.id === "special_projectile_range") return rangeLevel >= 1 && game.player.projectileRangeStacks < 5;
-    return projectilesLevel >= 1 && game.player.projectileStacks < MAX_EXTRA_PROJECTILES;
-  });
-  if (available.length && Math.random() < 0.18) {
-    const special = available[Math.floor(Math.random() * available.length)];
-    return [...core.slice(0, 2), special].map((upgrade) => ({ ...upgrade, rarity: upgrade.id.startsWith("special_") ? undefined : rollUpgradeRarity(rarityTier) }));
-  }
-  return core.map((upgrade) => ({ ...upgrade, rarity: rollUpgradeRarity(rarityTier) }));
-}
-
-function rollUpgradeRarity(tier: number): "normal" | "rare" | "epic" {
-  const odds = FRACTAL_RARITY_TIERS[Math.max(0, Math.min(3, tier))];
-  const roll = Math.random() * 100;
-  if (roll < odds.epic) return "epic";
-  if (roll < odds.epic + odds.rare) return "rare";
-  return "normal";
-}
-
-const UPGRADE_RARITY_MULTIPLIERS = { normal: 1, rare: 1.25, epic: 1.5 } as const;
-function getUpgradeRarityMultiplier(rarity: Upgrade["rarity"]): number {
-  return UPGRADE_RARITY_MULTIPLIERS[rarity ?? "normal"];
-}
-function formatUpgradePercent(value: number): string {
-  return value.toLocaleString("pt-BR", { maximumFractionDigits: 1 });
-}
-function getUpgradeDescription(upgrade: Upgrade): string {
-  const multiplier = getUpgradeRarityMultiplier(upgrade.rarity);
-  switch (upgrade.id) {
-    case "power": return `Dano dos disparos +${formatUpgradePercent(30 * multiplier)}%.`;
-    case "haste": return `Velocidade de ataque +${formatUpgradePercent(18 * multiplier)}% (intervalo entre disparos menor).`;
-    case "vitality": return `Vida máxima +${formatUpgradePercent(15 * multiplier)}% e cura ${formatUpgradePercent(25 * multiplier)}% da vida máxima anterior.`;
-    case "swift": return `Velocidade de movimento +${formatUpgradePercent(10 * multiplier)}%.`;
-    default: return upgrade.description;
-  }
-}
-const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(max, n));
-const distance = (ax: number, ay: number, bx: number, by: number) => Math.hypot(ax - bx, ay - by);
-const directionFromVector = (x: number, y: number) => {
-  if (Math.hypot(x, y) < 0.001) return 0;
-  const step = Math.round((Math.atan2(y, x) - Math.PI / 2) / (Math.PI / 4));
-  return ((step % 8) + 8) % 8;
-};
-const PLAYER_DIRECTION_VECTORS = [
-  { x: 0, y: 1 }, { x: -Math.SQRT1_2, y: Math.SQRT1_2 },
-  { x: -1, y: 0 }, { x: -Math.SQRT1_2, y: -Math.SQRT1_2 },
-  { x: 0, y: -1 }, { x: Math.SQRT1_2, y: -Math.SQRT1_2 },
-  { x: 1, y: 0 }, { x: Math.SQRT1_2, y: Math.SQRT1_2 },
-];
-
-const ENEMY_GRID_CELL_SIZE = 96;
-type EnemySpatialGrid = Map<string, Enemy[]>;
-
-function buildEnemySpatialGrid(enemies: Enemy[]): EnemySpatialGrid {
-  const grid: EnemySpatialGrid = new Map();
-  for (const enemy of enemies) {
-    const cellX = Math.floor(enemy.x / ENEMY_GRID_CELL_SIZE);
-    const cellY = Math.floor(enemy.y / ENEMY_GRID_CELL_SIZE);
-    const key = cellX + ":" + cellY;
-    const bucket = grid.get(key);
-    if (bucket) bucket.push(enemy);
-    else grid.set(key, [enemy]);
-  }
-  return grid;
-}
-
-function getNearbyEnemies(x: number, y: number, grid: EnemySpatialGrid): Enemy[] {
-  const nearby: Enemy[] = [];
-  const cellX = Math.floor(x / ENEMY_GRID_CELL_SIZE);
-  const cellY = Math.floor(y / ENEMY_GRID_CELL_SIZE);
-  for (let offsetY = -1; offsetY <= 1; offsetY++) {
-    for (let offsetX = -1; offsetX <= 1; offsetX++) {
-      const bucket = grid.get((cellX + offsetX) + ":" + (cellY + offsetY));
-      if (bucket) nearby.push(...bucket);
-    }
-  }
-  return nearby;
-}
-
-function getEnemySeparation(enemy: Enemy, grid: EnemySpatialGrid) {
-  let sx = 0, sy = 0;
-  const cellX = Math.floor(enemy.x / ENEMY_GRID_CELL_SIZE);
-  const cellY = Math.floor(enemy.y / ENEMY_GRID_CELL_SIZE);
-  for (let offsetY = -1; offsetY <= 1; offsetY++) {
-    for (let offsetX = -1; offsetX <= 1; offsetX++) {
-      const bucket = grid.get((cellX + offsetX) + ":" + (cellY + offsetY));
-      if (!bucket) continue;
-      for (const other of bucket) {
-        if (other === enemy) continue;
-        const dx = enemy.x - other.x, dy = enemy.y - other.y;
-        const distanceSquared = dx * dx + dy * dy;
-        const range = enemy.radius + other.radius + 12;
-        if (distanceSquared > 0.000001 && distanceSquared < range * range) {
-          const d = Math.sqrt(distanceSquared);
-          const weight = (range - d) / range;
-          sx += (dx / d) * weight;
-          sy += (dy / d) * weight;
-        }
-      }
-    }
-  }
-  const magnitude = Math.hypot(sx, sy);
-  return magnitude > 0 ? { x: sx / magnitude, y: sy / magnitude } : { x: 0, y: 0 };
-}
-
-function makeGame(width: number, height: number, purchases: PurchaseState): GameState {
-  const maxHp = 100 + purchases.health * 10;
-  const projectileLife = PROJECTILE_BASE_LIFE * PROJECTILE_DURATION_MULTIPLIERS[clamp(purchases.projectile_duration, 0, 3)];
-  return {
-    width, height, last: 0, elapsed: 0, spawnTimer: 0.4, shotTimer: 0.25, bossSpawned: false,
-    player: { x: 0, y: 0, hp: maxHp, maxHp, speed: 205, damage: 22, fireRate: 0.72, invuln: 0, hitFlash: 0, xp: 0, nextXp: 12, level: 1, pickupRadius: 85, xpMultiplier: 1, specialAreaStacks: 0, specialExperienceStacks: 0, projectileRangeStacks: 0, projectileRangeMultiplier: 1, projectileStacks: 0, projectileLife, facing: 0, castFacing: 0, castTimer: 0, moving: false, spriteAction: "idle", spriteDirection: 0, previousSpriteAction: "idle", previousSpriteDirection: 0, spriteBlend: 1 },
-    enemies: [], shots: [], gems: [], specialDrops: [], particles: [], damageNumbers: [], pickupLabels: [], challengeEvent: null, nextChallengeEvent: 0, kills: 0, ended: false,
-  };
-}
-
-function spawnEnemy(game: GameState, missionId: number, elapsed: number, corruption: number, boss = false) {
-  const side = Math.floor(Math.random() * 4);
-  const margin = 30;
-  const centerX = game.player.x, centerY = game.player.y;
-  const x = side === 0 ? centerX - game.width / 2 - margin : side === 1 ? centerX + game.width / 2 + margin : centerX + (Math.random() - 0.5) * game.width;
-  const y = side === 2 ? centerY - game.height / 2 - margin : side === 3 ? centerY + game.height / 2 + margin : centerY + (Math.random() - 0.5) * game.height;
-  const pressure = getDifficultySnapshot(missionId, elapsed, corruption);
-  const roll = Math.random();
-  const eliteChance = Math.min(0.22, pressure.eliteSpawnScale * 0.075);
-  const type: Enemy["type"] = boss ? "boss" : elapsed > 210 && roll < eliteChance ? "elite" : elapsed > 150 && roll > 0.76 ? "brute" : elapsed > 70 && roll > 0.56 ? "charger" : "wraith";
-  const scale = 1 + elapsed / 650 + (missionId - 1) * 0.18;
-  const stats = type === "boss"
-    ? { hp: 1700, speed: 40, radius: 38, damage: 24, color: "#b9a0ff", xp: 0 }
-    : type === "elite"
-      ? { hp: 245 * scale, speed: 31, radius: 21, damage: 17, color: "#c7a7d9", xp: 9 }
-      : type === "brute"
-        ? { hp: 100 * scale, speed: 35, radius: 17, damage: 15, color: "#7d8495", xp: 4 }
-        : type === "charger"
-          ? { hp: 36 * scale, speed: 105, radius: 11, damage: 10, color: "#e5a45b", xp: 2 }
-          : { hp: 28 * scale, speed: 57, radius: 10, damage: 8, color: "#9b91b4", xp: 2 };
-  game.enemies.push({ x, y, ...stats, maxHp: stats.hp, type, attack: type === "boss" ? 2.2 : 0, flash: 0, windup: 0, targetX: x, targetY: y, dashTime: 0, summonedAtHalf: false });
-  // Spawn pressure is bounded. It affects encounter density, not enemy HP directly.
-  if (!boss && pressure.enemySpawnScale > 1.25 && game.enemies.length < 48 && Math.random() < 0.18) {
-    game.enemies.push({ x: x + (Math.random() - 0.5) * 70, y: y + (Math.random() - 0.5) * 70, ...stats, maxHp: stats.hp, type, attack: 0, flash: 0, windup: 0, targetX: x, targetY: y, dashTime: 0, summonedAtHalf: false });
-  }
-}
-
 function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: number, missionId: number, sprites: SpriteMap = {}, showPlayerHp = true, showDamageNumbers = true, zoom = 1) {
   const { width, height, player } = game;
   const safeZoom = clamp(zoom, 0.75, 1.35);
@@ -235,12 +21,12 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     { floor: [39, 27, 53], glow: "#c08aff", crystal: "#d29aff", stone: "#654b80" },
   ] as const;
   const biome = biomes[clamp(missionId - 1, 0, biomes.length - 1)];
-  const bg = ctx.createLinearGradient(cameraX, cameraY, cameraX + width, cameraY + height);
+  const bg = ctx.createLinearGradient(cameraX, cameraY, cameraX + viewWidth, cameraY + viewHeight);
   bg.addColorStop(0, "rgba(27,24,37,1)");
   bg.addColorStop(0.52, "rgba(35,31,47,1)");
   bg.addColorStop(1, "rgba(14,13,23,1)");
   ctx.fillStyle = bg;
-  ctx.fillRect(cameraX, cameraY, width, height);
+  ctx.fillRect(cameraX, cameraY, viewWidth, viewHeight);
 
   // O padrão do piso usa coordenadas globais; não reinicia ao andar.
   const tile = 48;
@@ -249,9 +35,9 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     return n - Math.floor(n);
   };
   const firstRow = Math.floor(cameraY / tile) - 2;
-  const lastRow = Math.ceil((cameraY + height) / tile) + 2;
+  const lastRow = Math.ceil((cameraY + viewHeight) / tile) + 2;
   const firstCol = Math.floor(cameraX / tile) - 2;
-  const lastCol = Math.ceil((cameraX + width) / tile) + 2;
+  const lastCol = Math.ceil((cameraX + viewWidth) / tile) + 2;
   for (let row = firstRow; row <= lastRow; row++) {
     for (let col = firstCol; col <= lastCol; col++) {
       const x = col * tile + (row % 2) * tile / 2;
@@ -374,9 +160,9 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
   // Destroços, pilares e cristais aparecem por setores persistentes do mapa.
   const propSpacing = 238;
   const propColStart = Math.floor(cameraX / propSpacing) - 1;
-  const propColEnd = Math.ceil((cameraX + width) / propSpacing) + 1;
+  const propColEnd = Math.ceil((cameraX + viewWidth) / propSpacing) + 1;
   const propRowStart = Math.floor(cameraY / propSpacing) - 1;
-  const propRowEnd = Math.ceil((cameraY + height) / propSpacing) + 1;
+  const propRowEnd = Math.ceil((cameraY + viewHeight) / propSpacing) + 1;
   for (let row = propRowStart; row <= propRowEnd; row++) {
     for (let col = propColStart; col <= propColEnd; col++) {
       const roll = hash(col + 103, row - 67);
@@ -409,11 +195,11 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     }
   }
 
-  const vignette = ctx.createRadialGradient(player.x, player.y, Math.min(width, height) * .22, player.x, player.y, Math.max(width, height) * .72);
+  const vignette = ctx.createRadialGradient(player.x, player.y, Math.min(viewWidth, viewHeight) * .22, player.x, player.y, Math.max(viewWidth, viewHeight) * .72);
   vignette.addColorStop(0, "rgba(8,5,18,0)");
   vignette.addColorStop(1, "rgba(5,3,12,.62)");
   ctx.fillStyle = vignette;
-  ctx.fillRect(cameraX, cameraY, width, height);
+  ctx.fillRect(cameraX, cameraY, viewWidth, viewHeight);
 
   if (game.challengeEvent) {
     const event = game.challengeEvent;
@@ -999,7 +785,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           game.player.spriteBlend = Math.min(1, game.player.spriteBlend + dt / 0.12);
         }
         game.shots.forEach((shot) => { shot.x += shot.vx * dt; shot.y += shot.vy * dt; shot.life -= dt; });
-        const cameraLeft = game.player.x - game.width / 2, cameraTop = game.player.y - game.height / 2;
+        const currentZoom = zoomRef.current;
+        const cameraLeft = game.player.x - game.width / (2 * currentZoom), cameraTop = game.player.y - game.height / (2 * currentZoom);
         game.shots = game.shots.filter((shot) => shot.life > 0 && shot.x > cameraLeft - 20 && shot.x < cameraLeft + game.width + 20 && shot.y > cameraTop - 20 && shot.y < cameraTop + game.height + 20);
         const movementGrid = buildEnemySpatialGrid(game.enemies);
         for (const enemy of game.enemies) {
@@ -1137,7 +924,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             }
           }
         }
-        game.enemies = game.enemies.filter((enemy) => enemy.hp > 0 && (enemy.type === "boss" || distance(enemy.x, enemy.y, game.player.x, game.player.y) < Math.max(game.width, game.height) * 1.45));
+        game.enemies = game.enemies.filter((enemy) => enemy.hp > 0 && (enemy.type === "boss" || distance(enemy.x, enemy.y, game.player.x, game.player.y) < Math.max(game.width, game.height) / zoomRef.current * 1.45));
         game.gems.forEach((gem) => {
           const d = distance(game.player.x, game.player.y, gem.x, gem.y);
           if (d < game.player.pickupRadius) { gem.x += ((game.player.x - gem.x) / Math.max(1, d)) * 260 * dt; gem.y += ((game.player.y - gem.y) / Math.max(1, d)) * 260 * dt; }
@@ -1383,7 +1170,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
   </>}
  </div>
 </div>}
-            {levelChoices.length > 0 && <div className="absolute inset-0 grid place-items-center overflow-y-auto bg-[radial-gradient(ellipse_at_center,rgba(91,46,133,0.32),rgba(5,4,10,0.94)_72%)] p-3 backdrop-blur-md sm:p-6"><div className="w-full max-w-3xl space-y-4 rounded-[1.7rem] border border-violet-200/20 bg-[#171320]/90 p-4 shadow-[0_30px_100px_rgba(0,0,0,0.7)] sm:p-5"><div className="text-center"><p className="text-[9px] font-black uppercase tracking-[.24em] text-violet-200/65">{eventRewardStep > 0 ? `DESAFIO DA FENDA · DÁDIVA ${eventRewardStep}/2` : "O FRACTAL OFERECE SEU PODER"}</p><h3 className="mt-1 font-display text-2xl text-white sm:text-3xl">{eventRewardStep > 0 ? "Reivindique sua recompensa" : "Escolha uma dádiva"}</h3><p className="mt-1 text-[10px] text-white/40">Raras são 25% mais fortes · Épicas são 50% mais fortes.</p></div><div className="grid gap-2 sm:grid-cols-3">{levelChoices.map((upgrade) => {const Icon=upgrade.icon;const rarity=upgrade.rarity??"normal";const style=rarity==="epic"?"border-fuchsia-300/65 bg-gradient-to-br from-fuchsia-400/[0.18] via-violet-500/[0.10] to-[#171020] shadow-[0_0_35px_rgba(217,70,239,0.16)] hover:border-fuchsia-200":rarity==="rare"?"border-sky-200/45 bg-gradient-to-br from-sky-300/[0.13] via-cyan-500/[0.06] to-[#111a23] shadow-[0_0_26px_rgba(56,189,248,0.10)] hover:border-sky-100":"border-white/15 bg-gradient-to-br from-white/[0.07] to-[#17151f] hover:border-white/30";const label=rarity==="epic"?"ÉPICA · 150% DE POTÊNCIA":rarity==="rare"?"RARA · 125% DE POTÊNCIA":"NORMAL · 100%";return <button key={upgrade.id} onClick={()=>chooseUpgrade(upgrade)} className={"group relative overflow-hidden rounded-2xl border p-4 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition-all duration-200 hover:-translate-y-1 hover:brightness-125 "+style}><div className={"pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full blur-2xl "+(rarity==="epic"?"bg-fuchsia-400/20":rarity==="rare"?"bg-sky-300/15":"bg-white/5")}/><div className="relative"><div className="mb-3 flex items-start justify-between gap-2"><div className={"grid h-11 w-11 place-items-center rounded-xl border "+(rarity==="epic"?"border-fuchsia-200/30 bg-fuchsia-300/10 text-fuchsia-100":rarity==="rare"?"border-sky-200/30 bg-sky-300/10 text-sky-100":"border-amber-100/15 bg-amber-100/[0.06] text-amber-100")}><Icon className="h-5 w-5"/></div><span className={"rounded-full border px-2 py-1 text-[8px] font-black tracking-[.14em] "+(rarity==="epic"?"border-fuchsia-200/30 bg-fuchsia-300/10 text-fuchsia-100":rarity==="rare"?"border-sky-200/30 bg-sky-300/10 text-sky-100":"border-white/10 bg-white/5 text-white/45")}>{label}</span></div><p className="text-sm font-bold text-white">{upgrade.name}</p><p className="mt-2 min-h-[3.25rem] text-xs leading-relaxed text-white/70">{getUpgradeDescription(upgrade)}</p><div className="mt-3 flex items-center justify-between border-t border-white/10 pt-2 text-[9px] uppercase tracking-wider text-white/35"><span>{rarity==="epic"?"Dádiva exaltada":rarity==="rare"?"Dádiva aprimorada":"Dádiva estável"}</span><span className="font-bold text-white/55">Escolher ↗</span></div></div></button>;})}</div></div></div>}
+            {levelChoices.length > 0 && <div className="fractals-upgrade-overlay absolute inset-0 grid place-items-center overflow-y-auto bg-[radial-gradient(ellipse_at_center,rgba(91,46,133,0.32),rgba(5,4,10,0.94)_72%)] p-2 backdrop-blur-sm sm:p-6"><div className="fractals-upgrade-panel w-full max-w-2xl space-y-3 rounded-2xl border border-violet-200/20 bg-[#171320]/95 p-3 shadow-[0_24px_70px_rgba(0,0,0,0.65)] sm:space-y-4 sm:rounded-[1.7rem] sm:p-5"><div className="text-center"><p className="text-[9px] font-black uppercase tracking-[.24em] text-violet-200/65">{eventRewardStep > 0 ? `DESAFIO DA FENDA · DÁDIVA ${eventRewardStep}/2` : "O FRACTAL OFERECE SEU PODER"}</p><h3 className="mt-1 font-display text-2xl text-white sm:text-3xl">{eventRewardStep > 0 ? "Reivindique sua recompensa" : "Escolha uma dádiva"}</h3><p className="mt-1 text-[10px] text-white/40">Raras são 25% mais fortes · Épicas são 50% mais fortes.</p></div><div className="fractals-upgrade-grid grid gap-2 sm:grid-cols-3">{levelChoices.map((upgrade) => {const Icon=upgrade.icon;const rarity=upgrade.rarity??"normal";const style=rarity==="epic"?"border-fuchsia-300/65 bg-gradient-to-br from-fuchsia-400/[0.18] via-violet-500/[0.10] to-[#171020] shadow-[0_0_35px_rgba(217,70,239,0.16)] hover:border-fuchsia-200":rarity==="rare"?"border-sky-200/45 bg-gradient-to-br from-sky-300/[0.13] via-cyan-500/[0.06] to-[#111a23] shadow-[0_0_26px_rgba(56,189,248,0.10)] hover:border-sky-100":"border-white/15 bg-gradient-to-br from-white/[0.07] to-[#17151f] hover:border-white/30";const label=rarity==="epic"?"ÉPICA · 150% DE POTÊNCIA":rarity==="rare"?"RARA · 125% DE POTÊNCIA":"NORMAL · 100%";return <button key={upgrade.id} onClick={()=>chooseUpgrade(upgrade)} className={"fractals-upgrade-card group relative min-w-0 overflow-hidden rounded-xl border p-2 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition-all duration-200 hover:-translate-y-1 hover:brightness-125 "+style}><div className={"pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full blur-2xl "+(rarity==="epic"?"bg-fuchsia-400/20":rarity==="rare"?"bg-sky-300/15":"bg-white/5")}/><div className="relative"><div className="mb-3 flex items-start justify-between gap-2"><div className={"grid h-11 w-11 place-items-center rounded-xl border "+(rarity==="epic"?"border-fuchsia-200/30 bg-fuchsia-300/10 text-fuchsia-100":rarity==="rare"?"border-sky-200/30 bg-sky-300/10 text-sky-100":"border-amber-100/15 bg-amber-100/[0.06] text-amber-100")}><Icon className="h-5 w-5"/></div><span className={"rounded-full border px-2 py-1 text-[8px] font-black tracking-[.14em] "+(rarity==="epic"?"border-fuchsia-200/30 bg-fuchsia-300/10 text-fuchsia-100":rarity==="rare"?"border-sky-200/30 bg-sky-300/10 text-sky-100":"border-white/10 bg-white/5 text-white/45")}>{label}</span></div><p className="text-sm font-bold text-white">{upgrade.name}</p><p className="mt-2 min-h-[3.25rem] text-xs leading-relaxed text-white/70">{getUpgradeDescription(upgrade)}</p><div className="mt-3 flex items-center justify-between border-t border-white/10 pt-2 text-[9px] uppercase tracking-wider text-white/35"><span>{rarity==="epic"?"Dádiva exaltada":rarity==="rare"?"Dádiva aprimorada":"Dádiva estável"}</span><span className="font-bold text-white/55">Escolher ↗</span></div></div></button>;})}</div></div></div>}
             {result && <div className="absolute inset-0 grid place-items-center overflow-y-auto bg-[radial-gradient(ellipse_at_center,rgba(91,46,133,0.28),rgba(5,4,10,0.95)_72%)] p-4 backdrop-blur-md"><div className="w-full max-w-sm rounded-[1.6rem] border border-violet-200/20 bg-[#171320]/95 p-5 text-center shadow-[0_30px_100px_rgba(0,0,0,0.7)]"><div className="mx-auto mb-3 grid h-16 w-16 place-items-center rounded-2xl border border-amber-200/20 bg-gradient-to-br from-amber-200/15 via-violet-400/15 to-violet-950/70 shadow-[0_0_36px_rgba(167,139,250,0.18)]">{result==="victory"?<Sparkles className="h-7 w-7 text-amber-200"/>:<Skull className="h-7 w-7 text-rose-300"/>}</div><p className="text-xs uppercase tracking-[.22em] text-violet-200">{result==="victory"?"Guardião derrotado":"Expedição encerrada"}</p><h3 className="mt-1 font-display text-2xl">{result==="victory"?"O fractal silenciou":"O Vazio prevaleceu"}</h3><p className="mt-2 text-sm text-white/65">Nível {hud.level} · {hud.kills} criaturas derrotadas · {formatTime(hud.elapsed)}</p><p className="mt-2 text-xs text-amber-100/80">Recompensas e fractais ainda não são creditados neste protótipo; serão conectados após a validação segura no servidor.</p><Button className="mt-4 gap-2" onClick={()=>{setRunning(false);setResult(null);setBossMessage(false);gameRef.current=null;}}><RotateCcw className="h-4 w-4"/> Voltar à expedição</Button></div></div>}
           </div>
           <div className="flex flex-wrap items-center justify-between gap-2 border-t border-white/10 px-3 py-2 text-[10px] text-white/45 sm:px-4"><span>Arma automática: projétil perseguidor</span><span>Protótipo sem persistência de recompensas</span></div>
