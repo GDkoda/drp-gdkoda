@@ -17,7 +17,7 @@ type UpgradeCounts = Record<string, { name: string; count: number; rarity: strin
 
 type Enemy = { x: number; y: number; hp: number; maxHp: number; speed: number; radius: number; damage: number; color: string; xp: number; type: "wraith" | "brute" | "charger" | "elite" | "boss"; attack: number; flash: number; windup: number; targetX: number; targetY: number; dashTime: number; summonedAtHalf: boolean; furyTriggered: boolean };
 type Shot = { x: number; y: number; vx: number; vy: number; damage: number; life: number };
-type Gem = { x: number; y: number; value: number; radius: number };
+type Gem = { x: number; y: number; value: number; radius: number; previousX?: number; previousY?: number };
 type SpecialDrop = { x: number; y: number; kind: "area" | "experience" | "projectile_range" | "projectiles"; radius: number };
 type Particle = { x: number; y: number; vx: number; vy: number; life: number; color: string };
 type DamageNumber = { x: number; y: number; value: number; life: number; maxLife: number; drift: number };
@@ -409,6 +409,11 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
 
   game.gems.forEach((gem) => {
     if (gem.x < cameraX - 30 || gem.x > cameraX + viewWidth + 30 || gem.y < cameraY - 30 || gem.y > cameraY + viewHeight + 30) return;
+    if (gem.previousX !== undefined && gem.previousY !== undefined) {
+      const trail = ctx.createLinearGradient(gem.previousX, gem.previousY, gem.x, gem.y);
+      trail.addColorStop(0, "rgba(167,139,250,0)"); trail.addColorStop(.55, "rgba(167,139,250,.48)"); trail.addColorStop(1, "rgba(56,189,248,.95)");
+      ctx.save(); ctx.strokeStyle = trail; ctx.lineWidth = 2.5; ctx.shadowColor = "#38bdf8"; ctx.shadowBlur = 12; ctx.beginPath(); ctx.moveTo(gem.previousX, gem.previousY); ctx.lineTo(gem.x, gem.y); ctx.stroke(); ctx.restore();
+    }
     ctx.save(); ctx.translate(gem.x, gem.y);
     const pulse = 1 + Math.sin(game.elapsed * 6 + gem.x * 0.03) * 0.08;
     ctx.scale(pulse, pulse);
@@ -474,6 +479,14 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     const hover = enemy.type === "wraith" || enemy.type === "elite" ? secondaryWave * 1.7 : Math.abs(distortion) * 0.55;
     ctx.translate(enemy.x, enemy.y + hover);
     ctx.transform(1 + distortion * 0.035, secondaryWave * 0.028, Math.sin(motionPhase * 0.43) * 0.022, 1 - distortion * 0.03, 0, 0);
+    const bossInFury = enemy.type === "boss" && enemy.hp <= enemy.maxHp * 0.30;
+    if (bossInFury) {
+      const firePulse = 1 + Math.sin(game.elapsed * 17) * 0.08;
+      const fireAura = ctx.createRadialGradient(0, 0, 12, 0, 0, 78 * firePulse);
+      fireAura.addColorStop(0, "rgba(255,75,65,.28)"); fireAura.addColorStop(.55, "rgba(151,18,42,.24)"); fireAura.addColorStop(1, "rgba(151,18,42,0)");
+      ctx.fillStyle = fireAura; ctx.beginPath(); ctx.arc(0, 0, 78 * firePulse, 0, Math.PI * 2); ctx.fill();
+      for (let flame = 0; flame < 6; flame++) { const angle = game.elapsed * 2.8 + flame * Math.PI / 3; const radius = 49 + Math.sin(game.elapsed * 13 + flame) * 8; ctx.fillStyle = "rgba(255,75,55,.72)"; ctx.beginPath(); ctx.arc(Math.cos(angle) * radius, Math.sin(angle) * radius, 3 + (flame % 2), 0, Math.PI * 2); ctx.fill(); }
+    }
     if (enemy.type === "charger" && enemy.dashTime > 0) {
       ctx.rotate(Math.atan2(enemy.targetY, enemy.targetX) * 0.12);
       ctx.scale(1.12, 0.9);
@@ -496,8 +509,8 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
       };
       const [spriteWidth, spriteHeight, anchor] = dimensions[enemy.type];
       ctx.globalAlpha = hurt ? 0.78 : 1;
-      ctx.filter = hurt ? "brightness(2.35) saturate(.35)" : "none";
-      ctx.shadowColor = enemy.type === "brute" ? "#9b7bce" : enemy.type === "charger" ? "#b58cff" : "#8b68ff";
+      ctx.filter = hurt ? "brightness(2.35) saturate(.35)" : bossInFury ? "brightness(1.15) sepia(1) saturate(4) hue-rotate(315deg)" : "none";
+      ctx.shadowColor = bossInFury ? "#d41438" : enemy.type === "brute" ? "#9b7bce" : enemy.type === "charger" ? "#b58cff" : "#8b68ff";
       ctx.shadowBlur = 0;
       ctx.drawImage(enemySprite, -spriteWidth / 2, -spriteHeight * anchor, spriteWidth, spriteHeight);
       ctx.restore();
@@ -531,7 +544,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     if (enemy.type === "boss" || enemy.hp < enemy.maxHp) {
       const barW = enemy.type === "boss" ? 86 : 30;
       ctx.fillStyle = "rgba(0,0,0,.55)"; ctx.fillRect(-barW / 2, -enemy.radius - 10, barW, 4);
-      ctx.fillStyle = "#e87979"; ctx.fillRect(-barW / 2, -enemy.radius - 10, barW * clamp(enemy.hp / enemy.maxHp, 0, 1), 4);
+      ctx.fillStyle = bossInFury ? "#ef334f" : "#e87979"; ctx.fillRect(-barW / 2, -enemy.radius - 10, barW * clamp(enemy.hp / enemy.maxHp, 0, 1), 4);
     }
     ctx.restore();
   });
@@ -1268,7 +1281,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         if (game.elapsed >= RUN_DURATION_SECONDS && !game.ended && !game.bossSpawned) {
           spawnEnemy(game, missionId, game.elapsed, corruption, true);
           game.bossSpawned = true;
-          if (!bossNotified) { bossNotified = true; setBossMessage(true); fractalAudio.bossAlert(); }
+          if (!bossNotified) { bossNotified = true; setBossMessage(true); fractalAudio.bossAlert(); window.setTimeout(() => setBossMessage(false), 5200); }
         }
         if (now - lastHud > 100) {
           lastHud = now;
