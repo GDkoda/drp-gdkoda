@@ -717,11 +717,13 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
   const [paused, setPaused] = useState(false);
   const [levelChoices, setLevelChoices] = useState<Upgrade[]>([]);
   const [eventRewardStep, setEventRewardStep] = useState(0);
-  const [hud, setHud] = useState({ hp: 100, maxHp: 100, xp: 0, nextXp: 12, level: 1, kills: 0, elapsed: 0, phase: "Exploração", pressure: 0, event: null as null | { id: number; remaining: number; progress: number; inside: boolean } });
+  const [hud, setHud] = useState({ hp: 100, maxHp: 100, xp: 0, nextXp: 12, level: 1, kills: 0, elapsed: 0, moveSpeed: 205, phase: "Exploração", pressure: 0, event: null as null | { id: number; remaining: number; progress: number; inside: boolean } });
   const [result, setResult] = useState<"victory" | "defeat" | null>(null);
   const [bossMessage, setBossMessage] = useState(false);
   const [pausePanel, setPausePanel] = useState<"main" | "attributes">("main");
   const [speedMultiplier, setSpeedMultiplier] = useState<1 | 2 | 3>(1);
+  const [zoom, setZoom] = useState(1);
+  const zoomRef = useRef(1);
   const [fractalBalance, setFractalBalance] = useState(0);
   const [unlockedCorruption, setUnlockedCorruption] = useState(0);
   const [completedCorruptions, setCompletedCorruptions] = useState<number[]>([]);
@@ -824,7 +826,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
     gameRef.current = game;
     eventRewardRemainingRef.current = 0;
     setEventRewardStep(0);
-    setHud({ hp: game.player.hp, maxHp: game.player.maxHp, xp: 0, nextXp: 12, level: 1, kills: 0, elapsed: 0, phase: "Exploração", pressure: 0, event: null });
+    setHud({ hp: game.player.hp, maxHp: game.player.maxHp, xp: 0, nextXp: 12, level: 1, kills: 0, elapsed: 0, moveSpeed: Math.round(game.player.speed), phase: "Exploração", pressure: 0, event: null });
     setLevelChoices([]); setPaused(false); setResult(null); setBossMessage(false); setRunning(true);
   }, [corruption, purchases]);
 
@@ -1174,7 +1176,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         if (game.elapsed >= RUN_DURATION_SECONDS && !game.ended && !game.bossSpawned) { spawnEnemy(game, missionId, game.elapsed, corruption, true); game.bossSpawned = true; }
         if (now - lastHud > 100) {
           lastHud = now;
-          setHud({ hp: game.player.hp, maxHp: game.player.maxHp, xp: game.player.xp, nextXp: game.player.nextXp, level: game.player.level, kills: game.kills, elapsed: game.elapsed, phase: snapshot.phaseLabel, pressure: snapshot.totalPressure + (game.challengeEvent ? 2 : 0), event: game.challengeEvent ? { id: game.challengeEvent.id, remaining: game.challengeEvent.remaining, progress: game.challengeEvent.progress, inside: distance(game.player.x, game.player.y, game.challengeEvent.x, game.challengeEvent.y) <= game.challengeEvent.radius } : null });
+          setHud({ hp: game.player.hp, maxHp: game.player.maxHp, xp: game.player.xp, nextXp: game.player.nextXp, level: game.player.level, kills: game.kills, elapsed: game.elapsed, moveSpeed: Math.round(game.player.speed), phase: snapshot.phaseLabel, pressure: snapshot.totalPressure + (game.challengeEvent ? 2 : 0), event: game.challengeEvent ? { id: game.challengeEvent.id, remaining: game.challengeEvent.remaining, progress: game.challengeEvent.progress, inside: distance(game.player.x, game.player.y, game.challengeEvent.x, game.challengeEvent.y) <= game.challengeEvent.radius } : null });
         }
       }
       const targetFrameMs = game.enemies.length > 40 ? 1000 / 30 : window.innerWidth <= 680 ? 1000 / 45 : 1000 / 55;
@@ -1333,18 +1335,24 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         <Card className="overflow-hidden border-border/70 bg-[#11111a] text-white">
           <div className="fractals-arena-frame relative">
             <canvas ref={canvasRef} className="block h-[min(78vh,720px)] min-h-[430px] w-full touch-none" onPointerDown={pointerStart} onPointerMove={pointerMove} onPointerUp={pointerEnd} onPointerCancel={pointerEnd} aria-label="Arena de sobrevivência. Use WASD, setas ou arraste o dedo para mover." />
-            <section className="fractals-game-hud absolute left-3 top-3">
+            <section className="fractals-game-hud absolute left-2 top-2">
               <div className="fractals-game-hud__header"><span className="fractals-game-hud__sigil"><GemIcon/></span><div><strong>{mission.name}</strong><small>{mission.pathName} · {CORRUPTION_LEVELS[corruption].name}</small><em><Timer/> {formatTime(hud.elapsed)} / 12:00</em></div></div>
               <div className="fractals-game-hud__stat">
                 <div><span><Heart/> VIDA</span><b>{Math.ceil(hud.hp)} / {Math.ceil(hud.maxHp)}</b></div>
                 <div className="fractals-game-hud__bar"><i className="is-life" style={{width:`${clamp(hud.hp / Math.max(1, hud.maxHp), 0, 1) * 100}%`}}/></div>
               </div>
               <div className="fractals-game-hud__stat">
-                <div><span><Sparkles/> EXPERIÊNCIA</span><b>Nv. {hud.level} · {Math.floor(hud.xp)} / {Math.floor(hud.nextXp)} XP</b></div>
+                <div><span><Sparkles/> NV. {hud.level} · XP</span><b>{Math.floor(hud.xp)} / {Math.floor(hud.nextXp)}</b></div>
                 <div className="fractals-game-hud__bar"><i className="is-xp" style={{width:`${clamp(Math.floor(hud.xp) / Math.max(1, Math.floor(hud.nextXp)), 0, 1) * 100}%`}}/></div>
               </div>
               <div className="fractals-game-hud__metrics"><span><Skull/> ABATES <b>{hud.kills}</b></span><span><Gauge/> PRESSÃO <b>{hud.pressure.toFixed(1)}</b></span></div>
-              <div className="fractals-game-hud__phase"><span className="fractals-live-dot"/> {hud.phase.toUpperCase()}</div>
+              <div className="fractals-game-hud__speed-row">
+                <span className="fractals-game-hud__move-speed">MOV. <b>{hud.moveSpeed}</b></span>
+                <div className="fractals-game-hud__speed-control"><span>RITMO <b>{speedMultiplier}×</b></span>
+                  <button type="button" aria-label="Diminuir velocidade da expedição" disabled={speedMultiplier === 1} onClick={() => setSpeedMultiplier((current) => current === 3 ? 2 : 1)}>−</button>
+                  <button type="button" aria-label="Aumentar velocidade da expedição" disabled={speedMultiplier === 3 || (!isMaster && (speedMultiplier === 1 ? !purchases.speed_2x : !purchases.speed_3x))} onClick={() => setSpeedMultiplier((current) => current === 1 ? 2 : 3)}>+</button>
+                </div>
+              </div>
               {hud.event && <div className="fractals-event-hud">
                 <div className="fractals-event-hud__heading"><span><Target/> ANOMALIA {String(hud.event.id).padStart(2,"0")}</span><b>{Math.ceil(hud.event.remaining)}s</b></div>
                 <div className="fractals-game-hud__bar"><i className="is-event" style={{width:`${clamp(hud.event.progress / CHALLENGE_EVENT_DURATION, 0, 1) * 100}%`}}/></div>
@@ -1355,6 +1363,11 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             <div className="fractals-arena-meta absolute right-3 top-3">
               {!result && <Button size="sm" variant="outline" className="h-8 border-white/15 bg-black/55 text-white hover:bg-white/10" onClick={() => setPaused((v) => !v)}><Pause className="mr-1 h-3.5 w-3.5"/>{paused ? "Continuar" : "Pausar"}</Button>}
             </div>
+            {!result && <div className="fractals-arena-zoom absolute right-3 top-14">
+              <button type="button" aria-label="Diminuir zoom" title="Diminuir zoom" disabled={zoom <= 0.75} onClick={() => { const next = clamp(zoomRef.current - 0.1, 0.75, 1.35); zoomRef.current = next; setZoom(next); }}><ZoomOut/></button>
+              <span>{Math.round(zoom * 100)}%</span>
+              <button type="button" aria-label="Aumentar zoom" title="Aumentar zoom" disabled={zoom >= 1.35} onClick={() => { const next = clamp(zoomRef.current + 0.1, 0.75, 1.35); zoomRef.current = next; setZoom(next); }}><ZoomIn/></button>
+            </div>}
             <div className="fractals-arena-hint pointer-events-none absolute bottom-3 left-3">WASD / setas / toque para mover</div>
             {bossMessage && !result && <div className="pointer-events-none absolute inset-x-0 top-14 text-center"><span className="rounded-full border border-violet-300/40 bg-violet-950/80 px-4 py-2 text-xs font-semibold tracking-wider text-violet-100">{mission.bossTitle.toUpperCase()} DESPERTOU</span></div>}
             {paused && !result && levelChoices.length === 0 && <div className="fractals-pause-overlay absolute inset-0 grid place-items-center overflow-y-auto p-3 sm:p-5">
