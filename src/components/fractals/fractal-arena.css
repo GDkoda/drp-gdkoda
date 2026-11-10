@@ -880,3 +880,1270 @@
   .fractals-hud-pause { width:15px; height:15px !important; min-height:15px !important; }
   .fractals-hud-pause svg { width:8px; height:8px; }
 }
+
+
+/* ==========================================================================
+   DARK STAR VIOLET — HEXTECH DO VAZIO
+   Complete visual pass: obsidian glass, beveled amethyst metal, rune-gold.
+   Existing FractalArena class names are intentionally retained.
+   ========================================================================== */
+
+.fractals-hub {
+  --fx-void: #06040b;
+  --fx-obsidian: #0e0a18;
+  --fx-panel: #120d20;
+  --fx-panel-raised: #191129;
+  --fx-amethyst: #6f3ca7;
+  --fx-electric: #b270ff;
+  --fx-lilac: #e1c4ff;
+  --fx-lilac-soft: rgba(225, 196, 255, .68);
+  --fx-brass: #80633f;
+  --fx-rune-gold: #f0d28d;
+  --fx-metal: linear-gradient(135deg, rgba(210,168,255,.45) 0%, rgba(88,52,138,.25) 50%, rgba(210,168,255,.35) 100%);
+  --fx-metal-strong: linear-gradient(135deg, rgba(225,196,255,.78), rgba(115,75,164,.72) 48%, rgba(240,210,141,.48));
+  --fx-line: rgba(207, 174, 246, .16);
+  --fx-text: #f5edff;
+  --fx-muted: rgba(222, 207, 241, .62);
+  color: var(--fx-text);
+  color-scheme: dark;
+  gap: 12px;
+  isolation: isolate;
+}
+.fractals-hub * { box-sizing: border-box; }
+.fractals-hub button,
+.fractals-hub input { font-family: inherit; }
+.fractals-hub button:focus-visible,
+.fractals-hub input:focus-visible {
+  outline: 2px solid var(--fx-lilac);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(178,112,255,.18);
+}
+.fractals-hub :is(h2,h3,h4) {
+  text-wrap: balance;
+}
+.fractals-hub :is(p,small) {
+  overflow-wrap: break-word;
+}
+
+/* Obsidian shell and restrained nebula. */
+.fractals-lobby-card,
+.fractals-hub > .relative.overflow-hidden {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border: 1px solid transparent !important;
+  border-radius: 7px !important;
+  background:
+    radial-gradient(ellipse at 8% -8%, rgba(137,79,204,.19), transparent 38%),
+    radial-gradient(ellipse at 96% 100%, rgba(91,42,145,.13), transparent 36%),
+    linear-gradient(145deg, #100b1b 0%, #08060e 54%, #100a1b 100%) padding-box,
+    var(--fx-metal) border-box !important;
+  color: var(--fx-text) !important;
+  box-shadow: 0 22px 70px rgba(0,0,0,.52), inset 0 1px rgba(255,255,255,.07), inset 0 0 34px rgba(153,92,218,.045) !important;
+}
+.fractals-lobby-card::before,
+.fractals-hub > .relative.overflow-hidden::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 5px;
+  border: 1px solid rgba(225,196,255,.075);
+  border-radius: 4px;
+  pointer-events: none;
+}
+.fractals-lobby-card::after,
+.fractals-hub > .relative.overflow-hidden::after {
+  content: "◆";
+  position: absolute;
+  z-index: 1;
+  top: 10px;
+  right: 14px;
+  color: rgba(225,196,255,.28);
+  font-size: 9px;
+  text-shadow: 0 0 12px rgba(178,112,255,.6);
+  pointer-events: none;
+}
+.fractals-lobby,
+.fractals-hub > .relative.overflow-hidden > .relative.space-y-4 {
+  gap: 13px;
+}
+
+/* Retained legacy hero classes: angular dark-star treatment. */
+.fractals-hero {
+  min-height: 170px;
+  padding: clamp(16px, 3vw, 28px);
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background:
+    radial-gradient(ellipse at 75% 45%, rgba(135,73,205,.20), transparent 46%),
+    linear-gradient(110deg, rgba(7,5,13,.97), rgba(24,13,39,.96) 58%, rgba(10,7,17,.97)) padding-box,
+    var(--fx-metal) border-box;
+  box-shadow: inset 0 1px rgba(255,255,255,.07), inset 0 0 30px rgba(178,112,255,.07);
+}
+.fractals-hero::before {
+  opacity: .55;
+  background:
+    linear-gradient(135deg, transparent 0 39%, rgba(225,196,255,.11) 39.1%, transparent 39.4%),
+    linear-gradient(135deg, transparent 0 44%, rgba(225,196,255,.055) 44.1%, transparent 44.4%),
+    radial-gradient(ellipse at 74% 44%, rgba(178,112,255,.23), transparent 42%);
+}
+.fractals-eyebrow {
+  color: #c99cff;
+  font-size: 10px;
+  letter-spacing: .2em;
+}
+.fractals-eyebrow__dot {
+  border-radius: 1px;
+  transform: rotate(45deg);
+  background: var(--fx-rune-gold);
+  box-shadow: 0 0 12px rgba(240,210,141,.9);
+}
+.fractals-eyebrow__line {
+  background: linear-gradient(90deg, rgba(178,112,255,.7), transparent);
+}
+.fractals-title {
+  color: #fbf5ff;
+  letter-spacing: -.04em;
+  text-shadow: 0 0 28px rgba(178,112,255,.24);
+}
+.fractals-title span { color: var(--fx-lilac); }
+.fractals-hero__text { color: rgba(239,229,250,.76); font-size: 13px; }
+.fractals-hero__tags span {
+  border: 1px solid rgba(201,160,247,.24);
+  border-radius: 3px;
+  background: rgba(10,7,17,.72);
+  color: #d8c0f2;
+  font-size: 9px;
+  letter-spacing: .14em;
+}
+.fractals-hero__sigil-ring {
+  border-radius: 3px;
+  border-color: rgba(210,168,255,.35);
+  box-shadow: 0 0 0 9px rgba(178,112,255,.035), inset 0 0 30px rgba(178,112,255,.13), 0 0 55px rgba(153,87,220,.2);
+}
+.fractals-hero__sigil-ring::before,
+.fractals-hero__sigil-ring::after { border-radius: 2px; }
+.fractals-hero__sigil-core {
+  border-radius: 7px;
+  border-color: rgba(225,196,255,.58);
+  color: var(--fx-rune-gold);
+  background: linear-gradient(145deg, rgba(178,112,255,.26), rgba(49,26,77,.78) 56%, #08060f);
+  box-shadow: 0 0 32px rgba(178,112,255,.25), inset 0 1px rgba(255,255,255,.2);
+}
+.fractals-hero__sigil-caption { color: rgba(225,196,255,.58); }
+
+/* Old lobby panels remain available to other lobby variants. */
+.fractals-lobby-grid { gap: 11px; }
+.fractals-panel {
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: linear-gradient(145deg, rgba(255,255,255,.045), rgba(255,255,255,.012)), #100b1a padding-box, var(--fx-metal) border-box;
+  box-shadow: inset 0 1px rgba(255,255,255,.055), 0 12px 28px rgba(0,0,0,.28);
+}
+.fractals-panel::after { border-radius: 2px; border-color: rgba(178,112,255,.12); }
+.fractals-panel__label {
+  color: rgba(225,196,255,.64);
+  font-size: 10px;
+  letter-spacing: .18em;
+}
+.fractals-panel__label b { color: var(--fx-lilac); font-size: 10px; }
+.fractals-mission-heading h3,
+.fractals-mission-card > strong { color: #f7efff; }
+.fractals-mission-heading p { color: var(--fx-muted); }
+.fractals-mission-reward {
+  border: 1px solid rgba(240,210,141,.4);
+  border-radius: 4px;
+  background: linear-gradient(145deg, rgba(240,210,141,.11), rgba(0,0,0,.3));
+  color: var(--fx-rune-gold);
+}
+.fractals-mission-lore,
+.fractals-mission-card > p { color: rgba(239,229,250,.76); font-size: 12px; line-height: 1.6; }
+.fractals-mission-lock { border-top-color: var(--fx-line); color: rgba(240,210,141,.75); }
+.fractals-mission-symbol,
+.fractals-mission-card__icon,
+.fractals-corruption-current__sigil {
+  border: 1px solid rgba(210,168,255,.38);
+  border-radius: 5px;
+  background: linear-gradient(145deg, rgba(178,112,255,.2), rgba(15,9,25,.9));
+  color: var(--fx-lilac);
+  box-shadow: inset 0 1px rgba(255,255,255,.1), 0 0 18px rgba(178,112,255,.1);
+}
+.fractals-mission-select,
+.fractals-corruption-current,
+.fractals-corruption-heading {
+  border-radius: 5px;
+  border-color: rgba(210,168,255,.27);
+  background: linear-gradient(180deg, rgba(44,26,69,.78), rgba(19,10,33,.88));
+  color: #eadbff;
+}
+.fractals-mission-select:hover,
+.fractals-corruption-current:hover,
+.fractals-corruption-heading:hover {
+  border-color: rgba(225,196,255,.65);
+  box-shadow: 0 0 16px rgba(178,112,255,.16);
+}
+.fractals-corruption-heading small,
+.fractals-corruption-heading > span:first-child strong { color: var(--fx-lilac); }
+.fractals-corruption-active strong { color: var(--fx-rune-gold); }
+.fractals-corruption-grid { gap: 6px; }
+.fractals-corruption-option {
+  min-height: 58px;
+  padding: 8px;
+  border: 1px solid rgba(210,168,255,.18);
+  border-radius: 4px;
+  background: linear-gradient(145deg, rgba(255,255,255,.04), rgba(12,7,20,.92));
+  color: #e6d9f4;
+}
+.fractals-corruption-option:not(:disabled):hover {
+  border-color: rgba(225,196,255,.62);
+  background: rgba(111,60,167,.18);
+  box-shadow: 0 0 16px rgba(178,112,255,.13);
+}
+.fractals-corruption-option.is-selected {
+  border-color: rgba(240,210,141,.78);
+  background: linear-gradient(135deg, rgba(178,112,255,.24), rgba(240,210,141,.08));
+  color: #fff3dc;
+  box-shadow: 0 0 18px rgba(178,112,255,.18), inset 0 0 0 1px rgba(240,210,141,.13);
+}
+.fractals-corruption-option__index,
+.fractals-corruption-option__state { color: rgba(225,196,255,.64); font-size: 9px; }
+.fractals-corruption-option strong { font-size: 11px; }
+.fractals-corruption-description { color: rgba(239,229,250,.78); font-size: 12px; }
+.fractals-corruption-hint { color: rgba(225,196,255,.56); font-size: 10px; }
+
+/* Mission picker: same angular client-panel language. */
+.fractals-mission-picker-backdrop {
+  background: rgba(4,2,9,.82);
+  backdrop-filter: blur(9px) saturate(1.2);
+}
+.fractals-mission-picker {
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(120,66,178,.2), transparent 52%),
+    #0d0916 padding-box,
+    var(--fx-metal-strong) border-box;
+  box-shadow: 0 28px 90px rgba(0,0,0,.68), inset 0 1px rgba(255,255,255,.07);
+}
+.fractals-mission-picker__header {
+  border-bottom: 1px solid rgba(210,168,255,.18);
+}
+.fractals-mission-picker__header::after {
+  content: "◆";
+  display: block;
+  position: absolute;
+  left: 50%;
+  bottom: -6px;
+  color: var(--fx-electric);
+  font-size: 9px;
+  text-shadow: 0 0 12px var(--fx-electric);
+  transform: translateX(-50%);
+}
+.fractals-mission-picker__header p,
+.fractals-mission-card__status { color: #c697f7; letter-spacing: .16em; }
+.fractals-mission-picker__header h3 { color: #f8f0ff; text-transform: uppercase; letter-spacing: .12em; }
+.fractals-mission-picker__header > button {
+  border: 1px solid rgba(210,168,255,.25);
+  border-radius: 4px;
+  background: #140d21;
+  color: var(--fx-lilac);
+}
+.fractals-mission-picker__grid { gap: 8px; }
+.fractals-mission-card {
+  border: 1px solid rgba(210,168,255,.2);
+  border-radius: 5px;
+  background: linear-gradient(145deg, rgba(255,255,255,.045), transparent 60%), #100b1b;
+  color: var(--fx-text);
+}
+.fractals-mission-card.is-available:hover,
+.fractals-mission-card.is-current {
+  border-color: rgba(225,196,255,.68);
+  box-shadow: 0 0 20px rgba(178,112,255,.17), inset 0 1px rgba(255,255,255,.07);
+}
+.fractals-mission-card.is-locked { opacity: .42; }
+.fractals-mission-card__chains { color: var(--fx-rune-gold); }
+
+/* ==========================================================================
+   HEXTECH FORGE — inventory item cards, runic level marks, shop buttons.
+   ========================================================================== */
+.fractals-vault {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  padding: clamp(12px, 2vw, 18px);
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background:
+    radial-gradient(ellipse at 0% 0%, rgba(124,70,184,.19), transparent 43%),
+    radial-gradient(ellipse at 100% 100%, rgba(178,112,255,.08), transparent 40%),
+    linear-gradient(135deg, #161021, #08060e 58%, #120b1d) padding-box,
+    var(--fx-metal-strong) border-box;
+  box-shadow: 0 20px 55px rgba(0,0,0,.42), inset 0 1px rgba(255,255,255,.075), inset 0 0 38px rgba(178,112,255,.045);
+}
+.fractals-vault::before {
+  right: -95px;
+  top: -135px;
+  width: 290px;
+  height: 290px;
+  border: 1px solid rgba(210,168,255,.16);
+  border-radius: 3px;
+  box-shadow: 0 0 0 15px rgba(178,112,255,.025), 0 0 0 34px rgba(178,112,255,.016);
+  transform: rotate(45deg);
+}
+.fractals-vault__header { gap: 12px; }
+.fractals-vault__brand { gap: 11px; }
+.fractals-vault__icon {
+  width: 43px;
+  height: 43px;
+  border: 1px solid rgba(225,196,255,.55);
+  border-radius: 5px;
+  background: linear-gradient(145deg, rgba(178,112,255,.32), rgba(44,26,69,.85) 60%, #090610);
+  color: var(--fx-lilac);
+  box-shadow: 0 0 21px rgba(178,112,255,.16), inset 0 1px rgba(255,255,255,.18);
+}
+.fractals-vault__icon span {
+  width: 5px;
+  height: 5px;
+  border-radius: 0;
+  background: var(--fx-rune-gold);
+  box-shadow: 0 0 10px var(--fx-rune-gold);
+  transform: rotate(45deg);
+}
+.fractals-vault__eyebrow {
+  color: #bf8af0;
+  font-size: 10px;
+  letter-spacing: .2em;
+}
+.fractals-vault__brand h3 {
+  color: #f8f1ff;
+  font-family: inherit;
+  font-size: clamp(16px, 2vw, 21px);
+  font-weight: 900;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+.fractals-vault__brand h3 span { color: var(--fx-lilac); }
+.fractals-vault__brand p:last-child { color: rgba(226,211,243,.68); font-size: 11px; }
+.fractals-wallet {
+  gap: 4px;
+  border-left-color: rgba(210,168,255,.25);
+}
+.fractals-wallet small { color: rgba(225,196,255,.68); font-size: 9px; letter-spacing: .18em; }
+.fractals-wallet strong { color: var(--fx-rune-gold); font-size: 18px; }
+.fractals-wallet i { color: rgba(240,210,141,.7); }
+.fractals-vault__toggle {
+  height: 34px !important;
+  border: 1px solid rgba(210,168,255,.48) !important;
+  border-radius: 4px !important;
+  background: linear-gradient(180deg, #2c1a45 0%, #130a21 100%) !important;
+  color: var(--fx-lilac) !important;
+  font-size: 10px !important;
+  letter-spacing: .12em;
+  box-shadow: inset 0 1px rgba(255,255,255,.12), 0 0 13px rgba(178,112,255,.08);
+}
+.fractals-vault__toggle:hover {
+  border-color: var(--fx-lilac) !important;
+  box-shadow: 0 0 18px rgba(178,112,255,.24), inset 0 1px rgba(255,255,255,.16);
+}
+.fractals-vault__toggle span { color: var(--fx-rune-gold); }
+.fractals-vault__content {
+  position: relative;
+  margin-top: 15px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(210,168,255,.2);
+}
+.fractals-vault__content::before {
+  content: "◆";
+  position: absolute;
+  top: -7px;
+  left: 50%;
+  padding: 0 8px;
+  background: #100b1a;
+  color: var(--fx-electric);
+  font-size: 9px;
+  line-height: 12px;
+  text-shadow: 0 0 12px var(--fx-electric);
+  transform: translateX(-50%);
+}
+.fractals-shop-tabs {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid rgba(210,168,255,.18);
+  border-radius: 5px;
+  background: rgba(4,3,8,.82);
+}
+.fractals-shop-tabs button {
+  position: relative;
+  min-height: 42px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  background: linear-gradient(180deg, rgba(255,255,255,.035), rgba(255,255,255,.008));
+  color: rgba(225,208,243,.67);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+.fractals-shop-tabs button svg { color: #bd8af0; }
+.fractals-shop-tabs button small {
+  width: 19px;
+  height: 19px;
+  border: 1px solid rgba(210,168,255,.24);
+  border-radius: 2px;
+  color: var(--fx-lilac);
+}
+.fractals-shop-tabs button:hover {
+  background: rgba(128,76,184,.16);
+  color: #fff;
+  box-shadow: 0 0 18px rgba(178,112,255,.12);
+}
+.fractals-shop-tabs button.is-active {
+  border-color: rgba(210,168,255,.32);
+  background: linear-gradient(180deg, rgba(105,59,153,.42), rgba(30,16,46,.88));
+  color: #f2dcff;
+  box-shadow: inset 0 -2px 0 var(--fx-electric), 0 0 17px rgba(178,112,255,.15);
+}
+.fractals-shop-tabs button.is-active::after {
+  content: "";
+  position: absolute;
+  right: 16%;
+  bottom: -4px;
+  left: 16%;
+  height: 2px;
+  background: var(--fx-electric);
+  box-shadow: 0 0 10px var(--fx-electric);
+}
+.fractals-shop-section { margin-top: 13px; }
+.fractals-shop-section__heading { gap: 10px; margin-bottom: 10px; }
+.fractals-shop-section__heading > span {
+  width: 25px;
+  height: 25px;
+  border: 1px solid rgba(225,196,255,.45);
+  border-radius: 2px;
+  background: linear-gradient(145deg, rgba(178,112,255,.28), rgba(30,16,46,.9));
+  color: var(--fx-lilac);
+  font-size: 10px;
+  transform: rotate(45deg) scale(.86);
+}
+.fractals-shop-section__heading h4 {
+  color: #f4eaff;
+  font-size: 11px;
+  letter-spacing: .16em;
+}
+.fractals-shop-section__heading p { color: rgba(226,211,243,.58); font-size: 11px; }
+
+/* Shop item cards: black inventory slots with a double metallic outline. */
+.fractals-vault__content .grid { gap: 8px !important; }
+.fractals-vault__content .group.relative.overflow-hidden,
+.fractals-vault__content .rounded-xl.border,
+.fractals-vault__content .fractals-shop-section .grid > div {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  padding: 12px;
+  border: 1px solid transparent !important;
+  border-radius: 5px !important;
+  background:
+    linear-gradient(145deg, rgba(255,255,255,.045), rgba(255,255,255,.008) 48%, rgba(76,43,111,.12)) padding-box,
+    var(--fx-metal) border-box !important;
+  box-shadow: inset 0 1px rgba(255,255,255,.065), inset 0 0 24px rgba(178,112,255,.045), 0 10px 20px rgba(0,0,0,.24);
+  transition: border-color .2s, box-shadow .2s, transform .2s;
+}
+.fractals-vault__content .group.relative.overflow-hidden::before,
+.fractals-vault__content .rounded-xl.border::before,
+.fractals-vault__content .fractals-shop-section .grid > div::before {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border: 1px solid rgba(225,196,255,.07);
+  border-radius: 2px;
+  pointer-events: none;
+}
+.fractals-vault__content .group.relative.overflow-hidden:hover,
+.fractals-vault__content .rounded-xl.border:hover,
+.fractals-vault__content .fractals-shop-section .grid > div:hover {
+  transform: translateY(-2px);
+  border-color: rgba(225,196,255,.68) !important;
+  box-shadow: inset 0 1px rgba(255,255,255,.1), 0 0 19px rgba(178,112,255,.14), 0 12px 25px rgba(0,0,0,.32);
+}
+.fractals-vault__content .text-xs.font-semibold,
+.fractals-vault__content .fractals-shop-section .grid > div p:first-child {
+  color: #f5edff;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .035em;
+}
+.fractals-vault__content .text-muted-foreground,
+.fractals-vault__content .fractals-shop-section .grid > div p:nth-child(2) {
+  color: rgba(225,211,241,.69) !important;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.fractals-vault__content .fractals-shop-section .grid > div span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--fx-lilac);
+  font-size: 10px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+.fractals-vault__content .fractals-shop-section .grid > div span::before {
+  content: "◆";
+  color: var(--fx-electric);
+  font-size: 8px;
+  text-shadow: 0 0 8px var(--fx-electric);
+}
+.fractals-vault__content .fractals-shop-section button,
+.fractals-vault__content .fractals-exchange__controls > button {
+  min-height: 40px;
+  border: 1px solid rgba(210,168,255,.56) !important;
+  border-radius: 4px !important;
+  background: linear-gradient(180deg, #2c1a45 0%, #130a21 100%) !important;
+  color: var(--fx-rune-gold) !important;
+  font-size: 10px;
+  font-weight: 950;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  box-shadow: inset 0 1px rgba(255,255,255,.13), 0 0 12px rgba(178,112,255,.1);
+  transition: border-color .2s, box-shadow .2s, filter .2s, transform .2s;
+}
+.fractals-vault__content .fractals-shop-section button:hover:not(:disabled),
+.fractals-vault__content .fractals-exchange__controls > button:hover:not(:disabled) {
+  border-color: var(--fx-lilac) !important;
+  filter: brightness(1.18);
+  box-shadow: 0 0 17px rgba(178,112,255,.25), inset 0 1px rgba(255,255,255,.2);
+}
+.fractals-vault__content .fractals-shop-section button:disabled,
+.fractals-vault__content .fractals-exchange__controls > button:disabled {
+  opacity: .38;
+  filter: saturate(.55);
+  box-shadow: none;
+}
+.fractals-vault__footnote {
+  border-top: 1px solid rgba(210,168,255,.16);
+  color: rgba(225,211,241,.56);
+  font-size: 10px;
+}
+
+/* Currency exchange / amount field. */
+.fractals-exchange {
+  border: 1px solid rgba(210,168,255,.23);
+  border-radius: 5px;
+  background: linear-gradient(145deg, rgba(178,112,255,.08), rgba(0,0,0,.28)), #0b0712;
+}
+.fractals-exchange__copy strong { color: var(--fx-lilac); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; }
+.fractals-exchange__copy strong svg { color: var(--fx-rune-gold); }
+.fractals-exchange__copy span,
+.fractals-exchange__balance small { color: rgba(225,211,241,.62); font-size: 10px; }
+.fractals-exchange__balance b { color: var(--fx-rune-gold); font-variant-numeric: tabular-nums; }
+.fractals-exchange__controls input {
+  min-height: 38px;
+  border: 1px solid rgba(210,168,255,.34);
+  border-radius: 4px;
+  background: #08050e;
+  color: #f5edff;
+  font-size: 12px;
+}
+.fractals-exchange__controls label span,
+.fractals-exchange__arrow { color: var(--fx-lilac); }
+.fractals-exchange__controls > strong { color: var(--fx-rune-gold); font-size: 11px; }
+
+/* Header/button layout used by the current compact Tailwind lobby. */
+.fractals-hub > .relative.overflow-hidden > .relative.space-y-4 > header {
+  position: relative;
+  padding-bottom: 12px;
+  border-bottom-color: rgba(210,168,255,.2);
+}
+.fractals-hub > .relative.overflow-hidden > .relative.space-y-4 > header::after {
+  content: "◆";
+  position: absolute;
+  bottom: -7px;
+  left: 50%;
+  padding: 0 8px;
+  background: #0d0916;
+  color: var(--fx-electric);
+  font-size: 9px;
+  text-shadow: 0 0 10px var(--fx-electric);
+  transform: translateX(-50%);
+}
+.fractals-hub > .relative.overflow-hidden > .relative.space-y-4 > header h2 {
+  font-family: inherit;
+  font-size: clamp(21px, 4vw, 29px);
+  font-weight: 950;
+  letter-spacing: .08em;
+  line-height: 1.12;
+}
+.fractals-hub > .relative.overflow-hidden > .relative.space-y-4 > header > div:first-child > div:first-child {
+  color: #c99cff;
+  font-size: 10px;
+  letter-spacing: .19em;
+}
+.fractals-hub > .relative.overflow-hidden > .relative.space-y-4 > header > div:first-child > p {
+  max-width: 520px;
+  color: rgba(231,219,246,.72);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.fractals-hub > .relative.overflow-hidden > .relative.space-y-4 > header > div:last-child {
+  border-radius: 4px;
+  border-color: rgba(240,210,141,.38);
+  background: linear-gradient(145deg, rgba(240,210,141,.12), rgba(178,112,255,.08));
+  box-shadow: inset 0 1px rgba(255,255,255,.08);
+}
+.fractals-hub > .relative.overflow-hidden > .relative.space-y-4 > header > div:last-child svg { color: var(--fx-rune-gold); filter: drop-shadow(0 0 6px rgba(240,210,141,.38)); }
+.fractals-hub > .relative.overflow-hidden > .relative.space-y-4 > header > div:last-child p:first-child { color: rgba(240,210,141,.72); font-size: 10px; }
+.fractals-hub > .relative.overflow-hidden > .relative.space-y-4 > header > div:last-child p:last-child { color: var(--fx-rune-gold); }
+
+/* Current "Enter the rift" action, set apart like the client Play CTA. */
+.fractals-hub > .relative.overflow-hidden > .relative.space-y-4 > section:first-of-type {
+  border: 1px solid rgba(210,168,255,.48);
+  border-radius: 5px;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(178,112,255,.2), transparent 65%),
+    linear-gradient(90deg, rgba(240,210,141,.06), rgba(178,112,255,.11), rgba(240,210,141,.06));
+  box-shadow: inset 0 1px rgba(255,255,255,.09), 0 0 22px rgba(178,112,255,.08);
+}
+.fractals-hub > .relative.overflow-hidden > .relative.space-y-4 > section:first-of-type p {
+  color: rgba(245,235,255,.82);
+  font-size: 12px;
+}
+.fractals-hub > .relative.overflow-hidden > .relative.space-y-4 > section:first-of-type button {
+  min-height: 48px;
+  border: 1px solid rgba(240,210,141,.76);
+  border-radius: 4px;
+  background: linear-gradient(180deg, #563878 0%, #26133c 46%, #130a21 100%);
+  color: #f7dfa9;
+  font-size: 13px;
+  font-weight: 950;
+  letter-spacing: .16em;
+  text-shadow: 0 1px 8px rgba(178,112,255,.28);
+  box-shadow: inset 0 1px rgba(255,255,255,.2), 0 0 22px rgba(178,112,255,.22);
+}
+.fractals-hub > .relative.overflow-hidden > .relative.space-y-4 > section:first-of-type button:hover {
+  border-color: #fff0c5;
+  filter: brightness(1.16);
+  box-shadow: inset 0 1px rgba(255,255,255,.25), 0 0 28px rgba(178,112,255,.34);
+}
+
+/* Mission + corruption cards in the new lobby markup. */
+.fractals-hub > .relative.overflow-hidden > .relative.space-y-4 > div.grid > section {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background:
+    linear-gradient(145deg, rgba(255,255,255,.045), rgba(9,6,15,.92)) padding-box,
+    var(--fx-metal) border-box;
+  box-shadow: inset 0 1px rgba(255,255,255,.06), 0 10px 22px rgba(0,0,0,.25);
+}
+.fractals-hub > .relative.overflow-hidden > .relative.space-y-4 > div.grid > section::after {
+  content: "";
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 13px;
+  height: 13px;
+  border-top: 1px solid rgba(225,196,255,.45);
+  border-right: 1px solid rgba(225,196,255,.45);
+  pointer-events: none;
+}
+.fractals-hub > .relative.overflow-hidden > .relative.space-y-4 > div.grid > section h3 {
+  color: #f7efff;
+  letter-spacing: .035em;
+}
+.fractals-hub > .relative.overflow-hidden > .relative.space-y-4 > div.grid > section p {
+  color: rgba(230,216,244,.72);
+  font-size: 11px;
+}
+.fractals-hub > .relative.overflow-hidden > .relative.space-y-4 > div.grid > section > div:first-child > div:last-child {
+  border-radius: 3px;
+}
+.fractals-hub > .relative.overflow-hidden > .relative.space-y-4 > div.grid > section button {
+  border: 1px solid rgba(210,168,255,.43);
+  border-radius: 4px;
+  background: linear-gradient(180deg, #2c1a45 0%, #130a21 100%);
+  color: var(--fx-lilac);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .1em;
+}
+.fractals-hub > .relative.overflow-hidden > .relative.space-y-4 > div.grid > section button:hover:not(:disabled) {
+  border-color: var(--fx-lilac);
+  box-shadow: 0 0 15px rgba(178,112,255,.18);
+}
+.fractals-hub > .relative.overflow-hidden > .relative.space-y-4 > div.grid > section button:disabled { opacity: .35; }
+
+/* Pause screen. */
+.fractals-pause-overlay {
+  z-index: 30;
+  background: radial-gradient(ellipse at 50% 35%, rgba(91,48,142,.28), rgba(4,2,9,.95) 72%);
+  backdrop-filter: blur(8px);
+}
+.fractals-pause-panel {
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(178,112,255,.13), transparent 60%),
+    #0d0916 padding-box,
+    var(--fx-metal-strong) border-box;
+  box-shadow: 0 28px 80px rgba(0,0,0,.7), inset 0 1px rgba(255,255,255,.08);
+}
+.fractals-pause-panel::before { border-color: rgba(210,168,255,.16); border-radius: 3px; }
+.fractals-pause-header { border-bottom-color: rgba(210,168,255,.2); }
+.fractals-pause-header h3 { color: #f4eaff; text-transform: uppercase; letter-spacing: .08em; }
+.fractals-pause-actions button,
+.fractals-pause-speed button {
+  min-height: 40px;
+  border: 1px solid rgba(210,168,255,.25);
+  border-radius: 4px;
+  background: linear-gradient(180deg, rgba(44,26,69,.82), rgba(19,10,33,.92));
+  color: #e9d8ff;
+}
+.fractals-pause-actions button:hover,
+.fractals-pause-speed button:hover:not(:disabled) {
+  border-color: rgba(225,196,255,.7);
+  box-shadow: 0 0 15px rgba(178,112,255,.17);
+}
+.fractals-pause-speed { border: 1px solid rgba(210,168,255,.19); border-radius: 5px; background: rgba(6,4,11,.65); }
+.fractals-pause-resume {
+  border: 1px solid rgba(240,210,141,.55);
+  border-radius: 4px;
+  background: linear-gradient(180deg, #6b478d, #29163f) !important;
+  color: var(--fx-rune-gold);
+}
+.fractals-pause-resume:hover { filter: brightness(1.15); box-shadow: 0 0 18px rgba(178,112,255,.24); }
+
+/* ==========================================================================
+   IN-GAME HUD — small footprint, faceted bars and readable status widgets.
+   The whole top HUD is capped at 18vh so it does not swallow the arena.
+   ========================================================================== */
+.fractals-arena-frame {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(210,168,255,.34);
+  border-radius: 6px;
+  background: #06040b;
+  box-shadow: 0 18px 55px rgba(0,0,0,.48), inset 0 0 0 1px rgba(225,196,255,.06);
+}
+.fractals-arena-frame canvas { display: block; }
+.fractals-hud-bar {
+  position: absolute;
+  z-index: 9;
+  display: grid;
+  grid-template-columns: minmax(0,1.08fr) minmax(100px,.62fr) minmax(0,1.45fr);
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  max-height: 18vh;
+  overflow: hidden;
+  padding: 5px 9px 6px;
+  border: 1px solid rgba(210,168,255,.28);
+  border-top: 0;
+  border-radius: 0 0 5px 5px;
+  background:
+    linear-gradient(180deg, rgba(8,5,15,.94), rgba(10,6,18,.78) 76%, rgba(10,6,18,.52)),
+    linear-gradient(90deg, rgba(178,112,255,.08), transparent 40%, rgba(178,112,255,.08));
+  box-shadow: 0 8px 24px rgba(0,0,0,.35), inset 0 1px rgba(225,196,255,.12);
+  color: #f5edff;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+.fractals-hud-bar::after {
+  content: "◆";
+  position: absolute;
+  bottom: -1px;
+  left: 50%;
+  color: var(--fx-electric);
+  font-size: 7px;
+  line-height: 8px;
+  text-shadow: 0 0 10px var(--fx-electric);
+  transform: translateX(-50%);
+}
+.fractals-hud-zone { display: flex; min-width: 0; align-items: center; gap: 8px; }
+.fractals-hud-zone--left { justify-content: flex-start; }
+.fractals-hud-zone--center {
+  justify-content: center;
+  gap: 9px;
+  padding: 0 7px;
+  border-inline: 1px solid rgba(210,168,255,.2);
+}
+.fractals-hud-zone--right { justify-content: flex-end; gap: 7px; }
+.fractals-hud-meter {
+  display: grid;
+  min-width: 54px;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 2px 4px;
+}
+.fractals-hud-label {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 3px;
+  color: rgba(232,218,249,.78);
+  font-size: 8px;
+  font-weight: 950;
+  letter-spacing: .11em;
+  white-space: nowrap;
+}
+.fractals-hud-label svg { width: 10px; height: 10px; color: var(--fx-lilac); }
+.fractals-hud-meter > b { color: #fff4ff; font-size: 10px; font-weight: 900; white-space: nowrap; }
+.fractals-hud-meter > b i { color: rgba(231,215,247,.62); font-size: 8px; font-style: normal; }
+.fractals-hud-track {
+  position: relative;
+  display: block;
+  grid-column: 1 / -1;
+  overflow: hidden;
+  height: 5px;
+  border: 1px solid rgba(225,196,255,.18);
+  border-radius: 1px;
+  background: linear-gradient(180deg, rgba(0,0,0,.88), rgba(20,12,29,.9));
+  box-shadow: inset 0 1px 3px rgba(0,0,0,.8);
+  transform: skewX(-12deg);
+}
+.fractals-hud-track > i { display: block; height: 100%; }
+.fractals-hud-track > i.is-life {
+  background: linear-gradient(90deg, #5b102e, #a82458 58%, #e34c83);
+  box-shadow: 0 0 8px rgba(227,76,131,.45), inset 0 1px rgba(255,190,215,.42);
+}
+.fractals-hud-track > i.is-xp {
+  background: linear-gradient(90deg, #52217f, #8c42d4 55%, #c08bff);
+  box-shadow: 0 0 9px rgba(178,112,255,.6), inset 0 1px rgba(240,220,255,.5);
+}
+.fractals-hud-kills {
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: center;
+  gap: 0 4px;
+  padding-left: 3px;
+  color: var(--fx-lilac);
+}
+.fractals-hud-kills svg { width: 13px; height: 13px; grid-row: span 2; color: var(--fx-rune-gold); }
+.fractals-hud-kills b { color: #fff2de; font-size: 13px; line-height: 1; }
+.fractals-hud-kills small { color: rgba(225,196,255,.65); font-size: 7px; font-weight: 900; letter-spacing: .1em; }
+.fractals-hud-clock,
+.fractals-hud-density { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.fractals-hud-clock svg { width: 12px; height: 12px; color: var(--fx-rune-gold); }
+.fractals-hud-clock b { color: #f7e7c2; font-size: 15px; font-weight: 950; letter-spacing: .04em; text-shadow: 0 0 12px rgba(240,210,141,.18); }
+.fractals-hud-clock small { color: rgba(225,196,255,.5); font-size: 8px; }
+.fractals-hud-density { gap: 4px; }
+.fractals-hud-density b { color: var(--fx-lilac); font-size: 10px; }
+.fractals-hud-density small { color: rgba(225,196,255,.68); font-size: 7px; font-weight: 900; letter-spacing: .08em; }
+.fractals-hud-event {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: #dcb8ff;
+  font-size: 8px;
+  font-weight: 950;
+  white-space: nowrap;
+  text-shadow: 0 0 10px rgba(178,112,255,.45);
+}
+.fractals-hud-event svg { width: 11px; height: 11px; color: var(--fx-electric); }
+.fractals-hud-mission { display: grid; min-width: 0; gap: 2px; margin-right: 2px; text-align: right; }
+.fractals-hud-mission b {
+  overflow: hidden;
+  color: #f1e4ff;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fractals-hud-mission small { overflow: hidden; color: rgba(225,196,255,.63); font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
+.fractals-hud-control-group {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 4px;
+  padding-left: 7px;
+  border-left: 1px solid rgba(210,168,255,.2);
+  pointer-events: auto;
+}
+.fractals-hud-control-group > small { color: rgba(225,196,255,.62); font-size: 7px; font-weight: 900; letter-spacing: .1em; }
+.fractals-hud-control-group > b { min-width: 22px; color: var(--fx-rune-gold); font-size: 10px; text-align: center; }
+.fractals-hud-control-group button,
+.fractals-arena-zoom button {
+  display: grid;
+  width: 23px;
+  height: 23px;
+  place-items: center;
+  border: 1px solid rgba(210,168,255,.38);
+  border-radius: 3px;
+  background: linear-gradient(180deg, rgba(44,26,69,.92), rgba(19,10,33,.96));
+  color: var(--fx-lilac);
+  font-size: 12px;
+}
+.fractals-hud-control-group button:hover:not(:disabled),
+.fractals-arena-zoom button:hover:not(:disabled) {
+  border-color: var(--fx-lilac);
+  box-shadow: 0 0 12px rgba(178,112,255,.24);
+}
+.fractals-hud-control-group button svg,
+.fractals-arena-zoom button svg { width: 11px; height: 11px; }
+.fractals-hud-control-group button:disabled,
+.fractals-arena-zoom button:disabled { opacity: .27; }
+.fractals-hud-pause {
+  display: grid !important;
+  width: 25px;
+  height: 25px !important;
+  min-height: 25px !important;
+  padding: 0 !important;
+  border: 1px solid rgba(210,168,255,.4) !important;
+  border-radius: 3px !important;
+  background: linear-gradient(180deg, #2c1a45, #130a21) !important;
+  color: var(--fx-lilac) !important;
+  pointer-events: auto;
+}
+.fractals-hud-pause svg { width: 12px; height: 12px; }
+.fractals-hud-performance { display: inline-flex; align-items: baseline; gap: 3px; color: rgba(225,196,255,.58); white-space: nowrap; }
+.fractals-hud-performance b { color: #d5b2ff; font-size: 10px; font-weight: 950; }
+.fractals-hud-performance small,
+.fractals-hud-performance i { color: rgba(225,196,255,.48); font-size: 7px; font-style: normal; }
+.fractals-live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 0;
+  background: var(--fx-electric);
+  box-shadow: 0 0 9px var(--fx-electric);
+  transform: rotate(45deg);
+}
+.fractals-arena-hint {
+  border: 1px solid rgba(210,168,255,.2);
+  border-radius: 3px;
+  background: rgba(5,3,10,.72);
+  color: rgba(225,211,241,.72);
+  font-size: 10px;
+  backdrop-filter: blur(5px);
+}
+.fractals-arena-meta button {
+  min-height: 32px;
+  border: 1px solid rgba(210,168,255,.34);
+  border-radius: 4px;
+  background: linear-gradient(180deg, #2c1a45, #130a21);
+  color: var(--fx-lilac);
+}
+.fractals-event-hud {
+  border: 1px solid rgba(178,112,255,.5);
+  border-radius: 4px;
+  background: linear-gradient(120deg, rgba(93,42,145,.46), rgba(12,7,20,.9));
+  box-shadow: 0 0 20px rgba(178,112,255,.15), inset 0 1px rgba(255,255,255,.08);
+}
+.fractals-event-hud__heading span { color: var(--fx-lilac); }
+.fractals-event-hud__heading b { color: var(--fx-rune-gold); }
+.fractals-event-hud > small { color: #ead6ff; }
+.fractals-event-hud > em { color: rgba(225,196,255,.68); }
+
+/* Legacy HUD card used by alternate arena layouts. */
+.fractals-game-hud {
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: linear-gradient(145deg, rgba(12,7,21,.94), rgba(5,3,9,.89)) padding-box, var(--fx-metal) border-box;
+  box-shadow: 0 12px 32px rgba(0,0,0,.4), inset 0 1px rgba(255,255,255,.09), 0 0 18px rgba(178,112,255,.1);
+  backdrop-filter: blur(8px) saturate(1.15);
+}
+.fractals-game-hud__header { border-bottom-color: rgba(210,168,255,.19); }
+.fractals-game-hud__sigil {
+  border: 1px solid rgba(225,196,255,.5);
+  border-radius: 4px;
+  background: linear-gradient(145deg, rgba(178,112,255,.3), #160d24);
+  color: var(--fx-lilac);
+}
+.fractals-game-hud__header strong { color: #f6edff; }
+.fractals-game-hud__header small,
+.fractals-game-hud__header em { color: rgba(225,196,255,.68); }
+.fractals-game-hud__stat > div:first-child span { color: rgba(225,211,241,.7); }
+.fractals-game-hud__stat > div:first-child b { color: #fff2e0; }
+.fractals-game-hud__bar {
+  height: 5px;
+  border: 1px solid rgba(225,196,255,.18);
+  border-radius: 1px;
+  background: #08050f;
+  transform: skewX(-12deg);
+}
+.fractals-game-hud__bar i.is-life { background: linear-gradient(90deg,#5b102e,#b82c65,#eb6294); box-shadow: 0 0 8px rgba(227,76,131,.42); }
+.fractals-game-hud__bar i.is-xp { background: linear-gradient(90deg,#52217f,#8c42d4,#c08bff); box-shadow: 0 0 8px rgba(178,112,255,.5); }
+.fractals-game-hud__metrics { border-top-color: rgba(210,168,255,.18); }
+.fractals-game-hud__metrics span { color: rgba(225,211,241,.72); }
+.fractals-game-hud__metrics b { color: var(--fx-rune-gold); }
+.fractals-game-hud__phase { color: var(--fx-lilac); }
+.fractals-game-hud__speed-row { border-top-color: rgba(210,168,255,.18); color: rgba(225,196,255,.7); }
+.fractals-game-hud__move-speed b,
+.fractals-game-hud__speed-control span b { color: var(--fx-rune-gold); }
+.fractals-game-hud__speed-control button,
+.fractals-arena-zoom {
+  border: 1px solid rgba(210,168,255,.34);
+  border-radius: 4px;
+  background: rgba(10,6,17,.9);
+  color: var(--fx-lilac);
+}
+.fractals-arena-zoom { pointer-events: auto; }
+.fractals-arena-zoom span { color: var(--fx-rune-gold); }
+
+/* Reward modal and two-sided selectable cards. */
+.fractals-upgrade-overlay {
+  z-index: 50;
+  background: radial-gradient(ellipse at 50% 38%, rgba(99,49,152,.46), rgba(4,2,9,.97) 74%);
+  backdrop-filter: blur(9px) saturate(1.15);
+}
+.fractals-upgrade-panel {
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(178,112,255,.16), transparent 55%),
+    #0d0916 padding-box,
+    var(--fx-metal-strong) border-box;
+  box-shadow: 0 26px 90px rgba(0,0,0,.76), inset 0 1px rgba(255,255,255,.09);
+}
+.fractals-upgrade-panel h3 {
+  color: #f7efff;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+.fractals-upgrade-panel [role="button"],
+.fractals-upgrade-card {
+  position: relative;
+  border-radius: 5px !important;
+  background-color: #100b1a;
+  box-shadow: inset 0 1px rgba(255,255,255,.08), inset 0 0 26px rgba(178,112,255,.045);
+  transition: transform .2s, box-shadow .2s, border-color .2s, filter .2s;
+}
+.fractals-upgrade-panel [role="button"]::after,
+.fractals-upgrade-card::after {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border: 1px solid rgba(225,196,255,.07);
+  border-radius: 2px;
+  pointer-events: none;
+}
+.fractals-upgrade-panel [role="button"]:hover,
+.fractals-upgrade-card:hover {
+  filter: brightness(1.12);
+  box-shadow: 0 0 18px rgba(178,112,255,.13), inset 0 1px rgba(255,255,255,.12);
+}
+.fractals-upgrade-panel [role="button"][aria-pressed="true"],
+.fractals-upgrade-card.is-selected {
+  border-color: var(--fx-rune-gold) !important;
+  box-shadow: 0 0 0 2px rgba(240,210,141,.58), 0 0 24px rgba(178,112,255,.28), inset 0 0 22px rgba(178,112,255,.12);
+}
+.fractals-upgrade-panel [role="button"] p,
+.fractals-upgrade-name { color: #f7efff; }
+.fractals-upgrade-description { color: rgba(234,221,248,.8); }
+.fractals-upgrade-panel [role="button"] > button {
+  border: 1px solid rgba(225,196,255,.48);
+  border-radius: 3px;
+  background: linear-gradient(180deg, #38204f, #130a21);
+  color: var(--fx-lilac);
+}
+.fractals-upgrade-panel > div:last-child button {
+  min-height: 44px;
+  border: 1px solid rgba(240,210,141,.62);
+  border-radius: 4px;
+  background: linear-gradient(180deg, #5a3a79, #241236) !important;
+  color: var(--fx-rune-gold);
+  letter-spacing: .1em;
+  box-shadow: inset 0 1px rgba(255,255,255,.18), 0 0 19px rgba(178,112,255,.17);
+}
+.fractals-upgrade-panel > div:last-child button:disabled {
+  border-color: rgba(210,168,255,.16);
+  background: #15101d !important;
+  color: rgba(225,196,255,.3);
+  box-shadow: none;
+}
+
+/* Shared fine lines and rune accents for all menu headers. */
+.fractals-pause-header,
+.fractals-mission-picker__header,
+.fractals-shop-section__heading {
+  letter-spacing: .15em;
+}
+.fractals-pause-header::after {
+  content: "◆";
+  color: var(--fx-electric);
+  text-shadow: 0 0 10px var(--fx-electric);
+}
+.fractals-hub :is(.fractals-pause-panel, .fractals-mission-picker, .fractals-upgrade-panel, .fractals-vault, .fractals-lobby-card) {
+  -webkit-backdrop-filter: blur(12px) saturate(1.15);
+  backdrop-filter: blur(12px) saturate(1.15);
+}
+
+/* Mobile ergonomics: compact menus, safe touch targets, and a low HUD. */
+@media (max-width: 680px) {
+  .fractals-hub { gap: 9px; }
+  .fractals-hub > .relative.overflow-hidden {
+    border-radius: 5px !important;
+  }
+  .fractals-hub > .relative.overflow-hidden > .relative.space-y-4 { gap: 10px; }
+  .fractals-hub > .relative.overflow-hidden > .relative.space-y-4 > header {
+    align-items: flex-start;
+    gap: 8px;
+    padding-bottom: 9px;
+  }
+  .fractals-hub > .relative.overflow-hidden > .relative.space-y-4 > header h2 {
+    font-size: clamp(19px, 6vw, 25px);
+    letter-spacing: .045em;
+  }
+  .fractals-hub > .relative.overflow-hidden > .relative.space-y-4 > header > div:first-child > p {
+    max-width: 260px;
+    font-size: 11px;
+  }
+  .fractals-hub > .relative.overflow-hidden > .relative.space-y-4 > header > div:last-child {
+    gap: 6px;
+    padding: 6px 8px;
+  }
+  .fractals-hub > .relative.overflow-hidden > .relative.space-y-4 > header > div:last-child p:first-child { font-size: 9px; }
+  .fractals-hub > .relative.overflow-hidden > .relative.space-y-4 > header > div:last-child p:last-child { font-size: 15px; }
+  .fractals-hub > .relative.overflow-hidden > .relative.space-y-4 > section:first-of-type { padding: 10px; }
+  .fractals-hub > .relative.overflow-hidden > .relative.space-y-4 > section:first-of-type button {
+    min-height: 48px;
+    font-size: 12px;
+    letter-spacing: .11em;
+  }
+  .fractals-hub > .relative.overflow-hidden > .relative.space-y-4 > div.grid { grid-template-columns: minmax(0,1fr); }
+  .fractals-hub > .relative.overflow-hidden > .relative.space-y-4 > div.grid > section { padding: 11px; }
+  .fractals-hub > .relative.overflow-hidden > .relative.space-y-4 > div.grid > section p { font-size: 11px; }
+  .fractals-vault { padding: 11px; }
+  .fractals-vault__header { align-items: flex-start; }
+  .fractals-vault__brand { gap: 8px; }
+  .fractals-vault__icon { width: 35px; height: 35px; }
+  .fractals-vault__brand h3 { font-size: 14px; letter-spacing: .1em; }
+  .fractals-vault__brand p:last-child { max-width: 230px; font-size: 10px; }
+  .fractals-wallet { padding-left: 8px; }
+  .fractals-wallet small { font-size: 8px; }
+  .fractals-wallet strong { font-size: 14px; }
+  .fractals-vault__toggle { min-height: 32px !important; height: 32px !important; font-size: 9px !important; }
+  .fractals-shop-tabs button { min-height: 40px; gap: 5px; padding: 8px 5px; font-size: 9px; letter-spacing: .07em; }
+  .fractals-vault__content .fractals-shop-section .grid > div { padding: 11px; }
+  .fractals-vault__content .fractals-shop-section .grid > div p:first-child { font-size: 12px; }
+  .fractals-vault__content .fractals-shop-section .grid > div p:nth-child(2) { font-size: 11px; }
+  .fractals-vault__content .fractals-shop-section button { min-height: 42px; font-size: 10px; }
+  .fractals-exchange__controls { flex-wrap: wrap; }
+  .fractals-exchange__controls > button { min-height: 40px; }
+  .fractals-launch { border-radius: 5px; }
+  .fractals-pause-panel,
+  .fractals-mission-picker,
+  .fractals-upgrade-panel { border-radius: 5px; }
+  .fractals-upgrade-panel { max-height: calc(100% - 10px); overflow-y: auto; }
+  .fractals-upgrade-panel [role="button"] { min-height: 134px; padding: 7px; }
+  .fractals-upgrade-panel [role="button"] p { font-size: 10px; line-height: 1.3; }
+  .fractals-hud-bar {
+    grid-template-columns: minmax(0,1fr) auto minmax(0,1.3fr);
+    gap: 4px;
+    min-height: 38px;
+    max-height: 18dvh;
+    padding: 4px 5px 5px;
+    border-radius: 0 0 4px 4px;
+  }
+  .fractals-hud-zone { gap: 4px; }
+  .fractals-hud-zone--center { gap: 5px; padding: 0 4px; }
+  .fractals-hud-zone--right { gap: 3px; }
+  .fractals-hud-meter { min-width: 38px; gap: 2px 3px; }
+  .fractals-hud-label { gap: 2px; font-size: 7px; letter-spacing: .035em; }
+  .fractals-hud-label svg { width: 8px; height: 8px; }
+  .fractals-hud-meter > b { font-size: 9px; }
+  .fractals-hud-meter > b i { font-size: 7px; }
+  .fractals-hud-track { height: 4px; }
+  .fractals-hud-kills { gap: 0 2px; padding-left: 1px; }
+  .fractals-hud-kills svg { width: 10px; height: 10px; }
+  .fractals-hud-kills b { font-size: 10px; }
+  .fractals-hud-kills small { font-size: 6px; }
+  .fractals-hud-clock { gap: 2px; }
+  .fractals-hud-clock svg { width: 9px; height: 9px; }
+  .fractals-hud-clock b { font-size: 11px; }
+  .fractals-hud-clock small { display: none; }
+  .fractals-hud-density { gap: 2px; }
+  .fractals-hud-density b { font-size: 8px; }
+  .fractals-hud-density small { font-size: 6px; letter-spacing: 0; }
+  .fractals-hud-event { display: none; }
+  .fractals-hud-performance { gap: 2px; }
+  .fractals-hud-performance b { font-size: 8px; }
+  .fractals-hud-performance small,
+  .fractals-hud-performance i { font-size: 6px; }
+  .fractals-hud-mission { max-width: 70px; margin-right: 0; }
+  .fractals-hud-mission b { font-size: 9px; letter-spacing: .02em; }
+  .fractals-hud-mission small { display: none; }
+  .fractals-hud-control-group { gap: 2px; padding-left: 3px; }
+  .fractals-hud-control-group > small { display: none; }
+  .fractals-hud-control-group > b { min-width: 16px; font-size: 8px; }
+  .fractals-hud-control-group button { width: 18px; height: 19px; }
+  .fractals-hud-control-group button svg { width: 9px; height: 9px; }
+  .fractals-hud-pause { width: 20px; height: 20px !important; min-height: 20px !important; }
+  .fractals-hud-pause svg { width: 9px; height: 9px; }
+  .fractals-arena-hint { bottom: 7px; left: 7px; font-size: 9px; }
+}
+@media (max-width: 430px) {
+  .fractals-hub > .relative.overflow-hidden > .relative.space-y-4 > header > div:first-child { max-width: calc(100% - 100px); }
+  .fractals-hub > .relative.overflow-hidden > .relative.space-y-4 > header h2 { font-size: clamp(18px, 5.5vw, 23px); }
+  .fractals-wallet { gap: 3px; }
+  .fractals-wallet strong { font-size: 13px; }
+  .fractals-vault__toggle { padding-inline: 6px !important; font-size: 8px !important; }
+  .fractals-shop-tabs button { font-size: 8px; }
+  .fractals-hud-bar {
+    grid-template-columns: minmax(0,1fr) auto minmax(0,1.22fr);
+    gap: 2px;
+    padding-inline: 3px;
+  }
+  .fractals-hud-zone--left { gap: 2px; }
+  .fractals-hud-meter { min-width: 33px; }
+  .fractals-hud-kills small { display: none; }
+  .fractals-hud-zone--center { gap: 3px; padding-inline: 3px; }
+  .fractals-hud-clock b { font-size: 10px; }
+  .fractals-hud-density small { display: none; }
+  .fractals-hud-mission { max-width: 54px; }
+  .fractals-hud-mission b { font-size: 8px; }
+  .fractals-hud-control-group { gap: 1px; padding-left: 2px; }
+  .fractals-hud-control-group button { width: 16px; height: 17px; }
+  .fractals-hud-control-group > b { min-width: 13px; font-size: 7px; }
+  .fractals-hud-pause { width: 18px; height: 18px !important; min-height: 18px !important; }
+}
+@media (max-width: 360px) {
+  .fractals-hub > .relative.overflow-hidden > .relative.space-y-4 > header > div:first-child { max-width: calc(100% - 88px); }
+  .fractals-hub > .relative.overflow-hidden > .relative.space-y-4 > header h2 { font-size: 18px; letter-spacing: .025em; }
+  .fractals-hub > .relative.overflow-hidden > .relative.space-y-4 > header > div:first-child > p { font-size: 10px; }
+  .fractals-hud-bar {
+    grid-template-columns: minmax(0,.94fr) minmax(66px,.65fr) minmax(0,1.36fr);
+    gap: 1px;
+    padding: 4px 2px;
+    max-height: 18dvh;
+  }
+  .fractals-hud-zone--left { gap: 1px; }
+  .fractals-hud-meter { min-width: 28px; gap: 1px; }
+  .fractals-hud-label { font-size: 6px; letter-spacing: 0; }
+  .fractals-hud-label svg { width: 7px; height: 7px; }
+  .fractals-hud-meter > b { font-size: 7px; }
+  .fractals-hud-meter > b i { font-size: 6px; }
+  .fractals-hud-track { height: 3px; }
+  .fractals-hud-kills svg { width: 8px; height: 8px; }
+  .fractals-hud-kills b { font-size: 9px; }
+  .fractals-hud-zone--center { gap: 2px; padding-inline: 2px; }
+  .fractals-hud-clock svg { width: 8px; height: 8px; }
+  .fractals-hud-clock b { font-size: 9px; }
+  .fractals-hud-density b { font-size: 7px; }
+  .fractals-hud-performance { gap: 1px; }
+  .fractals-hud-performance b { font-size: 7px; }
+  .fractals-hud-performance small,
+  .fractals-hud-performance i { font-size: 5px; }
+  .fractals-hud-mission { max-width: 38px; }
+  .fractals-hud-mission b { font-size: 7px; }
+  .fractals-hud-control-group { padding-left: 1px; }
+  .fractals-hud-control-group button { width: 14px; height: 15px; }
+  .fractals-hud-control-group button svg { width: 8px; height: 8px; }
+  .fractals-hud-pause { width: 15px; height: 15px !important; min-height: 15px !important; }
+  .fractals-hud-pause svg { width: 8px; height: 8px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fractals-hub *,
+  .fractals-hub *::before,
+  .fractals-hub *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
