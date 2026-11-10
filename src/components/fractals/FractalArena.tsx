@@ -292,8 +292,8 @@ function spawnEnemy(game: GameState, missionId: number, elapsed: number, corrupt
   const side = Math.floor(Math.random() * 4);
   const margin = 30;
   const centerX = game.player.x, centerY = game.player.y;
-  const x = side === 0 ? centerX - game.width / 2 - margin : side === 1 ? centerX + game.width / 2 + margin : centerX + (Math.random() - 0.5) * game.width;
-  const y = side === 2 ? centerY - game.height / 2 - margin : side === 3 ? centerY + game.height / 2 + margin : centerY + (Math.random() - 0.5) * game.height;
+  const x = clamp(side === 0 ? centerX - game.width / 2 - margin : side === 1 ? centerX + game.width / 2 + margin : centerX + (Math.random() - 0.5) * game.width, -WORLD_LIMIT + 50, WORLD_LIMIT - 50);
+  const y = clamp(side === 2 ? centerY - game.height / 2 - margin : side === 3 ? centerY + game.height / 2 + margin : centerY + (Math.random() - 0.5) * game.height, -WORLD_LIMIT + 50, WORLD_LIMIT - 50);
   const pressure = getDifficultySnapshot(missionId, elapsed, corruption);
   const roll = Math.random();
   const eliteChance = Math.min(0.22, pressure.eliteSpawnScale * 0.075);
@@ -885,6 +885,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
     const width = Math.max(320, rect?.width ?? 760);
     const height = Math.max(380, rect?.height ?? 520);
     const game = makeGame(width, height, purchases);
+    spawnCemeteryUrns(game, 12);
     gameRef.current = game;
     eventRewardRemainingRef.current = 0;
     setEventRewardStep(0);
@@ -1033,40 +1034,47 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
 
         if (!game.challengeEvent && game.nextChallengeEvent < CHALLENGE_EVENT_TIMES.length && game.elapsed >= CHALLENGE_EVENT_TIMES[game.nextChallengeEvent]) {
           const eventId = (game.nextChallengeEvent + 1) as 1 | 2;
-          const angle = Math.random() * Math.PI * 2;
-          const radius = Math.min(150, Math.max(108, Math.min(game.width, game.height) * 0.29));
-          const offset = radius * 0.55;
-          game.challengeEvent = {
-            id: eventId,
-            x: game.player.x + Math.cos(angle) * offset,
-            y: game.player.y + Math.sin(angle) * offset,
-            radius,
-            remaining: CHALLENGE_EVENT_DURATION,
-            progress: 0,
-          };
           game.nextChallengeEvent += 1;
-          toast.info(`Anomalia ${eventId} detectada. Permaneça dentro do círculo por 60 segundos.`);
+          if (eventId === 1) {
+            const angle = Math.random() * Math.PI * 2;
+            const offset = 175;
+            game.challengeEvent = { id: 1, x: clamp(game.player.x + Math.cos(angle) * offset, -WORLD_LIMIT + 130, WORLD_LIMIT - 130), y: clamp(game.player.y + Math.sin(angle) * offset, -WORLD_LIMIT + 130, WORLD_LIMIT - 130), radius: 110, remaining: RITUAL_WINDOW, progress: 0 };
+            toast.info("Ritual da Fenda Rúnica! Acumule 25 segundos dentro do círculo em até 50 segundos.");
+          } else {
+            const angle = Math.random() * Math.PI * 2;
+            const ex = clamp(game.player.x + Math.cos(angle) * 360, -WORLD_LIMIT + 80, WORLD_LIMIT - 80);
+            const ey = clamp(game.player.y + Math.sin(angle) * 360, -WORLD_LIMIT + 80, WORLD_LIMIT - 80);
+            game.enemies.push({ x: ex, y: ey, hp: 1850, maxHp: 1850, speed: 62, radius: 30, damage: 22, color: "#8b45b5", xp: 0, type: "elite", attack: 1.2, flash: 0, windup: 0, targetX: ex, targetY: ey, dashTime: 0, summonedAtHalf: false, furyTriggered: false, isExecutioner: true });
+            game.challengeEvent = { id: 2, x: ex, y: ey, radius: 0, remaining: EXECUTIONER_WINDOW, progress: 0 };
+            toast.warning("Caçada do Algoz Espectral! Derrote-o em 60 segundos.");
+          }
         }
 
         const activeEvent = game.challengeEvent;
         if (activeEvent) {
           activeEvent.remaining = Math.max(0, activeEvent.remaining - dt);
-          const insideEvent = distance(game.player.x, game.player.y, activeEvent.x, activeEvent.y) <= activeEvent.radius;
-          activeEvent.progress = insideEvent ? Math.min(CHALLENGE_EVENT_DURATION, activeEvent.progress + dt) : 0;
-
-          if (activeEvent.remaining <= 0) {
-            const completed = activeEvent.progress >= CHALLENGE_EVENT_DURATION - 0.5;
-            game.challengeEvent = null;
-            if (completed) {
-              eventRewardRemainingRef.current = 2;
-              setEventRewardStep(1);
-              setSelectedUpgrade(null);
-          setFlippedCardId(null);
-          setLevelChoices(buildLevelChoices(game, purchases.area, purchases.experience, purchases.projectile_range, purchases.projectiles, purchases.rarity));
-              toast.success("Anomalia estabilizada! Escolha dois upgrades, um de cada vez.");
-            } else {
-              toast.error("A anomalia se dissipou. Você precisa permanecer na área durante todo o minuto.");
+          if (activeEvent.id === 1) {
+            const insideEvent = distance(game.player.x, game.player.y, activeEvent.x, activeEvent.y) <= activeEvent.radius;
+            if (insideEvent) activeEvent.progress = Math.min(RITUAL_DURATION, activeEvent.progress + dt);
+            if (activeEvent.progress >= RITUAL_DURATION) {
+              const centerX = activeEvent.x, centerY = activeEvent.y;
+              for (const enemy of game.enemies) {
+                const d = distance(centerX, centerY, enemy.x, enemy.y);
+                if (d < 275 && enemy.type !== "boss") enemy.hp = 0;
+                else if (d < 430) { const push = (430 - d) * 0.8; const angle = Math.atan2(enemy.y - centerY, enemy.x - centerX); enemy.x = clamp(enemy.x + Math.cos(angle) * push, -WORLD_LIMIT + enemy.radius, WORLD_LIMIT - enemy.radius); enemy.y = clamp(enemy.y + Math.sin(angle) * push, -WORLD_LIMIT + enemy.radius, WORLD_LIMIT - enemy.radius); }
+              }
+              game.rings = [...(game.rings ?? []), { x: centerX, y: centerY, r: 12, max: 460, life: 1.1, color: "#c084fc" }];
+              game.shake = Math.max(game.shake ?? 0, 13);
+              for(let i=0;i<42;i++){const a=Math.random()*Math.PI*2,sp=70+Math.random()*260;game.particles.push({x:centerX,y:centerY,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:.5+Math.random()*.5,color:i%2?"#d8b4fe":"#f0abfc"});}
+              game.challengeEvent = null; eventRewardRemainingRef.current = 2; setEventRewardStep(1); setSelectedUpgrade(null); setFlippedCardId(null);
+              setLevelChoices(buildLevelChoices(game,purchases.area,purchases.experience,purchases.projectile_range,purchases.projectiles,purchases.rarity));
+              toast.success("Ritual da Fenda Rúnica concluído! A onda de choque rompeu a horda. Duas dádivas aguardam.");
+            } else if (activeEvent.remaining <= 0) {
+              game.challengeEvent = null; toast.error("O Ritual da Fenda Rúnica se dissipou antes de ser concluído.");
             }
+          } else if (activeEvent.remaining <= 0) {
+            game.enemies = game.enemies.filter((enemy) => !enemy.isExecutioner);
+            game.challengeEvent = null; toast.error("O Algoz Espectral escapou para o Vazio.");
           }
         }
 
@@ -1233,6 +1241,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             }
           }
         }
+        for (const enemy of game.enemies) { const resolved = resolveCemeteryCollision(enemy.x, enemy.y, enemy.radius, game.obstacles); enemy.x = resolved.x; enemy.y = resolved.y; }
         const collisionGrid = buildEnemySpatialGrid(game.enemies);
         for (const shot of game.shots) {
           for (const enemy of getNearbyEnemies(shot.x, shot.y, collisionGrid)) {
@@ -1269,6 +1278,24 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             }
           }
         }
+        for (const shot of game.shots) {
+          if (shot.life <= 0) continue;
+          for (const urn of game.urns) {
+            if (urn.broken) continue;
+            const dx = shot.x - urn.x, dy = shot.y - urn.y;
+            if (dx*dx + dy*dy <= (urn.radius + 6) * (urn.radius + 6)) {
+              shot.life = 0; urn.hp -= shot.damage >= 45 ? 2 : 1;
+              for(let p=0;p<4;p++){const a=Math.random()*Math.PI*2,sp=25+Math.random()*85;game.particles.push({x:urn.x,y:urn.y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:.25+Math.random()*.25,color:"#b7a4b9"});}
+              if(urn.hp<=0){urn.broken=true;for(let p=0;p<18;p++){const a=Math.random()*Math.PI*2,sp=45+Math.random()*170;game.particles.push({x:urn.x,y:urn.y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:.35+Math.random()*.45,color:p%2?"#c4b5c5":"#8f7b99"});}
+                const roll=Math.random();
+                if(roll<.70)game.gems.push({x:urn.x,y:urn.y,value:5,radius:8,runeCrystal:true});
+                else if(roll<.90)game.specialDrops.push({x:urn.x,y:urn.y,kind:"food",radius:14});
+                else game.specialDrops.push({x:urn.x,y:urn.y,kind:"void",radius:14});
+              }
+              break;
+            }
+          }
+        }
         game.enemies = game.enemies.filter((enemy) => enemy.hp > 0 && (enemy.type === "boss" || distance(enemy.x, enemy.y, game.player.x, game.player.y) < Math.max(game.width, game.height) / zoomRef.current * 1.45));
         game.gems.forEach((gem) => {
           const previousX = gem.x, previousY = gem.y;
@@ -1285,7 +1312,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           if (d < 17) {
             fractalAudio.gem();
             game.player.xp += gem.value * game.player.xpMultiplier;
-            game.crystalsCollected += 1;
+            game.crystalsCollected += gem.runeCrystal ? 5 : 1;
             gem.value = 0;
           }
         });
@@ -1294,6 +1321,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           const d = distance(game.player.x, game.player.y, drop.x, drop.y);
           if (d < game.player.pickupRadius) { drop.x += ((game.player.x - drop.x) / Math.max(1, d)) * 280 * dt; drop.y += ((game.player.y - drop.y) / Math.max(1, d)) * 280 * dt; }
           if (d < 18) {
+            if(drop.kind==="food"){game.player.hp=Math.min(game.player.maxHp,game.player.hp+game.player.maxHp*.4);game.pickupLabels.push({x:game.player.x,y:game.player.y-28,text:"+40% HP! Iguaria Cósmica 🍔",life:1.8,maxLife:1.8});drop.radius=0;fractalAudio.special();return;}
+            if(drop.kind==="void"){for(const gem of game.gems){gem.x=game.player.x;gem.y=game.player.y;}game.pickupLabels.push({x:game.player.x,y:game.player.y-28,text:"Vórtice do Vazio! Cristais Sugados!",life:1.8,maxLife:1.8});drop.radius=0;fractalAudio.special();return;}
             fractalAudio.special();
             const specialUpgradeId: UpgradeId = drop.kind === "area" ? "special_area" : drop.kind === "experience" ? "special_experience" : drop.kind === "projectile_range" ? "special_projectile_range" : "special_projectiles";
             const specialUpgrade = SPECIAL_UPGRADES.find((item) => item.id === specialUpgradeId)!;
@@ -1314,6 +1343,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           }
         });
         game.specialDrops = game.specialDrops.filter((drop) => drop.radius > 0 && distance(drop.x, drop.y, game.player.x, game.player.y) < Math.max(game.width, game.height) * 1.6);
+        game.urns = game.urns.filter((urn) => !urn.broken);
+        if(Math.floor(game.elapsed/60)>=game.nextUrnMinute){spawnCemeteryUrns(game,8+Math.floor(Math.random()*5));game.nextUrnMinute=Math.floor(game.elapsed/60)+1;}
         game.particles.forEach((p) => { p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; });
         game.particles = game.particles.filter((p) => p.life > 0);
         if (game.particles.length > 140) game.particles.splice(0, game.particles.length - 140);
@@ -1337,7 +1368,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           game.bossSpawned = true;
           if (!bossNotified) { bossNotified = true; setBossMessage(true); fractalAudio.bossAlert(); window.setTimeout(() => setBossMessage(false), 5200); }
         }
-        if (now - lastHud > 100) {
+        if (now - lastHud > 100 && game.player.hp > 0 && !game.ended) {
           lastHud = now;
           const halfViewWidth = game.width / (2 * zoomRef.current);
           const halfViewHeight = game.height / (2 * zoomRef.current);
