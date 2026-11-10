@@ -1317,7 +1317,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         </div>
       )}
       {!running && !result && (
-        <Card className="relative overflow-hidden rounded-2xl border border-violet-200/15 bg-gradient-to-b from-[#1b1727] via-[#13101d] to-[#100e18] p-3 text-white shadow-[0_20px_60px_rgba(0,0,0,0.45)] sm:p-5">
+        <Card className="fractals-gold-frame fractals-gold-corners relative overflow-hidden rounded-2xl p-3 text-white shadow-[0_20px_60px_rgba(0,0,0,0.45)] sm:p-5">
           <div className="pointer-events-none absolute -right-20 -top-24 h-64 w-64 rounded-full bg-violet-500/[0.08] blur-3xl" />
           <div className="relative space-y-4">
             <header className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-3">
@@ -1343,7 +1343,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               </div>
             </header>
 
-            <section className="rounded-xl border border-amber-300/30 bg-gradient-to-r from-amber-400/15 via-violet-500/10 to-amber-400/10 p-3 text-center sm:p-4">
+            <section className="fractals-gold-frame fractals-gold-corners rounded-xl p-3 text-center sm:p-4">
               <p className="mb-2 text-xs text-white/75 sm:text-sm">Sobreviva por 12 minutos. O guardião desperta ao final da incursão.</p>
               <Button onClick={start} className="mx-auto h-12 w-full max-w-xl rounded-xl bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-500 font-display text-base font-black tracking-wider text-[#21170b] shadow-[0_0_28px_rgba(245,158,11,0.3)] transition hover:brightness-110 active:scale-[0.98]">
                 <Play className="mr-2 h-5 w-5 fill-current" /> ENTRAR NA FENDA
@@ -1351,7 +1351,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             </section>
 
             <div className="grid gap-3 sm:grid-cols-2">
-              <section className="flex min-w-0 flex-col rounded-xl border border-white/10 bg-white/[0.035] p-3">
+              <section className="fractals-gold-frame fractals-gold-corners flex min-w-0 flex-col rounded-xl p-3">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <p className="text-[11px] font-black uppercase tracking-wider text-violet-200">Região ativa</p>
@@ -1369,7 +1369,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                 </Button>
               </section>
 
-              <section className="flex min-w-0 flex-col rounded-xl border border-rose-200/15 bg-white/[0.035] p-3">
+              <section className="fractals-gold-frame fractals-gold-corners flex min-w-0 flex-col rounded-xl p-3">
                 <button
                   type="button"
                   onClick={() => setCorruptionPickerOpen((open) => !open)}
@@ -1390,16 +1390,16 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                     <p className="text-[10px] font-black uppercase tracking-wider text-emerald-200">Bônus da corrupção</p>
                     <p className="mt-1 text-[11px] leading-relaxed text-emerald-50/85">
                       {corruption === 0
-                        ? "Sem recompensa adicional por corrupção."
-                        : `Vitória: +${corruption * 15} FR. Derrota: ${2 + corruption} FR por minuto sobrevivido.`}
+                        ? "Vitória: 25 FR base, sem bônus adicional. Derrota: 2 FR por minuto sobrevivido."
+                        : `Vitória: 25 FR base + ${corruption * 15} FR de bônus. Derrota: ${2 + corruption} FR por minuto sobrevivido.`}
                     </p>
                   </div>
                   <div className="border-t border-rose-200/10 pt-2">
                     <p className="text-[10px] font-black uppercase tracking-wider text-rose-200">Ônus da corrupção</p>
                     <p className="mt-1 text-[11px] leading-relaxed text-rose-50/85">
                       {corruption === 0
-                        ? "Nenhum aumento de dificuldade."
-                        : `Pressão +${(corruption * 0.65).toFixed(2)} · fator de surgimento +${(corruption * 0.045).toFixed(3)} · fator de elites +${(corruption * 0.12).toFixed(2)} (a chance de elite também respeita o teto de 22%).`}
+                        ? "Sem pressão adicional, sem aumento no surgimento e sem reforço de elites."
+                        : `Índice de pressão +${(corruption * 0.65).toFixed(2)} (não é multiplicador de dano) · fator de surgimento +${(corruption * 0.045).toFixed(3)} · fator de elites +${(corruption * 0.12).toFixed(2)} (chance de elite limitada a 22%).`}
                     </p>
                   </div>
                 </div>
@@ -1409,11 +1409,11 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                       const locked = level.level > unlockedCorruption;
                       const active = corruption === level.level;
                       const levelBonus = level.level === 0
-                        ? "Sem bônus adicional."
-                        : `Vitória +${level.level * 15} FR · Derrota ${2 + level.level} FR/min sobrevivido.`;
+                        ? "Vitória: 25 FR base, sem bônus extra · Derrota: 2 FR/min sobrevivido."
+                        : `Vitória: 25 FR base + ${level.level * 15} FR extra · Derrota: ${2 + level.level} FR/min sobrevivido.`;
                       const levelOnus = level.level === 0
-                        ? "Sem ônus adicional."
-                        : `Pressão +${(level.level * 0.65).toFixed(2)} · fator de surgimento +${(level.level * 0.045).toFixed(3)} · fator de elites +${(level.level * 0.12).toFixed(2)}.`;
+                        ? "Sem pressão, surgimento ou reforço de elites adicional."
+                        : `Índice de pressão +${(level.level * 0.65).toFixed(2)} (não é dano) · fator de surgimento +${(level.level * 0.045).toFixed(3)} · fator de elites +${(level.level * 0.12).toFixed(2)} (chance de elite limitada a 22%).`;
                       return (
                         <button
                           key={level.level}
