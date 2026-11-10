@@ -740,3 +740,100 @@
   .fractals-upgrade-card .fractals-upgrade-description { margin-top: 5px; font-size: 8px; line-height: 1.25; overflow-wrap: anywhere; }
   .fractals-upgrade-card .border-t { margin-top: 7px; padding-top: 6px; font-size: 6px; letter-spacing: .04em; }
 }
+
+
+/* Three-zone low-profile HUD — transparent over the arena, separated only by a hairline */
+.fractals-hud-bar {
+  position:absolute; z-index:9; display:grid;
+  grid-template-columns:minmax(0,1.08fr) minmax(100px,.62fr) minmax(0,1.45fr);
+  align-items:start; gap:10px; min-height:52px; padding:7px 10px 8px;
+  border-bottom:1px solid rgba(221,201,242,.16);
+  background:linear-gradient(180deg,rgba(8,6,13,.54),rgba(8,6,13,.22) 70%,transparent);
+  color:rgba(249,241,255,.92); font-variant-numeric:tabular-nums; pointer-events:none;
+}
+.fractals-hud-zone { display:flex; min-width:0; align-items:center; gap:9px; }
+.fractals-hud-zone--left { justify-content:flex-start; }
+.fractals-hud-zone--center { justify-content:center; gap:11px; padding:0 9px; border-inline:1px solid rgba(226,206,246,.13); }
+.fractals-hud-zone--right { justify-content:flex-end; gap:8px; }
+.fractals-hud-meter { display:grid; min-width:56px; grid-template-columns:1fr auto; align-items:center; gap:2px 5px; }
+.fractals-hud-label { display:inline-flex; min-width:0; align-items:center; gap:3px; color:rgba(225,212,242,.68); font-size:7px; font-weight:900; letter-spacing:.11em; white-space:nowrap; }
+.fractals-hud-label svg { width:10px; height:10px; color:rgba(220,187,255,.86); }
+.fractals-hud-meter > b { color:#fff4e2; font-size:9px; font-weight:850; white-space:nowrap; }
+.fractals-hud-meter > b i { color:rgba(242,229,252,.52); font-size:7px; font-style:normal; }
+.fractals-hud-track { display:block; overflow:hidden; grid-column:1/-1; height:3px; border-radius:99px; background:rgba(255,255,255,.14); }
+.fractals-hud-track > i { display:block; height:100%; border-radius:inherit; }
+.fractals-hud-track > i.is-life { background:linear-gradient(90deg,#bf536d,#ff9aab); }
+.fractals-hud-track > i.is-xp { background:linear-gradient(90deg,#48a989,#b4efcc); }
+.fractals-hud-kills { display:grid; grid-template-columns:auto auto; align-items:center; gap:0 4px; padding-left:3px; color:#e7d0ff; }
+.fractals-hud-kills svg { width:12px; height:12px; grid-row:span 2; }
+.fractals-hud-kills b { color:#fff3df; font-size:12px; line-height:1; }
+.fractals-hud-kills small { color:rgba(225,212,242,.55); font-size:6px; font-weight:900; letter-spacing:.07em; }
+.fractals-hud-clock,.fractals-hud-density { display:inline-flex; align-items:center; gap:4px; white-space:nowrap; }
+.fractals-hud-clock svg { width:12px; height:12px; color:#e3c48e; }
+.fractals-hud-clock b { color:#fff2d9; font-size:14px; font-weight:900; letter-spacing:.02em; }
+.fractals-hud-clock small { color:rgba(245,231,251,.43); font-size:7px; }
+.fractals-hud-density { gap:4px; }
+.fractals-hud-density b { color:#dfc7ff; font-size:10px; }
+.fractals-hud-density small { color:rgba(225,212,242,.58); font-size:6px; font-weight:900; letter-spacing:.08em; }
+.fractals-hud-event { display:inline-flex; align-items:center; gap:3px; color:#dfc6ff; font-size:7px; font-weight:900; white-space:nowrap; }
+.fractals-hud-event svg { width:10px; height:10px; }
+.fractals-hud-mission { display:grid; min-width:0; gap:2px; margin-right:2px; text-align:right; }
+.fractals-hud-mission b { overflow:hidden; color:#fff0d6; font-family:Georgia,serif; font-size:12px; line-height:1.1; text-overflow:ellipsis; white-space:nowrap; }
+.fractals-hud-mission small { overflow:hidden; color:rgba(227,211,244,.54); font-size:7px; text-overflow:ellipsis; white-space:nowrap; }
+.fractals-hud-control-group { display:inline-flex; flex:0 0 auto; align-items:center; gap:4px; padding-left:7px; border-left:1px solid rgba(228,210,248,.13); pointer-events:auto; }
+.fractals-hud-control-group > small { color:rgba(224,209,241,.5); font-size:6px; font-weight:900; letter-spacing:.1em; }
+.fractals-hud-control-group > b { min-width:22px; color:#f1d9ad; font-size:9px; text-align:center; }
+.fractals-hud-control-group button { display:grid; width:21px; height:21px; place-items:center; border:1px solid rgba(221,197,248,.2); border-radius:5px; background:rgba(13,10,20,.2); color:rgba(246,233,255,.9); font-size:12px; line-height:1; }
+.fractals-hud-control-group button svg { width:11px; height:11px; }
+.fractals-hud-control-group button:disabled { opacity:.25; }
+.fractals-hud-pause { display:grid!important; width:24px; height:24px!important; min-height:24px!important; padding:0!important; border:1px solid rgba(223,202,248,.2)!important; background:rgba(8,6,13,.25)!important; color:rgba(250,239,255,.86)!important; pointer-events:auto; }
+.fractals-hud-pause svg { width:11px; height:11px; }
+.fractals-arena-hint { z-index:3; }
+
+@media (max-width:680px) {
+  .fractals-hud-bar { grid-template-columns:minmax(0,1fr) auto minmax(0,1.38fr); gap:4px; min-height:43px; padding:5px 5px 6px; border-bottom-color:rgba(231,211,250,.13); background:linear-gradient(180deg,rgba(5,4,10,.48),rgba(5,4,10,.16) 72%,transparent); }
+  .fractals-hud-zone { gap:4px; }
+  .fractals-hud-zone--left { gap:4px; }
+  .fractals-hud-zone--center { gap:5px; padding:0 5px; }
+  .fractals-hud-zone--right { gap:4px; }
+  .fractals-hud-meter { min-width:38px; gap:2px 3px; }
+  .fractals-hud-label { gap:2px; font-size:6px; letter-spacing:.04em; }
+  .fractals-hud-label svg { width:8px; height:8px; }
+  .fractals-hud-meter > b { font-size:8px; }
+  .fractals-hud-meter > b i { font-size:6px; }
+  .fractals-hud-track { height:2px; }
+  .fractals-hud-kills { gap:0 2px; padding-left:1px; }
+  .fractals-hud-kills svg { width:9px; height:9px; }
+  .fractals-hud-kills b { font-size:10px; }
+  .fractals-hud-kills small { font-size:5px; }
+  .fractals-hud-clock { gap:2px; }
+  .fractals-hud-clock svg { width:9px; height:9px; }
+  .fractals-hud-clock b { font-size:11px; }
+  .fractals-hud-clock small { display:none; }
+  .fractals-hud-density { gap:2px; }
+  .fractals-hud-density b { font-size:8px; }
+  .fractals-hud-density small { font-size:5px; letter-spacing:0; }
+  .fractals-hud-event { display:none; }
+  .fractals-hud-mission { gap:1px; margin-right:0; max-width:72px; }
+  .fractals-hud-mission b { font-size:9px; }
+  .fractals-hud-mission small { display:none; }
+  .fractals-hud-control-group { gap:2px; padding-left:3px; }
+  .fractals-hud-control-group > small { display:none; }
+  .fractals-hud-control-group > b { min-width:16px; font-size:8px; }
+  .fractals-hud-control-group button { width:17px; height:18px; border-radius:4px; font-size:10px; }
+  .fractals-hud-control-group button svg { width:9px; height:9px; }
+  .fractals-hud-pause { width:19px; height:19px!important; min-height:19px!important; }
+  .fractals-hud-pause svg { width:9px; height:9px; }
+}
+@media (max-width:360px) {
+  .fractals-hud-bar { grid-template-columns:minmax(0,1fr) auto minmax(0,1.22fr); gap:2px; padding-inline:3px; }
+  .fractals-hud-zone--left { gap:3px; }
+  .fractals-hud-meter { min-width:34px; }
+  .fractals-hud-kills small { display:none; }
+  .fractals-hud-mission { max-width:54px; }
+  .fractals-hud-mission b { font-size:8px; }
+  .fractals-hud-zone--right { gap:2px; }
+  .fractals-hud-control-group { padding-left:2px; gap:1px; }
+  .fractals-hud-control-group button { width:16px; height:17px; }
+  .fractals-hud-pause { width:17px; height:17px!important; min-height:17px!important; }
+}
