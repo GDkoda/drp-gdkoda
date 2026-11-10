@@ -689,7 +689,6 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
   const eventRewardRemainingRef = useRef(0);
   const [missionId, setMissionId] = useState(1);
   const [missionPickerOpen, setMissionPickerOpen] = useState(false);
-  const [corruptionExpanded, setCorruptionExpanded] = useState(false);
   const [exchangeAmount, setExchangeAmount] = useState("10");
   const [coinBalance, setCoinBalance] = useState(0);
   const [corruption, setCorruption] = useState(0);
