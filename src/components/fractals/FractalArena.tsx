@@ -412,7 +412,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     }
   }
 
-  if (game.challengeEvent) {
+  if (game.challengeEvent?.id === 1) {
     const event = game.challengeEvent;
     const pulse = 1 + Math.sin(game.elapsed * 3.5) * 0.035;
     ctx.save();
@@ -1260,13 +1260,19 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                   game.gems.push({ x: enemy.x, y: enemy.y, value: enemy.xp, radius: 5 });
                   const specialDropTier = Math.max(purchases.area, purchases.experience, purchases.projectile_range, purchases.projectiles);
                   const specialDropChance = specialDropTier >= 3 ? 0.03 : specialDropTier >= 2 ? 0.01 : 0;
-                  if ((enemy.type === "elite" || enemy.type === "brute") && specialDropChance > 0 && Math.random() < specialDropChance) {
+                  if (!enemy.isExecutioner && (enemy.type === "elite" || enemy.type === "brute") && specialDropChance > 0 && Math.random() < specialDropChance) {
                     const eligible: SpecialDrop["kind"][] = [];
                     if (purchases.area >= 1 && game.player.specialAreaStacks < 5) eligible.push("area");
                     if (purchases.experience >= 1 && game.player.specialExperienceStacks < 6) eligible.push("experience");
                     if (purchases.projectile_range >= 1 && game.player.projectileRangeStacks < 5) eligible.push("projectile_range");
                     if (purchases.projectiles >= 1 && game.player.projectileStacks < MAX_EXTRA_PROJECTILES) eligible.push("projectiles");
                     if (eligible.length) game.specialDrops.push({ x: enemy.x, y: enemy.y, kind: eligible[Math.floor(Math.random() * eligible.length)], radius: 13 });
+                  }
+                  if(enemy.isExecutioner){
+                    game.specialDrops.push({x:enemy.x-18,y:enemy.y,kind:"food",radius:15},{x:enemy.x+18,y:enemy.y,kind:"void",radius:15});
+                    game.challengeEvent=null;eventRewardRemainingRef.current=2;setEventRewardStep(1);setSelectedUpgrade(null);setFlippedCardId(null);
+                    setLevelChoices(buildLevelChoices(game,purchases.area,purchases.experience,purchases.projectile_range,purchases.projectiles,purchases.rarity));
+                    toast.success("Algoz Espectral derrotado! O cemitério reverbera com dádivas!");
                   }
                 } else { game.ended = true; setStats({ totalDamageDealt: Math.round(game.totalDamageDealt), crystalsCollected: game.crystalsCollected, highestLevel: game.highestLevel }); setResult("victory"); fractalAudio.victory(); finishRun(true); }
                 { const big = enemy.type === "boss" || enemy.type === "elite"; const count = big ? 30 : 12;
@@ -1697,7 +1703,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                 <div className="fractals-hud-clock"><Timer/><b>{formatTime(hud.elapsed)}</b><small>/ 12:00</small></div>
                 <div className="fractals-hud-density"><span className="fractals-live-dot"/><b>{hud.pressure.toFixed(1)}</b><small>DENSIDADE</small></div>
                 <div className="fractals-hud-performance"><b>{hud.fps}</b><small>FPS</small><i>{hud.visibleEnemies}/50</i></div>
-                {hud.event && <div className="fractals-hud-event"><Target/> ANOMALIA {hud.event.id} · {Math.ceil(hud.event.remaining)}s</div>}
+                {hud.event && <div className="fractals-hud-event"><Target/> {hud.event.id === 1 ? "RITUAL RÚNICO" : "CAÇADA DO ALGOZ"} · {Math.ceil(hud.event.remaining)}s {hud.event.id === 1 ? "· " + Math.floor(hud.event.progress) + "/25s" : ""}</div>}
               </div>
               <div className="fractals-hud-zone fractals-hud-zone--right">
                 <div className="fractals-hud-mission"><b>{mission.name}</b><small>{mission.pathName} · {CORRUPTION_LEVELS[corruption].name}</small></div>
