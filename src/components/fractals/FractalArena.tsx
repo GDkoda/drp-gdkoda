@@ -284,13 +284,6 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     { floor: [39, 27, 53], glow: "#c08aff", crystal: "#d29aff", stone: "#654b80" },
   ] as const;
   const biome = biomes[clamp(missionId - 1, 0, biomes.length - 1)];
-  const bg = ctx.createLinearGradient(cameraX, cameraY, cameraX + viewWidth, cameraY + viewHeight);
-  bg.addColorStop(0, "rgba(27,24,37,1)");
-  bg.addColorStop(0.52, "rgba(35,31,47,1)");
-  bg.addColorStop(1, "rgba(14,13,23,1)");
-  ctx.fillStyle = bg;
-  ctx.fillRect(cameraX, cameraY, viewWidth, viewHeight);
-
   // Piso em mosaico cacheado: uma chamada de preenchimento por quadro.
   ctx.fillStyle = "#0d0b14";
   ctx.fillRect(cameraX, cameraY, viewWidth, viewHeight);
@@ -298,49 +291,38 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
   if (floorPattern) { ctx.fillStyle = floorPattern; ctx.fillRect(cameraX, cameraY, viewWidth, viewHeight); }
 
   const drawPillar = (x: number, y: number, scale = 1) => {
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.scale(scale, scale);
-    ctx.fillStyle = "rgba(0,0,0,.48)";
+    ctx.save(); ctx.translate(x, y); ctx.scale(scale, scale);
+    ctx.fillStyle = "rgba(0,0,0,.42)";
+    ctx.beginPath(); ctx.ellipse(2, 13, 19, 8, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#171320"; ctx.strokeStyle = biome.stone; ctx.lineWidth = 1.7;
     ctx.beginPath();
-    ctx.ellipse(2, 13, 19, 9, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = "#171522";
-    ctx.strokeStyle = biome.stone;
-    ctx.lineWidth = 2;
-    ctx.fillRect(-12, -26, 24, 38);
-    ctx.strokeRect(-12, -26, 24, 38);
+    ctx.moveTo(-13,10); ctx.lineTo(-10,-25); ctx.lineTo(-4,-32); ctx.lineTo(11,-29); ctx.lineTo(14,-23); ctx.lineTo(12,11); ctx.closePath();
+    ctx.fill(); ctx.stroke();
     ctx.fillStyle = "#383047";
-    ctx.fillRect(-16, -31, 32, 7);
-    ctx.fillRect(-15, 10, 30, 6);
-    ctx.fillStyle = biome.glow + "48";
-    ctx.fillRect(-3, -22, 6, 28);
+    ctx.beginPath(); ctx.moveTo(-16,-27); ctx.lineTo(-7,-35); ctx.lineTo(14,-32); ctx.lineTo(17,-25); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = biome.glow + "3d";
+    ctx.beginPath(); ctx.moveTo(-2,-20); ctx.lineTo(4,-25); ctx.lineTo(5,5); ctx.lineTo(-1,9); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = "rgba(238,218,255,.35)"; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(-8,-15); ctx.lineTo(-3,-7); ctx.lineTo(-7,0); ctx.moveTo(8,-18); ctx.lineTo(4,-10); ctx.stroke();
     ctx.restore();
   };
   const drawCrystal = (x: number, y: number, size: number, color: string) => {
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.shadowColor = color;
-    ctx.shadowBlur = 18;
-    ctx.fillStyle = color;
-    ctx.strokeStyle = "rgba(245,225,255,.8)";
-    ctx.lineWidth = 1.2;
-    ctx.beginPath();
-    ctx.moveTo(0, -size);
-    ctx.lineTo(size * .48, -size * .25);
-    ctx.lineTo(size * .32, size * .72);
-    ctx.lineTo(-size * .3, size * .72);
-    ctx.lineTo(-size * .48, -size * .25);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-    ctx.fillStyle = "rgba(255,255,255,.28)";
-    ctx.beginPath();
-    ctx.moveTo(0, -size);
-    ctx.lineTo(0, size * .65);
-    ctx.lineTo(-size * .3, size * .72);
-    ctx.closePath();
-    ctx.fill();
+    ctx.save(); ctx.translate(x, y);
+    ctx.fillStyle = color; ctx.strokeStyle = "rgba(245,225,255,.72)"; ctx.lineWidth = 1;
+    const shard = (offsetX: number, offsetY: number, scale: number) => {
+      ctx.beginPath();
+      ctx.moveTo(offsetX, offsetY - size * scale);
+      ctx.lineTo(offsetX + size * .42 * scale, offsetY - size * .16 * scale);
+      ctx.lineTo(offsetX + size * .27 * scale, offsetY + size * .75 * scale);
+      ctx.lineTo(offsetX - size * .28 * scale, offsetY + size * .75 * scale);
+      ctx.lineTo(offsetX - size * .42 * scale, offsetY - size * .16 * scale);
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = "rgba(255,255,255,.22)";
+      ctx.beginPath(); ctx.moveTo(offsetX, offsetY - size * scale); ctx.lineTo(offsetX, offsetY + size * .65 * scale);
+      ctx.lineTo(offsetX - size * .28 * scale, offsetY + size * .75 * scale); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = color;
+    };
+    shard(0, 0, 1); shard(-size * .5, size * .22, .58); shard(size * .48, size * .27, .48);
     ctx.restore();
   };
 
@@ -407,12 +389,13 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     ctx.textBaseline = "middle";
     ctx.fillStyle = "#f0ddff";
     ctx.shadowColor = "#6f3eb1";
-    ctx.shadowBlur = 10;
+    ctx.shadowBlur = 0;
     ctx.fillText("ANOMALIA " + String(event.id).padStart(2, "0"), 0, -event.radius - 18);
     ctx.restore();
   }
 
   game.gems.forEach((gem) => {
+    if (gem.x < cameraX - 30 || gem.x > cameraX + viewWidth + 30 || gem.y < cameraY - 30 || gem.y > cameraY + viewHeight + 30) return;
     ctx.save(); ctx.translate(gem.x, gem.y);
     const pulse = 1 + Math.sin(game.elapsed * 6 + gem.x * 0.03) * 0.08;
     ctx.scale(pulse, pulse);
@@ -428,6 +411,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     ctx.restore();
   });
   game.specialDrops.forEach((drop) => {
+    if (drop.x < cameraX - 45 || drop.x > cameraX + viewWidth + 45 || drop.y < cameraY - 45 || drop.y > cameraY + viewHeight + 45) return;
     ctx.save(); ctx.translate(drop.x, drop.y);
     const pulse = 1 + Math.sin(game.elapsed * 7 + drop.y * 0.02) * 0.09;
     const size = drop.radius * 2.8 * pulse;
@@ -452,7 +436,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
       ctx.shadowColor = "#b77aff"; ctx.shadowBlur = 0;
       ctx.drawImage(projectile, -15, -9, 30, 18);
     } else {
-      ctx.shadowColor = "#b77aff"; ctx.shadowBlur = crowded ? 0 : 15; ctx.fillStyle = "#c39aff";
+      ctx.shadowColor = "#b77aff"; ctx.shadowBlur = 0; ctx.fillStyle = "#c39aff";
       ctx.beginPath(); ctx.moveTo(9,0); ctx.lineTo(0,-4); ctx.lineTo(-10,0); ctx.lineTo(0,4); ctx.closePath(); ctx.fill();
       ctx.fillStyle = "#fff1ce"; ctx.beginPath(); ctx.moveTo(5,0); ctx.lineTo(0,-1.5); ctx.lineTo(-5,0); ctx.lineTo(0,1.5); ctx.closePath(); ctx.fill();
     }
@@ -495,25 +479,25 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
       ctx.drawImage(enemySprite, -spriteWidth / 2, -spriteHeight * anchor, spriteWidth, spriteHeight);
       ctx.restore();
     } else if (enemy.type === "wraith") {
-      ctx.shadowColor = enemy.color; ctx.shadowBlur = 13; ctx.fillStyle = hurt ? "#fff" : "#827394";
+      ctx.shadowColor = enemy.color; ctx.shadowBlur = 0; ctx.fillStyle = hurt ? "#fff" : "#827394";
       ctx.beginPath(); ctx.moveTo(-enemy.radius, 3); ctx.quadraticCurveTo(-enemy.radius * 1.2, -enemy.radius, 0, -enemy.radius * 1.1); ctx.quadraticCurveTo(enemy.radius * 1.2, -enemy.radius, enemy.radius, 3); ctx.lineTo(enemy.radius * .55, enemy.radius * .45); ctx.lineTo(0, enemy.radius * .12); ctx.lineTo(-enemy.radius * .55, enemy.radius * .45); ctx.closePath(); ctx.fill();
       ctx.fillStyle = "#d9b8ff"; ctx.fillRect(-4, -3, 3, 4); ctx.fillRect(2, -3, 3, 4);
     } else if (enemy.type === "charger") {
       ctx.rotate(Math.atan2(enemy.targetY - enemy.y, enemy.targetX - enemy.x));
-      ctx.shadowColor = "#f0a75d"; ctx.shadowBlur = 12; ctx.fillStyle = hurt ? "#fff" : "#b46f42";
+      ctx.shadowColor = "#f0a75d"; ctx.shadowBlur = 0; ctx.fillStyle = hurt ? "#fff" : "#b46f42";
       ctx.beginPath(); ctx.moveTo(enemy.radius * 1.35, 0); ctx.lineTo(-enemy.radius * .8, -enemy.radius * .85); ctx.lineTo(-enemy.radius * .4, 0); ctx.lineTo(-enemy.radius * .8, enemy.radius * .85); ctx.closePath(); ctx.fill();
       ctx.fillStyle = "#ffe0a1"; ctx.fillRect(enemy.radius * .25, -2, 4, 4);
     } else if (enemy.type === "brute") {
-      ctx.shadowColor = "#a8a6b7"; ctx.shadowBlur = 10; ctx.fillStyle = hurt ? "#fff" : "#57586b";
+      ctx.shadowColor = "#a8a6b7"; ctx.shadowBlur = 0; ctx.fillStyle = hurt ? "#fff" : "#57586b";
       ctx.beginPath(); ctx.moveTo(-enemy.radius, -enemy.radius * .55); ctx.lineTo(-enemy.radius * .55, -enemy.radius); ctx.lineTo(enemy.radius * .65, -enemy.radius * .9); ctx.lineTo(enemy.radius, -enemy.radius * .2); ctx.lineTo(enemy.radius * .8, enemy.radius); ctx.lineTo(-enemy.radius * .8, enemy.radius); ctx.closePath(); ctx.fill();
       ctx.strokeStyle = "#b4a8c9"; ctx.lineWidth = 2; ctx.stroke();
       ctx.fillStyle = "#e0a5ff"; ctx.fillRect(-4, -4, 8, 6);
     } else if (enemy.type === "elite") {
-      ctx.rotate(game.elapsed * .35); ctx.shadowColor = "#d69cff"; ctx.shadowBlur = 20; ctx.fillStyle = hurt ? "#fff" : "#6f4c8c";
+      ctx.rotate(game.elapsed * .35); ctx.shadowColor = "#d69cff"; ctx.shadowBlur = 0; ctx.fillStyle = hurt ? "#fff" : "#6f4c8c";
       ctx.beginPath(); for (let i=0;i<8;i++){const a=i*Math.PI/4;const rr=i%2===0?enemy.radius*1.2:enemy.radius*.72;ctx.lineTo(Math.cos(a)*rr,Math.sin(a)*rr);} ctx.closePath();ctx.fill();
       ctx.strokeStyle="#e5c5ff";ctx.lineWidth=2;ctx.stroke();ctx.fillStyle="#fff0ff";ctx.beginPath();ctx.arc(0,0,4,0,Math.PI*2);ctx.fill();
     } else {
-      ctx.shadowColor = "#b78bff"; ctx.shadowBlur = 28; ctx.fillStyle = hurt ? "#fff" : "#33233f";
+      ctx.shadowColor = "#b78bff"; ctx.shadowBlur = 0; ctx.fillStyle = hurt ? "#fff" : "#33233f";
       ctx.beginPath(); ctx.moveTo(-enemy.radius*.9, enemy.radius*.65); ctx.lineTo(-enemy.radius*.8,-enemy.radius*.7); ctx.lineTo(-enemy.radius*.35,-enemy.radius*1.15); ctx.lineTo(enemy.radius*.35,-enemy.radius*1.15); ctx.lineTo(enemy.radius*.8,-enemy.radius*.7); ctx.lineTo(enemy.radius*.9,enemy.radius*.65); ctx.lineTo(0,enemy.radius*1.05); ctx.closePath();ctx.fill();
       ctx.strokeStyle="#d7b5ff";ctx.lineWidth=3;ctx.stroke();
       ctx.fillStyle="#08060d";ctx.beginPath();ctx.ellipse(0,-enemy.radius*.15,enemy.radius*.42,enemy.radius*.55,0,0,Math.PI*2);ctx.fill();
@@ -528,11 +512,28 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     }
     ctx.restore();
   });
-  ctx.save();
-  game.particles.forEach((p) => {
-    ctx.globalAlpha = clamp(p.life * 2, 0, 1); ctx.fillStyle = p.color; ctx.shadowColor = p.color; ctx.shadowBlur = 0;
-    ctx.beginPath(); ctx.arc(p.x, p.y, 1.5 + clamp(p.life * 2, 0, 1) * 1.4, 0, Math.PI * 2); ctx.fill();
-  });
+  const particleGroups = new Map<string, Particle[]>();
+  for (const particle of game.particles) {
+    if (particle.x < cameraX - 16 || particle.x > cameraX + viewWidth + 16 || particle.y < cameraY - 16 || particle.y > cameraY + viewHeight + 16) continue;
+    const group = particleGroups.get(particle.color);
+    if (group) group.push(particle);
+    else particleGroups.set(particle.color, [particle]);
+  }
+  for (const [color, group] of particleGroups) {
+    ctx.beginPath();
+    for (const particle of group) {
+      const size = 1.2 + clamp(particle.life * 2, 0, 1) * 2.1;
+      const angle = Math.atan2(particle.vy, particle.vx);
+      const dx = Math.cos(angle) * size, dy = Math.sin(angle) * size;
+      const px = -dy * 0.38, py = dx * 0.38;
+      ctx.moveTo(particle.x - dx, particle.y - dy);
+      ctx.lineTo(particle.x + px, particle.y + py);
+      ctx.lineTo(particle.x + dx, particle.y + dy);
+      ctx.lineTo(particle.x - px, particle.y - py);
+      ctx.closePath();
+    }
+    ctx.fillStyle = color; ctx.globalAlpha = 0.78; ctx.fill();
+  }
   ctx.restore(); ctx.globalAlpha = 1;
 
   if (showDamageNumbers) {
@@ -550,7 +551,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
       ctx.lineWidth = 3.5;
       ctx.strokeStyle = "rgba(20,7,17,.92)";
       ctx.shadowColor = "rgba(255,53,89,.9)";
-      ctx.shadowBlur = 12;
+      ctx.shadowBlur = 0;
       ctx.strokeText(label, number.x, y);
       ctx.fillStyle = "#fff4ed";
       ctx.fillText(label, number.x, y);
@@ -567,14 +568,19 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
   ctx.translate(0, bob);
   const auraPulse = 0.94 + Math.sin(game.elapsed * 4.4) * 0.07;
   const hitIntensity = clamp(player.hitFlash / 0.3, 0, 1);
-  const energyAura = ctx.createRadialGradient(0, 2, 3, 0, 2, (31 + hitIntensity * 12) * auraPulse);
-  energyAura.addColorStop(0, hitIntensity > 0.02 ? `rgba(255,42,66,${0.38 + hitIntensity * 0.34})` : "rgba(190,139,255,.34)");
-  energyAura.addColorStop(0.42, hitIntensity > 0.02 ? `rgba(220,24,58,${0.22 + hitIntensity * 0.26})` : "rgba(128,82,221,.18)");
-  energyAura.addColorStop(1, hitIntensity > 0.02 ? "rgba(255,24,62,0)" : "rgba(83,146,255,0)");
-  ctx.save(); ctx.globalAlpha = 0.9; ctx.fillStyle = energyAura;
-  ctx.shadowColor = hitIntensity > 0.02 ? "#ff183d" : "#a75cff";
-  ctx.shadowBlur = hitIntensity > 0.02 ? 24 + hitIntensity * 25 : 0;
-  ctx.beginPath(); ctx.ellipse(0, 2, (28 + hitIntensity * 8) * auraPulse, (34 + hitIntensity * 8) * auraPulse, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+  const auraColor = hitIntensity > 0.02 ? "rgba(248,36,63,.22)" : "rgba(166,111,237,.18)";
+  ctx.save(); ctx.globalAlpha = 0.9; ctx.fillStyle = auraColor;
+  ctx.beginPath();
+  ctx.ellipse(0, 2, (25 + hitIntensity * 6) * auraPulse, (31 + hitIntensity * 6) * auraPulse, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = hitIntensity > 0.02 ? "rgba(255,76,99,.46)" : "rgba(204,163,255,.28)";
+  ctx.lineWidth = 1.3;
+  ctx.beginPath(); ctx.ellipse(0, 2, 28 * auraPulse, 34 * auraPulse, 0, 0, Math.PI * 2); ctx.stroke();
+  ctx.restore();
+  if (player.moving) {
+    const runWave = Math.sin(game.elapsed * 16 + player.facing * 0.8);
+    ctx.transform(1 + runWave * 0.018, runWave * 0.012, -runWave * 0.015, 1 - runWave * 0.014, 0, 0);
+  }
   const getPlayerSheet = (action: PlayerVisualAction) =>
     action === "cast" ? sprites.playerCast : action === "move" ? sprites.playerMove : sprites.playerIdle;
   const isPlayerSheetReady = (sheet?: HTMLImageElement) =>
@@ -587,7 +593,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     const baseAlpha = player.invuln > 0 && Math.floor(game.elapsed * 14) % 2 === 0 ? 0.62 : 1;
     ctx.filter = hitIntensity > 0.02 ? "brightness(1.75) sepia(.8) saturate(4) hue-rotate(300deg)" : player.invuln > 0 ? "brightness(1.25) saturate(1.2)" : "none";
     ctx.shadowColor = hitIntensity > 0.02 ? "#ff2448" : player.invuln > 0 ? "#ff7182" : "#a75cff";
-    ctx.shadowBlur = hitIntensity > 0.02 ? 28 + hitIntensity * 24 : player.invuln > 0 ? 16 : player.spriteAction === "cast" ? 18 : 10;
+    ctx.shadowBlur = 0;
     const blend = previousReady ? clamp(player.spriteBlend, 0, 1) : 1;
     if (previousReady && blend < 1) {
       ctx.globalAlpha = baseAlpha * (1 - blend);
@@ -600,7 +606,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
       const aim = PLAYER_DIRECTION_VECTORS[player.spriteDirection] ?? PLAYER_DIRECTION_VECTORS[0];
       ctx.save(); ctx.translate(aim.x * 19, aim.y * 16 - 2);
       ctx.globalAlpha = clamp(player.castTimer / 0.24, 0.35, 1);
-      ctx.shadowColor = "#c28aff"; ctx.shadowBlur = 18; ctx.fillStyle = "#f0dcff";
+      ctx.shadowColor = "#c28aff"; ctx.shadowBlur = 0; ctx.fillStyle = "#f0dcff";
       ctx.beginPath(); ctx.arc(0, 0, 3.2 + Math.sin(game.elapsed * 46) * 0.8, 0, Math.PI * 2); ctx.fill();
       ctx.strokeStyle = "rgba(216,175,255,.9)"; ctx.lineWidth = 1.2;
       ctx.beginPath(); ctx.arc(0, 0, 7, 0, Math.PI * 2); ctx.stroke();
@@ -608,7 +614,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     }
   } else {
     // Fallback vetorial enquanto as imagens carregam ou em caso de falha de rede.
-    ctx.shadowColor = hitIntensity > 0.02 ? "#ff2448" : player.invuln > 0 ? "#ff7182" : "#a75cff"; ctx.shadowBlur = hitIntensity > 0.02 ? 30 + hitIntensity * 20 : player.invuln > 0 ? 20 : 17;
+    ctx.shadowColor = hitIntensity > 0.02 ? "#ff2448" : player.invuln > 0 ? "#ff7182" : "#a75cff"; ctx.shadowBlur = 0;
     ctx.fillStyle = "#292039"; ctx.beginPath(); ctx.moveTo(-12, -3); ctx.lineTo(-9, -13); ctx.lineTo(0, -19); ctx.lineTo(9, -13); ctx.lineTo(13, 8); ctx.lineTo(7, 14); ctx.lineTo(-9, 12); ctx.closePath(); ctx.fill();
     ctx.strokeStyle = "#8d65b5"; ctx.lineWidth = 1.5; ctx.stroke();
     ctx.fillStyle = "#4a315e"; ctx.beginPath(); ctx.moveTo(-10,-7);ctx.lineTo(-5,-17);ctx.lineTo(2,-20);ctx.lineTo(10,-12);ctx.lineTo(7,1);ctx.lineTo(0,9);ctx.lineTo(-8,2);ctx.closePath();ctx.fill();
@@ -624,9 +630,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     const barW = 42, barY = -44, ratio = clamp(player.hp / Math.max(1, player.maxHp), 0, 1);
     ctx.fillStyle = "rgba(8,6,15,.82)"; ctx.fillRect(-barW / 2 - 1, barY - 1, barW + 2, 6);
     ctx.fillStyle = "rgba(104,33,55,.95)"; ctx.fillRect(-barW / 2, barY, barW, 4);
-    const hpGradient = ctx.createLinearGradient(-barW / 2, 0, barW / 2, 0);
-    hpGradient.addColorStop(0, "#f08a9c"); hpGradient.addColorStop(1, "#ff526f");
-    ctx.fillStyle = hpGradient; ctx.fillRect(-barW / 2, barY, barW * ratio, 4);
+    ctx.fillStyle = "#f06480"; ctx.fillRect(-barW / 2, barY, barW * ratio, 4);
     ctx.strokeStyle = "rgba(255,225,232,.68)"; ctx.lineWidth = 0.7; ctx.strokeRect(-barW / 2, barY, barW, 4);
   }
   ctx.restore();
@@ -640,7 +644,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     ctx.lineWidth = 3.5;
     ctx.strokeStyle = "rgba(12,7,20,.94)";
     ctx.shadowColor = "rgba(228,190,255,.85)";
-    ctx.shadowBlur = 12;
+    ctx.shadowBlur = 0;
     ctx.strokeText(label.text, label.x, label.y);
     ctx.fillStyle = "#ffe6ae";
     ctx.fillText(label.text, label.x, label.y);
@@ -1069,7 +1073,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             if (enemy.hp > 0 && hitX * hitX + hitY * hitY < hitRadius * hitRadius) {
               enemy.hp -= shot.damage; enemy.flash = 0.09; shot.life = 0;
               game.damageNumbers.push({ x: enemy.x + (Math.random() - 0.5) * 10, y: enemy.y - enemy.radius - 8, value: shot.damage, life: 0.82, maxLife: 0.82, drift: (Math.random() - 0.5) * 14 });
-              if (game.damageNumbers.length > 36) game.damageNumbers.shift();
+              if (game.damageNumbers.length > 20) game.damageNumbers.shift();
               if (enemy.hp <= 0) {
                 game.kills += 1;
                 if (enemy.type !== "boss") {
@@ -1121,8 +1125,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         game.specialDrops = game.specialDrops.filter((drop) => drop.radius > 0 && distance(drop.x, drop.y, game.player.x, game.player.y) < Math.max(game.width, game.height) * 1.6);
         game.particles.forEach((p) => { p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; });
         game.particles = game.particles.filter((p) => p.life > 0);
-        if (game.particles.length > 48) game.particles.splice(0, game.particles.length - 48);
-        if (game.gems.length > 180) {
+        if (game.particles.length > 24) game.particles.splice(0, game.particles.length - 24);
+        if (game.gems.length > 60) {
           const overflow = game.gems.splice(0, game.gems.length - 180);
           const retainedGem = game.gems[0];
           if (retainedGem) retainedGem.value += overflow.reduce((total, gem) => total + gem.value, 0);
