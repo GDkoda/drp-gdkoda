@@ -836,8 +836,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
       if (eventRewardRemainingRef.current > 0) {
         setEventRewardStep(2);
         setSelectedUpgrade(null);
-              setFlippedCardId(null);
-              setLevelChoices(buildLevelChoices(game, purchases.area, purchases.experience, purchases.projectile_range, purchases.projectiles, purchases.rarity));
+        setFlippedCardId(null);
+        setLevelChoices(buildLevelChoices(game, purchases.area, purchases.experience, purchases.projectile_range, purchases.projectiles, purchases.rarity));
         return;
       }
       setEventRewardStep(0);
@@ -930,8 +930,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               eventRewardRemainingRef.current = 2;
               setEventRewardStep(1);
               setSelectedUpgrade(null);
-              setFlippedCardId(null);
-              setLevelChoices(buildLevelChoices(game, purchases.area, purchases.experience, purchases.projectile_range, purchases.projectiles, purchases.rarity));
+          setFlippedCardId(null);
+          setLevelChoices(buildLevelChoices(game, purchases.area, purchases.experience, purchases.projectile_range, purchases.projectiles, purchases.rarity));
               toast.success("Anomalia estabilizada! Escolha dois upgrades, um de cada vez.");
             } else {
               toast.error("A anomalia se dissipou. Você precisa permanecer na área durante todo o minuto.");
