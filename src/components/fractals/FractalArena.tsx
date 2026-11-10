@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState, type PointerEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, Heart, Move, Pause, Play, RotateCcw, RotateCw, Check, Shield, Skull, Sparkles, Swords, Zap, Maximize, UserRound, Gauge, ArrowLeft, ShoppingBag, Crown, Gem as GemIcon, MapPin, Flame, Leaf, Snowflake, Orbit, Lock, Link2, ChevronDown, Coins, Timer, Target, ZoomIn, ZoomOut } from "lucide-react";
+import { AlertTriangle, Heart, Move, Pause, Play, RotateCcw, RotateCw, Check, Shield, Skull, Sparkles, Swords, Zap, Maximize, UserRound, Gauge, ArrowLeft, ShoppingBag, Crown, Gem as GemIcon, MapPin, Flame, Leaf, Snowflake, Orbit, Lock, Link2, ChevronDown, Coins, Timer, Target, ZoomIn, ZoomOut, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { getDifficultySnapshot } from "@/lib/fractals/difficulty";
+import { fractalAudio } from "@/lib/fractals/audio";
 import { CORRUPTION_LEVELS, FRACTAL_MISSIONS, RUN_DURATION_SECONDS } from "@/lib/fractals/config";
 import { FRACTAL_SHOP, FRACTAL_RARITY_TIERS } from "@/lib/fractals/economy";
 import { supabase } from "@/integrations/supabase/client";
@@ -713,9 +714,17 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
   const [showDamageNumbers, setShowDamageNumbers] = useState(true);
   const [shopSection, setShopSection] = useState<"permanent" | "relics">("permanent");
   const [runId, setRunId] = useState<string | null>(null);
+  const [isMuted, setIsMuted] = useState(() => fractalAudio.isMuted());
+  const [earnedFractals, setEarnedFractals] = useState<number | null>(null);
+  const [rewardStatus, setRewardStatus] = useState<"pending" | "confirmed" | "error">("pending");
   const [shopBusy, setShopBusy] = useState(false);
   const [shopOpen, setShopOpen] = useState(true);
   const [shopError, setShopError] = useState<string | null>(null);
+  const toggleAudio = () => {
+    const nextMute = fractalAudio.toggleMute();
+    setIsMuted(nextMute);
+    toast.info(nextMute ? "Áudio desativado" : "Efeitos sonoros ativados");
+  };
   const spritesRef = useRef<SpriteMap>({});
   useEffect(() => {
     let cancelled = false;
@@ -797,6 +806,9 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
   };
 
   const start = useCallback(async () => {
+    fractalAudio.unlock();
+    setEarnedFractals(null);
+    setRewardStatus("pending");
     const { data: newRunId, error: runError } = await (supabase.rpc as any)("start_fractal_run", { _corruption: corruption });
     if (runError) { toast.error(runError.message); return; }
     setRunId(newRunId);
@@ -810,6 +822,47 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
     setHud({ hp: game.player.hp, maxHp: game.player.maxHp, xp: 0, nextXp: 12, level: 1, kills: 0, elapsed: 0, moveSpeed: Math.round(game.player.speed), fps: 0, visibleEnemies: 0, phase: "Exploração", pressure: 0, event: null });
     setLevelChoices([]); setSelectedUpgrade(null); setFlippedCardId(null); setPaused(false); setResult(null); setBossMessage(false); setRunning(true);
   }, [corruption, purchases]);
+
+  const finishRun = useCallback((victory: boolean) => {
+    if (!runId) {
+      setRewardStatus("error");
+      toast.error("Não foi possível localizar a expedição para validar as recompensas.");
+      return;
+    }
+
+    setRewardStatus("pending");
+    setEarnedFractals(null);
+
+    void (supabase.rpc as any)("finish_fractal_run", { _run_id: runId, _victory: victory })
+      .then(({ data, error }: any) => {
+        if (error) {
+          setRewardStatus("error");
+          toast.error(error.message);
+          return;
+        }
+
+        const earned = Number(data?.earnedFractals ?? 0);
+        const safeEarned = Number.isFinite(earned) ? Math.max(0, earned) : 0;
+        setEarnedFractals(safeEarned);
+        setRewardStatus("confirmed");
+        setFractalBalance(Number(data?.fractals ?? 0));
+        setCoinBalance(Number(data?.coins ?? 0));
+
+        if (victory) {
+          setUnlockedCorruption(Number(data?.corruptionUnlocked ?? 0));
+          setCompletedCorruptions(Array.isArray(data?.completedCorruptions) ? data.completedCorruptions : []);
+          toast.success(safeEarned > 0 ? `Expedição vitoriosa! Você conquistou ${safeEarned} fractais.` : "Corrupção concluída. O próximo nível foi liberado.");
+        } else if (safeEarned > 0) {
+          toast.info(`Você sobreviveu bravamente e resgatou ${safeEarned} fractais.`);
+        } else {
+          toast.info("Expedição encerrada. Não houve fractais extras nesta tentativa.");
+        }
+      })
+      .catch((error: unknown) => {
+        setRewardStatus("error");
+        toast.error(error instanceof Error ? error.message : "Não foi possível validar as recompensas.");
+      });
+  }, [runId]);
 
   const chooseUpgrade = useCallback((upgrade: Upgrade) => {
     setSelectedUpgrade(null);
@@ -974,6 +1027,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               damage: game.player.damage * damageScale, life: game.player.projectileLife,
             });
           }
+          fractalAudio.shoot();
           game.shotTimer = game.player.fireRate;
         }
         const desiredAction: PlayerVisualAction = game.player.castTimer > 0 ? "cast" : game.player.moving ? "move" : "idle";
@@ -1108,6 +1162,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               if (game.damageNumbers.length > 20) game.damageNumbers.shift();
               if (enemy.hp <= 0) {
                 game.kills += 1;
+                fractalAudio.kill(enemy.type === "boss" || enemy.type === "elite");
                 if (enemy.type !== "boss") {
                   game.gems.push({ x: enemy.x, y: enemy.y, value: enemy.xp, radius: 5 });
                   const specialDropTier = Math.max(purchases.area, purchases.experience, purchases.projectile_range, purchases.projectiles);
@@ -1120,7 +1175,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                     if (purchases.projectiles >= 1 && game.player.projectileStacks < MAX_EXTRA_PROJECTILES) eligible.push("projectiles");
                     if (eligible.length) game.specialDrops.push({ x: enemy.x, y: enemy.y, kind: eligible[Math.floor(Math.random() * eligible.length)], radius: 13 });
                   }
-                } else { game.ended = true; setResult("victory"); if (runId) void (supabase.rpc as any)("finish_fractal_run", { _run_id: runId, _victory: true }).then(({ data, error }: any) => { if (error) toast.error(error.message); else { setFractalBalance(Number(data?.fractals ?? 0)); setCoinBalance(Number(data?.coins ?? 0)); setUnlockedCorruption(Number(data?.corruptionUnlocked ?? 0)); setCompletedCorruptions(Array.isArray(data?.completedCorruptions) ? data.completedCorruptions : []); toast.success("Corrupção concluída. O próximo nível foi liberado."); } }); }
+                } else { game.ended = true; setResult("victory"); fractalAudio.victory(); finishRun(true); }
                 { const big = enemy.type === "boss" || enemy.type === "elite"; const count = big ? 30 : 12;
                   for (let i = 0; i < count; i++) { const a = Math.random() * Math.PI * 2; const sp = 60 + Math.random() * (big ? 260 : 170); game.particles.push({ x: enemy.x, y: enemy.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 0.35 + Math.random() * 0.4, color: i % 3 === 0 ? "#fff1ff" : i % 3 === 1 ? "#b98cff" : enemy.color }); }
                   (game.rings ??= []).push({ x: enemy.x, y: enemy.y, r: 6, max: big ? 140 : 46, life: big ? 0.6 : 0.32, color: big ? "#e9c46a" : "#c9a2ff" });
@@ -1135,6 +1190,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           const d = distance(game.player.x, game.player.y, gem.x, gem.y);
           if (d < game.player.pickupRadius) { gem.x += ((game.player.x - gem.x) / Math.max(1, d)) * 260 * dt; gem.y += ((game.player.y - gem.y) / Math.max(1, d)) * 260 * dt; }
           if (d < 17) {
+            fractalAudio.gem();
             game.player.xp += gem.value * game.player.xpMultiplier; gem.value = 0;
           }
         });
@@ -1143,6 +1199,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           const d = distance(game.player.x, game.player.y, drop.x, drop.y);
           if (d < game.player.pickupRadius) { drop.x += ((game.player.x - drop.x) / Math.max(1, d)) * 280 * dt; drop.y += ((game.player.y - drop.y) / Math.max(1, d)) * 280 * dt; }
           if (d < 18) {
+            fractalAudio.special();
             const pickupNames: Record<SpecialDrop["kind"], string> = {
               area: "Ímã de Fragmentos",
               experience: "Eco do Conhecimento",
@@ -1169,13 +1226,13 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           if (retainedGem) retainedGem.value += overflow.reduce((total, gem) => total + gem.value, 0);
         }
         if (game.player.xp >= game.player.nextXp && !game.ended && eventRewardRemainingRef.current === 0) {
-          game.player.xp -= game.player.nextXp; game.player.level += 1; game.player.nextXp = Math.floor(game.player.nextXp * 1.32 + 5);
+          game.player.xp -= game.player.nextXp; game.player.level += 1; fractalAudio.levelUp(); game.player.nextXp = Math.floor(game.player.nextXp * 1.32 + 5);
           
           setSelectedUpgrade(null);
               setFlippedCardId(null);
               setLevelChoices(buildLevelChoices(game, purchases.area, purchases.experience, purchases.projectile_range, purchases.projectiles, purchases.rarity));
         }
-        if (game.player.hp <= 0 && !game.ended) { game.ended = true; setResult("defeat"); if (runId) void (supabase.rpc as any)("finish_fractal_run", { _run_id: runId, _victory: false }).then(({ error }: any) => { if (error) toast.error(error.message); }); }
+        if (game.player.hp <= 0 && !game.ended) { game.ended = true; setResult("defeat"); fractalAudio.defeat(); finishRun(false); }
         if (game.elapsed >= RUN_DURATION_SECONDS && !game.ended && !game.bossSpawned) { spawnEnemy(game, missionId, game.elapsed, corruption, true); game.bossSpawned = true; }
         if (now - lastHud > 100) {
           lastHud = now;
@@ -1200,7 +1257,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
     };
     frame = requestAnimationFrame(tick);
     return () => { cancelAnimationFrame(frame); window.removeEventListener("resize", resize); window.removeEventListener("keydown", onKeyDown); window.removeEventListener("keyup", onKeyUp); };
-  }, [running, paused, levelChoices.length, missionId, corruption, speedMultiplier, runId, purchases, showPlayerHp, showDamageNumbers]);
+  }, [running, paused, levelChoices.length, missionId, corruption, speedMultiplier, finishRun, purchases, showPlayerHp, showDamageNumbers]);
 
   const pointerStart = (event: PointerEvent<HTMLCanvasElement>) => {
     const rect = event.currentTarget.getBoundingClientRect();
@@ -1265,12 +1322,17 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                 <h2 className="font-display text-2xl font-black tracking-wide text-white sm:text-3xl">ECOS <span className="text-amber-300">DOS</span> FRACTAIS</h2>
                 <p className="mt-1 text-xs text-white/65 sm:text-sm">Atravesse a fenda, reúna fragmentos e sobreviva ao despertar do guardião.</p>
               </div>
-              <div className="flex items-center gap-2 rounded-xl border border-amber-300/25 bg-amber-400/10 px-3 py-2">
-                <GemIcon className="h-5 w-5 text-amber-300" />
-                <div className="text-right">
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-amber-100/75">Seu saldo</p>
-                  <p className="font-mono text-lg font-black leading-tight text-amber-200">{fractalBalance.toLocaleString("pt-BR")} <span className="text-xs">FR</span></p>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 rounded-xl border border-amber-300/25 bg-amber-400/10 px-3 py-2">
+                  <GemIcon className="h-5 w-5 text-amber-300" />
+                  <div className="text-right">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-amber-100/75">Seu saldo</p>
+                    <p className="font-mono text-lg font-black leading-tight text-amber-200">{fractalBalance.toLocaleString("pt-BR")} <span className="text-xs">FR</span></p>
+                  </div>
                 </div>
+                <button type="button" onClick={toggleAudio} className="rounded border border-purple-500/30 bg-purple-950/40 p-1.5 text-purple-300 transition-colors hover:text-amber-300" title={isMuted ? "Ativar som" : "Desativar som"} aria-label={isMuted ? "Ativar efeitos sonoros" : "Desativar efeitos sonoros"}>
+                  {isMuted ? <VolumeX className="h-4 w-4 text-zinc-500" /> : <Volume2 className="h-4 w-4 text-amber-400" />}
+                </button>
               </div>
             </header>
 
@@ -1509,7 +1571,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
   <div className="fractals-pause-header mb-4 flex items-center justify-between pb-3"><div><p className="text-[9px] font-bold uppercase tracking-[.24em] text-violet-200/70">Ecos dos Fractais · Refúgio</p><h3 className="mt-1 font-display text-2xl text-white">Expedição pausada</h3></div><div className="grid h-11 w-11 place-items-center rounded-2xl border border-amber-200/20 bg-amber-200/10 text-amber-100 shadow-[0_0_24px_rgba(251,191,36,0.12)]"><Pause className="h-5 w-5"/></div></div>
   {pausePanel === "main" ? <>
    <div className="fractals-pause-actions grid grid-cols-2 gap-2"><Button variant="outline" className="h-auto justify-start gap-2 rounded-xl border-violet-100/15 bg-white/[0.055] py-3 text-white shadow-inner hover:border-violet-100/35 hover:bg-violet-300/10" onClick={() => setPausePanel("attributes")}><UserRound className="h-4 w-4"/> Atributos</Button><Button variant="outline" className="h-auto justify-start gap-2 rounded-xl border-violet-100/15 bg-white/[0.055] py-3 text-white shadow-inner hover:border-violet-100/35 hover:bg-violet-300/10" onClick={toggleFullscreen}><Maximize className="h-4 w-4"/> Tela cheia</Button><Button variant="outline" className="h-auto justify-start gap-2 rounded-xl border-violet-100/15 bg-white/[0.055] py-3 text-white shadow-inner hover:border-violet-100/35 hover:bg-violet-300/10" onClick={() => setShowPlayerHp((v) => !v)}><Heart className="h-4 w-4 text-rose-300"/> HP: {showPlayerHp ? "visível" : "oculto"}</Button><Button variant="outline" className="h-auto justify-start gap-2 rounded-xl border-violet-100/15 bg-white/[0.055] py-3 text-white shadow-inner hover:border-violet-100/35 hover:bg-violet-300/10" onClick={() => setShowDamageNumbers((v) => !v)}><Swords className="h-4 w-4 text-amber-200"/> Dano: {showDamageNumbers ? "visível" : "oculto"}</Button></div>
-   <div className="fractals-pause-speed mt-3 rounded-2xl p-3"><div className="mb-2 flex items-center gap-2 text-xs font-semibold text-white/75"><Gauge className="h-4 w-4"/> Velocidade da expedição</div><div className="grid grid-cols-3 gap-2">{([1,2,3] as const).map((speed) => <Button key={speed} size="sm" variant={speedMultiplier===speed?"default":"outline"} disabled={!isMaster && (speed===2 ? !purchases.speed_2x : speed===3 ? !purchases.speed_3x : false)} className={!isMaster && speed>1?"border-white/10 opacity-45":""} onClick={()=>setSpeedMultiplier(speed)}>{speed}x{!isMaster && (speed===2 ? !purchases.speed_2x : speed===3 ? !purchases.speed_3x : false)?" 🔒":""}</Button>)}</div>{!isMaster && <p className="mt-2 text-[10px] text-white/45">Desbloqueie 2x e 3x na loja de fractais.</p>}{isMaster && <><p className="mt-2 text-[10px] text-emerald-200/70">Acesso de mestre: todas as velocidades liberadas para testes.</p><Button variant="outline" size="sm" className="mt-2 h-8 w-full border-emerald-200/25 bg-emerald-400/[0.07] text-[10px] text-emerald-100 hover:bg-emerald-400/15" onClick={() => { const game = gameRef.current; if (!game) return; game.enemies = Array.from({length:50},(_,index) => { const angle = index / 50 * Math.PI * 2; const ring = 46 + (index % 3) * 29; const x = game.player.x + Math.cos(angle) * ring; const y = game.player.y + Math.sin(angle) * ring; return { x, y, hp: 100000, maxHp: 100000, speed: 22, radius: 10, damage: 0, color: "#9b91b4", xp: 0, type: "wraith" as const, attack: 0, flash: 0, windup: 0, targetX: x, targetY: y, dashTime: 0, summonedAtHalf: false }; }); game.spawnTimer = Number.MAX_SAFE_INTEGER; game.bossSpawned = true; setPaused(false); toast.info("Teste de carga ativo: 50 monstros na arena. Confira o FPS e o contador 50/50 no topo."); }}>TESTE DE CARGA · 50 MONSTROS</Button></>}</div>
+   <div <Button variant="destructive" className="mt-3 h-10 w-full border border-rose-300/25 bg-rose-950/55 font-bold text-rose-100 hover:bg-rose-900/70" onClick={() => { const game = gameRef.current; if (!game || game.ended) return; game.ended = true; setResult("defeat"); setPaused(false); setPausePanel("main"); fractalAudio.defeat(); finishRun(false); }}><Skull className="mr-2 h-4 w-4"/> Desistir da partida</Button>
+    <div className="fractals-pause-speed mt-3 rounded-2xl p-3"><div className="mb-2 flex items-center gap-2 text-xs font-semibold text-white/75"><Gauge className="h-4 w-4"/> Velocidade da expedição</div><div className="grid grid-cols-3 gap-2">{([1,2,3] as const).map((speed) => <Button key={speed} size="sm" variant={speedMultiplier===speed?"default":"outline"} disabled={!isMaster && (speed===2 ? !purchases.speed_2x : speed===3 ? !purchases.speed_3x : false)} className={!isMaster && speed>1?"border-white/10 opacity-45":""} onClick={()=>setSpeedMultiplier(speed)}>{speed}x{!isMaster && (speed===2 ? !purchases.speed_2x : speed===3 ? !purchases.speed_3x : false)?" 🔒":""}</Button>)}</div>{!isMaster && <p className="mt-2 text-[10px] text-white/45">Desbloqueie 2x e 3x na loja de fractais.</p>}{isMaster && <><p className="mt-2 text-[10px] text-emerald-200/70">Acesso de mestre: todas as velocidades liberadas para testes.</p><Button variant="outline" size="sm" className="mt-2 h-8 w-full border-emerald-200/25 bg-emerald-400/[0.07] text-[10px] text-emerald-100 hover:bg-emerald-400/15" onClick={() => { const game = gameRef.current; if (!game) return; game.enemies = Array.from({length:50},(_,index) => { const angle = index / 50 * Math.PI * 2; const ring = 46 + (index % 3) * 29; const x = game.player.x + Math.cos(angle) * ring; const y = game.player.y + Math.sin(angle) * ring; return { x, y, hp: 100000, maxHp: 100000, speed: 22, radius: 10, damage: 0, color: "#9b91b4", xp: 0, type: "wraith" as const, attack: 0, flash: 0, windup: 0, targetX: x, targetY: y, dashTime: 0, summonedAtHalf: false }; }); game.spawnTimer = Number.MAX_SAFE_INTEGER; game.bossSpawned = true; setPaused(false); toast.info("Teste de carga ativo: 50 monstros na arena. Confira o FPS e o contador 50/50 no topo."); }}>TESTE DE CARGA · 50 MONSTROS</Button></>}</div>
    <Button className="fractals-pause-resume mt-3 h-11 w-full font-bold" onClick={() => {setPausePanel("main");setPaused(false)}}><Play className="mr-2 h-4 w-4"/> Retomar expedição</Button>
   </> : <>
    <div className="mb-3 grid grid-cols-2 gap-2">{[["Vida",`${Math.ceil(gameRef.current?.player.hp ?? hud.hp)} / ${Math.ceil(gameRef.current?.player.maxHp ?? hud.maxHp)}`],["Dano",`${(gameRef.current?.player.damage ?? 0).toFixed(1)}`],["Velocidade",`${(gameRef.current?.player.speed ?? 0).toFixed(0)}`],["Intervalo de ataque",`${(gameRef.current?.player.fireRate ?? 0).toFixed(2)}s`],["Nível",`${gameRef.current?.player.level ?? hud.level}`],["Projéteis",`${1 + (gameRef.current?.player.projectileStacks ?? 0)}`],["Alcance",`+${Math.round((gameRef.current?.player.projectileRangeMultiplier ?? 1) * 100 - 100)}%`],["Experiência",`${Math.floor(gameRef.current?.player.xp ?? hud.xp)} / ${Math.floor(gameRef.current?.player.nextXp ?? hud.nextXp)}`],["Abates",`${gameRef.current?.kills ?? hud.kills}`],["Multiplicador",`${speedMultiplier}x`]].map(([label,value])=><div key={label} className="rounded-lg border border-white/10 bg-white/5 p-2"><p className="text-[10px] text-white/45">{label}</p><p className="text-sm font-semibold tabular-nums text-white">{value}</p></div>)}</div>
@@ -1580,7 +1643,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                             aria-label={isFlipped ? "Ver frente da carta" : "Ver verso da carta"}
                             onClick={(e) => {
                               e.stopPropagation();
-                              setFlippedCardId(isFlipped ? null : upgrade.id);
+                              fractalAudio.cardFlip();
+                               setFlippedCardId(isFlipped ? null : upgrade.id);
                             }}
                             className="absolute right-1.5 top-1.5 z-10 flex h-6 w-6 items-center justify-center rounded-full border border-white/20 bg-black/40 text-white/70 backdrop-blur-sm transition hover:bg-white/20 hover:text-white"
                           >
@@ -1648,12 +1712,12 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                 </div>
               </div>
             )}
-            {result && <div className="fractals-result-overlay absolute inset-0 grid place-items-center overflow-y-auto bg-[radial-gradient(ellipse_at_center,rgba(91,46,133,0.28),rgba(5,4,10,0.95)_72%)] p-4 backdrop-blur-md"><div className="fractals-result-panel w-full max-w-sm rounded-[1.6rem] border border-violet-200/20 bg-[#171320]/95 p-5 text-center shadow-[0_30px_100px_rgba(0,0,0,0.7)]"><div className="fractals-result-icon mx-auto mb-3 grid h-16 w-16 place-items-center rounded-2xl border border-amber-200/20 bg-gradient-to-br from-amber-200/15 via-violet-400/15 to-violet-950/70 shadow-[0_0_36px_rgba(167,139,250,0.18)]">{result==="victory"?<Sparkles className="h-7 w-7 text-amber-200"/>:<Skull className="h-7 w-7 text-rose-300"/>}</div><p className="fractals-result-kicker text-xs uppercase tracking-[.22em] text-violet-200">{result==="victory"?"Guardião derrotado":"Expedição encerrada"}</p><h3 className="fractals-result-title mt-1 font-display text-2xl">{result==="victory"?"O fractal silenciou":"O Vazio prevaleceu"}</h3><p className="fractals-result-stats mt-2 text-sm text-white/65">Nível {hud.level} · {hud.kills} criaturas derrotadas · {formatTime(hud.elapsed)}</p><p className="fractals-result-note mt-2 text-xs text-amber-100/80">Recompensas e fractais ainda não são creditados neste protótipo; serão conectados após a validação segura no servidor.</p><Button className="fractals-result-button mt-4 gap-2" onClick={()=>{setRunning(false);setResult(null);setBossMessage(false);gameRef.current=null;}}><RotateCcw className="h-4 w-4"/> Voltar à expedição</Button></div></div>}
+            {result && <div className="fractals-result-overlay absolute inset-0 grid place-items-center overflow-y-auto bg-[radial-gradient(ellipse_at_center,rgba(91,46,133,0.28),rgba(5,4,10,0.95)_72%)] p-4 backdrop-blur-md"><div className="fractals-result-panel w-full max-w-sm rounded-[1.6rem] border border-violet-200/20 bg-[#171320]/95 p-5 text-center shadow-[0_30px_100px_rgba(0,0,0,0.7)]"><div className="fractals-result-icon mx-auto mb-3 grid h-16 w-16 place-items-center rounded-2xl border border-amber-200/20 bg-gradient-to-br from-amber-200/15 via-violet-400/15 to-violet-950/70 shadow-[0_0_36px_rgba(167,139,250,0.18)]">{result==="victory"?<Sparkles className="h-7 w-7 text-amber-200"/>:<Skull className="h-7 w-7 text-rose-300"/>}</div><p className="fractals-result-kicker text-xs uppercase tracking-[.22em] text-violet-200">{result==="victory"?"Guardião derrotado":"Expedição encerrada"}</p><h3 className="fractals-result-title mt-1 font-display text-2xl">{result==="victory"?"O fractal silenciou":"O Vazio prevaleceu"}</h3><p className="fractals-result-stats mt-2 text-sm text-white/65">Nível {hud.level} · {hud.kills} criaturas derrotadas · {formatTime(hud.elapsed)}</p><p className="fractals-result-note mt-2 text-xs text-amber-100/80">{rewardStatus === "pending" ? "Validando as recompensas com o servidor..." : rewardStatus === "error" ? "Não foi possível confirmar as recompensas desta expedição." : earnedFractals !== null && earnedFractals > 0 ? `Você recebeu ${earnedFractals.toLocaleString("pt-BR")} fractais nesta expedição.` : result === "victory" ? "Vitória registrada. O próximo nível foi liberado." : "Nenhum fractal extra foi concedido nesta tentativa."}</p><Button className="fractals-result-button mt-4 gap-2" onClick={()=>{setRunning(false);setResult(null);setBossMessage(false);gameRef.current=null;}}><RotateCcw className="h-4 w-4"/> Voltar à expedição</Button></div></div>}
           </div>
-          <div className="fractals-arena-footer flex flex-wrap items-center justify-between gap-2 border-t border-white/10 px-3 py-2 text-[10px] text-white/45 sm:px-4"><span>Arma automática: projétil perseguidor</span><span>Protótipo sem persistência de recompensas</span></div>
+          <div className="fractals-arena-footer flex flex-wrap items-center justify-between gap-2 border-t border-white/10 px-3 py-2 text-[10px] text-white/45 sm:px-4"><span>Arma automática: projétil perseguidor</span><span>Recompensas e progressão validadas no servidor</span></div>
         </Card>
       )}
-      <div className="fractals-lore-note flex items-start gap-2 rounded-xl border border-amber-300/15 bg-gradient-to-r from-amber-500/[0.07] to-transparent p-3 text-xs text-muted-foreground"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-300"/><p>Último Silêncio apresenta Ecos errantes, Enlutados resistentes, Vigias de elite com aura de drenagem e o Pranteador Sem Rosto, que marca uma área antes de liberar uma onda de lamento e convoca ecos quando perde metade da vida. A loja e a progressão de corrupção já usam o estado persistente da conta; a concessão de recompensas de fim de expedição continua bloqueada até haver validação autoritativa no servidor.</p></div>
+      <div className="fractals-lore-note flex items-start gap-2 rounded-xl border border-amber-300/15 bg-gradient-to-r from-amber-500/[0.07] to-transparent p-3 text-xs text-muted-foreground"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-300"/><p>Último Silêncio apresenta Ecos errantes, Enlutados resistentes, Vigias de elite com aura de drenagem e o Pranteador Sem Rosto, que marca uma área antes de liberar uma onda de lamento e convoca ecos quando perde metade da vida. A loja e a progressão de corrupção já usam o estado persistente da conta; a concessão de recompensas de fim de expedição é validada e creditada pelo servidor.</p></div>
     </div>
   );
 }
