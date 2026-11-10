@@ -595,7 +595,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
       ctx.strokeStyle="rgba(211,166,255,.65)";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-enemy.radius*.7,enemy.radius*.6);ctx.lineTo(-enemy.radius*1.3,enemy.radius*1.3);ctx.moveTo(enemy.radius*.7,enemy.radius*.6);ctx.lineTo(enemy.radius*1.3,enemy.radius*1.3);ctx.stroke();
     }
     ctx.shadowBlur = 0;
-    if (enemy.type === "boss" || enemy.hp < enemy.maxHp) {
+    if (enemy.type === "boss" || enemy.isExecutioner || enemy.hp < enemy.maxHp) {
       const barW = enemy.type === "boss" || enemy.isExecutioner ? 86 : 30;
       ctx.fillStyle = "rgba(0,0,0,.55)"; ctx.fillRect(-barW / 2, -enemy.radius - 10, barW, 4);
       ctx.fillStyle = enemy.isExecutioner ? "#b56cff" : bossInFury ? "#ef334f" : "#e87979"; ctx.fillRect(-barW / 2, -enemy.radius - 10, barW * clamp(enemy.hp / enemy.maxHp, 0, 1), 4); if(enemy.isExecutioner){ctx.font="900 9px Inter,system-ui";ctx.textAlign="center";ctx.fillStyle="#ead7ff";ctx.fillText("ALGOZ ESPECTRAL",0,-enemy.radius-15);}
@@ -1339,6 +1339,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               experience: "Eco do Conhecimento",
               projectile_range: "Ressonância de Alcance",
               projectiles: "Coroa de Estilhaços",
+              food: "Iguaria de uma Dimensão Perdida",
+              void: "Vórtice do Vazio",
             };
             game.pickupLabels.push({ x: drop.x, y: drop.y - 22, text: pickupNames[drop.kind], life: 1.25, maxLife: 1.25 });
             if (drop.kind === "area" && game.player.specialAreaStacks < 5) { game.player.specialAreaStacks += 1; game.player.pickupRadius = 85 * (1 + game.player.specialAreaStacks * 0.10); }
@@ -1356,10 +1358,17 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         if (game.particles.length > 140) game.particles.splice(0, game.particles.length - 140);
         game.shake = Math.max(0, (game.shake ?? 0) - dt * 30);
         if (game.rings) { game.rings.forEach((ring) => { ring.life -= dt; ring.r += (ring.max - ring.r) * Math.min(1, dt * 9); }); game.rings = game.rings.filter((ring) => ring.life > 0).slice(-20); }
-        if (game.gems.length > 60) {
-          const overflow = game.gems.splice(0, game.gems.length - 180);
-          const retainedGem = game.gems[0];
-          if (retainedGem) retainedGem.value += overflow.reduce((total, gem) => total + gem.value, 0);
+        if (game.gems.length > 70) {
+          const nearby: Gem[] = [];
+          const clusters = new Map<string, Gem>();
+          for (const gem of game.gems) {
+            if (gem.runeCrystal || distance(gem.x, gem.y, game.player.x, game.player.y) < 240) { nearby.push(gem); continue; }
+            const cellX = Math.floor(gem.x / 180), cellY = Math.floor(gem.y / 180), key = cellX + ":" + cellY;
+            const cluster = clusters.get(key);
+            if (cluster) cluster.value += gem.value;
+            else clusters.set(key, { x: cellX * 180 + 90, y: cellY * 180 + 90, value: gem.value, radius: 7 });
+          }
+          game.gems = [...nearby, ...clusters.values()];
         }
         if (game.player.xp >= game.player.nextXp && !game.ended && eventRewardRemainingRef.current === 0) {
           game.player.xp -= game.player.nextXp; game.player.level += 1; game.highestLevel = Math.max(game.highestLevel, game.player.level); fractalAudio.levelUp(); game.player.nextXp = Math.floor(game.player.nextXp * 1.32 + 5);
