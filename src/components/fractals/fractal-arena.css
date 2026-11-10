@@ -590,3 +590,153 @@
   .fractals-arena-meta button { min-height: 28px; padding: 0 6px; font-size: 8px; }
   .fractals-arena-hint { bottom: 7px; left: 7px; font-size: 8px; }
 }
+
+
+/* FractalGame — compact mobile reward picker, translucent HUD and field controls */
+.fractals-game-hud {
+  width: min(238px, calc(100% - 104px));
+  gap: 5px;
+  padding: 7px 8px;
+  border-color: rgba(226,202,250,.17);
+  background: linear-gradient(145deg,rgba(18,13,29,.54),rgba(12,10,19,.43));
+  box-shadow: 0 8px 24px rgba(0,0,0,.19),inset 0 1px rgba(255,255,255,.055);
+  -webkit-backdrop-filter: blur(7px) saturate(1.05);
+  backdrop-filter: blur(7px) saturate(1.05);
+}
+.fractals-game-hud__header { gap: 6px; padding-bottom: 5px; }
+.fractals-game-hud__sigil { width: 25px; height: 25px; border-radius: 7px; }
+.fractals-game-hud__sigil svg { width: 13px; height: 13px; }
+.fractals-game-hud__header strong { font-size: 11px; }
+.fractals-game-hud__header small { font-size: 8px; }
+.fractals-game-hud__header em { font-size: 8px; }
+.fractals-game-hud__stat { gap: 3px; }
+.fractals-game-hud__stat > div:first-child span { font-size: 8px; }
+.fractals-game-hud__stat > div:first-child b { font-size: 9px; }
+.fractals-game-hud__bar { height: 4px; }
+.fractals-game-hud__metrics { gap: 6px; padding-top: 4px; }
+.fractals-game-hud__metrics span { gap: 3px; font-size: 8px; }
+.fractals-game-hud__metrics b { font-size: 10px; }
+.fractals-game-hud__speed-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 7px;
+  padding-top: 4px;
+  border-top: 1px solid rgba(255,255,255,.075);
+  color: rgba(228,214,244,.65);
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .07em;
+}
+.fractals-game-hud__move-speed b,
+.fractals-game-hud__speed-control span b { color: #f0d8a9; font-size: 9px; font-variant-numeric: tabular-nums; }
+.fractals-game-hud__speed-control { display: flex; align-items: center; gap: 4px; pointer-events: auto; }
+.fractals-game-hud__speed-control span { margin-right: 2px; }
+.fractals-game-hud__speed-control button {
+  display: grid;
+  width: 19px;
+  height: 19px;
+  place-items: center;
+  border: 1px solid rgba(224,198,250,.23);
+  border-radius: 6px;
+  background: rgba(150,111,201,.19);
+  color: #f5e8ff;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+}
+.fractals-game-hud__speed-control button:disabled { opacity: .28; cursor: not-allowed; }
+.fractals-arena-zoom {
+  z-index: 8;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid rgba(230,211,250,.15);
+  border-radius: 10px;
+  background: rgba(7,6,12,.56);
+  color: rgba(244,232,255,.8);
+  -webkit-backdrop-filter: blur(7px);
+  backdrop-filter: blur(7px);
+  pointer-events: auto;
+}
+.fractals-arena-zoom button {
+  display: grid;
+  width: 27px;
+  height: 27px;
+  place-items: center;
+  border: 1px solid rgba(220,193,250,.18);
+  border-radius: 7px;
+  background: rgba(159,119,210,.15);
+  color: #f1e0ff;
+}
+.fractals-arena-zoom button svg { width: 14px; height: 14px; }
+.fractals-arena-zoom button:disabled { opacity: .28; }
+.fractals-arena-zoom span { min-width: 34px; color: #e8d4ff; font-size: 8px; font-weight: 900; text-align: center; font-variant-numeric: tabular-nums; }
+
+.fractals-upgrade-overlay { overscroll-behavior: contain; }
+.fractals-upgrade-panel { max-height: calc(100% - 20px); overflow-y: auto; overscroll-behavior: contain; }
+.fractals-upgrade-grid { grid-template-columns: repeat(3,minmax(0,1fr)); }
+.fractals-upgrade-card { min-width: 0; }
+.fractals-upgrade-card .fractals-upgrade-name { overflow-wrap: anywhere; }
+.fractals-upgrade-card .fractals-upgrade-description { min-height: 0; }
+
+@media (max-width: 680px) {
+  .fractals-game-hud {
+    width: min(194px,calc(100% - 88px));
+    gap: 4px;
+    padding: 6px 7px;
+    border-radius: 10px;
+    background: rgba(9,8,15,.39);
+    -webkit-backdrop-filter: blur(5px);
+    backdrop-filter: blur(5px);
+  }
+  .fractals-game-hud__header { gap: 5px; padding-bottom: 4px; }
+  .fractals-game-hud__sigil { width: 22px; height: 22px; border-radius: 6px; }
+  .fractals-game-hud__header strong { font-size: 10px; }
+  .fractals-game-hud__header small { overflow: hidden; max-width: 145px; font-size: 7px; text-overflow: ellipsis; white-space: nowrap; }
+  .fractals-game-hud__header em { margin-top: 1px; font-size: 7px; }
+  .fractals-game-hud__stat > div:first-child span { font-size: 7px; }
+  .fractals-game-hud__stat > div:first-child b { font-size: 8px; }
+  .fractals-game-hud__metrics span { font-size: 7px; }
+  .fractals-game-hud__metrics b { font-size: 9px; }
+  .fractals-game-hud__speed-row { gap: 3px; padding-top: 3px; font-size: 7px; }
+  .fractals-game-hud__move-speed b,
+  .fractals-game-hud__speed-control span b { font-size: 8px; }
+  .fractals-game-hud__speed-control { gap: 3px; }
+  .fractals-game-hud__speed-control button { width: 17px; height: 17px; font-size: 12px; }
+  .fractals-event-hud { gap: 3px; padding: 5px; }
+  .fractals-event-hud__heading span { font-size: 7px; }
+  .fractals-event-hud__heading b { font-size: 9px; }
+  .fractals-event-hud > small,
+  .fractals-event-hud > em { font-size: 7px; }
+  .fractals-arena-zoom { top: 3.45rem; right: 8px; gap: 3px; padding: 3px; border-radius: 8px; }
+  .fractals-arena-zoom button { width: 24px; height: 24px; }
+  .fractals-arena-zoom button svg { width: 12px; height: 12px; }
+  .fractals-arena-zoom span { min-width: 30px; font-size: 7px; }
+
+  .fractals-upgrade-overlay { padding: 5px; }
+  .fractals-upgrade-panel {
+    width: 100%;
+    max-width: 620px;
+    max-height: calc(100% - 10px);
+    gap: 8px;
+    padding: 9px;
+    border-radius: 14px;
+  }
+  .fractals-upgrade-grid { grid-template-columns: repeat(3,minmax(0,1fr)); gap: 6px; }
+  .fractals-upgrade-card {
+    min-height: 0;
+    padding: 7px !important;
+    border-radius: 10px !important;
+    box-shadow: inset 0 1px rgba(255,255,255,.07) !important;
+  }
+  .fractals-upgrade-card > div.relative > div:first-child { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; margin-bottom: 7px; }
+  .fractals-upgrade-card .grid.h-11 { width: 27px; height: 27px; border-radius: 7px; }
+  .fractals-upgrade-card .grid.h-11 svg { width: 14px; height: 14px; }
+  .fractals-upgrade-card span.rounded-full { max-width: 100%; padding: 3px 5px; font-size: 6px; letter-spacing: .04em; white-space: nowrap; }
+  .fractals-upgrade-card .fractals-upgrade-name { font-size: 10px; line-height: 1.15; }
+  .fractals-upgrade-card .fractals-upgrade-description { margin-top: 5px; font-size: 8px; line-height: 1.25; overflow-wrap: anywhere; }
+  .fractals-upgrade-card .border-t { margin-top: 7px; padding-top: 6px; font-size: 6px; letter-spacing: .04em; }
+}
