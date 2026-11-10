@@ -676,7 +676,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
   const [paused, setPaused] = useState(false);
   const [levelChoices, setLevelChoices] = useState<Upgrade[]>([]);
   const [eventRewardStep, setEventRewardStep] = useState(0);
-  const [hud, setHud] = useState({ hp: 100, maxHp: 100, xp: 0, nextXp: 12, level: 1, kills: 0, elapsed: 0, moveSpeed: 205, phase: "Exploração", pressure: 0, event: null as null | { id: number; remaining: number; progress: number; inside: boolean } });
+  const [hud, setHud] = useState({ hp: 100, maxHp: 100, xp: 0, nextXp: 12, level: 1, kills: 0, elapsed: 0, moveSpeed: 205, fps: 0, visibleEnemies: 0, phase: "Exploração", pressure: 0, event: null as null | { id: number; remaining: number; progress: number; inside: boolean } });
   const [result, setResult] = useState<"victory" | "defeat" | null>(null);
   const [bossMessage, setBossMessage] = useState(false);
   const [pausePanel, setPausePanel] = useState<"main" | "attributes">("main");
@@ -785,7 +785,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
     gameRef.current = game;
     eventRewardRemainingRef.current = 0;
     setEventRewardStep(0);
-    setHud({ hp: game.player.hp, maxHp: game.player.maxHp, xp: 0, nextXp: 12, level: 1, kills: 0, elapsed: 0, moveSpeed: Math.round(game.player.speed), phase: "Exploração", pressure: 0, event: null });
+    setHud({ hp: game.player.hp, maxHp: game.player.maxHp, xp: 0, nextXp: 12, level: 1, kills: 0, elapsed: 0, moveSpeed: Math.round(game.player.speed), fps: 0, visibleEnemies: 0, phase: "Exploração", pressure: 0, event: null });
     setLevelChoices([]); setPaused(false); setResult(null); setBossMessage(false); setRunning(true);
   }, [corruption, purchases]);
 
@@ -825,6 +825,9 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
     if (!canvas || !ctx) return;
     let frame = 0;
     let lastHud = 0;
+    let fpsFrames = 0;
+    let fpsWindowStart = 0;
+    let measuredFps = 0;
     let bossNotified = false;
     const resize = () => {
       const rect = canvas.getBoundingClientRect();
@@ -847,6 +850,13 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
     const tick = (now: number) => {
       const game = gameRef.current;
       if (!game) return;
+      fpsFrames += 1;
+      if (!fpsWindowStart) fpsWindowStart = now;
+      if (now - fpsWindowStart >= 500) {
+        measuredFps = Math.round(fpsFrames * 1000 / (now - fpsWindowStart));
+        fpsFrames = 0;
+        fpsWindowStart = now;
+      }
       if (!game.last) game.last = now;
       const rawDt = Math.min(0.033, (now - game.last) / 1000);
       const dt = rawDt * speedMultiplier;
@@ -1141,7 +1151,11 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         if (game.elapsed >= RUN_DURATION_SECONDS && !game.ended && !game.bossSpawned) { spawnEnemy(game, missionId, game.elapsed, corruption, true); game.bossSpawned = true; }
         if (now - lastHud > 100) {
           lastHud = now;
-          setHud({ hp: game.player.hp, maxHp: game.player.maxHp, xp: game.player.xp, nextXp: game.player.nextXp, level: game.player.level, kills: game.kills, elapsed: game.elapsed, moveSpeed: Math.round(game.player.speed), phase: snapshot.phaseLabel, pressure: snapshot.totalPressure + (game.challengeEvent ? 2 : 0), event: game.challengeEvent ? { id: game.challengeEvent.id, remaining: game.challengeEvent.remaining, progress: game.challengeEvent.progress, inside: distance(game.player.x, game.player.y, game.challengeEvent.x, game.challengeEvent.y) <= game.challengeEvent.radius } : null });
+          const halfViewWidth = game.width / (2 * zoomRef.current);
+          const halfViewHeight = game.height / (2 * zoomRef.current);
+          const visibleEnemies = game.enemies.reduce((count, enemy) =>
+            count + Number(enemy.x >= game.player.x - halfViewWidth && enemy.x <= game.player.x + halfViewWidth && enemy.y >= game.player.y - halfViewHeight && enemy.y <= game.player.y + halfViewHeight), 0);
+          setHud({ hp: game.player.hp, maxHp: game.player.maxHp, xp: game.player.xp, nextXp: game.player.nextXp, level: game.player.level, kills: game.kills, elapsed: game.elapsed, moveSpeed: Math.round(game.player.speed), fps: measuredFps, visibleEnemies, phase: snapshot.phaseLabel, pressure: snapshot.totalPressure + (game.challengeEvent ? 2 : 0), event: game.challengeEvent ? { id: game.challengeEvent.id, remaining: game.challengeEvent.remaining, progress: game.challengeEvent.progress, inside: distance(game.player.x, game.player.y, game.challengeEvent.x, game.challengeEvent.y) <= game.challengeEvent.radius } : null });
         }
       }
       if (!paused && levelChoices.length === 0 && !game.ended) {
@@ -1315,6 +1329,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               <div className="fractals-hud-zone fractals-hud-zone--center">
                 <div className="fractals-hud-clock"><Timer/><b>{formatTime(hud.elapsed)}</b><small>/ 12:00</small></div>
                 <div className="fractals-hud-density"><span className="fractals-live-dot"/><b>{hud.pressure.toFixed(1)}</b><small>DENSIDADE</small></div>
+                <div className="fractals-hud-performance"><b>{hud.fps}</b><small>FPS</small><i>{hud.visibleEnemies}/50</i></div>
                 {hud.event && <div className="fractals-hud-event"><Target/> ANOMALIA {hud.event.id} · {Math.ceil(hud.event.remaining)}s</div>}
               </div>
               <div className="fractals-hud-zone fractals-hud-zone--right">
