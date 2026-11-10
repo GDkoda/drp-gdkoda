@@ -212,13 +212,19 @@ function spawnEnemy(game: GameState, missionId: number, elapsed: number, corrupt
   }
 }
 
-function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: number, missionId: number, sprites: SpriteMap = {}, showPlayerHp = true, showDamageNumbers = true) {
+function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: number, missionId: number, sprites: SpriteMap = {}, showPlayerHp = true, showDamageNumbers = true, zoom = 1) {
   const { width, height, player } = game;
+  const safeZoom = clamp(zoom, 0.75, 1.35);
+  const viewWidth = width / safeZoom;
+  const viewHeight = height / safeZoom;
+  const cameraX = player.x - viewWidth / 2;
+  const cameraY = player.y - viewHeight / 2;
+  const crowded = game.enemies.length > 30;
   ctx.clearRect(0, 0, width, height);
-  const cameraX = player.x - width / 2;
-  const cameraY = player.y - height / 2;
   ctx.save();
-  ctx.translate(-cameraX, -cameraY);
+  ctx.translate(width / 2, height / 2);
+  ctx.scale(safeZoom, safeZoom);
+  ctx.translate(-player.x, -player.y);
 
   // Paletas prontas para os cinco biomas; somente o primeiro está liberado.
   const biomes = [
@@ -264,7 +270,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
       ctx.fill();
       ctx.stroke();
 
-      if (hash(col + 17, row - 9) > 0.76) {
+      if (!crowded && hash(col + 17, row - 9) > 0.76) {
         ctx.strokeStyle = "rgba(5,4,12,.78)";
         ctx.lineWidth = 1.15;
         ctx.beginPath();
@@ -281,7 +287,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
       }
       // Peças gravadas do tileset: marcas finas, veios e mosaicos gastos.
       const tileDetail = hash(col + 57, row - 23);
-      if (tileDetail > 0.72) {
+      if (!crowded && tileDetail > 0.72) {
         ctx.strokeStyle = "rgba(235,220,255,.10)";
         ctx.lineWidth = 1;
         ctx.beginPath();
@@ -290,7 +296,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
         ctx.lineTo(x + 10, y - 1);
         ctx.stroke();
       }
-      if (tileDetail > 0.88) {
+      if (!crowded && tileDetail > 0.88) {
         ctx.fillStyle = biome.glow + "24";
         ctx.beginPath();
         ctx.moveTo(x, y - 8);
@@ -306,7 +312,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
         ctx.arc(x, y, 4 + hash(col + 8, row) * 9, 0, Math.PI * 2);
         ctx.fill();
       }
-      if (hash(col + 31, row + 4) > 0.87) {
+      if (!crowded && hash(col + 31, row + 4) > 0.87) {
         ctx.strokeStyle = "rgba(4,3,10,.42)";
         ctx.lineWidth = 2;
         ctx.beginPath();
@@ -459,7 +465,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     ctx.scale(pulse, pulse);
     const icon = sprites.xpGem;
     if (icon?.complete && icon.naturalWidth > 0) {
-      ctx.shadowColor = "#a78bfa"; ctx.shadowBlur = 13;
+      ctx.shadowColor = "#a78bfa"; ctx.shadowBlur = crowded ? 0 : 13;
       ctx.drawImage(icon, -gem.radius * 0.95, -gem.radius * 0.95, gem.radius * 1.9, gem.radius * 1.9);
     } else {
       ctx.rotate(Math.PI / 4);
@@ -475,7 +481,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     const icon = drop.kind === "area" ? sprites.specialArea : drop.kind === "experience" ? sprites.specialXP : drop.kind === "projectile_range" ? sprites.specialRange : sprites.specialProjectiles;
     ctx.globalAlpha = 0.9 + Math.sin(game.elapsed * 5 + drop.x * 0.02) * 0.1;
     ctx.shadowColor = drop.kind === "area" ? "#e9c46a" : "#b78cff";
-    ctx.shadowBlur = 17;
+    ctx.shadowBlur = crowded ? 0 : 17;
     if (icon?.complete && icon.naturalWidth > 0) {
       ctx.drawImage(icon, -size / 2, -size / 2, size, size);
     } else {
@@ -490,10 +496,10 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     ctx.globalAlpha = fade;
     const projectile = sprites.projectile;
     if (projectile?.complete && projectile.naturalWidth > 0) {
-      ctx.shadowColor = "#b77aff"; ctx.shadowBlur = 15;
+      ctx.shadowColor = "#b77aff"; ctx.shadowBlur = crowded ? 0 : 15;
       ctx.drawImage(projectile, -15, -9, 30, 18);
     } else {
-      ctx.shadowColor = "#b77aff"; ctx.shadowBlur = 15; ctx.fillStyle = "#c39aff";
+      ctx.shadowColor = "#b77aff"; ctx.shadowBlur = crowded ? 0 : 15; ctx.fillStyle = "#c39aff";
       ctx.beginPath(); ctx.moveTo(9,0); ctx.lineTo(0,-4); ctx.lineTo(-10,0); ctx.lineTo(0,4); ctx.closePath(); ctx.fill();
       ctx.fillStyle = "#fff1ce"; ctx.beginPath(); ctx.moveTo(5,0); ctx.lineTo(0,-1.5); ctx.lineTo(-5,0); ctx.lineTo(0,1.5); ctx.closePath(); ctx.fill();
     }
@@ -531,7 +537,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
       ctx.globalAlpha = hurt ? 0.78 : 1;
       ctx.filter = hurt ? "brightness(2.35) saturate(.35)" : "none";
       ctx.shadowColor = enemy.type === "brute" ? "#9b7bce" : enemy.type === "charger" ? "#b58cff" : "#8b68ff";
-      ctx.shadowBlur = enemy.type === "boss" ? 24 : 14;
+      ctx.shadowBlur = crowded ? 0 : enemy.type === "boss" ? 20 : 9;
       ctx.drawImage(enemySprite, -spriteWidth / 2, -spriteHeight * anchor, spriteWidth, spriteHeight);
       ctx.restore();
     } else if (enemy.type === "wraith") {
@@ -570,7 +576,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
   });
   ctx.save();
   game.particles.forEach((p) => {
-    ctx.globalAlpha = clamp(p.life * 2, 0, 1); ctx.fillStyle = p.color; ctx.shadowColor = p.color; ctx.shadowBlur = 9;
+    ctx.globalAlpha = clamp(p.life * 2, 0, 1); ctx.fillStyle = p.color; ctx.shadowColor = p.color; ctx.shadowBlur = crowded ? 0 : 7;
     ctx.beginPath(); ctx.arc(p.x, p.y, 1.5 + clamp(p.life * 2, 0, 1) * 1.4, 0, Math.PI * 2); ctx.fill();
   });
   ctx.restore(); ctx.globalAlpha = 1;
@@ -858,12 +864,16 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
     if (!canvas || !ctx) return;
     let frame = 0;
     let lastHud = 0;
+    let lastDraw = 0;
     let bossNotified = false;
     const resize = () => {
       const rect = canvas.getBoundingClientRect();
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const compactDevice = window.matchMedia("(max-width: 680px)").matches;
+      const dpr = Math.min(window.devicePixelRatio || 1, compactDevice ? 1.2 : 1.5);
       canvas.width = Math.max(1, Math.floor(rect.width * dpr));
       canvas.height = Math.max(1, Math.floor(rect.height * dpr));
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = compactDevice ? "low" : "medium";
       const game = gameRef.current;
       if (game) { game.width = rect.width; game.height = rect.height; }
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -989,6 +999,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         game.shots.forEach((shot) => { shot.x += shot.vx * dt; shot.y += shot.vy * dt; shot.life -= dt; });
         const cameraLeft = game.player.x - game.width / 2, cameraTop = game.player.y - game.height / 2;
         game.shots = game.shots.filter((shot) => shot.life > 0 && shot.x > cameraLeft - 20 && shot.x < cameraLeft + game.width + 20 && shot.y > cameraTop - 20 && shot.y < cameraTop + game.height + 20);
+        const movementGrid = buildEnemySpatialGrid(game.enemies);
         for (const enemy of game.enemies) {
           const d = Math.max(1, distance(game.player.x, game.player.y, enemy.x, enemy.y));
           enemy.flash = Math.max(0, enemy.flash - dt);
@@ -1010,7 +1021,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                 game.enemies.push({ x: enemy.x + Math.cos(angle) * 58, y: enemy.y + Math.sin(angle) * 58, hp: 34, maxHp: 34, speed: 62, radius: 10, damage: 8, color: "#9b91b4", xp: 2, type: "wraith", attack: 0, flash: 0, windup: 0, targetX: 0, targetY: 0, dashTime: 0, summonedAtHalf: false });
               }
             }
-            const separation = getEnemySeparation(enemy, game.enemies);
+            const separation = getEnemySeparation(enemy, movementGrid);
             const steerX = (game.player.x - enemy.x) / d + separation.x * 0.28;
             const steerY = (game.player.y - enemy.y) / d + separation.y * 0.28;
             const steerLength = Math.max(1, Math.hypot(steerX, steerY));
@@ -1033,7 +1044,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               enemy.targetX = (predictedX - enemy.x) / aimDistance; enemy.targetY = (predictedY - enemy.y) / aimDistance;
               enemy.windup = .52;
             } else {
-              const separation = getEnemySeparation(enemy, game.enemies);
+              const separation = getEnemySeparation(enemy, movementGrid);
               const steerX = (game.player.x - enemy.x) / d + separation.x * 0.22;
               const steerY = (game.player.y - enemy.y) / d + separation.y * 0.22;
               const steerLength = Math.max(1, Math.hypot(steerX, steerY));
@@ -1052,7 +1063,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             } else {
               if (d < 112 && enemy.attack <= 0) enemy.windup = .72;
               else {
-                const separation = getEnemySeparation(enemy, game.enemies);
+                const separation = getEnemySeparation(enemy, movementGrid);
                 const approach = d < 88 ? 0.32 : 1;
                 const steerX = (game.player.x - enemy.x) / d * approach + separation.x * 0.26;
                 const steerY = (game.player.y - enemy.y) / d * approach + separation.y * 0.26;
@@ -1063,7 +1074,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               if (d < enemy.radius + 15 && enemy.attack <= 0 && game.player.invuln <= 0) { game.player.hp = Math.max(0, game.player.hp - enemy.damage); game.player.invuln = .72; game.player.hitFlash = 0.3; enemy.attack = 1.2; }
             }
           } else {
-            const separation = getEnemySeparation(enemy, game.enemies);
+            const separation = getEnemySeparation(enemy, movementGrid);
             const ux = (game.player.x - enemy.x) / d, uy = (game.player.y - enemy.y) / d;
             if (enemy.type === "wraith") {
               const side = Math.sin(enemy.x * 0.026 + enemy.y * 0.019) >= 0 ? 1 : -1;
@@ -1093,9 +1104,13 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             }
           }
         }
+        const collisionGrid = buildEnemySpatialGrid(game.enemies);
         for (const shot of game.shots) {
-          for (const enemy of game.enemies) {
-            if (enemy.hp > 0 && distance(shot.x, shot.y, enemy.x, enemy.y) < enemy.radius + 5) {
+          for (const enemy of getNearbyEnemies(shot.x, shot.y, collisionGrid)) {
+            const hitRadius = enemy.radius + 5;
+            const hitX = shot.x - enemy.x;
+            const hitY = shot.y - enemy.y;
+            if (enemy.hp > 0 && hitX * hitX + hitY * hitY < hitRadius * hitRadius) {
               enemy.hp -= shot.damage; enemy.flash = 0.09; shot.life = 0;
               game.damageNumbers.push({ x: enemy.x + (Math.random() - 0.5) * 10, y: enemy.y - enemy.radius - 8, value: shot.damage, life: 0.82, maxLife: 0.82, drift: (Math.random() - 0.5) * 14 });
               if (game.damageNumbers.length > 36) game.damageNumbers.shift();
@@ -1162,7 +1177,11 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           setHud({ hp: game.player.hp, maxHp: game.player.maxHp, xp: game.player.xp, nextXp: game.player.nextXp, level: game.player.level, kills: game.kills, elapsed: game.elapsed, phase: snapshot.phaseLabel, pressure: snapshot.totalPressure + (game.challengeEvent ? 2 : 0), event: game.challengeEvent ? { id: game.challengeEvent.id, remaining: game.challengeEvent.remaining, progress: game.challengeEvent.progress, inside: distance(game.player.x, game.player.y, game.challengeEvent.x, game.challengeEvent.y) <= game.challengeEvent.radius } : null });
         }
       }
-      drawGame(ctx, game, corruption, missionId, spritesRef.current, showPlayerHp, showDamageNumbers);
+      const targetFrameMs = game.enemies.length > 40 ? 1000 / 30 : window.innerWidth <= 680 ? 1000 / 45 : 1000 / 55;
+      if (!lastDraw || now - lastDraw >= targetFrameMs) {
+        lastDraw = now;
+        drawGame(ctx, game, corruption, missionId, spritesRef.current, showPlayerHp, showDamageNumbers, zoomRef.current);
+      }
       frame = requestAnimationFrame(tick);
     };
     frame = requestAnimationFrame(tick);
