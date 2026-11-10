@@ -837,3 +837,14 @@
   .fractals-hud-control-group button { width:16px; height:17px; }
   .fractals-hud-pause { width:17px; height:17px!important; min-height:17px!important; }
 }
+
+
+.fractals-hud-performance { display:inline-flex; align-items:baseline; gap:3px; color:rgba(230,214,247,.56); white-space:nowrap; }
+.fractals-hud-performance b { color:#b9efcd; font-size:10px; font-weight:900; }
+.fractals-hud-performance small { font-size:6px; font-weight:900; letter-spacing:.07em; }
+.fractals-hud-performance i { margin-left:2px; color:rgba(230,214,247,.42); font-size:6px; font-style:normal; }
+@media (max-width:680px) {
+  .fractals-hud-performance { gap:2px; }
+  .fractals-hud-performance b { font-size:8px; }
+  .fractals-hud-performance small,.fractals-hud-performance i { font-size:5px; }
+}
