@@ -841,7 +841,13 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           return;
         }
 
-        const earned = Number(data?.earnedFractals ?? 0);
+        if (data?.earnedFractals === undefined) {
+          setRewardStatus("error");
+          toast.error("Aplique a migração 0008 para ativar a economia de recompensas dos Fractais.");
+          return;
+        }
+
+        const earned = Number(data.earnedFractals ?? 0);
         const safeEarned = Number.isFinite(earned) ? Math.max(0, earned) : 0;
         setEarnedFractals(safeEarned);
         setRewardStatus("confirmed");
