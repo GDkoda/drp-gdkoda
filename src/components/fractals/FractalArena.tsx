@@ -1296,9 +1296,10 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               for(let p=0;p<4;p++){const a=Math.random()*Math.PI*2,sp=25+Math.random()*85;game.particles.push({x:urn.x,y:urn.y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:.25+Math.random()*.25,color:"#b7a4b9"});}
               if(urn.hp<=0){urn.broken=true;for(let p=0;p<18;p++){const a=Math.random()*Math.PI*2,sp=45+Math.random()*170;game.particles.push({x:urn.x,y:urn.y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:.35+Math.random()*.45,color:p%2?"#c4b5c5":"#8f7b99"});}
                 const roll=Math.random();
-                if(roll<.70)game.gems.push({x:urn.x,y:urn.y,value:5,radius:8,runeCrystal:true});
-                else if(roll<.90)game.specialDrops.push({x:urn.x,y:urn.y,kind:"food",radius:14});
-                else game.specialDrops.push({x:urn.x,y:urn.y,kind:"void",radius:14});
+                if(roll<.20)game.gems.push({x:urn.x,y:urn.y,value:5,radius:8,runeCrystal:true});
+                else if(roll<.29)game.specialDrops.push({x:urn.x,y:urn.y,kind:"food",radius:14});
+                else if(roll<.30)game.specialDrops.push({x:urn.x,y:urn.y,kind:"void",radius:14});
+                // Os 70% restantes não geram recompensa.
               }
               break;
             }
