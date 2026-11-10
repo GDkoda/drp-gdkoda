@@ -1,3 +1,9 @@
+import groundImg from "@/assets/fractals/cemetery-ground.jpg";
+import mausoleumImg from "@/assets/fractals/mausoleum.png";
+import gravestoneImg from "@/assets/fractals/gravestone.png";
+import crossImg from "@/assets/fractals/cross.png";
+import candlesImg from "@/assets/fractals/candles.png";
+import catUrnImg from "@/assets/fractals/cat-urn.png";
 import { useCallback, useEffect, useRef, useState, type PointerEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, Heart, Move, Pause, Play, RotateCcw, RotateCw, Check, Shield, Skull, Sparkles, Swords, Zap, Maximize, UserRound, Gauge, ArrowLeft, ShoppingBag, Crown, Gem as GemIcon, MapPin, Flame, Leaf, Snowflake, Orbit, Lock, Link2, ChevronDown, Coins, Timer, Target, ZoomIn, ZoomOut, Volume2, VolumeX } from "lucide-react";
@@ -195,6 +201,18 @@ function getEnemySeparation(enemy: Enemy, grid: EnemySpatialGrid) {
 
 const floorPatternCache = new WeakMap<CanvasRenderingContext2D, Map<number, CanvasPattern>>();
 
+const cemeteryImgs: Record<string, HTMLImageElement> = {};
+function cemImg(src: string): HTMLImageElement | null {
+  if (typeof Image === "undefined") return null;
+  let img = cemeteryImgs[src];
+  if (!img) { img = new Image(); img.src = src; cemeteryImgs[src] = img; }
+  return img.complete && img.naturalWidth > 0 ? img : null;
+}
+let groundPattern: CanvasPattern | null = null;
+function drawSprite(ctx: CanvasRenderingContext2D, src: string, size: number, footY: number): boolean {
+  const img = cemImg(src); if (!img) return false;
+  ctx.drawImage(img, -size / 2, footY - size, size, size); return true;
+}
 function getFloorPattern(ctx: CanvasRenderingContext2D, missionId: number, floor: readonly number[], glow: string): CanvasPattern | null {
   let missionPatterns = floorPatternCache.get(ctx);
   if (!missionPatterns) {
@@ -343,7 +361,10 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
   ctx.fillStyle = "#0d0b14";
   ctx.fillRect(cameraX, cameraY, viewWidth, viewHeight);
   const floorPattern = getFloorPattern(ctx, missionId, biome.floor, biome.glow);
-  if (floorPattern) { ctx.fillStyle = floorPattern; ctx.fillRect(cameraX, cameraY, viewWidth, viewHeight); }
+  const gImg = missionId === 1 ? cemImg(groundImg) : null;
+  if (gImg && !groundPattern) groundPattern = ctx.createPattern(gImg, "repeat");
+  if (gImg && groundPattern) { ctx.fillStyle = groundPattern; ctx.fillRect(cameraX, cameraY, viewWidth, viewHeight); }
+  else if (floorPattern) { ctx.fillStyle = floorPattern; ctx.fillRect(cameraX, cameraY, viewWidth, viewHeight); }
   ctx.save();ctx.strokeStyle="rgba(145,119,160,.72)";ctx.lineWidth=34;ctx.strokeRect(-WORLD_LIMIT,-WORLD_LIMIT,WORLD_LIMIT*2,WORLD_LIMIT*2);ctx.strokeStyle="rgba(215,190,231,.25)";ctx.lineWidth=5;ctx.strokeRect(-WORLD_LIMIT+17,-WORLD_LIMIT+17,WORLD_LIMIT*2-34,WORLD_LIMIT*2-34);
   const fog=110;for(let edge=0;edge<4;edge++){const g=edge<2?ctx.createLinearGradient(edge===0?-WORLD_LIMIT:WORLD_LIMIT,0,edge===0?-WORLD_LIMIT+fog:WORLD_LIMIT-fog,0):ctx.createLinearGradient(0,edge===2?-WORLD_LIMIT:WORLD_LIMIT,0,edge===2?-WORLD_LIMIT+fog:WORLD_LIMIT-fog);g.addColorStop(0,"rgba(32,22,42,.78)");g.addColorStop(1,"rgba(32,22,42,0)");ctx.fillStyle=g;if(edge<2)ctx.fillRect(edge===0?-WORLD_LIMIT:WORLD_LIMIT-fog,-WORLD_LIMIT,fog,WORLD_LIMIT*2);else ctx.fillRect(-WORLD_LIMIT,edge===2?-WORLD_LIMIT:WORLD_LIMIT-fog,WORLD_LIMIT*2,fog);}ctx.restore();
 
@@ -384,6 +405,10 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
   };
 
   for(const prop of game.obstacles){if(prop.x<cameraX-90||prop.x>cameraX+viewWidth+90||prop.y<cameraY-90||prop.y>cameraY+viewHeight+90)continue;ctx.save();ctx.translate(prop.x,prop.y);
+    {const sh=prop.kind==="mausoleum"?[60,18]:[22,8];ctx.fillStyle="rgba(0,0,0,.45)";ctx.beginPath();ctx.ellipse(0,prop.radius*.55,sh[0],sh[1],0,0,Math.PI*2);ctx.fill();}
+    if(prop.kind==="torch"){const pulse=1+Math.sin(game.elapsed*4.2+prop.x*.02)*.12;const glow=ctx.createRadialGradient(0,-22,2,0,-22,60*pulse);glow.addColorStop(0,"rgba(255,190,110,.35)");glow.addColorStop(1,"rgba(255,150,60,0)");ctx.fillStyle=glow;ctx.beginPath();ctx.arc(0,-22,60*pulse,0,Math.PI*2);ctx.fill();}
+    const spr=prop.kind==="mausoleum"?[mausoleumImg,140,40]:prop.kind==="cross"?[crossImg,62,22]:prop.kind==="torch"?[candlesImg,58,20]:[gravestoneImg,60,22];
+    if(drawSprite(ctx,spr[0] as string,spr[1] as number,spr[2] as number)){ctx.restore();continue;}
     if(prop.kind==="torch"){const pulse=1+Math.sin(game.elapsed*3.8+prop.x*.02)*.12;const glow=ctx.createRadialGradient(0,-14,2,0,-14,42*pulse);glow.addColorStop(0,"rgba(193,117,255,.42)");glow.addColorStop(.45,"rgba(128,67,190,.16)");glow.addColorStop(1,"rgba(128,67,190,0)");ctx.fillStyle=glow;ctx.beginPath();ctx.arc(0,-14,42*pulse,0,Math.PI*2);ctx.fill();ctx.fillStyle="#292333";ctx.strokeStyle="#746181";ctx.fillRect(-5,-4,10,21);ctx.strokeRect(-5,-4,10,21);ctx.fillStyle="#d8a8ff";ctx.beginPath();ctx.moveTo(0,-31);ctx.quadraticCurveTo(13,-18,2,-8);ctx.quadraticCurveTo(-10,-15,0,-31);ctx.fill();ctx.fillStyle="#ffd99a";ctx.beginPath();ctx.arc(0,-17,3,0,Math.PI*2);ctx.fill();}
     else if(prop.kind==="mausoleum"){ctx.fillStyle="rgba(0,0,0,.45)";ctx.beginPath();ctx.ellipse(0,18,54,17,0,0,Math.PI*2);ctx.fill();ctx.fillStyle="#25212d";ctx.strokeStyle="#75677e";ctx.lineWidth=3;ctx.fillRect(-42,-22,84,42);ctx.strokeRect(-42,-22,84,42);ctx.beginPath();ctx.moveTo(-48,-22);ctx.lineTo(-35,-48);ctx.lineTo(35,-48);ctx.lineTo(48,-22);ctx.closePath();ctx.fill();ctx.stroke();ctx.fillStyle="#100e17";ctx.fillRect(-12,-5,24,25);ctx.strokeStyle="#9a83a5";ctx.strokeRect(-12,-5,24,25);}
     else if(prop.kind==="cross"){ctx.fillStyle="#272330";ctx.strokeStyle="#786a83";ctx.lineWidth=3;ctx.fillRect(-4,-23,8,43);ctx.fillRect(-14,-14,28,7);ctx.strokeRect(-4,-23,8,43);ctx.strokeRect(-14,-14,28,7);}
@@ -456,7 +481,9 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     ctx.restore();
   }
 
-  for(const urn of game.urns){if(urn.broken||urn.x<cameraX-35||urn.x>cameraX+viewWidth+35||urn.y<cameraY-35||urn.y>cameraY+viewHeight+35)continue;ctx.save();ctx.translate(urn.x,urn.y);ctx.fillStyle="rgba(0,0,0,.4)";ctx.beginPath();ctx.ellipse(0,13,17,6,0,0,Math.PI*2);ctx.fill();ctx.fillStyle="#514454";ctx.strokeStyle="#b49ab7";ctx.lineWidth=1.6;ctx.beginPath();ctx.moveTo(-11,-9);ctx.lineTo(-8,-17);ctx.lineTo(8,-17);ctx.lineTo(11,-9);ctx.lineTo(9,10);ctx.quadraticCurveTo(0,17,-9,10);ctx.closePath();ctx.fill();ctx.stroke();ctx.fillStyle="#241d2b";ctx.fillRect(-9,-10,18,4);ctx.strokeStyle="#d8c0d7";ctx.beginPath();ctx.moveTo(-5,-5);ctx.lineTo(5,7);ctx.moveTo(5,-5);ctx.lineTo(-5,7);ctx.stroke();ctx.fillStyle="#efb6ff";ctx.fillRect(-10,-25,20,3);ctx.fillStyle="#8c4ca8";ctx.fillRect(-10,-25,20*(urn.hp/urn.maxHp),3);ctx.restore();}
+  for(const urn of game.urns){if(urn.broken||urn.x<cameraX-35||urn.x>cameraX+viewWidth+35||urn.y<cameraY-35||urn.y>cameraY+viewHeight+35)continue;ctx.save();ctx.translate(urn.x,urn.y);
+    {const catI=cemImg(catUrnImg);if(catI){const pulse=.7+Math.sin(game.elapsed*2.4+urn.id)*.3;const aura=ctx.createRadialGradient(0,-4,4,0,-4,30);aura.addColorStop(0,`rgba(255,215,120,${.28*pulse})`);aura.addColorStop(1,"rgba(255,200,90,0)");ctx.fillStyle=aura;ctx.beginPath();ctx.arc(0,-4,30,0,Math.PI*2);ctx.fill();ctx.fillStyle="rgba(0,0,0,.4)";ctx.beginPath();ctx.ellipse(0,13,14,5,0,0,Math.PI*2);ctx.fill();ctx.drawImage(catI,-19,-24,38,38);if(urn.hp<urn.maxHp){ctx.fillStyle="#3a2a10";ctx.fillRect(-10,-30,20,3);ctx.fillStyle="#f2c460";ctx.fillRect(-10,-30,20*(urn.hp/urn.maxHp),3);}ctx.restore();continue;}}
+    ctx.fillStyle="rgba(0,0,0,.4)";ctx.beginPath();ctx.ellipse(0,13,17,6,0,0,Math.PI*2);ctx.fill();ctx.fillStyle="#514454";ctx.strokeStyle="#b49ab7";ctx.lineWidth=1.6;ctx.beginPath();ctx.moveTo(-11,-9);ctx.lineTo(-8,-17);ctx.lineTo(8,-17);ctx.lineTo(11,-9);ctx.lineTo(9,10);ctx.quadraticCurveTo(0,17,-9,10);ctx.closePath();ctx.fill();ctx.stroke();ctx.fillStyle="#241d2b";ctx.fillRect(-9,-10,18,4);ctx.strokeStyle="#d8c0d7";ctx.beginPath();ctx.moveTo(-5,-5);ctx.lineTo(5,7);ctx.moveTo(5,-5);ctx.lineTo(-5,7);ctx.stroke();ctx.fillStyle="#efb6ff";ctx.fillRect(-10,-25,20,3);ctx.fillStyle="#8c4ca8";ctx.fillRect(-10,-25,20*(urn.hp/urn.maxHp),3);ctx.restore();}
   game.gems.forEach((gem) => {
     if (gem.x < cameraX - 30 || gem.x > cameraX + viewWidth + 30 || gem.y < cameraY - 30 || gem.y > cameraY + viewHeight + 30) return;
     if (gem.previousX !== undefined && gem.previousY !== undefined) {
