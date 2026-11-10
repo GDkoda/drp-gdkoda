@@ -1389,7 +1389,174 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
   </>}
  </div>
 </div>}
-            {levelChoices.length > 0 && <div className="fractals-upgrade-overlay absolute inset-0 grid place-items-center overflow-y-auto bg-[radial-gradient(ellipse_at_center,rgba(91,46,133,0.32),rgba(5,4,10,0.94)_72%)] p-2 backdrop-blur-sm sm:p-6"><div className="fractals-upgrade-panel w-full max-w-2xl space-y-3 rounded-2xl border border-violet-200/20 bg-[#171320]/95 p-3 shadow-[0_24px_70px_rgba(0,0,0,0.65)] sm:space-y-4 sm:rounded-[1.7rem] sm:p-5"><div className="text-center"><p className="text-[9px] font-black uppercase tracking-[.24em] text-violet-200/65">{eventRewardStep > 0 ? `DESAFIO DA FENDA · DÁDIVA ${eventRewardStep}/2` : "O FRACTAL OFERECE SEU PODER"}</p><h3 className="mt-1 font-display text-2xl text-white sm:text-3xl">{eventRewardStep > 0 ? "Reivindique sua recompensa" : "Escolha uma dádiva"}</h3><p className="mt-1 text-[10px] text-white/40">Raras são 25% mais fortes · Épicas são 50% mais fortes.</p></div><div className="fractals-upgrade-grid grid gap-2 sm:grid-cols-3">{levelChoices.map((upgrade) => {const Icon=upgrade.icon;const rarity=upgrade.rarity??"normal";const style=rarity==="epic"?"border-fuchsia-300/65 bg-gradient-to-br from-fuchsia-400/[0.18] via-violet-500/[0.10] to-[#171020] shadow-[0_0_35px_rgba(217,70,239,0.16)] hover:border-fuchsia-200":rarity==="rare"?"border-sky-200/45 bg-gradient-to-br from-sky-300/[0.13] via-cyan-500/[0.06] to-[#111a23] shadow-[0_0_26px_rgba(56,189,248,0.10)] hover:border-sky-100":"border-white/15 bg-gradient-to-br from-white/[0.07] to-[#17151f] hover:border-white/30";const label=rarity==="epic"?"ÉPICA · 150% DE POTÊNCIA":rarity==="rare"?"RARA · 125% DE POTÊNCIA":"NORMAL · 100%";return <button key={upgrade.id} onClick={()=>chooseUpgrade(upgrade)} className={"fractals-upgrade-card group relative min-w-0 overflow-hidden rounded-xl border p-2 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition-all duration-200 hover:-translate-y-1 hover:brightness-125 "+style}><div className={"pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full blur-2xl "+(rarity==="epic"?"bg-fuchsia-400/20":rarity==="rare"?"bg-sky-300/15":"bg-white/5")}/><div className="relative"><div className="mb-3 flex items-start justify-between gap-2"><div className={"grid h-11 w-11 place-items-center rounded-xl border "+(rarity==="epic"?"border-fuchsia-200/30 bg-fuchsia-300/10 text-fuchsia-100":rarity==="rare"?"border-sky-200/30 bg-sky-300/10 text-sky-100":"border-amber-100/15 bg-amber-100/[0.06] text-amber-100")}><Icon className="h-5 w-5"/></div><span className={"rounded-full border px-2 py-1 text-[8px] font-black tracking-[.14em] "+(rarity==="epic"?"border-fuchsia-200/30 bg-fuchsia-300/10 text-fuchsia-100":rarity==="rare"?"border-sky-200/30 bg-sky-300/10 text-sky-100":"border-white/10 bg-white/5 text-white/45")}>{label}</span></div><p className="text-sm font-bold text-white">{upgrade.name}</p><p className="mt-2 min-h-[3.25rem] text-xs leading-relaxed text-white/70">{getUpgradeDescription(upgrade)}</p><div className="mt-3 flex items-center justify-between border-t border-white/10 pt-2 text-[9px] uppercase tracking-wider text-white/35"><span>{rarity==="epic"?"Dádiva exaltada":rarity==="rare"?"Dádiva aprimorada":"Dádiva estável"}</span><span className="font-bold text-white/55">Escolher ↗</span></div></div></button>;})}</div></div></div>}
+            {levelChoices.length > 0 && (
+              <div className="fractals-upgrade-overlay absolute inset-0 z-30 grid place-items-center overflow-y-auto bg-[radial-gradient(ellipse_at_center,rgba(91,46,133,0.24),rgba(5,4,10,0.97)_75%)] p-3 backdrop-blur-md sm:p-6">
+                <div className="fractals-upgrade-panel relative my-auto w-full max-w-5xl space-y-5 rounded-2xl border border-amber-200/15 bg-[#100d18]/95 p-3 shadow-[0_30px_100px_rgba(0,0,0,0.8)] sm:space-y-6 sm:rounded-[1.8rem] sm:p-6">
+                  <div className="relative text-center">
+                    <div className="mx-auto mb-3 flex w-fit items-center gap-3 text-amber-200/40">
+                      <span className="h-px w-10 bg-gradient-to-r from-transparent to-amber-200/50" />
+                      <span className="text-sm">✧</span>
+                      <span className="text-[8px] font-black uppercase tracking-[.35em]">Arquivos do destino</span>
+                      <span className="text-sm">✧</span>
+                      <span className="h-px w-10 bg-gradient-to-l from-transparent to-amber-200/50" />
+                    </div>
+                    <p className="text-[9px] font-black uppercase tracking-[.3em] text-violet-200/60">
+                      {eventRewardStep > 0 ? \`DESAFIO DA FENDA · DÁDIVA \${eventRewardStep}/2\` : "O FRACTAL OFERECE SEU PODER"}
+                    </p>
+                    <h3 className="mt-2 font-display text-2xl tracking-wide text-white drop-shadow-[0_2px_12px_rgba(196,181,253,0.3)] sm:text-4xl">
+                      {eventRewardStep > 0 ? "Reivindique sua recompensa" : "Escolha uma dádiva"}
+                    </h3>
+                    <p className="mt-2 text-[10px] tracking-wide text-white/40 sm:text-xs">Cada escolha altera o curso da sua expedição.</p>
+                    <div className="mx-auto mt-4 flex max-w-xs items-center gap-3">
+                      <span className="h-px flex-1 bg-gradient-to-r from-transparent to-violet-300/30" />
+                      <span className="text-[10px] text-violet-200/50">◆</span>
+                      <span className="h-px flex-1 bg-gradient-to-l from-transparent to-violet-300/30" />
+                    </div>
+                  </div>
+
+                  <div className="fractals-upgrade-grid grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
+                    {levelChoices.map((upgrade) => {
+                      const Icon = upgrade.icon;
+                      const rarity = upgrade.rarity ?? "normal";
+                      const isEpic = rarity === "epic";
+                      const isRare = rarity === "rare";
+
+                      const palette = isEpic
+                        ? {
+                            border: "border-amber-300/65", inner: "border-amber-200/25",
+                            icon: "border-amber-200/35 bg-amber-300/10 text-amber-100",
+                            badge: "border-amber-200/40 bg-amber-300/15 text-amber-100",
+                            glow: "bg-fuchsia-500/15",
+                            shadow: "hover:shadow-[0_0_45px_rgba(217,70,239,0.28),0_0_20px_rgba(251,191,36,0.16)]",
+                            title: "text-amber-100", accent: "text-amber-300/70",
+                            background: "from-[#362044] via-[#21152d] to-[#120f1d]",
+                            corner: "border-amber-200/50", line: "bg-amber-200/25",
+                            footer: "border-amber-200/20 text-amber-100",
+                          }
+                        : isRare
+                        ? {
+                            border: "border-cyan-300/55", inner: "border-sky-200/25",
+                            icon: "border-cyan-200/35 bg-cyan-300/10 text-cyan-100",
+                            badge: "border-cyan-200/35 bg-cyan-300/10 text-cyan-100",
+                            glow: "bg-cyan-400/15",
+                            shadow: "hover:shadow-[0_0_40px_rgba(34,211,238,0.25)]",
+                            title: "text-cyan-100", accent: "text-sky-200/70",
+                            background: "from-[#17303b] via-[#14212e] to-[#10131f]",
+                            corner: "border-cyan-200/45", line: "bg-cyan-200/25",
+                            footer: "border-cyan-200/20 text-cyan-100",
+                          }
+                        : {
+                            border: "border-[#a98a62]/55", inner: "border-amber-100/15",
+                            icon: "border-amber-100/20 bg-amber-100/[0.06] text-amber-200",
+                            badge: "border-amber-100/20 bg-amber-100/[0.06] text-amber-100/70",
+                            glow: "bg-amber-200/[0.07]",
+                            shadow: "hover:shadow-[0_0_32px_rgba(180,130,75,0.18)]",
+                            title: "text-[#e9d4b0]", accent: "text-amber-100/45",
+                            background: "from-[#30251f] via-[#201a20] to-[#13121b]",
+                            corner: "border-amber-200/30", line: "bg-amber-100/15",
+                            footer: "border-amber-100/15 text-amber-100/80",
+                          };
+
+                      const label = isEpic ? "ÉPICA" : isRare ? "RARA" : "NORMAL";
+                      const bonus = isEpic ? "+50% POTÊNCIA" : isRare ? "+25% POTÊNCIA" : "POTÊNCIA BASE";
+
+                      return (
+                        <button
+                          key={upgrade.id}
+                          type="button"
+                          onClick={() => chooseUpgrade(upgrade)}
+                          className={[
+                            "fractals-upgrade-card group relative isolate flex min-h-[260px] w-full min-w-0 flex-col overflow-hidden rounded-xl border bg-gradient-to-br p-[5px] text-left",
+                            "transition-all duration-300 ease-out active:-translate-y-1 active:scale-[0.99] active:brightness-125",
+                            "hover:-translate-y-2 hover:brightness-125 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#100d18]",
+                            palette.border, palette.background, palette.shadow,
+                            isRare ? "fractals-card-rare" : "",
+                            isEpic ? "fractals-card-epic" : "",
+                          ].join(" ")}
+                        >
+                          <div className={\`pointer-events-none absolute -inset-8 -z-10 rounded-full blur-3xl \${palette.glow}\`} />
+                          <div className={\`pointer-events-none absolute inset-[5px] rounded-lg border \${palette.inner}\`} />
+
+                          <div className={\`pointer-events-none absolute left-2 top-2 h-5 w-5 border-l border-t \${palette.corner}\`} />
+                          <div className={\`pointer-events-none absolute right-2 top-2 h-5 w-5 border-r border-t \${palette.corner}\`} />
+                          <div className={\`pointer-events-none absolute bottom-2 left-2 h-5 w-5 border-b border-l \${palette.corner}\`} />
+                          <div className={\`pointer-events-none absolute bottom-2 right-2 h-5 w-5 border-b border-r \${palette.corner}\`} />
+
+                          <div className="pointer-events-none absolute left-1/2 top-2 flex -translate-x-1/2 items-center gap-2">
+                            <span className={\`h-px w-8 \${palette.line}\`} />
+                            <span className={\`text-[9px] \${palette.accent}\`}>✦</span>
+                            <span className={\`h-px w-8 \${palette.line}\`} />
+                          </div>
+                          <div className="pointer-events-none absolute bottom-2 left-1/2 -translate-x-1/2">
+                            <span className={\`text-[9px] \${palette.accent}\`}>✧</span>
+                          </div>
+
+                          <div className="relative flex h-full flex-1 flex-col px-3 pb-4 pt-5 sm:px-4">
+                            <div className="mb-4 flex items-center justify-between gap-2">
+                              <span className={\`rounded-full border px-2.5 py-1 text-[8px] font-black uppercase tracking-[.2em] \${palette.badge}\`}>{label}</span>
+                              <span className={\`text-[8px] font-black tracking-[.13em] \${palette.accent}\`}>{bonus}</span>
+                            </div>
+
+                            <div className="relative mx-auto mb-4">
+                              <div className={\`absolute -inset-3 rounded-full blur-xl \${palette.glow}\`} />
+                              <div className={\`relative grid h-[76px] w-[76px] place-items-center rounded-full border \${palette.inner} bg-black/20\`}>
+                                <div className={\`absolute inset-1 rounded-full border \${palette.corner}\`} />
+                                <div className={\`absolute inset-0 rounded-full \${isEpic ? "bg-[radial-gradient(circle,rgba(251,191,36,0.22),transparent_70%)]" : isRare ? "bg-[radial-gradient(circle,rgba(34,211,238,0.2),transparent_70%)]" : "bg-[radial-gradient(circle,rgba(217,180,130,0.12),transparent_70%)]"}\`} />
+                                <Icon className={\`relative h-9 w-9 \${palette.title} drop-shadow-[0_0_10px_currentColor]\`} />
+                              </div>
+                              <span className={\`absolute -left-4 top-1/2 -translate-y-1/2 text-xs \${palette.accent}\`}>◇</span>
+                              <span className={\`absolute -right-4 top-1/2 -translate-y-1/2 text-xs \${palette.accent}\`}>◇</span>
+                            </div>
+
+                            <div className="text-center">
+                              <p className={\`text-[9px] font-black uppercase tracking-[.24em] \${palette.accent}\`}>
+                                {isEpic ? "Bênção transcendente" : isRare ? "Essência desperta" : "Fragmento ancestral"}
+                              </p>
+                              <h4 className={\`mt-2 font-display text-lg font-bold leading-tight sm:text-xl \${palette.title}\`}>{upgrade.name}</h4>
+                            </div>
+
+                            <div className="my-3 flex items-center gap-2">
+                              <span className={\`h-px flex-1 \${palette.line}\`} />
+                              <span className={\`text-[9px] \${palette.accent}\`}>✧</span>
+                              <span className={\`h-px flex-1 \${palette.line}\`} />
+                            </div>
+
+                            <p className="flex-1 text-center text-[11px] leading-relaxed text-white/65 sm:text-xs">
+                              {getUpgradeDescription(upgrade)}
+                            </p>
+
+                            <div className={\`mt-4 flex items-center justify-center gap-2 rounded-lg border bg-black/20 px-3 py-2.5 text-[9px] font-black uppercase tracking-[.2em] transition-all duration-300 group-hover:bg-white/[0.07] \${palette.footer}\`}>
+                              <span>{isEpic ? "Reivindicar" : "Selar destino"}</span>
+                              <span className="text-sm transition-transform duration-300 group-hover:translate-x-1">↗</span>
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="flex items-center justify-center gap-2 pb-1 text-[8px] font-bold uppercase tracking-[.22em] text-white/25">
+                    <span>✧</span><span>O destino não oferece uma segunda escolha</span><span>✧</span>
+                  </div>
+                </div>
+
+                <style>{\`
+                  @keyframes fractalRarePulse {
+                    0%, 100% { box-shadow: 0 0 12px rgba(34,211,238,0.08); }
+                    50% { box-shadow: 0 0 24px rgba(34,211,238,0.2); }
+                  }
+                  @keyframes fractalEpicPulse {
+                    0%, 100% { box-shadow: 0 0 14px rgba(217,70,239,0.10); }
+                    50% { box-shadow: 0 0 26px rgba(251,191,36,0.18), 0 0 35px rgba(217,70,239,0.12); }
+                  }
+                  .fractals-card-rare { animation: fractalRarePulse 3s ease-in-out infinite; }
+                  .fractals-card-epic { animation: fractalEpicPulse 3.5s ease-in-out infinite; }
+                  @media (prefers-reduced-motion: reduce) {
+                    .fractals-card-rare, .fractals-card-epic { animation: none; }
+                  }
+                \`}</style>
+              </div>
+            )}
             {result && <div className="absolute inset-0 grid place-items-center overflow-y-auto bg-[radial-gradient(ellipse_at_center,rgba(91,46,133,0.28),rgba(5,4,10,0.95)_72%)] p-4 backdrop-blur-md"><div className="w-full max-w-sm rounded-[1.6rem] border border-violet-200/20 bg-[#171320]/95 p-5 text-center shadow-[0_30px_100px_rgba(0,0,0,0.7)]"><div className="mx-auto mb-3 grid h-16 w-16 place-items-center rounded-2xl border border-amber-200/20 bg-gradient-to-br from-amber-200/15 via-violet-400/15 to-violet-950/70 shadow-[0_0_36px_rgba(167,139,250,0.18)]">{result==="victory"?<Sparkles className="h-7 w-7 text-amber-200"/>:<Skull className="h-7 w-7 text-rose-300"/>}</div><p className="text-xs uppercase tracking-[.22em] text-violet-200">{result==="victory"?"Guardião derrotado":"Expedição encerrada"}</p><h3 className="mt-1 font-display text-2xl">{result==="victory"?"O fractal silenciou":"O Vazio prevaleceu"}</h3><p className="mt-2 text-sm text-white/65">Nível {hud.level} · {hud.kills} criaturas derrotadas · {formatTime(hud.elapsed)}</p><p className="mt-2 text-xs text-amber-100/80">Recompensas e fractais ainda não são creditados neste protótipo; serão conectados após a validação segura no servidor.</p><Button className="mt-4 gap-2" onClick={()=>{setRunning(false);setResult(null);setBossMessage(false);gameRef.current=null;}}><RotateCcw className="h-4 w-4"/> Voltar à expedição</Button></div></div>}
           </div>
           <div className="flex flex-wrap items-center justify-between gap-2 border-t border-white/10 px-3 py-2 text-[10px] text-white/45 sm:px-4"><span>Arma automática: projétil perseguidor</span><span>Protótipo sem persistência de recompensas</span></div>
