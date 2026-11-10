@@ -175,6 +175,55 @@ function getEnemySeparation(enemy: Enemy, grid: EnemySpatialGrid) {
   return magnitude > 0 ? { x: sx / magnitude, y: sy / magnitude } : { x: 0, y: 0 };
 }
 
+
+const floorPatternCache = new WeakMap<CanvasRenderingContext2D, Map<number, CanvasPattern>>();
+
+function getFloorPattern(ctx: CanvasRenderingContext2D, missionId: number, floor: readonly number[], glow: string): CanvasPattern | null {
+  let missionPatterns = floorPatternCache.get(ctx);
+  if (!missionPatterns) {
+    missionPatterns = new Map<number, CanvasPattern>();
+    floorPatternCache.set(ctx, missionPatterns);
+  }
+  const cached = missionPatterns.get(missionId);
+  if (cached) return cached;
+  const texture = document.createElement("canvas");
+  texture.width = 96;
+  texture.height = 96;
+  const tileCtx = texture.getContext("2d");
+  if (!tileCtx) return null;
+  tileCtx.fillStyle = "rgb(" + floor[0] + "," + floor[1] + "," + floor[2] + ")";
+  tileCtx.fillRect(0, 0, 96, 96);
+  for (let row = 0; row < 2; row++) {
+    for (let col = 0; col < 2; col++) {
+      const x = col * 48, y = row * 48;
+      const shade = (row + col) % 2 === 0 ? 7 : -3;
+      tileCtx.fillStyle = "rgb(" + clamp(floor[0] + shade, 0, 255) + "," + clamp(floor[1] + shade, 0, 255) + "," + clamp(floor[2] + shade, 0, 255) + ")";
+      tileCtx.fillRect(x + 1, y + 1, 46, 46);
+      tileCtx.strokeStyle = "rgba(7,5,13,.82)";
+      tileCtx.lineWidth = 2;
+      tileCtx.strokeRect(x + 1, y + 1, 46, 46);
+      tileCtx.strokeStyle = "rgba(225,205,245,.075)";
+      tileCtx.lineWidth = 1;
+      tileCtx.beginPath();
+      tileCtx.moveTo(x + 7, y + 8); tileCtx.lineTo(x + 40, y + 8);
+      tileCtx.moveTo(x + 8, y + 7); tileCtx.lineTo(x + 8, y + 40);
+      tileCtx.stroke();
+      tileCtx.fillStyle = glow;
+      tileCtx.globalAlpha = 0.13;
+      tileCtx.beginPath();
+      tileCtx.moveTo(x + 24, y + 15); tileCtx.lineTo(x + 30, y + 24);
+      tileCtx.lineTo(x + 24, y + 33); tileCtx.lineTo(x + 18, y + 24);
+      tileCtx.closePath(); tileCtx.fill();
+      tileCtx.globalAlpha = 1;
+    }
+  }
+  const pattern = ctx.createPattern(texture, "repeat");
+  if (pattern) missionPatterns.set(missionId, pattern);
+  return pattern;
+}
+
+const NO_ENEMY_SEPARATION = { x: 0, y: 0 };
+
 function makeGame(width: number, height: number, purchases: PurchaseState): GameState {
   const maxHp = 100 + purchases.health * 10;
   const projectileLife = PROJECTILE_BASE_LIFE * PROJECTILE_DURATION_MULTIPLIERS[clamp(purchases.projectile_duration, 0, 3)];
@@ -242,87 +291,11 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
   ctx.fillStyle = bg;
   ctx.fillRect(cameraX, cameraY, viewWidth, viewHeight);
 
-  // O padrão do piso usa coordenadas globais; não reinicia ao andar.
-  const tile = 48;
-  const hash = (x: number, y: number) => {
-    const n = Math.sin(x * 127.1 + y * 311.7 + missionId * 74.7) * 43758.5453;
-    return n - Math.floor(n);
-  };
-  const firstRow = Math.floor(cameraY / tile) - 2;
-  const lastRow = Math.ceil((cameraY + viewHeight) / tile) + 2;
-  const firstCol = Math.floor(cameraX / tile) - 2;
-  const lastCol = Math.ceil((cameraX + viewWidth) / tile) + 2;
-  for (let row = firstRow; row <= lastRow; row++) {
-    for (let col = firstCol; col <= lastCol; col++) {
-      const x = col * tile + (row % 2) * tile / 2;
-      const y = row * tile;
-      const shade = Math.floor(hash(col, row) * 15);
-      const rgb = biome.floor;
-      ctx.fillStyle = "rgb(" + (rgb[0] + shade) + "," + (rgb[1] + shade) + "," + (rgb[2] + shade) + ")";
-      ctx.strokeStyle = "rgba(7,6,14,.72)";
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(x, y - tile / 2);
-      ctx.lineTo(x + tile / 2, y);
-      ctx.lineTo(x, y + tile / 2);
-      ctx.lineTo(x - tile / 2, y);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-
-      if (!crowded && hash(col + 17, row - 9) > 0.76) {
-        ctx.strokeStyle = "rgba(5,4,12,.78)";
-        ctx.lineWidth = 1.15;
-        ctx.beginPath();
-        ctx.moveTo(x - 9, y - 8);
-        ctx.lineTo(x - 1, y - 1);
-        ctx.lineTo(x + 4, y + 2);
-        ctx.lineTo(x + 10, y + 12);
-        ctx.stroke();
-        ctx.strokeStyle = "rgba(218,194,235,.10)";
-        ctx.beginPath();
-        ctx.moveTo(x - 8, y - 9);
-        ctx.lineTo(x, y - 2);
-        ctx.stroke();
-      }
-      // Peças gravadas do tileset: marcas finas, veios e mosaicos gastos.
-      const tileDetail = hash(col + 57, row - 23);
-      if (!crowded && tileDetail > 0.72) {
-        ctx.strokeStyle = "rgba(235,220,255,.10)";
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(x - 10, y - 1);
-        ctx.lineTo(x, y - 11);
-        ctx.lineTo(x + 10, y - 1);
-        ctx.stroke();
-      }
-      if (!crowded && tileDetail > 0.88) {
-        ctx.fillStyle = biome.glow + "24";
-        ctx.beginPath();
-        ctx.moveTo(x, y - 8);
-        ctx.lineTo(x + 5, y);
-        ctx.lineTo(x, y + 8);
-        ctx.lineTo(x - 5, y);
-        ctx.closePath();
-        ctx.fill();
-      }
-      if (hash(col - 5, row + 21) > 0.94) {
-        ctx.fillStyle = biome.glow + "24";
-        ctx.beginPath();
-        ctx.arc(x, y, 4 + hash(col + 8, row) * 9, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      if (!crowded && hash(col + 31, row + 4) > 0.87) {
-        ctx.strokeStyle = "rgba(4,3,10,.42)";
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(x - 13, y + 15);
-        ctx.lineTo(x - 4, y + 12);
-        ctx.lineTo(x + 8, y + 16);
-        ctx.stroke();
-      }
-    }
-  }
+  // Piso em mosaico cacheado: uma chamada de preenchimento por quadro.
+  ctx.fillStyle = "#0d0b14";
+  ctx.fillRect(cameraX, cameraY, viewWidth, viewHeight);
+  const floorPattern = getFloorPattern(ctx, missionId, biome.floor, biome.glow);
+  if (floorPattern) { ctx.fillStyle = floorPattern; ctx.fillRect(cameraX, cameraY, viewWidth, viewHeight); }
 
   const drawPillar = (x: number, y: number, scale = 1) => {
     ctx.save();
@@ -371,49 +344,29 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     ctx.restore();
   };
 
-  // Destroços, pilares e cristais aparecem por setores persistentes do mapa.
-  const propSpacing = 238;
-  const propColStart = Math.floor(cameraX / propSpacing) - 1;
-  const propColEnd = Math.ceil((cameraX + viewWidth) / propSpacing) + 1;
-  const propRowStart = Math.floor(cameraY / propSpacing) - 1;
-  const propRowEnd = Math.ceil((cameraY + viewHeight) / propSpacing) + 1;
-  for (let row = propRowStart; row <= propRowEnd; row++) {
-    for (let col = propColStart; col <= propColEnd; col++) {
-      const roll = hash(col + 103, row - 67);
-      const x = col * propSpacing + 34 + hash(col + 11, row + 4) * 150;
-      const y = row * propSpacing + 30 + hash(col - 9, row + 19) * 160;
-      if (roll > 0.84) {
-        drawPillar(x, y, 0.62 + hash(col, row + 8) * 0.55);
-      } else if (roll > 0.64) {
-        drawCrystal(x, y, 9 + hash(col + 5, row) * 12, biome.crystal);
-      } else if (roll > 0.48) {
-        ctx.save();
-        ctx.translate(x, y);
-        ctx.rotate(hash(col + 2, row + 2) * Math.PI);
-        ctx.fillStyle = "rgba(8,7,15,.68)";
-        ctx.strokeStyle = biome.stone + "99";
-        ctx.lineWidth = 1.2;
-        ctx.beginPath();
-        ctx.moveTo(-18, 8);
-        ctx.lineTo(-11, -8);
-        ctx.lineTo(4, -13);
-        ctx.lineTo(18, 2);
-        ctx.lineTo(11, 12);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-        ctx.fillStyle = biome.glow + "30";
-        ctx.fillRect(-4, -6, 7, 4);
-        ctx.restore();
+  // Objetos decorativos saem do passe crítico durante ondas cheias.
+  if (!crowded) {
+    const propSpacing = 320;
+    const propColStart = Math.floor(cameraX / propSpacing) - 1;
+    const propColEnd = Math.ceil((cameraX + viewWidth) / propSpacing) + 1;
+    const propRowStart = Math.floor(cameraY / propSpacing) - 1;
+    const propRowEnd = Math.ceil((cameraY + viewHeight) / propSpacing) + 1;
+    for (let row = propRowStart; row <= propRowEnd; row++) {
+      for (let col = propColStart; col <= propColEnd; col++) {
+        const roll = hash(col + 103, row - 67);
+        const x = col * propSpacing + 34 + hash(col + 11, row + 4) * 235;
+        const y = row * propSpacing + 30 + hash(col - 9, row + 19) * 250;
+        if (roll > 0.91) drawPillar(x, y, 0.62 + hash(col, row + 8) * 0.55);
+        else if (roll > 0.78) drawCrystal(x, y, 9 + hash(col + 5, row) * 12, biome.crystal);
+        else if (roll > 0.67) {
+          ctx.save(); ctx.translate(x, y); ctx.rotate(hash(col + 2, row + 2) * Math.PI);
+          ctx.fillStyle = "rgba(8,7,15,.72)"; ctx.strokeStyle = biome.stone + "99"; ctx.lineWidth = 1.2;
+          ctx.beginPath(); ctx.moveTo(-18,8); ctx.lineTo(-11,-8); ctx.lineTo(4,-13); ctx.lineTo(18,2); ctx.lineTo(11,12); ctx.closePath();
+          ctx.fill(); ctx.stroke(); ctx.fillStyle = biome.glow + "30"; ctx.fillRect(-4,-6,7,4); ctx.restore();
+        }
       }
     }
   }
-
-  const vignette = ctx.createRadialGradient(player.x, player.y, Math.min(viewWidth, viewHeight) * .22, player.x, player.y, Math.max(viewWidth, viewHeight) * .72);
-  vignette.addColorStop(0, "rgba(8,5,18,0)");
-  vignette.addColorStop(1, "rgba(5,3,12,.62)");
-  ctx.fillStyle = vignette;
-  ctx.fillRect(cameraX, cameraY, viewWidth, viewHeight);
 
   if (game.challengeEvent) {
     const event = game.challengeEvent;
@@ -465,11 +418,11 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     ctx.scale(pulse, pulse);
     const icon = sprites.xpGem;
     if (icon?.complete && icon.naturalWidth > 0) {
-      ctx.shadowColor = "#a78bfa"; ctx.shadowBlur = crowded ? 0 : 13;
+      ctx.shadowColor = "#a78bfa"; ctx.shadowBlur = 0;
       ctx.drawImage(icon, -gem.radius * 0.95, -gem.radius * 0.95, gem.radius * 1.9, gem.radius * 1.9);
     } else {
       ctx.rotate(Math.PI / 4);
-      ctx.fillStyle = "#9ee6c1"; ctx.shadowColor = "#7df0b0"; ctx.shadowBlur = 12;
+      ctx.fillStyle = "#9ee6c1"; ctx.shadowColor = "#7df0b0"; ctx.shadowBlur = 0;
       ctx.fillRect(-gem.radius / 2, -gem.radius / 2, gem.radius, gem.radius);
     }
     ctx.restore();
@@ -481,7 +434,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     const icon = drop.kind === "area" ? sprites.specialArea : drop.kind === "experience" ? sprites.specialXP : drop.kind === "projectile_range" ? sprites.specialRange : sprites.specialProjectiles;
     ctx.globalAlpha = 0.9 + Math.sin(game.elapsed * 5 + drop.x * 0.02) * 0.1;
     ctx.shadowColor = drop.kind === "area" ? "#e9c46a" : "#b78cff";
-    ctx.shadowBlur = crowded ? 0 : 17;
+    ctx.shadowBlur = 0;
     if (icon?.complete && icon.naturalWidth > 0) {
       ctx.drawImage(icon, -size / 2, -size / 2, size, size);
     } else {
@@ -496,7 +449,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     ctx.globalAlpha = fade;
     const projectile = sprites.projectile;
     if (projectile?.complete && projectile.naturalWidth > 0) {
-      ctx.shadowColor = "#b77aff"; ctx.shadowBlur = crowded ? 0 : 15;
+      ctx.shadowColor = "#b77aff"; ctx.shadowBlur = 0;
       ctx.drawImage(projectile, -15, -9, 30, 18);
     } else {
       ctx.shadowColor = "#b77aff"; ctx.shadowBlur = crowded ? 0 : 15; ctx.fillStyle = "#c39aff";
@@ -506,13 +459,14 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     ctx.restore();
   });
   game.enemies.forEach((enemy) => {
+    if (enemy.x < cameraX - 88 || enemy.x > cameraX + viewWidth + 88 || enemy.y < cameraY - 100 || enemy.y > cameraY + viewHeight + 100) return;
     ctx.save();
-    const breathRate = enemy.type === "boss" ? 2.2 : enemy.type === "brute" ? 2.8 : enemy.type === "charger" ? 4.1 : enemy.type === "elite" ? 3.2 : 3.7;
-    const breath = Math.sin(game.elapsed * breathRate + enemy.x * 0.021 + enemy.y * 0.017);
-    const breathAmount = enemy.type === "boss" ? 0.045 : enemy.type === "brute" ? 0.035 : 0.025;
-    const hover = enemy.type === "wraith" || enemy.type === "elite" ? Math.sin(game.elapsed * 3.1 + enemy.y * 0.02) * 2.0 : Math.abs(breath) * 0.7;
+    const motionPhase = game.elapsed * (enemy.dashTime > 0 ? 19 : enemy.type === "boss" ? 5 : 10) + enemy.x * 0.017 + enemy.y * 0.013;
+    const distortion = Math.sin(motionPhase);
+    const secondaryWave = Math.cos(motionPhase * 0.67);
+    const hover = enemy.type === "wraith" || enemy.type === "elite" ? secondaryWave * 1.7 : Math.abs(distortion) * 0.55;
     ctx.translate(enemy.x, enemy.y + hover);
-    ctx.scale(1 + breath * breathAmount, 1 - breath * breathAmount * 0.72);
+    ctx.transform(1 + distortion * 0.035, secondaryWave * 0.028, Math.sin(motionPhase * 0.43) * 0.022, 1 - distortion * 0.03, 0, 0);
     if (enemy.type === "charger" && enemy.dashTime > 0) {
       ctx.rotate(Math.atan2(enemy.targetY, enemy.targetX) * 0.12);
       ctx.scale(1.12, 0.9);
@@ -537,7 +491,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
       ctx.globalAlpha = hurt ? 0.78 : 1;
       ctx.filter = hurt ? "brightness(2.35) saturate(.35)" : "none";
       ctx.shadowColor = enemy.type === "brute" ? "#9b7bce" : enemy.type === "charger" ? "#b58cff" : "#8b68ff";
-      ctx.shadowBlur = crowded ? 0 : enemy.type === "boss" ? 20 : 9;
+      ctx.shadowBlur = 0;
       ctx.drawImage(enemySprite, -spriteWidth / 2, -spriteHeight * anchor, spriteWidth, spriteHeight);
       ctx.restore();
     } else if (enemy.type === "wraith") {
@@ -576,7 +530,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
   });
   ctx.save();
   game.particles.forEach((p) => {
-    ctx.globalAlpha = clamp(p.life * 2, 0, 1); ctx.fillStyle = p.color; ctx.shadowColor = p.color; ctx.shadowBlur = crowded ? 0 : 7;
+    ctx.globalAlpha = clamp(p.life * 2, 0, 1); ctx.fillStyle = p.color; ctx.shadowColor = p.color; ctx.shadowBlur = 0;
     ctx.beginPath(); ctx.arc(p.x, p.y, 1.5 + clamp(p.life * 2, 0, 1) * 1.4, 0, Math.PI * 2); ctx.fill();
   });
   ctx.restore(); ctx.globalAlpha = 1;
@@ -742,8 +696,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
       playerIdle: "/fractals/sprites/player-idle-8dir.png",
       playerMove: "/fractals/sprites/player-move-8dir.png",
       playerCast: "/fractals/sprites/player-cast-8dir.png",
-      boss: "/fractals/sprites/boss.webp",
-      elite: "/fractals/sprites/elite.webp",
+      boss: "/fractals/sprites/enemies/boss.svg",
+      elite: "/fractals/sprites/enemies/elite.svg",
       wraith: "/fractals/sprites/enemies/wraith.svg",
       charger: "/fractals/sprites/enemies/charger.svg",
       brute: "/fractals/sprites/enemies/brute.svg",
@@ -866,12 +820,11 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
     if (!canvas || !ctx) return;
     let frame = 0;
     let lastHud = 0;
-    let lastDraw = 0;
     let bossNotified = false;
     const resize = () => {
       const rect = canvas.getBoundingClientRect();
       const compactDevice = window.matchMedia("(max-width: 680px)").matches;
-      const dpr = Math.min(window.devicePixelRatio || 1, compactDevice ? 1.2 : 1.5);
+      const dpr = Math.min(window.devicePixelRatio || 1, compactDevice ? 1 : 1.25);
       canvas.width = Math.max(1, Math.floor(rect.width * dpr));
       canvas.height = Math.max(1, Math.floor(rect.height * dpr));
       ctx.imageSmoothingEnabled = true;
@@ -953,7 +906,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         const eventDensityBonus = game.challengeEvent ? 2 : 0;
         const spawnInterval = clamp(1.18 / (snapshot.enemySpawnScale + eventDensityBonus), 0.22, 1.35);
         game.spawnTimer -= dt;
-        if (game.spawnTimer <= 0 && game.enemies.length < 64 && game.elapsed < RUN_DURATION_SECONDS) {
+        if (game.spawnTimer <= 0 && game.enemies.length < 50 && game.elapsed < RUN_DURATION_SECONDS) {
           spawnEnemy(game, missionId, game.elapsed, corruption);
           game.spawnTimer = spawnInterval * (0.78 + Math.random() * 0.45);
         }
@@ -1002,7 +955,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         const currentZoom = zoomRef.current;
         const cameraLeft = game.player.x - game.width / (2 * currentZoom), cameraTop = game.player.y - game.height / (2 * currentZoom);
         game.shots = game.shots.filter((shot) => shot.life > 0 && shot.x > cameraLeft - 20 && shot.x < cameraLeft + game.width / currentZoom + 20 && shot.y > cameraTop - 20 && shot.y < cameraTop + game.height / currentZoom + 20);
-        const movementGrid = buildEnemySpatialGrid(game.enemies);
+        const movementGrid = game.enemies.length < 20 ? buildEnemySpatialGrid(game.enemies) : null;
         for (const enemy of game.enemies) {
           const d = Math.max(1, distance(game.player.x, game.player.y, enemy.x, enemy.y));
           enemy.flash = Math.max(0, enemy.flash - dt);
@@ -1024,7 +977,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                 game.enemies.push({ x: enemy.x + Math.cos(angle) * 58, y: enemy.y + Math.sin(angle) * 58, hp: 34, maxHp: 34, speed: 62, radius: 10, damage: 8, color: "#9b91b4", xp: 2, type: "wraith", attack: 0, flash: 0, windup: 0, targetX: 0, targetY: 0, dashTime: 0, summonedAtHalf: false });
               }
             }
-            const separation = getEnemySeparation(enemy, movementGrid);
+            const separation = movementGrid ? getEnemySeparation(enemy, movementGrid) : NO_ENEMY_SEPARATION;
             const steerX = (game.player.x - enemy.x) / d + separation.x * 0.28;
             const steerY = (game.player.y - enemy.y) / d + separation.y * 0.28;
             const steerLength = Math.max(1, Math.hypot(steerX, steerY));
@@ -1047,7 +1000,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               enemy.targetX = (predictedX - enemy.x) / aimDistance; enemy.targetY = (predictedY - enemy.y) / aimDistance;
               enemy.windup = .52;
             } else {
-              const separation = getEnemySeparation(enemy, movementGrid);
+              const separation = movementGrid ? getEnemySeparation(enemy, movementGrid) : NO_ENEMY_SEPARATION;
               const steerX = (game.player.x - enemy.x) / d + separation.x * 0.22;
               const steerY = (game.player.y - enemy.y) / d + separation.y * 0.22;
               const steerLength = Math.max(1, Math.hypot(steerX, steerY));
@@ -1060,13 +1013,13 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               enemy.windup = Math.max(0, enemy.windup - dt);
               if (enemy.windup === 0) {
                 if (distance(game.player.x, game.player.y, enemy.x, enemy.y) < 78 + 12 && game.player.invuln <= 0) { game.player.hp = Math.max(0, game.player.hp - enemy.damage * 1.35); game.player.invuln = .8; game.player.hitFlash = 0.3; }
-                for (let i=0;i<10;i++) { const a=i*Math.PI/5; game.particles.push({x:enemy.x,y:enemy.y,vx:Math.cos(a)*105,vy:Math.sin(a)*105,life:.35,color:"#e7a56d"}); }
+                for (let i=0;i<5;i++) { const a=i*Math.PI*2/5; game.particles.push({x:enemy.x,y:enemy.y,vx:Math.cos(a)*105,vy:Math.sin(a)*105,life:.35,color:"#e7a56d"}); }
                 enemy.attack = 2.7;
               }
             } else {
               if (d < 112 && enemy.attack <= 0) enemy.windup = .72;
               else {
-                const separation = getEnemySeparation(enemy, movementGrid);
+                const separation = movementGrid ? getEnemySeparation(enemy, movementGrid) : NO_ENEMY_SEPARATION;
                 const approach = d < 88 ? 0.32 : 1;
                 const steerX = (game.player.x - enemy.x) / d * approach + separation.x * 0.26;
                 const steerY = (game.player.y - enemy.y) / d * approach + separation.y * 0.26;
@@ -1077,7 +1030,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               if (d < enemy.radius + 15 && enemy.attack <= 0 && game.player.invuln <= 0) { game.player.hp = Math.max(0, game.player.hp - enemy.damage); game.player.invuln = .72; game.player.hitFlash = 0.3; enemy.attack = 1.2; }
             }
           } else {
-            const separation = getEnemySeparation(enemy, movementGrid);
+            const separation = movementGrid ? getEnemySeparation(enemy, movementGrid) : NO_ENEMY_SEPARATION;
             const ux = (game.player.x - enemy.x) / d, uy = (game.player.y - enemy.y) / d;
             if (enemy.type === "wraith") {
               const side = Math.sin(enemy.x * 0.026 + enemy.y * 0.019) >= 0 ? 1 : -1;
@@ -1132,7 +1085,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                     if (eligible.length) game.specialDrops.push({ x: enemy.x, y: enemy.y, kind: eligible[Math.floor(Math.random() * eligible.length)], radius: 13 });
                   }
                 } else { game.ended = true; setResult("victory"); if (runId) void (supabase.rpc as any)("finish_fractal_run", { _run_id: runId, _victory: true }).then(({ data, error }: any) => { if (error) toast.error(error.message); else { setFractalBalance(Number(data?.fractals ?? 0)); setCoinBalance(Number(data?.coins ?? 0)); setUnlockedCorruption(Number(data?.corruptionUnlocked ?? 0)); setCompletedCorruptions(Array.isArray(data?.completedCorruptions) ? data.completedCorruptions : []); toast.success("Corrupção concluída. O próximo nível foi liberado."); } }); }
-                for (let i = 0; i < 5; i++) game.particles.push({ x: enemy.x, y: enemy.y, vx: (Math.random() - 0.5) * 100, vy: (Math.random() - 0.5) * 100, life: 0.45, color: enemy.color });
+                for (let i = 0; i < 3; i++) game.particles.push({ x: enemy.x, y: enemy.y, vx: (Math.random() - 0.5) * 100, vy: (Math.random() - 0.5) * 100, life: 0.45, color: enemy.color });
               }
               break;
             }
@@ -1168,7 +1121,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         game.specialDrops = game.specialDrops.filter((drop) => drop.radius > 0 && distance(drop.x, drop.y, game.player.x, game.player.y) < Math.max(game.width, game.height) * 1.6);
         game.particles.forEach((p) => { p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; });
         game.particles = game.particles.filter((p) => p.life > 0);
-        if (game.particles.length > 120) game.particles.splice(0, game.particles.length - 120);
+        if (game.particles.length > 48) game.particles.splice(0, game.particles.length - 48);
         if (game.gems.length > 180) {
           const overflow = game.gems.splice(0, game.gems.length - 180);
           const retainedGem = game.gems[0];
@@ -1186,9 +1139,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           setHud({ hp: game.player.hp, maxHp: game.player.maxHp, xp: game.player.xp, nextXp: game.player.nextXp, level: game.player.level, kills: game.kills, elapsed: game.elapsed, moveSpeed: Math.round(game.player.speed), phase: snapshot.phaseLabel, pressure: snapshot.totalPressure + (game.challengeEvent ? 2 : 0), event: game.challengeEvent ? { id: game.challengeEvent.id, remaining: game.challengeEvent.remaining, progress: game.challengeEvent.progress, inside: distance(game.player.x, game.player.y, game.challengeEvent.x, game.challengeEvent.y) <= game.challengeEvent.radius } : null });
         }
       }
-      const targetFrameMs = game.enemies.length > 40 ? 1000 / 30 : window.innerWidth <= 680 ? 1000 / 45 : 1000 / 55;
-      if (!lastDraw || now - lastDraw >= targetFrameMs) {
-        lastDraw = now;
+      if (!paused && levelChoices.length === 0 && !game.ended) {
         drawGame(ctx, game, corruption, missionId, spritesRef.current, showPlayerHp, showDamageNumbers, zoomRef.current);
       }
       frame = requestAnimationFrame(tick);
@@ -1342,39 +1293,41 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         <Card className="overflow-hidden border-border/70 bg-[#11111a] text-white">
           <div className="fractals-arena-frame relative">
             <canvas ref={canvasRef} className="block h-[min(78vh,720px)] min-h-[430px] w-full touch-none" onPointerDown={pointerStart} onPointerMove={pointerMove} onPointerUp={pointerEnd} onPointerCancel={pointerEnd} aria-label="Arena de sobrevivência. Use WASD, setas ou arraste o dedo para mover." />
-            <section className="fractals-game-hud absolute left-2 top-2">
-              <div className="fractals-game-hud__header"><span className="fractals-game-hud__sigil"><GemIcon/></span><div><strong>{mission.name}</strong><small>{mission.pathName} · {CORRUPTION_LEVELS[corruption].name}</small><em><Timer/> {formatTime(hud.elapsed)} / 12:00</em></div></div>
-              <div className="fractals-game-hud__stat">
-                <div><span><Heart/> VIDA</span><b>{Math.ceil(hud.hp)} / {Math.ceil(hud.maxHp)}</b></div>
-                <div className="fractals-game-hud__bar"><i className="is-life" style={{width:`${clamp(hud.hp / Math.max(1, hud.maxHp), 0, 1) * 100}%`}}/></div>
-              </div>
-              <div className="fractals-game-hud__stat">
-                <div><span><Sparkles/> NV. {hud.level} · XP</span><b>{Math.floor(hud.xp)} / {Math.floor(hud.nextXp)}</b></div>
-                <div className="fractals-game-hud__bar"><i className="is-xp" style={{width:`${clamp(Math.floor(hud.xp) / Math.max(1, Math.floor(hud.nextXp)), 0, 1) * 100}%`}}/></div>
-              </div>
-              <div className="fractals-game-hud__metrics"><span><Skull/> ABATES <b>{hud.kills}</b></span><span><Gauge/> PRESSÃO <b>{hud.pressure.toFixed(1)}</b></span></div>
-              <div className="fractals-game-hud__speed-row">
-                <span className="fractals-game-hud__move-speed">MOV. <b>{hud.moveSpeed}</b></span>
-                <div className="fractals-game-hud__speed-control"><span>RITMO <b>{speedMultiplier}×</b></span>
-                  <button type="button" aria-label="Diminuir velocidade da expedição" disabled={speedMultiplier === 1} onClick={() => setSpeedMultiplier((current) => current === 3 ? 2 : 1)}>−</button>
-                  <button type="button" aria-label="Aumentar velocidade da expedição" disabled={speedMultiplier === 3 || (!isMaster && (speedMultiplier === 1 ? !purchases.speed_2x : !purchases.speed_3x))} onClick={() => setSpeedMultiplier((current) => current === 1 ? 2 : 3)}>+</button>
+            <section className="fractals-hud-bar absolute inset-x-0 top-0" aria-label="Status da expedição">
+              <div className="fractals-hud-zone fractals-hud-zone--left">
+                <div className="fractals-hud-meter">
+                  <span className="fractals-hud-label"><Heart/> VIDA</span>
+                  <b>{Math.ceil(hud.hp)}<i>/{Math.ceil(hud.maxHp)}</i></b>
+                  <span className="fractals-hud-track"><i className="is-life" style={{width:`${clamp(hud.hp / Math.max(1, hud.maxHp), 0, 1) * 100}%`}}/></span>
                 </div>
+                <div className="fractals-hud-meter">
+                  <span className="fractals-hud-label"><Sparkles/> NV.{hud.level} · XP</span>
+                  <b>{Math.floor(hud.xp)}<i>/{Math.floor(hud.nextXp)}</i></b>
+                  <span className="fractals-hud-track"><i className="is-xp" style={{width:`${clamp(Math.floor(hud.xp) / Math.max(1, Math.floor(hud.nextXp)), 0, 1) * 100}%`}}/></span>
+                </div>
+                <div className="fractals-hud-kills"><Skull/><b>{hud.kills}</b><small>ABATES</small></div>
               </div>
-              {hud.event && <div className="fractals-event-hud">
-                <div className="fractals-event-hud__heading"><span><Target/> ANOMALIA {String(hud.event.id).padStart(2,"0")}</span><b>{Math.ceil(hud.event.remaining)}s</b></div>
-                <div className="fractals-game-hud__bar"><i className="is-event" style={{width:`${clamp(hud.event.progress / CHALLENGE_EVENT_DURATION, 0, 1) * 100}%`}}/></div>
-                <small>{hud.event.inside ? "PERMANEÇA DENTRO DA ÁREA" : "VOLTE PARA A ÁREA DELIMITADA"}</small>
-                <em>Pressão +2 · Recompensa: 2 upgrades</em>
-              </div>}
+              <div className="fractals-hud-zone fractals-hud-zone--center">
+                <div className="fractals-hud-clock"><Timer/><b>{formatTime(hud.elapsed)}</b><small>/ 12:00</small></div>
+                <div className="fractals-hud-density"><span className="fractals-live-dot"/><b>{hud.pressure.toFixed(1)}</b><small>DENSIDADE</small></div>
+                {hud.event && <div className="fractals-hud-event"><Target/> ANOMALIA {hud.event.id} · {Math.ceil(hud.event.remaining)}s</div>}
+              </div>
+              <div className="fractals-hud-zone fractals-hud-zone--right">
+                <div className="fractals-hud-mission"><b>{mission.name}</b><small>{mission.pathName} · {CORRUPTION_LEVELS[corruption].name}</small></div>
+                <div className="fractals-hud-control-group" aria-label="Velocidade da expedição">
+                  <small>RITMO</small>
+                  <button type="button" aria-label="Diminuir velocidade" disabled={speedMultiplier === 1} onClick={() => setSpeedMultiplier((value) => value === 3 ? 2 : 1)}>−</button>
+                  <b>{speedMultiplier}×</b>
+                  <button type="button" aria-label="Aumentar velocidade" disabled={speedMultiplier === 3 || (!isMaster && (speedMultiplier === 1 ? !purchases.speed_2x : !purchases.speed_3x))} onClick={() => setSpeedMultiplier((value) => value === 1 ? 2 : 3)}>+</button>
+                </div>
+                <div className="fractals-hud-control-group" aria-label="Zoom da fase">
+                  <button type="button" aria-label="Diminuir zoom" disabled={zoom <= 0.75} onClick={() => { const next = clamp(zoomRef.current - 0.1, 0.75, 1.35); zoomRef.current = next; setZoom(next); }}><ZoomOut/></button>
+                  <b>{Math.round(zoom * 100)}%</b>
+                  <button type="button" aria-label="Aumentar zoom" disabled={zoom >= 1.35} onClick={() => { const next = clamp(zoomRef.current + 0.1, 0.75, 1.35); zoomRef.current = next; setZoom(next); }}><ZoomIn/></button>
+                </div>
+                {!result && <Button size="sm" variant="outline" className="fractals-hud-pause" onClick={() => setPaused((value) => !value)}><Pause/></Button>}
+              </div>
             </section>
-            <div className="fractals-arena-meta absolute right-3 top-3">
-              {!result && <Button size="sm" variant="outline" className="h-8 border-white/15 bg-black/55 text-white hover:bg-white/10" onClick={() => setPaused((v) => !v)}><Pause className="mr-1 h-3.5 w-3.5"/>{paused ? "Continuar" : "Pausar"}</Button>}
-            </div>
-            {!result && <div className="fractals-arena-zoom absolute right-3 top-14">
-              <button type="button" aria-label="Diminuir zoom" title="Diminuir zoom" disabled={zoom <= 0.75} onClick={() => { const next = clamp(zoomRef.current - 0.1, 0.75, 1.35); zoomRef.current = next; setZoom(next); }}><ZoomOut/></button>
-              <span>{Math.round(zoom * 100)}%</span>
-              <button type="button" aria-label="Aumentar zoom" title="Aumentar zoom" disabled={zoom >= 1.35} onClick={() => { const next = clamp(zoomRef.current + 0.1, 0.75, 1.35); zoomRef.current = next; setZoom(next); }}><ZoomIn/></button>
-            </div>}
             <div className="fractals-arena-hint pointer-events-none absolute bottom-3 left-3">WASD / setas / toque para mover</div>
             {bossMessage && !result && <div className="pointer-events-none absolute inset-x-0 top-14 text-center"><span className="rounded-full border border-violet-300/40 bg-violet-950/80 px-4 py-2 text-xs font-semibold tracking-wider text-violet-100">{mission.bossTitle.toUpperCase()} DESPERTOU</span></div>}
             {paused && !result && levelChoices.length === 0 && <div className="fractals-pause-overlay absolute inset-0 grid place-items-center overflow-y-auto p-3 sm:p-5">
