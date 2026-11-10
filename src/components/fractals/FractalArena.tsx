@@ -202,13 +202,41 @@ function getEnemySeparation(enemy: Enemy, grid: EnemySpatialGrid) {
 const floorPatternCache = new WeakMap<CanvasRenderingContext2D, Map<number, CanvasPattern>>();
 
 const cemeteryImgs: Record<string, HTMLImageElement> = {};
+const cemeteryImagePromises = new Map<string, Promise<void>>();
+const CEMETERY_IMAGE_SOURCES = [groundImg, mausoleumImg, gravestoneImg, crossImg, candlesImg, catUrnImg] as const;
 function cemImg(src: string): HTMLImageElement | null {
   if (typeof Image === "undefined") return null;
   let img = cemeteryImgs[src];
   if (!img) { img = new Image(); img.src = src; cemeteryImgs[src] = img; }
   return img.complete && img.naturalWidth > 0 ? img : null;
 }
-let groundPattern: CanvasPattern | null = null;
+function preloadCemeteryImage(src: string): Promise<void> {
+  const existing = cemeteryImgs[src];
+  if (existing?.complete) return Promise.resolve();
+  const pending = cemeteryImagePromises.get(src);
+  if (pending) return pending;
+  const image = existing ?? new Image();
+  cemeteryImgs[src] = image;
+  const promise = new Promise<void>((resolve) => {
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      resolve();
+    };
+    image.addEventListener("load", finish, { once: true });
+    image.addEventListener("error", finish, { once: true });
+    image.decoding = "sync";
+    if (!existing) image.src = src;
+    if (image.complete) finish();
+  });
+  cemeteryImagePromises.set(src, promise);
+  return promise;
+}
+function preloadCemeteryImages(): Promise<void> {
+  return Promise.all(CEMETERY_IMAGE_SOURCES.map(preloadCemeteryImage)).then(() => undefined);
+}
+const groundPatternCache = new WeakMap<CanvasRenderingContext2D, CanvasPattern>();
 function drawSprite(ctx: CanvasRenderingContext2D, src: string, size: number, footY: number): boolean {
   const img = cemImg(src); if (!img) return false;
   ctx.drawImage(img, -size / 2, footY - size, size, size); return true;
@@ -362,7 +390,14 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
   ctx.fillRect(cameraX, cameraY, viewWidth, viewHeight);
   const floorPattern = getFloorPattern(ctx, missionId, biome.floor, biome.glow);
   const gImg = missionId === 1 ? cemImg(groundImg) : null;
-  if (gImg && !groundPattern) groundPattern = ctx.createPattern(gImg, "repeat");
+  let groundPattern = gImg ? groundPatternCache.get(ctx) : undefined;
+  if (gImg && !groundPattern) {
+    const createdPattern = ctx.createPattern(gImg, "repeat");
+    if (createdPattern) {
+      groundPatternCache.set(ctx, createdPattern);
+      groundPattern = createdPattern;
+    }
+  }
   if (gImg && groundPattern) { ctx.fillStyle = groundPattern; ctx.fillRect(cameraX, cameraY, viewWidth, viewHeight); }
   else if (floorPattern) { ctx.fillStyle = floorPattern; ctx.fillRect(cameraX, cameraY, viewWidth, viewHeight); }
   ctx.save();ctx.strokeStyle="rgba(145,119,160,.72)";ctx.lineWidth=34;ctx.strokeRect(-WORLD_LIMIT,-WORLD_LIMIT,WORLD_LIMIT*2,WORLD_LIMIT*2);ctx.strokeStyle="rgba(215,190,231,.25)";ctx.lineWidth=5;ctx.strokeRect(-WORLD_LIMIT+17,-WORLD_LIMIT+17,WORLD_LIMIT*2-34,WORLD_LIMIT*2-34);
@@ -790,6 +825,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
   const [coinBalance, setCoinBalance] = useState(0);
   const [corruption, setCorruption] = useState(0);
   const [running, setRunning] = useState(false);
+  const [preparingArena, setPreparingArena] = useState(false);
+  const preparingArenaRef = useRef(false);
   const [paused, setPaused] = useState(false);
   const [levelChoices, setLevelChoices] = useState<Upgrade[]>([]);
   const [selectedUpgrade, setSelectedUpgrade] = useState<Upgrade | null>(null);
@@ -850,6 +887,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
     return () => { cancelled = true; };
   }, []);
 
+  // Baixa e decodifica o cenário antes da primeira partida, evitando a troca tardia do piso e dos sprites.
+  useEffect(() => { void preloadCemeteryImages(); }, []);
 
   const refreshFractalState = useCallback(async () => {
     const { data, error } = await (supabase.rpc as any)("get_fractal_state");
@@ -903,23 +942,35 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
   };
 
   const start = useCallback(async () => {
+    if (preparingArenaRef.current) return;
+    preparingArenaRef.current = true;
+    setPreparingArena(true);
     fractalAudio.unlock();
     setEarnedFractals(null);
     setRewardStatus("pending");
-    const { data: newRunId, error: runError } = await (supabase.rpc as any)("start_fractal_run", { _corruption: corruption });
-    if (runError) { toast.error(runError.message); return; }
-    setRunId(newRunId);
-    const rect = canvasRef.current?.getBoundingClientRect();
-    const width = Math.max(320, rect?.width ?? 760);
-    const height = Math.max(380, rect?.height ?? 520);
-    const game = makeGame(width, height, purchases);
-    spawnCemeteryUrns(game, 12);
-    gameRef.current = game;
-    eventRewardRemainingRef.current = 0;
-    setEventRewardStep(0);
-    setHud({ hp: game.player.hp, maxHp: game.player.maxHp, xp: 0, nextXp: 12, level: 1, kills: 0, elapsed: 0, moveSpeed: Math.round(game.player.speed), fps: 0, visibleEnemies: 0, phase: "Exploração", pressure: 0, event: null, runes: [] });
-    setStats({ totalDamageDealt: 0, crystalsCollected: 0, highestLevel: 1 });
-    setLevelChoices([]); setSelectedUpgrade(null); setFlippedCardId(null); setPaused(false); setResult(null); setBossMessage(false); setRunning(true);
+    try {
+      // A partida só começa quando as imagens do cenário estão prontas (ou falharam e usarão o fallback vetorial).
+      await preloadCemeteryImages();
+      const { data: newRunId, error: runError } = await (supabase.rpc as any)("start_fractal_run", { _corruption: corruption });
+      if (runError) { toast.error(runError.message); return; }
+      setRunId(newRunId);
+      const rect = canvasRef.current?.getBoundingClientRect();
+      const width = Math.max(320, rect?.width ?? 760);
+      const height = Math.max(380, rect?.height ?? 520);
+      const game = makeGame(width, height, purchases);
+      spawnCemeteryUrns(game, 12);
+      gameRef.current = game;
+      eventRewardRemainingRef.current = 0;
+      setEventRewardStep(0);
+      setHud({ hp: game.player.hp, maxHp: game.player.maxHp, xp: 0, nextXp: 12, level: 1, kills: 0, elapsed: 0, moveSpeed: Math.round(game.player.speed), fps: 0, visibleEnemies: 0, phase: "Exploração", pressure: 0, event: null, runes: [] });
+      setStats({ totalDamageDealt: 0, crystalsCollected: 0, highestLevel: 1 });
+      setLevelChoices([]); setSelectedUpgrade(null); setFlippedCardId(null); setPaused(false); setResult(null); setBossMessage(false); setRunning(true);
+    } catch (error: any) {
+      toast.error(error?.message ?? "Não foi possível preparar o cenário.");
+    } finally {
+      preparingArenaRef.current = false;
+      setPreparingArena(false);
+    }
   }, [corruption, purchases]);
 
   const finishRun = useCallback((victory: boolean) => {
@@ -1518,8 +1569,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
 
             <section className="fractals-gold-frame fractals-gold-corners rounded-xl p-3 text-center sm:p-4">
               <p className="mb-2 text-xs text-white/75 sm:text-sm">Sobreviva por 12 minutos. O guardião desperta ao final da incursão.</p>
-              <Button onClick={start} className="mx-auto h-12 w-full max-w-xl rounded-xl bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-500 font-display text-base font-black tracking-wider text-[#21170b] shadow-[0_0_28px_rgba(245,158,11,0.3)] transition hover:brightness-110 active:scale-[0.98]">
-                <Play className="mr-2 h-5 w-5 fill-current" /> ENTRAR NA FENDA
+              <Button onClick={start} disabled={preparingArena} aria-busy={preparingArena} className="mx-auto h-12 w-full max-w-xl rounded-xl bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-500 font-display text-base font-black tracking-wider text-[#21170b] shadow-[0_0_28px_rgba(245,158,11,0.3)] transition hover:brightness-110 active:scale-[0.98] disabled:cursor-wait disabled:opacity-80">
+                <Play className="mr-2 h-5 w-5 fill-current" /> {preparingArena ? "PREPARANDO CENÁRIO..." : "ENTRAR NA FENDA"}
               </Button>
             </section>
 
