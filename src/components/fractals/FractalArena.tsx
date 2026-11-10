@@ -13,8 +13,9 @@ import "./fractal-arena.css";
 
 type UpgradeId = "power" | "haste" | "vitality" | "swift" | "special_area" | "special_experience" | "special_projectile_range" | "special_projectiles";
 type Upgrade = { id: UpgradeId; name: string; description: string; icon: typeof Zap; rarity?: "normal" | "rare" | "epic" };
+type UpgradeCounts = Record<string, { name: string; count: number; rarity: string }>;
 
-type Enemy = { x: number; y: number; hp: number; maxHp: number; speed: number; radius: number; damage: number; color: string; xp: number; type: "wraith" | "brute" | "charger" | "elite" | "boss"; attack: number; flash: number; windup: number; targetX: number; targetY: number; dashTime: number; summonedAtHalf: boolean };
+type Enemy = { x: number; y: number; hp: number; maxHp: number; speed: number; radius: number; damage: number; color: string; xp: number; type: "wraith" | "brute" | "charger" | "elite" | "boss"; attack: number; flash: number; windup: number; targetX: number; targetY: number; dashTime: number; summonedAtHalf: boolean; furyTriggered: boolean };
 type Shot = { x: number; y: number; vx: number; vy: number; damage: number; life: number };
 type Gem = { x: number; y: number; value: number; radius: number };
 type SpecialDrop = { x: number; y: number; kind: "area" | "experience" | "projectile_range" | "projectiles"; radius: number };
@@ -50,7 +51,7 @@ function parsePurchaseState(raw: any): PurchaseState {
 type GameState = {
   width: number; height: number; last: number; elapsed: number; spawnTimer: number; shotTimer: number; bossSpawned: boolean;
   player: { x: number; y: number; hp: number; maxHp: number; speed: number; damage: number; fireRate: number; invuln: number; hitFlash: number; xp: number; nextXp: number; level: number; pickupRadius: number; xpMultiplier: number; specialAreaStacks: number; specialExperienceStacks: number; projectileRangeStacks: number; projectileRangeMultiplier: number; projectileStacks: number; projectileLife: number; facing: number; castFacing: number; castTimer: number; moving: boolean; spriteAction: PlayerVisualAction; spriteDirection: number; previousSpriteAction: PlayerVisualAction; previousSpriteDirection: number; spriteBlend: number };
-  enemies: Enemy[]; shots: Shot[]; gems: Gem[]; specialDrops: SpecialDrop[]; particles: Particle[]; damageNumbers: DamageNumber[]; pickupLabels: PickupLabel[]; challengeEvent: ChallengeEvent | null; nextChallengeEvent: number; kills: number; ended: boolean;
+  enemies: Enemy[]; shots: Shot[]; gems: Gem[]; specialDrops: SpecialDrop[]; particles: Particle[]; damageNumbers: DamageNumber[]; pickupLabels: PickupLabel[]; challengeEvent: ChallengeEvent | null; nextChallengeEvent: number; kills: number; ended: boolean; upgradeCounts: UpgradeCounts; totalDamageDealt: number; crystalsCollected: number; highestLevel: number;
   shake?: number; rings?: { x: number; y: number; r: number; max: number; life: number; color: string }[];
 };
 
@@ -241,7 +242,7 @@ function makeGame(width: number, height: number, purchases: PurchaseState): Game
   return {
     width, height, last: 0, elapsed: 0, spawnTimer: 0.4, shotTimer: 0.25, bossSpawned: false,
     player: { x: 0, y: 0, hp: maxHp, maxHp, speed: 205, damage: 22, fireRate: 0.72, invuln: 0, hitFlash: 0, xp: 0, nextXp: 12, level: 1, pickupRadius: 85, xpMultiplier: 1, specialAreaStacks: 0, specialExperienceStacks: 0, projectileRangeStacks: 0, projectileRangeMultiplier: 1, projectileStacks: 0, projectileLife, facing: 0, castFacing: 0, castTimer: 0, moving: false, spriteAction: "idle", spriteDirection: 0, previousSpriteAction: "idle", previousSpriteDirection: 0, spriteBlend: 1 },
-    enemies: [], shots: [], gems: [], specialDrops: [], particles: [], damageNumbers: [], pickupLabels: [], challengeEvent: null, nextChallengeEvent: 0, kills: 0, ended: false,
+    enemies: [], shots: [], gems: [], specialDrops: [], particles: [], damageNumbers: [], pickupLabels: [], challengeEvent: null, nextChallengeEvent: 0, kills: 0, ended: false, upgradeCounts: {}, totalDamageDealt: 0, crystalsCollected: 0, highestLevel: 1,
   };
 }
 
@@ -265,10 +266,10 @@ function spawnEnemy(game: GameState, missionId: number, elapsed: number, corrupt
         : type === "charger"
           ? { hp: 36 * scale, speed: 105, radius: 11, damage: 10, color: "#e5a45b", xp: 2 }
           : { hp: 28 * scale, speed: 57, radius: 10, damage: 8, color: "#9b91b4", xp: 2 };
-  game.enemies.push({ x, y, ...stats, maxHp: stats.hp, type, attack: type === "boss" ? 2.2 : 0, flash: 0, windup: 0, targetX: x, targetY: y, dashTime: 0, summonedAtHalf: false });
+  game.enemies.push({ x, y, ...stats, maxHp: stats.hp, type, attack: type === "boss" ? 2.2 : 0, flash: 0, windup: 0, targetX: x, targetY: y, dashTime: 0, summonedAtHalf: false, furyTriggered: false });
   // Spawn pressure is bounded. It affects encounter density, not enemy HP directly.
   if (!boss && pressure.enemySpawnScale > 1.25 && game.enemies.length < 48 && Math.random() < 0.18) {
-    game.enemies.push({ x: x + (Math.random() - 0.5) * 70, y: y + (Math.random() - 0.5) * 70, ...stats, maxHp: stats.hp, type, attack: 0, flash: 0, windup: 0, targetX: x, targetY: y, dashTime: 0, summonedAtHalf: false });
+    game.enemies.push({ x: x + (Math.random() - 0.5) * 70, y: y + (Math.random() - 0.5) * 70, ...stats, maxHp: stats.hp, type, attack: 0, flash: 0, windup: 0, targetX: x, targetY: y, dashTime: 0, summonedAtHalf: false, furyTriggered: false });
   }
 }
 
@@ -700,7 +701,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
   const [selectedUpgrade, setSelectedUpgrade] = useState<Upgrade | null>(null);
   const [flippedCardId, setFlippedCardId] = useState<string | null>(null);
   const [eventRewardStep, setEventRewardStep] = useState(0);
-  const [hud, setHud] = useState({ hp: 100, maxHp: 100, xp: 0, nextXp: 12, level: 1, kills: 0, elapsed: 0, moveSpeed: 205, fps: 0, visibleEnemies: 0, phase: "Exploração", pressure: 0, event: null as null | { id: number; remaining: number; progress: number; inside: boolean } });
+  const [hud, setHud] = useState({ hp: 100, maxHp: 100, xp: 0, nextXp: 12, level: 1, kills: 0, elapsed: 0, moveSpeed: 205, fps: 0, visibleEnemies: 0, phase: "Exploração", pressure: 0, event: null as null | { id: number; remaining: number; progress: number; inside: boolean }, runes: [] as { id: string; name: string; count: number; rarity: string }[] });
+  const [stats, setStats] = useState({ totalDamageDealt: 0, crystalsCollected: 0, highestLevel: 1 });
   const [result, setResult] = useState<"victory" | "defeat" | null>(null);
   const [bossMessage, setBossMessage] = useState(false);
   const [pausePanel, setPausePanel] = useState<"main" | "attributes">("main");
@@ -820,7 +822,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
     gameRef.current = game;
     eventRewardRemainingRef.current = 0;
     setEventRewardStep(0);
-    setHud({ hp: game.player.hp, maxHp: game.player.maxHp, xp: 0, nextXp: 12, level: 1, kills: 0, elapsed: 0, moveSpeed: Math.round(game.player.speed), fps: 0, visibleEnemies: 0, phase: "Exploração", pressure: 0, event: null });
+    setHud({ hp: game.player.hp, maxHp: game.player.maxHp, xp: 0, nextXp: 12, level: 1, kills: 0, elapsed: 0, moveSpeed: Math.round(game.player.speed), fps: 0, visibleEnemies: 0, phase: "Exploração", pressure: 0, event: null, runes: [] });
+    setStats({ totalDamageDealt: 0, crystalsCollected: 0, highestLevel: 1 });
     setLevelChoices([]); setSelectedUpgrade(null); setFlippedCardId(null); setPaused(false); setResult(null); setBossMessage(false); setRunning(true);
   }, [corruption, purchases]);
 
@@ -877,6 +880,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
     const game = gameRef.current;
     if (!game) return;
     const rarityPower = getUpgradeRarityMultiplier(upgrade.rarity);
+    const existingRune = game.upgradeCounts[upgrade.id];
+    game.upgradeCounts[upgrade.id] = { name: upgrade.name, count: (existingRune?.count ?? 0) + 1, rarity: upgrade.rarity ?? existingRune?.rarity ?? "normal" };
     if (upgrade.id === "special_area" && game.player.specialAreaStacks < 5) { game.player.specialAreaStacks += 1; game.player.pickupRadius = 85 * (1 + game.player.specialAreaStacks * 0.10); }
     if (upgrade.id === "special_experience" && game.player.specialExperienceStacks < 6) { game.player.specialExperienceStacks += 1; game.player.xpMultiplier = 1 + game.player.specialExperienceStacks * 0.05; }
     if (upgrade.id === "special_projectile_range" && game.player.projectileRangeStacks < 5) { game.player.projectileRangeStacks += 1; game.player.projectileRangeMultiplier = 1 + game.player.projectileRangeStacks * 0.10; }
@@ -1006,10 +1011,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           spawnEnemy(game, missionId, game.elapsed, corruption);
           game.spawnTimer = spawnInterval * (0.78 + Math.random() * 0.45);
         }
-        if (game.elapsed >= 660 && !game.bossSpawned) {
-          spawnEnemy(game, missionId, game.elapsed, corruption, true); game.bossSpawned = true;
-          if (!bossNotified) { bossNotified = true; setBossMessage(true); }
-        }
+        // O Guardião só desperta ao fim dos 12 minutos completos.
         game.shotTimer -= dt;
         if (game.shotTimer <= 0 && game.enemies.length > 0) {
           let target = game.enemies[0]; let bestScore = Infinity;
@@ -1058,6 +1060,13 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           enemy.flash = Math.max(0, enemy.flash - dt);
           enemy.attack = Math.max(0, enemy.attack - dt);
           if (enemy.type === "boss") {
+            const inFury = enemy.hp <= enemy.maxHp * 0.30;
+            if (inFury && !enemy.furyTriggered) {
+              enemy.furyTriggered = true;
+              game.shake = 14;
+              for (let i = 0; i < 26; i++) { const angle = Math.random() * Math.PI * 2; const speed = 70 + Math.random() * 190; game.particles.push({ x: enemy.x, y: enemy.y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 0.45 + Math.random() * 0.45, color: i % 2 ? "#ff4b55" : "#ff9a54" }); }
+              toast.error("O GUARDIÃO ENTROU EM FÚRIA!");
+            }
             if (enemy.windup > 0) {
               enemy.windup -= dt;
               if (enemy.windup <= 0 && distance(game.player.x, game.player.y, enemy.targetX, enemy.targetY) < 101 && game.player.invuln <= 0) {
@@ -1065,20 +1074,20 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               }
             } else if (enemy.attack <= 0) {
               const phaseTwo = enemy.hp <= enemy.maxHp * 0.5;
-              enemy.targetX = game.player.x; enemy.targetY = game.player.y; enemy.windup = phaseTwo ? 0.82 : 1.05; enemy.attack = phaseTwo ? 3.8 : 5.1;
+              enemy.targetX = game.player.x; enemy.targetY = game.player.y; enemy.windup = (phaseTwo ? 0.82 : 1.05) * (inFury ? 0.75 : 1); enemy.attack = (phaseTwo ? 3.8 : 5.1) * (inFury ? 0.75 : 1);
             }
             if (enemy.hp <= enemy.maxHp * 0.5 && !enemy.summonedAtHalf) {
               enemy.summonedAtHalf = true;
               for (let i = 0; i < 3; i++) {
                 const angle = (Math.PI * 2 * i) / 3;
-                game.enemies.push({ x: enemy.x + Math.cos(angle) * 58, y: enemy.y + Math.sin(angle) * 58, hp: 34, maxHp: 34, speed: 62, radius: 10, damage: 8, color: "#9b91b4", xp: 2, type: "wraith", attack: 0, flash: 0, windup: 0, targetX: 0, targetY: 0, dashTime: 0, summonedAtHalf: false });
+                game.enemies.push({ x: enemy.x + Math.cos(angle) * 58, y: enemy.y + Math.sin(angle) * 58, hp: 34, maxHp: 34, speed: 62, radius: 10, damage: 8, color: "#9b91b4", xp: 2, type: "wraith", attack: 0, flash: 0, windup: 0, targetX: 0, targetY: 0, dashTime: 0, summonedAtHalf: false, furyTriggered: false });
               }
             }
             const separation = movementGrid ? getEnemySeparation(enemy, movementGrid) : NO_ENEMY_SEPARATION;
             const steerX = (game.player.x - enemy.x) / d + separation.x * 0.28;
             const steerY = (game.player.y - enemy.y) / d + separation.y * 0.28;
             const steerLength = Math.max(1, Math.hypot(steerX, steerY));
-            const phaseTwoSpeed = enemy.hp <= enemy.maxHp * 0.5 ? 1.16 : 1;
+            const phaseTwoSpeed = inFury ? 1.35 : enemy.hp <= enemy.maxHp * 0.5 ? 1.16 : 1;
             enemy.x += (steerX / steerLength) * enemy.speed * phaseTwoSpeed * dt;
             enemy.y += (steerY / steerLength) * enemy.speed * phaseTwoSpeed * dt;
           } else if (enemy.type === "charger") {
@@ -1164,7 +1173,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             const hitX = shot.x - enemy.x;
             const hitY = shot.y - enemy.y;
             if (enemy.hp > 0 && hitX * hitX + hitY * hitY < hitRadius * hitRadius) {
-              enemy.hp -= shot.damage; enemy.flash = 0.09; shot.life = 0; for (let k = 0; k < 2; k++) game.particles.push({ x: shot.x, y: shot.y, vx: (Math.random() - 0.5) * 160, vy: (Math.random() - 0.5) * 160, life: 0.22, color: "#f3dcff" });
+              const appliedDamage = Math.min(enemy.hp, shot.damage);
+              enemy.hp -= shot.damage; game.totalDamageDealt += appliedDamage; enemy.flash = 0.09; shot.life = 0; for (let k = 0; k < 2; k++) game.particles.push({ x: shot.x, y: shot.y, vx: (Math.random() - 0.5) * 160, vy: (Math.random() - 0.5) * 160, life: 0.22, color: "#f3dcff" });
               game.damageNumbers.push({ x: enemy.x + (Math.random() - 0.5) * 10, y: enemy.y - enemy.radius - 8, value: shot.damage, life: 0.82, maxLife: 0.82, drift: (Math.random() - 0.5) * 14 });
               if (game.damageNumbers.length > 20) game.damageNumbers.shift();
               if (enemy.hp <= 0) {
@@ -1194,11 +1204,22 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         }
         game.enemies = game.enemies.filter((enemy) => enemy.hp > 0 && (enemy.type === "boss" || distance(enemy.x, enemy.y, game.player.x, game.player.y) < Math.max(game.width, game.height) / zoomRef.current * 1.45));
         game.gems.forEach((gem) => {
+          const previousX = gem.x, previousY = gem.y;
           const d = distance(game.player.x, game.player.y, gem.x, gem.y);
-          if (d < game.player.pickupRadius) { gem.x += ((game.player.x - gem.x) / Math.max(1, d)) * 260 * dt; gem.y += ((game.player.y - gem.y) / Math.max(1, d)) * 260 * dt; }
+          if (d <= game.player.pickupRadius) {
+            const pull = 260 * dt;
+            gem.x += ((game.player.x - gem.x) / Math.max(1, d)) * pull;
+            gem.y += ((game.player.y - gem.y) / Math.max(1, d)) * pull;
+            game.particles.push({ x: gem.x, y: gem.y, vx: (game.player.x - gem.x) * 0.16 + (Math.random() - 0.5) * 22, vy: (game.player.y - gem.y) * 0.16 + (Math.random() - 0.5) * 22, life: 0.22, color: Math.random() > 0.5 ? "#a78bfa" : "#38bdf8" });
+            // O rastro é desenhado no Canvas usando a posição anterior e a atual.
+            gem.previousX = previousX;
+            gem.previousY = previousY;
+          }
           if (d < 17) {
             fractalAudio.gem();
-            game.player.xp += gem.value * game.player.xpMultiplier; gem.value = 0;
+            game.player.xp += gem.value * game.player.xpMultiplier;
+            game.crystalsCollected += 1;
+            gem.value = 0;
           }
         });
         game.gems = game.gems.filter((gem) => gem.value > 0 && distance(gem.x, gem.y, game.player.x, game.player.y) < Math.max(game.width, game.height) * 1.6);
@@ -1207,6 +1228,10 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           if (d < game.player.pickupRadius) { drop.x += ((game.player.x - drop.x) / Math.max(1, d)) * 280 * dt; drop.y += ((game.player.y - drop.y) / Math.max(1, d)) * 280 * dt; }
           if (d < 18) {
             fractalAudio.special();
+            const specialUpgradeId: UpgradeId = drop.kind === "area" ? "special_area" : drop.kind === "experience" ? "special_experience" : drop.kind === "projectile_range" ? "special_projectile_range" : "special_projectiles";
+            const specialUpgrade = SPECIAL_UPGRADES.find((item) => item.id === specialUpgradeId)!;
+            const currentRune = game.upgradeCounts[specialUpgradeId];
+            game.upgradeCounts[specialUpgradeId] = { name: specialUpgrade.name, count: (currentRune?.count ?? 0) + 1, rarity: "normal" };
             const pickupNames: Record<SpecialDrop["kind"], string> = {
               area: "Ímã de Fragmentos",
               experience: "Eco do Conhecimento",
@@ -1233,21 +1258,26 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           if (retainedGem) retainedGem.value += overflow.reduce((total, gem) => total + gem.value, 0);
         }
         if (game.player.xp >= game.player.nextXp && !game.ended && eventRewardRemainingRef.current === 0) {
-          game.player.xp -= game.player.nextXp; game.player.level += 1; fractalAudio.levelUp(); game.player.nextXp = Math.floor(game.player.nextXp * 1.32 + 5);
+          game.player.xp -= game.player.nextXp; game.player.level += 1; game.highestLevel = Math.max(game.highestLevel, game.player.level); fractalAudio.levelUp(); game.player.nextXp = Math.floor(game.player.nextXp * 1.32 + 5);
           
           setSelectedUpgrade(null);
               setFlippedCardId(null);
               setLevelChoices(buildLevelChoices(game, purchases.area, purchases.experience, purchases.projectile_range, purchases.projectiles, purchases.rarity));
         }
         if (game.player.hp <= 0 && !game.ended) { game.ended = true; setResult("defeat"); fractalAudio.defeat(); finishRun(false); }
-        if (game.elapsed >= RUN_DURATION_SECONDS && !game.ended && !game.bossSpawned) { spawnEnemy(game, missionId, game.elapsed, corruption, true); game.bossSpawned = true; }
+        if (game.elapsed >= RUN_DURATION_SECONDS && !game.ended && !game.bossSpawned) {
+          spawnEnemy(game, missionId, game.elapsed, corruption, true);
+          game.bossSpawned = true;
+          if (!bossNotified) { bossNotified = true; setBossMessage(true); fractalAudio.bossAlert(); }
+        }
         if (now - lastHud > 100) {
           lastHud = now;
           const halfViewWidth = game.width / (2 * zoomRef.current);
           const halfViewHeight = game.height / (2 * zoomRef.current);
           const visibleEnemies = game.enemies.reduce((count, enemy) =>
             count + Number(enemy.x >= game.player.x - halfViewWidth && enemy.x <= game.player.x + halfViewWidth && enemy.y >= game.player.y - halfViewHeight && enemy.y <= game.player.y + halfViewHeight), 0);
-          setHud({ hp: game.player.hp, maxHp: game.player.maxHp, xp: game.player.xp, nextXp: game.player.nextXp, level: game.player.level, kills: game.kills, elapsed: game.elapsed, moveSpeed: Math.round(game.player.speed), fps: measuredFps, visibleEnemies, phase: snapshot.phaseLabel, pressure: snapshot.totalPressure + (game.challengeEvent ? 2 : 0), event: game.challengeEvent ? { id: game.challengeEvent.id, remaining: game.challengeEvent.remaining, progress: game.challengeEvent.progress, inside: distance(game.player.x, game.player.y, game.challengeEvent.x, game.challengeEvent.y) <= game.challengeEvent.radius } : null });
+          setHud({ hp: game.player.hp, maxHp: game.player.maxHp, xp: game.player.xp, nextXp: game.player.nextXp, level: game.player.level, kills: game.kills, elapsed: game.elapsed, moveSpeed: Math.round(game.player.speed), fps: measuredFps, visibleEnemies, phase: snapshot.phaseLabel, pressure: snapshot.totalPressure + (game.challengeEvent ? 2 : 0), event: game.challengeEvent ? { id: game.challengeEvent.id, remaining: game.challengeEvent.remaining, progress: game.challengeEvent.progress, inside: distance(game.player.x, game.player.y, game.challengeEvent.x, game.challengeEvent.y) <= game.challengeEvent.radius } : null, runes: Object.entries(game.upgradeCounts).map(([id, rune]) => ({ id, name: rune.name, count: rune.count, rarity: rune.rarity })) });
+          setStats({ totalDamageDealt: Math.round(game.totalDamageDealt), crystalsCollected: game.crystalsCollected, highestLevel: game.highestLevel });
         }
       }
       if (!paused && levelChoices.length === 0 && !game.ended) {
@@ -1621,15 +1651,18 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                 {!result && <Button size="sm" variant="outline" className="fractals-hud-pause" onClick={() => setPaused((value) => !value)}><Pause/></Button>}
               </div>
             </section>
+            {hud.runes.length > 0 && <div className="fractals-rune-bar absolute inset-x-2 top-[5.4rem] z-10 flex flex-wrap items-center gap-1.5 sm:inset-x-4 sm:top-[5.8rem]" aria-label="Runas ativas da build">
+              {hud.runes.map((rune) => <span key={rune.id} className={`fractals-rune-pill rarity-${rune.rarity}`} title={`${rune.name} · ${rune.rarity}`}><b>{rune.id === "power" ? "⚔" : rune.id === "haste" ? "⚡" : rune.id === "vitality" ? "✚" : rune.id === "swift" ? "➤" : rune.id === "special_area" ? "🧲" : rune.id === "special_experience" ? "🔮" : rune.id === "special_projectile_range" ? "🏹" : "✦"}</b><span>{rune.name}</span><strong>x{rune.count}</strong></span>)}
+            </div>}
             <div className="fractals-arena-hint pointer-events-none absolute bottom-3 left-3">WASD / setas / toque para mover</div>
-            {bossMessage && !result && <div className="pointer-events-none absolute inset-x-0 top-14 text-center"><span className="rounded-full border border-violet-300/40 bg-violet-950/80 px-4 py-2 text-xs font-semibold tracking-wider text-violet-100">{mission.bossTitle.toUpperCase()} DESPERTOU</span></div>}
+            {bossMessage && !result && <div className="fractals-boss-alert pointer-events-none absolute inset-x-0 top-1/2 z-30 -translate-y-1/2 px-3 text-center"><span>⚠ ALERTA DE FENDA: O GUARDIÃO DESPERTOU ⚠</span></div>}
             {paused && !result && levelChoices.length === 0 && <div className="fractals-pause-overlay absolute inset-0 grid place-items-center overflow-y-auto p-3 sm:p-5">
  <div className="fractals-pause-panel relative w-full max-w-md overflow-hidden p-4 sm:p-5">
   <div className="fractals-pause-header mb-4 flex items-center justify-between pb-3"><div><p className="text-[9px] font-bold uppercase tracking-[.24em] text-violet-200/70">Ecos dos Fractais · Refúgio</p><h3 className="mt-1 font-display text-2xl text-white">Expedição pausada</h3></div><div className="grid h-11 w-11 place-items-center rounded-2xl border border-amber-200/20 bg-amber-200/10 text-amber-100 shadow-[0_0_24px_rgba(251,191,36,0.12)]"><Pause className="h-5 w-5"/></div></div>
   {pausePanel === "main" ? <>
    <div className="fractals-pause-actions grid grid-cols-2 gap-2"><Button variant="outline" className="h-auto justify-start gap-2 rounded-xl border-violet-100/15 bg-white/[0.055] py-3 text-white shadow-inner hover:border-violet-100/35 hover:bg-violet-300/10" onClick={() => setPausePanel("attributes")}><UserRound className="h-4 w-4"/> Atributos</Button><Button variant="outline" className="h-auto justify-start gap-2 rounded-xl border-violet-100/15 bg-white/[0.055] py-3 text-white shadow-inner hover:border-violet-100/35 hover:bg-violet-300/10" onClick={toggleFullscreen}><Maximize className="h-4 w-4"/> Tela cheia</Button><Button variant="outline" className="h-auto justify-start gap-2 rounded-xl border-violet-100/15 bg-white/[0.055] py-3 text-white shadow-inner hover:border-violet-100/35 hover:bg-violet-300/10" onClick={() => setShowPlayerHp((v) => !v)}><Heart className="h-4 w-4 text-rose-300"/> HP: {showPlayerHp ? "visível" : "oculto"}</Button><Button variant="outline" className="h-auto justify-start gap-2 rounded-xl border-violet-100/15 bg-white/[0.055] py-3 text-white shadow-inner hover:border-violet-100/35 hover:bg-violet-300/10" onClick={() => setShowDamageNumbers((v) => !v)}><Swords className="h-4 w-4 text-amber-200"/> Dano: {showDamageNumbers ? "visível" : "oculto"}</Button></div>
    <Button variant="destructive" className="mt-3 h-10 w-full border border-rose-300/25 bg-rose-950/55 font-bold text-rose-100 hover:bg-rose-900/70" onClick={() => { const game = gameRef.current; if (!game || game.ended) return; game.ended = true; setResult("defeat"); setPaused(false); setPausePanel("main"); fractalAudio.defeat(); finishRun(false); }}><Skull className="mr-2 h-4 w-4"/> Desistir da partida</Button>
-    <div className="fractals-pause-speed mt-3 rounded-2xl p-3"><div className="mb-2 flex items-center gap-2 text-xs font-semibold text-white/75"><Gauge className="h-4 w-4"/> Velocidade da expedição</div><div className="grid grid-cols-3 gap-2">{([1,2,3] as const).map((speed) => <Button key={speed} size="sm" variant={speedMultiplier===speed?"default":"outline"} disabled={!isMaster && (speed===2 ? !purchases.speed_2x : speed===3 ? !purchases.speed_3x : false)} className={!isMaster && speed>1?"border-white/10 opacity-45":""} onClick={()=>setSpeedMultiplier(speed)}>{speed}x{!isMaster && (speed===2 ? !purchases.speed_2x : speed===3 ? !purchases.speed_3x : false)?" 🔒":""}</Button>)}</div>{!isMaster && <p className="mt-2 text-[10px] text-white/45">Desbloqueie 2x e 3x na loja de fractais.</p>}{isMaster && <><p className="mt-2 text-[10px] text-emerald-200/70">Acesso de mestre: todas as velocidades liberadas para testes.</p><Button variant="outline" size="sm" className="mt-2 h-8 w-full border-emerald-200/25 bg-emerald-400/[0.07] text-[10px] text-emerald-100 hover:bg-emerald-400/15" onClick={() => { const game = gameRef.current; if (!game) return; game.enemies = Array.from({length:50},(_,index) => { const angle = index / 50 * Math.PI * 2; const ring = 46 + (index % 3) * 29; const x = game.player.x + Math.cos(angle) * ring; const y = game.player.y + Math.sin(angle) * ring; return { x, y, hp: 100000, maxHp: 100000, speed: 22, radius: 10, damage: 0, color: "#9b91b4", xp: 0, type: "wraith" as const, attack: 0, flash: 0, windup: 0, targetX: x, targetY: y, dashTime: 0, summonedAtHalf: false }; }); game.spawnTimer = Number.MAX_SAFE_INTEGER; game.bossSpawned = true; setPaused(false); toast.info("Teste de carga ativo: 50 monstros na arena. Confira o FPS e o contador 50/50 no topo."); }}>TESTE DE CARGA · 50 MONSTROS</Button></>}</div>
+    <div className="fractals-pause-speed mt-3 rounded-2xl p-3"><div className="mb-2 flex items-center gap-2 text-xs font-semibold text-white/75"><Gauge className="h-4 w-4"/> Velocidade da expedição</div><div className="grid grid-cols-3 gap-2">{([1,2,3] as const).map((speed) => <Button key={speed} size="sm" variant={speedMultiplier===speed?"default":"outline"} disabled={!isMaster && (speed===2 ? !purchases.speed_2x : speed===3 ? !purchases.speed_3x : false)} className={!isMaster && speed>1?"border-white/10 opacity-45":""} onClick={()=>setSpeedMultiplier(speed)}>{speed}x{!isMaster && (speed===2 ? !purchases.speed_2x : speed===3 ? !purchases.speed_3x : false)?" 🔒":""}</Button>)}</div>{!isMaster && <p className="mt-2 text-[10px] text-white/45">Desbloqueie 2x e 3x na loja de fractais.</p>}{isMaster && <><p className="mt-2 text-[10px] text-emerald-200/70">Acesso de mestre: todas as velocidades liberadas para testes.</p><Button variant="outline" size="sm" className="mt-2 h-8 w-full border-emerald-200/25 bg-emerald-400/[0.07] text-[10px] text-emerald-100 hover:bg-emerald-400/15" onClick={() => { const game = gameRef.current; if (!game) return; game.enemies = Array.from({length:50},(_,index) => { const angle = index / 50 * Math.PI * 2; const ring = 46 + (index % 3) * 29; const x = game.player.x + Math.cos(angle) * ring; const y = game.player.y + Math.sin(angle) * ring; return { x, y, hp: 100000, maxHp: 100000, speed: 22, radius: 10, damage: 0, color: "#9b91b4", xp: 0, type: "wraith" as const, attack: 0, flash: 0, windup: 0, targetX: x, targetY: y, dashTime: 0, summonedAtHalf: false, furyTriggered: false }; }); game.spawnTimer = Number.MAX_SAFE_INTEGER; game.bossSpawned = true; setPaused(false); toast.info("Teste de carga ativo: 50 monstros na arena. Confira o FPS e o contador 50/50 no topo."); }}>TESTE DE CARGA · 50 MONSTROS</Button></>}</div>
    <Button className="fractals-pause-resume mt-3 h-11 w-full font-bold" onClick={() => {setPausePanel("main");setPaused(false)}}><Play className="mr-2 h-4 w-4"/> Retomar expedição</Button>
   </> : <>
    <div className="mb-3 grid grid-cols-2 gap-2">{[["Vida",`${Math.ceil(gameRef.current?.player.hp ?? hud.hp)} / ${Math.ceil(gameRef.current?.player.maxHp ?? hud.maxHp)}`],["Dano",`${(gameRef.current?.player.damage ?? 0).toFixed(1)}`],["Velocidade",`${(gameRef.current?.player.speed ?? 0).toFixed(0)}`],["Intervalo de ataque",`${(gameRef.current?.player.fireRate ?? 0).toFixed(2)}s`],["Nível",`${gameRef.current?.player.level ?? hud.level}`],["Projéteis",`${1 + (gameRef.current?.player.projectileStacks ?? 0)}`],["Alcance",`+${Math.round((gameRef.current?.player.projectileRangeMultiplier ?? 1) * 100 - 100)}%`],["Experiência",`${Math.floor(gameRef.current?.player.xp ?? hud.xp)} / ${Math.floor(gameRef.current?.player.nextXp ?? hud.nextXp)}`],["Abates",`${gameRef.current?.kills ?? hud.kills}`],["Multiplicador",`${speedMultiplier}x`]].map(([label,value])=><div key={label} className="rounded-lg border border-white/10 bg-white/5 p-2"><p className="text-[10px] text-white/45">{label}</p><p className="text-sm font-semibold tabular-nums text-white">{value}</p></div>)}</div>
@@ -1769,7 +1802,12 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                 </div>
               </div>
             )}
-            {result && <div className="fractals-result-overlay absolute inset-0 grid place-items-center overflow-y-auto bg-[radial-gradient(ellipse_at_center,rgba(91,46,133,0.28),rgba(5,4,10,0.95)_72%)] p-4 backdrop-blur-md"><div className="fractals-result-panel w-full max-w-sm rounded-[1.6rem] border border-violet-200/20 bg-[#171320]/95 p-5 text-center shadow-[0_30px_100px_rgba(0,0,0,0.7)]"><div className="fractals-result-icon mx-auto mb-3 grid h-16 w-16 place-items-center rounded-2xl border border-amber-200/20 bg-gradient-to-br from-amber-200/15 via-violet-400/15 to-violet-950/70 shadow-[0_0_36px_rgba(167,139,250,0.18)]">{result==="victory"?<Sparkles className="h-7 w-7 text-amber-200"/>:<Skull className="h-7 w-7 text-rose-300"/>}</div><p className="fractals-result-kicker text-xs uppercase tracking-[.22em] text-violet-200">{result==="victory"?"Guardião derrotado":"Expedição encerrada"}</p><h3 className="fractals-result-title mt-1 font-display text-2xl">{result==="victory"?"O fractal silenciou":"O Vazio prevaleceu"}</h3><p className="fractals-result-stats mt-2 text-sm text-white/65">Nível {hud.level} · {hud.kills} criaturas derrotadas · {formatTime(hud.elapsed)}</p><p className="fractals-result-note mt-2 text-xs text-amber-100/80">{rewardStatus === "pending" ? "Validando as recompensas com o servidor..." : rewardStatus === "error" ? "Não foi possível confirmar as recompensas desta expedição." : earnedFractals !== null && earnedFractals > 0 ? `Você recebeu ${earnedFractals.toLocaleString("pt-BR")} fractais nesta expedição.` : result === "victory" ? "Vitória registrada. O próximo nível foi liberado." : "Nenhum fractal extra foi concedido nesta tentativa."}</p><Button className="fractals-result-button mt-4 gap-2" onClick={()=>{setRunning(false);setResult(null);setBossMessage(false);gameRef.current=null;}}><RotateCcw className="h-4 w-4"/> Voltar à expedição</Button></div></div>}
+            {result && <div className="fractals-result-overlay absolute inset-0 grid place-items-center overflow-y-auto bg-[radial-gradient(ellipse_at_center,rgba(91,46,133,0.28),rgba(5,4,10,0.95)_72%)] p-4 backdrop-blur-md"><div className="fractals-result-panel w-full max-w-sm rounded-[1.6rem] border border-violet-200/20 bg-[#171320]/95 p-5 text-center shadow-[0_30px_100px_rgba(0,0,0,0.7)]"><div className="fractals-result-icon mx-auto mb-3 grid h-16 w-16 place-items-center rounded-2xl border border-amber-200/20 bg-gradient-to-br from-amber-200/15 via-violet-400/15 to-violet-950/70 shadow-[0_0_36px_rgba(167,139,250,0.18)]">{result==="victory"?<Sparkles className="h-7 w-7 text-amber-200"/>:<Skull className="h-7 w-7 text-rose-300"/>}</div><p className="fractals-result-kicker text-xs uppercase tracking-[.22em] text-violet-200">{result==="victory"?"Guardião derrotado":"Expedição encerrada"}</p><h3 className="fractals-result-title mt-1 font-display text-2xl">{result==="victory"?"O fractal silenciou":"O Vazio prevaleceu"}</h3><div className="fractals-result-stats mt-4 grid grid-cols-2 gap-2 text-left">
+  <div className="fractals-stat-tile"><Skull/><span>Inimigos abatidos</span><b>{hud.kills.toLocaleString("pt-BR")}</b></div>
+  <div className="fractals-stat-tile"><Swords/><span>Dano infligido</span><b>{stats.totalDamageDealt.toLocaleString("pt-BR")}</b></div>
+  <div className="fractals-stat-tile"><GemIcon/><span>Fragmentos colhidos</span><b>{stats.crystalsCollected.toLocaleString("pt-BR")}</b></div>
+  <div className="fractals-stat-tile"><Timer/><span>Tempo sobrevivido</span><b>{formatTime(hud.elapsed)}</b></div>
+ </div><p className="fractals-result-note mt-3 rounded-lg border border-amber-300/30 bg-amber-400/10 p-3 text-sm font-bold text-amber-100">✦ RECOMPENSA DA FENDA · {earnedFractals !== null ? earnedFractals.toLocaleString("pt-BR") : "—"} FR</p><p className="fractals-result-note mt-2 text-xs text-amber-100/80">{rewardStatus === "pending" ? "Validando as recompensas com o servidor..." : rewardStatus === "error" ? "Não foi possível confirmar as recompensas desta expedição." : earnedFractals !== null && earnedFractals > 0 ? `Você recebeu ${earnedFractals.toLocaleString("pt-BR")} fractais nesta expedição.` : result === "victory" ? "Vitória registrada. O próximo nível foi liberado." : "Nenhum fractal extra foi concedido nesta tentativa."}</p><Button className="fractals-result-button mt-4 gap-2" onClick={()=>{setRunning(false);setResult(null);setBossMessage(false);gameRef.current=null;}}><RotateCcw className="h-4 w-4"/> Voltar à expedição</Button></div></div>}
           </div>
           <div className="fractals-arena-footer flex flex-wrap items-center justify-between gap-2 border-t border-white/10 px-3 py-2 text-[10px] text-white/45 sm:px-4"><span>Arma automática: projétil perseguidor</span><span>Recompensas e progressão validadas no servidor</span></div>
         </Card>
