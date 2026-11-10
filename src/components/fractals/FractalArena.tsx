@@ -1399,7 +1399,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                     <p className="mt-1 text-[11px] leading-relaxed text-rose-50/85">
                       {corruption === 0
                         ? "Nenhum aumento de dificuldade."
-                        : `Pressão +${(corruption * 0.65).toFixed(2)} · escala de surgimento de inimigos +${(corruption * 4.5).toFixed(1)}% · chance de elite +${(corruption * 0.9).toFixed(1)} p.p. (limite geral de 22%).`}
+                        : `Pressão +${(corruption * 0.65).toFixed(2)} · fator de surgimento +${(corruption * 0.045).toFixed(3)} · fator de elites +${(corruption * 0.12).toFixed(2)} (a chance de elite também respeita o teto de 22%).`}
                     </p>
                   </div>
                 </div>
@@ -1413,7 +1413,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                         : `Vitória +${level.level * 15} FR · Derrota ${2 + level.level} FR/min sobrevivido.`;
                       const levelOnus = level.level === 0
                         ? "Sem ônus adicional."
-                        : `Pressão +${(level.level * 0.65).toFixed(2)} · surgimento +${(level.level * 4.5).toFixed(1)}% · elites +${(level.level * 0.9).toFixed(1)} p.p.`;
+                        : `Pressão +${(level.level * 0.65).toFixed(2)} · fator de surgimento +${(level.level * 0.045).toFixed(3)} · fator de elites +${(level.level * 0.12).toFixed(2)}.`;
                       return (
                         <button
                           key={level.level}
