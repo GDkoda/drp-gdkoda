@@ -107,6 +107,15 @@ function getUpgradeDescription(upgrade: Upgrade): string {
   }
 }
 const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(max, n));
+
+// Stable coordinate hash for repeatable arena props; returns a value in [0, 1).
+function hash(x: number, y: number): number {
+  let value = Math.imul(x | 0, 0x1f1f1f1f) ^ Math.imul(y | 0, 0x5f356495);
+  value = Math.imul(value ^ (value >>> 16), 0x7feb352d);
+  value = Math.imul(value ^ (value >>> 15), 0x846ca68b);
+  value ^= value >>> 16;
+  return (value >>> 0) / 0x1_0000_0000;
+}
 const distance = (ax: number, ay: number, bx: number, by: number) => Math.hypot(ax - bx, ay - by);
 const directionFromVector = (x: number, y: number) => {
   if (Math.hypot(x, y) < 0.001) return 0;
