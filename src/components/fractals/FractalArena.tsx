@@ -15,10 +15,12 @@ type UpgradeId = "power" | "haste" | "vitality" | "swift" | "special_area" | "sp
 type Upgrade = { id: UpgradeId; name: string; description: string; icon: typeof Zap; rarity?: "normal" | "rare" | "epic" };
 type UpgradeCounts = Record<string, { name: string; count: number; rarity: string }>;
 
-type Enemy = { x: number; y: number; hp: number; maxHp: number; speed: number; radius: number; damage: number; color: string; xp: number; type: "wraith" | "brute" | "charger" | "elite" | "boss"; attack: number; flash: number; windup: number; targetX: number; targetY: number; dashTime: number; summonedAtHalf: boolean; furyTriggered: boolean };
+type Enemy = { x: number; y: number; hp: number; maxHp: number; speed: number; radius: number; damage: number; color: string; xp: number; type: "wraith" | "brute" | "charger" | "elite" | "boss"; attack: number; flash: number; windup: number; targetX: number; targetY: number; dashTime: number; summonedAtHalf: boolean; furyTriggered: boolean; isExecutioner?: boolean };
 type Shot = { x: number; y: number; vx: number; vy: number; damage: number; life: number };
-type Gem = { x: number; y: number; value: number; radius: number; previousX?: number; previousY?: number };
-type SpecialDrop = { x: number; y: number; kind: "area" | "experience" | "projectile_range" | "projectiles"; radius: number };
+type Gem = { x: number; y: number; value: number; radius: number; previousX?: number; previousY?: number; runeCrystal?: boolean };
+type SpecialDrop = { x: number; y: number; kind: "area" | "experience" | "projectile_range" | "projectiles" | "food" | "void"; radius: number };
+type BreakableUrn = { id: number; x: number; y: number; hp: number; maxHp: number; radius: number; broken: boolean };
+type CemeteryObstacle = { x: number; y: number; radius: number; kind: "gravestone" | "cross" | "mausoleum" | "torch" };
 type Particle = { x: number; y: number; vx: number; vy: number; life: number; color: string };
 type DamageNumber = { x: number; y: number; value: number; life: number; maxLife: number; drift: number };
 type PickupLabel = { x: number; y: number; text: string; life: number; maxLife: number };
@@ -37,8 +39,11 @@ const DEFAULT_PURCHASES: PurchaseState = {
 const PROJECTILE_DURATION_MULTIPLIERS = [1, 1.25, 1.5, 2] as const;
 const PROJECTILE_BASE_LIFE = 0.8;
 const MAX_EXTRA_PROJECTILES = 2;
+const WORLD_LIMIT = 1300;
 const CHALLENGE_EVENT_TIMES = [240, 480] as const;
-const CHALLENGE_EVENT_DURATION = 60;
+const RITUAL_DURATION = 25;
+const RITUAL_WINDOW = 50;
+const EXECUTIONER_WINDOW = 60;
 function parsePurchaseState(raw: any): PurchaseState {
   return {
     area: Number(raw?.area ?? 0), experience: Number(raw?.experience ?? 0), rarity: Number(raw?.rarity ?? 0),
@@ -51,7 +56,7 @@ function parsePurchaseState(raw: any): PurchaseState {
 type GameState = {
   width: number; height: number; last: number; elapsed: number; spawnTimer: number; shotTimer: number; bossSpawned: boolean;
   player: { x: number; y: number; hp: number; maxHp: number; speed: number; damage: number; fireRate: number; invuln: number; hitFlash: number; xp: number; nextXp: number; level: number; pickupRadius: number; xpMultiplier: number; specialAreaStacks: number; specialExperienceStacks: number; projectileRangeStacks: number; projectileRangeMultiplier: number; projectileStacks: number; projectileLife: number; facing: number; castFacing: number; castTimer: number; moving: boolean; spriteAction: PlayerVisualAction; spriteDirection: number; previousSpriteAction: PlayerVisualAction; previousSpriteDirection: number; spriteBlend: number };
-  enemies: Enemy[]; shots: Shot[]; gems: Gem[]; specialDrops: SpecialDrop[]; particles: Particle[]; damageNumbers: DamageNumber[]; pickupLabels: PickupLabel[]; challengeEvent: ChallengeEvent | null; nextChallengeEvent: number; kills: number; ended: boolean; upgradeCounts: UpgradeCounts; totalDamageDealt: number; crystalsCollected: number; highestLevel: number;
+  enemies: Enemy[]; shots: Shot[]; gems: Gem[]; specialDrops: SpecialDrop[]; urns: BreakableUrn[]; obstacles: CemeteryObstacle[]; nextUrnMinute: number; nextUrnId: number; particles: Particle[]; damageNumbers: DamageNumber[]; pickupLabels: PickupLabel[]; challengeEvent: ChallengeEvent | null; nextChallengeEvent: number; kills: number; ended: boolean; upgradeCounts: UpgradeCounts; totalDamageDealt: number; crystalsCollected: number; highestLevel: number;
   shake?: number; rings?: { x: number; y: number; r: number; max: number; life: number; color: string }[];
 };
 
@@ -236,13 +241,50 @@ function getFloorPattern(ctx: CanvasRenderingContext2D, missionId: number, floor
 
 const NO_ENEMY_SEPARATION = { x: 0, y: 0 };
 
+function isFreeCemeteryPosition(x: number, y: number, radius: number, obstacles: CemeteryObstacle[], urns: BreakableUrn[] = []): boolean {
+  if (Math.abs(x) > WORLD_LIMIT - radius || Math.abs(y) > WORLD_LIMIT - radius) return false;
+  if (obstacles.some((item) => distance(x, y, item.x, item.y) < radius + item.radius + 24)) return false;
+  return !urns.some((item) => !item.broken && distance(x, y, item.x, item.y) < radius + item.radius + 18);
+}
+function createCemeteryObstacles(): CemeteryObstacle[] {
+  const result: CemeteryObstacle[] = [];
+  const specs: Array<[CemeteryObstacle["kind"], number, number]> = [["gravestone",35,18],["cross",20,14],["mausoleum",8,46],["torch",12,16]];
+  for (const [kind,count,radius] of specs) {
+    let placed=0, attempts=0;
+    while (placed<count && attempts<count*90) {
+      attempts++; const x=(Math.random()*2-1)*1190, y=(Math.random()*2-1)*1190;
+      if (distance(x,y,0,0)<155 || !isFreeCemeteryPosition(x,y,radius,result)) continue;
+      result.push({x,y,radius,kind}); placed++;
+    }
+  }
+  return result;
+}
+function spawnCemeteryUrns(game: GameState, count: number) {
+  let placed=0, attempts=0;
+  while (placed<count && attempts<count*80) {
+    attempts++; const x=(Math.random()*2-1)*1220, y=(Math.random()*2-1)*1220;
+    if (!isFreeCemeteryPosition(x,y,15,game.obstacles,game.urns)) continue;
+    game.urns.push({id:game.nextUrnId++,x,y,hp:3,maxHp:3,radius:15,broken:false}); placed++;
+  }
+}
+function resolveCemeteryCollision(x:number,y:number,radius:number,obstacles:CemeteryObstacle[]) {
+  let nx=clamp(x,-WORLD_LIMIT+radius,WORLD_LIMIT-radius), ny=clamp(y,-WORLD_LIMIT+radius,WORLD_LIMIT-radius);
+  for (const obstacle of obstacles) {
+    const dx=nx-obstacle.x, dy=ny-obstacle.y, d=Math.hypot(dx,dy), min=radius+obstacle.radius;
+    if (d>0 && d<min) { const push=min-d; nx+=dx/d*push; ny+=dy/d*push; }
+    else if (d===0) nx+=min;
+  }
+  return {x:clamp(nx,-WORLD_LIMIT+radius,WORLD_LIMIT-radius),y:clamp(ny,-WORLD_LIMIT+radius,WORLD_LIMIT-radius)};
+}
+
+
 function makeGame(width: number, height: number, purchases: PurchaseState): GameState {
   const maxHp = 100 + purchases.health * 10;
   const projectileLife = PROJECTILE_BASE_LIFE * PROJECTILE_DURATION_MULTIPLIERS[clamp(purchases.projectile_duration, 0, 3)];
   return {
     width, height, last: 0, elapsed: 0, spawnTimer: 0.4, shotTimer: 0.25, bossSpawned: false,
     player: { x: 0, y: 0, hp: maxHp, maxHp, speed: 205, damage: 22, fireRate: 0.72, invuln: 0, hitFlash: 0, xp: 0, nextXp: 12, level: 1, pickupRadius: 85, xpMultiplier: 1, specialAreaStacks: 0, specialExperienceStacks: 0, projectileRangeStacks: 0, projectileRangeMultiplier: 1, projectileStacks: 0, projectileLife, facing: 0, castFacing: 0, castTimer: 0, moving: false, spriteAction: "idle", spriteDirection: 0, previousSpriteAction: "idle", previousSpriteDirection: 0, spriteBlend: 1 },
-    enemies: [], shots: [], gems: [], specialDrops: [], particles: [], damageNumbers: [], pickupLabels: [], challengeEvent: null, nextChallengeEvent: 0, kills: 0, ended: false, upgradeCounts: {}, totalDamageDealt: 0, crystalsCollected: 0, highestLevel: 1,
+    enemies: [], shots: [], gems: [], specialDrops: [], urns: [], obstacles: createCemeteryObstacles(), nextUrnMinute: 1, nextUrnId: 1, particles: [], damageNumbers: [], pickupLabels: [], challengeEvent: null, nextChallengeEvent: 0, kills: 0, ended: false, upgradeCounts: {}, totalDamageDealt: 0, crystalsCollected: 0, highestLevel: 1,
   };
 }
 
@@ -973,8 +1015,9 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         game.player.moving = Math.hypot(dx, dy) > 0.05;
         if (game.player.moving) game.player.facing = directionFromVector(dx, dy);
         const mag = Math.hypot(dx, dy) || 1;
-        game.player.x += (dx / mag) * game.player.speed * dt;
-        game.player.y += (dy / mag) * game.player.speed * dt;
+        const movedPlayer = resolveCemeteryCollision(game.player.x + (dx / mag) * game.player.speed * dt, game.player.y + (dy / mag) * game.player.speed * dt, 14, game.obstacles);
+        game.player.x = movedPlayer.x;
+        game.player.y = movedPlayer.y;
 
         if (!game.challengeEvent && game.nextChallengeEvent < CHALLENGE_EVENT_TIMES.length && game.elapsed >= CHALLENGE_EVENT_TIMES[game.nextChallengeEvent]) {
           const eventId = (game.nextChallengeEvent + 1) as 1 | 2;
