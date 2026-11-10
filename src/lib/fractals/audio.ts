@@ -243,6 +243,24 @@ class FractalAudioController {
     });
   }
 
+  // Alerta grave e curta para o despertar do Guardião.
+  public bossAlert(): void {
+    if (this.muted) return;
+    this.initContext();
+    if (!this.ctx) return;
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    const filter = this.ctx.createBiquadFilter();
+    osc.type = "sawtooth";
+    osc.frequency.setValueAtTime(92, now);
+    osc.frequency.exponentialRampToValueAtTime(34, now + 1.15);
+    filter.type = "lowpass"; filter.frequency.setValueAtTime(420, now); filter.frequency.exponentialRampToValueAtTime(120, now + 1.1);
+    gain.gain.setValueAtTime(0.0001, now); gain.gain.exponentialRampToValueAtTime(0.16, now + 0.08); gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.2);
+    osc.connect(filter); filter.connect(gain); gain.connect(this.ctx.destination);
+    osc.start(now); osc.stop(now + 1.22);
+  }
+
   // 8. Derrota.
   public defeat(): void {
     if (this.muted) return;
