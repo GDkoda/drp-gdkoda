@@ -512,6 +512,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     }
     ctx.restore();
   });
+  ctx.save();
   const particleGroups = new Map<string, Particle[]>();
   for (const particle of game.particles) {
     if (particle.x < cameraX - 16 || particle.x > cameraX + viewWidth + 16 || particle.y < cameraY - 16 || particle.y > cameraY + viewHeight + 16) continue;
