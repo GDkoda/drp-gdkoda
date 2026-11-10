@@ -1,18 +1,17 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none">
 <defs>
- <linearGradient id="w" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#a98aff"/><stop offset=".38" stop-color="#4d326d"/><stop offset="1" stop-color="#14101f"/></linearGradient>
- <linearGradient id="c" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f4d7ff"/><stop offset=".45" stop-color="#a66cff"/><stop offset="1" stop-color="#48205f"/></linearGradient>
- <filter id="g"><feGaussianBlur stdDeviation="4"/></filter>
+ <linearGradient id="cloak" x1="28" y1="18" x2="96" y2="115" gradientUnits="userSpaceOnUse"><stop stop-color="#b6a0d5"/><stop offset=".34" stop-color="#625176"/><stop offset="1" stop-color="#17121f"/></linearGradient>
+ <linearGradient id="edge" x1="30" y1="38" x2="92" y2="110" gradientUnits="userSpaceOnUse"><stop stop-color="#e9d7ff"/><stop offset=".5" stop-color="#9b6dca"/><stop offset="1" stop-color="#352344"/></linearGradient>
+ <radialGradient id="core" cx="0" cy="0" r="1" gradientTransform="matrix(0 24 -24 0 64 47)" gradientUnits="userSpaceOnUse"><stop stop-color="#fff5ff"/><stop offset=".22" stop-color="#d8b6ff"/><stop offset=".58" stop-color="#8b4ac8"/><stop offset="1" stop-color="#3c1d5b"/></radialGradient>
 </defs>
-<ellipse cx="64" cy="111" rx="27" ry="7" fill="#7d44c9" opacity=".22" filter="url(#g)"/>
-<path d="M29 90 C18 75 26 52 36 39 L31 25 L48 31 C55 21 72 18 83 29 L99 23 L94 43 C108 60 108 80 96 94 L83 106 L78 94 L65 111 L54 96 L42 107 Z" fill="url(#w)" stroke="#21172d" stroke-width="5" stroke-linejoin="round"/>
-<path d="M36 78 Q25 96 36 103 L48 89 L52 111 L64 95 L76 111 L82 89 L96 102 Q107 83 94 70" fill="url(#w)" stroke="#7c58a7" stroke-width="2.2"/>
-<path d="M34 42 L45 20 L54 39 M94 42 L83 20 L74 39" fill="url(#c)" stroke="#30203e" stroke-width="4" stroke-linejoin="round"/>
-<path d="M43 51 Q64 36 85 51 L81 79 Q64 91 47 78 Z" fill="#0c0914" stroke="#8863b0" stroke-width="2.5"/>
-<path d="M47 57 Q64 43 81 57 L76 73 Q64 82 52 72 Z" fill="#171024"/>
-<path d="M49 64 L61 60 L57 70 L49 69 Z M79 64 L67 60 L71 70 L79 69 Z" fill="#d9b5ff"/>
-<path d="M51 63 L58 62 L55 66 Z M77 63 L70 62 L73 66 Z" fill="#fff4ff"/>
-<path d="M60 82 L64 89 L68 82" fill="none" stroke="#d8b7ff" stroke-width="2.5" stroke-linecap="round"/>
-<path d="M33 47 L42 54 M95 48 L86 54" stroke="#e3beff" stroke-width="2" opacity=".8"/>
-<path d="M58 28 L64 12 L70 28 L64 36 Z" fill="url(#c)" stroke="#e3c6ff" stroke-width="1.6"/>
+<path d="M64 12 79 29 92 35 86 59 104 85 89 79 96 112 76 101 64 122 51 101 30 112 39 80 22 89 39 58 34 36 50 28Z" fill="#0b0911" stroke="#332440" stroke-width="3"/>
+<path d="M64 17 76 33 88 38 79 65 93 86 75 78 83 104 67 95 64 115 53 94 39 103 47 76 31 84 49 58 44 38 56 32Z" fill="url(#cloak)" stroke="url(#edge)" stroke-width="2.3"/>
+<path d="M64 18 58 37 64 31 72 39 68 20" fill="#d7c4ed" stroke="#f4e7ff" stroke-width="1.5"/>
+<path d="M47 37 63 29 80 39 76 57 64 68 50 56Z" fill="#191326" stroke="#9b78bf" stroke-width="2"/>
+<path d="M50 48 63 39 76 48 65 61Z" fill="url(#core)" stroke="#ead6ff" stroke-width="1.5"/>
+<path d="M54 48 61 46 58 52Z M73 48 66 46 69 52Z" fill="#fff5ff"/>
+<path d="M49 64 36 91 30 115 M77 64 91 89 101 110 M58 68 52 91 43 120 M70 68 76 94 87 121" stroke="#9b70c7" stroke-width="3" stroke-linecap="round"/>
+<path d="m27 43-12 7 14 7m75-17 13 7-14 7M25 76l-10 5 13 4m75-9 11 5-13 4" stroke="#cdb0f2" stroke-width="2" stroke-linecap="round"/>
+<path d="m39 22-7-10 17 8m40 2 8-10-17 8" fill="#8e6db1" stroke="#dfc7fa" stroke-width="1.5"/>
+<circle cx="64" cy="48" r="3" fill="#fff"/>
 </svg>
