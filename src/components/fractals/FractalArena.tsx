@@ -1,3 +1,217 @@
+import { useCallback, useEffect, useRef, useState, type PointerEvent } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { AlertTriangle, Heart, Move, Pause, Play, RotateCcw, Shield, Skull, Sparkles, Swords, Zap, Maximize, UserRound, Gauge, ArrowLeft, ShoppingBag, Crown, Gem as GemIcon, MapPin, Flame, Leaf, Snowflake, Orbit, Lock, Link2, ChevronDown, Coins, Timer, Target, ZoomIn, ZoomOut } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { getDifficultySnapshot } from "@/lib/fractals/difficulty";
+import { CORRUPTION_LEVELS, FRACTAL_MISSIONS, RUN_DURATION_SECONDS } from "@/lib/fractals/config";
+import { FRACTAL_SHOP, FRACTAL_RARITY_TIERS } from "@/lib/fractals/economy";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import "./fractal-arena.css";
+
+type UpgradeId = "power" | "haste" | "vitality" | "swift" | "special_area" | "special_experience" | "special_projectile_range" | "special_projectiles";
+type Upgrade = { id: UpgradeId; name: string; description: string; icon: typeof Zap; rarity?: "normal" | "rare" | "epic" };
+
+type Enemy = { x: number; y: number; hp: number; maxHp: number; speed: number; radius: number; damage: number; color: string; xp: number; type: "wraith" | "brute" | "charger" | "elite" | "boss"; attack: number; flash: number; windup: number; targetX: number; targetY: number; dashTime: number; summonedAtHalf: boolean };
+type Shot = { x: number; y: number; vx: number; vy: number; damage: number; life: number };
+type Gem = { x: number; y: number; value: number; radius: number };
+type SpecialDrop = { x: number; y: number; kind: "area" | "experience" | "projectile_range" | "projectiles"; radius: number };
+type Particle = { x: number; y: number; vx: number; vy: number; life: number; color: string };
+type DamageNumber = { x: number; y: number; value: number; life: number; maxLife: number; drift: number };
+type PickupLabel = { x: number; y: number; text: string; life: number; maxLife: number };
+type ChallengeEvent = { id: 1 | 2; x: number; y: number; radius: number; remaining: number; progress: number };
+type SpriteKey = "boss" | "elite" | "wraith" | "charger" | "brute" | "playerIdle" | "playerMove" | "playerCast" | "xpGem" | "specialXP" | "specialArea" | "specialRange" | "specialProjectiles" | "projectile";
+type SpriteMap = Partial<Record<SpriteKey, HTMLImageElement>>;
+type PlayerVisualAction = "idle" | "move" | "cast";
+type PurchaseState = {
+  area: number; experience: number; rarity: number; speed_2x: boolean; speed_3x: boolean;
+  health: number; projectile_duration: number; projectile_range: number; projectiles: number;
+};
+const DEFAULT_PURCHASES: PurchaseState = {
+  area: 0, experience: 0, rarity: 0, speed_2x: false, speed_3x: false,
+  health: 0, projectile_duration: 0, projectile_range: 0, projectiles: 0,
+};
+const PROJECTILE_DURATION_MULTIPLIERS = [1, 1.25, 1.5, 2] as const;
+const PROJECTILE_BASE_LIFE = 0.8;
+const MAX_EXTRA_PROJECTILES = 2;
+const CHALLENGE_EVENT_TIMES = [240, 480] as const;
+const CHALLENGE_EVENT_DURATION = 60;
+function parsePurchaseState(raw: any): PurchaseState {
+  return {
+    area: Number(raw?.area ?? 0), experience: Number(raw?.experience ?? 0), rarity: Number(raw?.rarity ?? 0),
+    speed_2x: !!raw?.speed_2x, speed_3x: !!raw?.speed_3x,
+    health: Number(raw?.health ?? 0), projectile_duration: Number(raw?.projectile_duration ?? 0),
+    projectile_range: Number(raw?.projectile_range ?? 0), projectiles: Number(raw?.projectiles ?? 0),
+  };
+}
+
+type GameState = {
+  width: number; height: number; last: number; elapsed: number; spawnTimer: number; shotTimer: number; bossSpawned: boolean;
+  player: { x: number; y: number; hp: number; maxHp: number; speed: number; damage: number; fireRate: number; invuln: number; hitFlash: number; xp: number; nextXp: number; level: number; pickupRadius: number; xpMultiplier: number; specialAreaStacks: number; specialExperienceStacks: number; projectileRangeStacks: number; projectileRangeMultiplier: number; projectileStacks: number; projectileLife: number; facing: number; castFacing: number; castTimer: number; moving: boolean; spriteAction: PlayerVisualAction; spriteDirection: number; previousSpriteAction: PlayerVisualAction; previousSpriteDirection: number; spriteBlend: number };
+  enemies: Enemy[]; shots: Shot[]; gems: Gem[]; specialDrops: SpecialDrop[]; particles: Particle[]; damageNumbers: DamageNumber[]; pickupLabels: PickupLabel[]; challengeEvent: ChallengeEvent | null; nextChallengeEvent: number; kills: number; ended: boolean;
+};
+
+const UPGRADES: Upgrade[] = [
+  { id: "power", name: "Estilhaço Voraz", description: "Aumenta o dano dos disparos em 30%.", icon: Swords },
+  { id: "haste", name: "Pulso Acelerado", description: "Dispara 18% mais rápido.", icon: Zap },
+  { id: "vitality", name: "Casca de Cristal", description: "Recupera 25% da vida máxima e aumenta a vida em 15%.", icon: Shield },
+  { id: "swift", name: "Passos do Errante", description: "Aumenta a velocidade de movimento em 10%.", icon: Move },
+];
+
+const SPECIAL_UPGRADES: Upgrade[] = [
+  { id: "special_area", name: "Ímã de Fragmentos", description: "+10% de alcance de coleta por coleta (máx. +50%).", icon: Move },
+  { id: "special_experience", name: "Eco do Conhecimento", description: "+5% de experiência por coleta (máx. +30%).", icon: Sparkles },
+  { id: "special_projectile_range", name: "Ressonância de Alcance", description: "+10% de distância dos projéteis por coleta (máx. +50%).", icon: Zap },
+  { id: "special_projectiles", name: "Coroa de Estilhaços", description: "+1 projétil por coleta. Até 2 extras por expedição.", icon: Swords },
+];
+
+function buildLevelChoices(game: GameState, areaLevel: number, experienceLevel: number, rangeLevel: number, projectilesLevel: number, rarityTier: number): Upgrade[] {
+  const core = [...UPGRADES].sort(() => Math.random() - 0.5).slice(0, 3);
+  const available = SPECIAL_UPGRADES.filter((item) => {
+    if (item.id === "special_area") return areaLevel >= 1 && game.player.specialAreaStacks < 5;
+    if (item.id === "special_experience") return experienceLevel >= 1 && game.player.specialExperienceStacks < 6;
+    if (item.id === "special_projectile_range") return rangeLevel >= 1 && game.player.projectileRangeStacks < 5;
+    return projectilesLevel >= 1 && game.player.projectileStacks < MAX_EXTRA_PROJECTILES;
+  });
+  if (available.length && Math.random() < 0.18) {
+    const special = available[Math.floor(Math.random() * available.length)];
+    return [...core.slice(0, 2), special].map((upgrade) => ({ ...upgrade, rarity: upgrade.id.startsWith("special_") ? undefined : rollUpgradeRarity(rarityTier) }));
+  }
+  return core.map((upgrade) => ({ ...upgrade, rarity: rollUpgradeRarity(rarityTier) }));
+}
+
+function rollUpgradeRarity(tier: number): "normal" | "rare" | "epic" {
+  const odds = FRACTAL_RARITY_TIERS[Math.max(0, Math.min(3, tier))];
+  const roll = Math.random() * 100;
+  if (roll < odds.epic) return "epic";
+  if (roll < odds.epic + odds.rare) return "rare";
+  return "normal";
+}
+
+const UPGRADE_RARITY_MULTIPLIERS = { normal: 1, rare: 1.25, epic: 1.5 } as const;
+function getUpgradeRarityMultiplier(rarity: Upgrade["rarity"]): number {
+  return UPGRADE_RARITY_MULTIPLIERS[rarity ?? "normal"];
+}
+function formatUpgradePercent(value: number): string {
+  return value.toLocaleString("pt-BR", { maximumFractionDigits: 1 });
+}
+function getUpgradeDescription(upgrade: Upgrade): string {
+  const multiplier = getUpgradeRarityMultiplier(upgrade.rarity);
+  switch (upgrade.id) {
+    case "power": return `Dano dos disparos +${formatUpgradePercent(30 * multiplier)}%.`;
+    case "haste": return `Velocidade de ataque +${formatUpgradePercent(18 * multiplier)}% (intervalo entre disparos menor).`;
+    case "vitality": return `Vida máxima +${formatUpgradePercent(15 * multiplier)}% e cura ${formatUpgradePercent(25 * multiplier)}% da vida máxima anterior.`;
+    case "swift": return `Velocidade de movimento +${formatUpgradePercent(10 * multiplier)}%.`;
+    default: return upgrade.description;
+  }
+}
+const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(max, n));
+const distance = (ax: number, ay: number, bx: number, by: number) => Math.hypot(ax - bx, ay - by);
+const directionFromVector = (x: number, y: number) => {
+  if (Math.hypot(x, y) < 0.001) return 0;
+  const step = Math.round((Math.atan2(y, x) - Math.PI / 2) / (Math.PI / 4));
+  return ((step % 8) + 8) % 8;
+};
+const PLAYER_DIRECTION_VECTORS = [
+  { x: 0, y: 1 }, { x: -Math.SQRT1_2, y: Math.SQRT1_2 },
+  { x: -1, y: 0 }, { x: -Math.SQRT1_2, y: -Math.SQRT1_2 },
+  { x: 0, y: -1 }, { x: Math.SQRT1_2, y: -Math.SQRT1_2 },
+  { x: 1, y: 0 }, { x: Math.SQRT1_2, y: Math.SQRT1_2 },
+];
+
+const ENEMY_GRID_CELL_SIZE = 96;
+type EnemySpatialGrid = Map<string, Enemy[]>;
+
+function buildEnemySpatialGrid(enemies: Enemy[]): EnemySpatialGrid {
+  const grid: EnemySpatialGrid = new Map();
+  for (const enemy of enemies) {
+    const cellX = Math.floor(enemy.x / ENEMY_GRID_CELL_SIZE);
+    const cellY = Math.floor(enemy.y / ENEMY_GRID_CELL_SIZE);
+    const key = cellX + ":" + cellY;
+    const bucket = grid.get(key);
+    if (bucket) bucket.push(enemy);
+    else grid.set(key, [enemy]);
+  }
+  return grid;
+}
+
+function getNearbyEnemies(x: number, y: number, grid: EnemySpatialGrid): Enemy[] {
+  const nearby: Enemy[] = [];
+  const cellX = Math.floor(x / ENEMY_GRID_CELL_SIZE);
+  const cellY = Math.floor(y / ENEMY_GRID_CELL_SIZE);
+  for (let offsetY = -1; offsetY <= 1; offsetY++) {
+    for (let offsetX = -1; offsetX <= 1; offsetX++) {
+      const bucket = grid.get((cellX + offsetX) + ":" + (cellY + offsetY));
+      if (bucket) nearby.push(...bucket);
+    }
+  }
+  return nearby;
+}
+
+function getEnemySeparation(enemy: Enemy, grid: EnemySpatialGrid) {
+  let sx = 0, sy = 0;
+  const cellX = Math.floor(enemy.x / ENEMY_GRID_CELL_SIZE);
+  const cellY = Math.floor(enemy.y / ENEMY_GRID_CELL_SIZE);
+  for (let offsetY = -1; offsetY <= 1; offsetY++) {
+    for (let offsetX = -1; offsetX <= 1; offsetX++) {
+      const bucket = grid.get((cellX + offsetX) + ":" + (cellY + offsetY));
+      if (!bucket) continue;
+      for (const other of bucket) {
+        if (other === enemy) continue;
+        const dx = enemy.x - other.x, dy = enemy.y - other.y;
+        const distanceSquared = dx * dx + dy * dy;
+        const range = enemy.radius + other.radius + 12;
+        if (distanceSquared > 0.000001 && distanceSquared < range * range) {
+          const d = Math.sqrt(distanceSquared);
+          const weight = (range - d) / range;
+          sx += (dx / d) * weight;
+          sy += (dy / d) * weight;
+        }
+      }
+    }
+  }
+  const magnitude = Math.hypot(sx, sy);
+  return magnitude > 0 ? { x: sx / magnitude, y: sy / magnitude } : { x: 0, y: 0 };
+}
+
+function makeGame(width: number, height: number, purchases: PurchaseState): GameState {
+  const maxHp = 100 + purchases.health * 10;
+  const projectileLife = PROJECTILE_BASE_LIFE * PROJECTILE_DURATION_MULTIPLIERS[clamp(purchases.projectile_duration, 0, 3)];
+  return {
+    width, height, last: 0, elapsed: 0, spawnTimer: 0.4, shotTimer: 0.25, bossSpawned: false,
+    player: { x: 0, y: 0, hp: maxHp, maxHp, speed: 205, damage: 22, fireRate: 0.72, invuln: 0, hitFlash: 0, xp: 0, nextXp: 12, level: 1, pickupRadius: 85, xpMultiplier: 1, specialAreaStacks: 0, specialExperienceStacks: 0, projectileRangeStacks: 0, projectileRangeMultiplier: 1, projectileStacks: 0, projectileLife, facing: 0, castFacing: 0, castTimer: 0, moving: false, spriteAction: "idle", spriteDirection: 0, previousSpriteAction: "idle", previousSpriteDirection: 0, spriteBlend: 1 },
+    enemies: [], shots: [], gems: [], specialDrops: [], particles: [], damageNumbers: [], pickupLabels: [], challengeEvent: null, nextChallengeEvent: 0, kills: 0, ended: false,
+  };
+}
+
+function spawnEnemy(game: GameState, missionId: number, elapsed: number, corruption: number, boss = false) {
+  const side = Math.floor(Math.random() * 4);
+  const margin = 30;
+  const centerX = game.player.x, centerY = game.player.y;
+  const x = side === 0 ? centerX - game.width / 2 - margin : side === 1 ? centerX + game.width / 2 + margin : centerX + (Math.random() - 0.5) * game.width;
+  const y = side === 2 ? centerY - game.height / 2 - margin : side === 3 ? centerY + game.height / 2 + margin : centerY + (Math.random() - 0.5) * game.height;
+  const pressure = getDifficultySnapshot(missionId, elapsed, corruption);
+  const roll = Math.random();
+  const eliteChance = Math.min(0.22, pressure.eliteSpawnScale * 0.075);
+  const type: Enemy["type"] = boss ? "boss" : elapsed > 210 && roll < eliteChance ? "elite" : elapsed > 150 && roll > 0.76 ? "brute" : elapsed > 70 && roll > 0.56 ? "charger" : "wraith";
+  const scale = 1 + elapsed / 650 + (missionId - 1) * 0.18;
+  const stats = type === "boss"
+    ? { hp: 1700, speed: 40, radius: 38, damage: 24, color: "#b9a0ff", xp: 0 }
+    : type === "elite"
+      ? { hp: 245 * scale, speed: 31, radius: 21, damage: 17, color: "#c7a7d9", xp: 9 }
+      : type === "brute"
+        ? { hp: 100 * scale, speed: 35, radius: 17, damage: 15, color: "#7d8495", xp: 4 }
+        : type === "charger"
+          ? { hp: 36 * scale, speed: 105, radius: 11, damage: 10, color: "#e5a45b", xp: 2 }
+          : { hp: 28 * scale, speed: 57, radius: 10, damage: 8, color: "#9b91b4", xp: 2 };
+  game.enemies.push({ x, y, ...stats, maxHp: stats.hp, type, attack: type === "boss" ? 2.2 : 0, flash: 0, windup: 0, targetX: x, targetY: y, dashTime: 0, summonedAtHalf: false });
+  // Spawn pressure is bounded. It affects encounter density, not enemy HP directly.
+  if (!boss && pressure.enemySpawnScale > 1.25 && game.enemies.length < 48 && Math.random() < 0.18) {
+    game.enemies.push({ x: x + (Math.random() - 0.5) * 70, y: y + (Math.random() - 0.5) * 70, ...stats, maxHp: stats.hp, type, attack: 0, flash: 0, windup: 0, targetX: x, targetY: y, dashTime: 0, summonedAtHalf: false });
+  }
+}
+
 function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: number, missionId: number, sprites: SpriteMap = {}, showPlayerHp = true, showDamageNumbers = true, zoom = 1) {
   const { width, height, player } = game;
   const safeZoom = clamp(zoom, 0.75, 1.35);
