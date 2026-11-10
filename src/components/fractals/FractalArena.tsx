@@ -850,13 +850,6 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
     const tick = (now: number) => {
       const game = gameRef.current;
       if (!game) return;
-      fpsFrames += 1;
-      if (!fpsWindowStart) fpsWindowStart = now;
-      if (now - fpsWindowStart >= 500) {
-        measuredFps = Math.round(fpsFrames * 1000 / (now - fpsWindowStart));
-        fpsFrames = 0;
-        fpsWindowStart = now;
-      }
       if (!game.last) game.last = now;
       const rawDt = Math.min(0.033, (now - game.last) / 1000);
       const dt = rawDt * speedMultiplier;
@@ -1159,6 +1152,13 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         }
       }
       if (!paused && levelChoices.length === 0 && !game.ended) {
+              fpsFrames += 1;
+              if (!fpsWindowStart) fpsWindowStart = now;
+              if (now - fpsWindowStart >= 500) {
+                measuredFps = Math.round(fpsFrames * 1000 / (now - fpsWindowStart));
+                fpsFrames = 0;
+                fpsWindowStart = now;
+              }
         drawGame(ctx, game, corruption, missionId, spritesRef.current, showPlayerHp, showDamageNumbers, zoomRef.current);
       }
       frame = requestAnimationFrame(tick);
