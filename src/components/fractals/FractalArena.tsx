@@ -344,6 +344,8 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
   ctx.fillRect(cameraX, cameraY, viewWidth, viewHeight);
   const floorPattern = getFloorPattern(ctx, missionId, biome.floor, biome.glow);
   if (floorPattern) { ctx.fillStyle = floorPattern; ctx.fillRect(cameraX, cameraY, viewWidth, viewHeight); }
+  ctx.save();ctx.strokeStyle="rgba(145,119,160,.72)";ctx.lineWidth=34;ctx.strokeRect(-WORLD_LIMIT,-WORLD_LIMIT,WORLD_LIMIT*2,WORLD_LIMIT*2);ctx.strokeStyle="rgba(215,190,231,.25)";ctx.lineWidth=5;ctx.strokeRect(-WORLD_LIMIT+17,-WORLD_LIMIT+17,WORLD_LIMIT*2-34,WORLD_LIMIT*2-34);
+  const fog=110;for(let edge=0;edge<4;edge++){const g=edge<2?ctx.createLinearGradient(edge===0?-WORLD_LIMIT:WORLD_LIMIT,0,edge===0?-WORLD_LIMIT+fog:WORLD_LIMIT-fog,0):ctx.createLinearGradient(0,edge===2?-WORLD_LIMIT:WORLD_LIMIT,0,edge===2?-WORLD_LIMIT+fog:WORLD_LIMIT-fog);g.addColorStop(0,"rgba(32,22,42,.78)");g.addColorStop(1,"rgba(32,22,42,0)");ctx.fillStyle=g;if(edge<2)ctx.fillRect(edge===0?-WORLD_LIMIT:WORLD_LIMIT-fog,-WORLD_LIMIT,fog,WORLD_LIMIT*2);else ctx.fillRect(-WORLD_LIMIT,edge===2?-WORLD_LIMIT:WORLD_LIMIT-fog,WORLD_LIMIT*2,fog);}ctx.restore();
 
   const drawPillar = (x: number, y: number, scale = 1) => {
     ctx.save(); ctx.translate(x, y); ctx.scale(scale, scale);
@@ -381,6 +383,11 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     ctx.restore();
   };
 
+  for(const prop of game.obstacles){if(prop.x<cameraX-90||prop.x>cameraX+viewWidth+90||prop.y<cameraY-90||prop.y>cameraY+viewHeight+90)continue;ctx.save();ctx.translate(prop.x,prop.y);
+    if(prop.kind==="torch"){const pulse=1+Math.sin(game.elapsed*3.8+prop.x*.02)*.12;const glow=ctx.createRadialGradient(0,-14,2,0,-14,42*pulse);glow.addColorStop(0,"rgba(193,117,255,.42)");glow.addColorStop(.45,"rgba(128,67,190,.16)");glow.addColorStop(1,"rgba(128,67,190,0)");ctx.fillStyle=glow;ctx.beginPath();ctx.arc(0,-14,42*pulse,0,Math.PI*2);ctx.fill();ctx.fillStyle="#292333";ctx.strokeStyle="#746181";ctx.fillRect(-5,-4,10,21);ctx.strokeRect(-5,-4,10,21);ctx.fillStyle="#d8a8ff";ctx.beginPath();ctx.moveTo(0,-31);ctx.quadraticCurveTo(13,-18,2,-8);ctx.quadraticCurveTo(-10,-15,0,-31);ctx.fill();ctx.fillStyle="#ffd99a";ctx.beginPath();ctx.arc(0,-17,3,0,Math.PI*2);ctx.fill();}
+    else if(prop.kind==="mausoleum"){ctx.fillStyle="rgba(0,0,0,.45)";ctx.beginPath();ctx.ellipse(0,18,54,17,0,0,Math.PI*2);ctx.fill();ctx.fillStyle="#25212d";ctx.strokeStyle="#75677e";ctx.lineWidth=3;ctx.fillRect(-42,-22,84,42);ctx.strokeRect(-42,-22,84,42);ctx.beginPath();ctx.moveTo(-48,-22);ctx.lineTo(-35,-48);ctx.lineTo(35,-48);ctx.lineTo(48,-22);ctx.closePath();ctx.fill();ctx.stroke();ctx.fillStyle="#100e17";ctx.fillRect(-12,-5,24,25);ctx.strokeStyle="#9a83a5";ctx.strokeRect(-12,-5,24,25);}
+    else if(prop.kind==="cross"){ctx.fillStyle="#272330";ctx.strokeStyle="#786a83";ctx.lineWidth=3;ctx.fillRect(-4,-23,8,43);ctx.fillRect(-14,-14,28,7);ctx.strokeRect(-4,-23,8,43);ctx.strokeRect(-14,-14,28,7);}
+    else{ctx.fillStyle="rgba(0,0,0,.4)";ctx.beginPath();ctx.ellipse(2,15,21,8,0,0,Math.PI*2);ctx.fill();ctx.fillStyle="#282330";ctx.strokeStyle="#81758a";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-16,13);ctx.lineTo(-13,-13);ctx.lineTo(-8,-23);ctx.lineTo(8,-23);ctx.lineTo(15,-12);ctx.lineTo(16,13);ctx.closePath();ctx.fill();ctx.stroke();ctx.fillStyle="#9c83a9";ctx.fillRect(-10,-17,20,3);}ctx.restore();}
   // Objetos decorativos saem do passe crítico durante ondas cheias.
   if (!crowded) {
     const propSpacing = 320;
@@ -449,6 +456,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     ctx.restore();
   }
 
+  for(const urn of game.urns){if(urn.broken||urn.x<cameraX-35||urn.x>cameraX+viewWidth+35||urn.y<cameraY-35||urn.y>cameraY+viewHeight+35)continue;ctx.save();ctx.translate(urn.x,urn.y);ctx.fillStyle="rgba(0,0,0,.4)";ctx.beginPath();ctx.ellipse(0,13,17,6,0,0,Math.PI*2);ctx.fill();ctx.fillStyle="#514454";ctx.strokeStyle="#b49ab7";ctx.lineWidth=1.6;ctx.beginPath();ctx.moveTo(-11,-9);ctx.lineTo(-8,-17);ctx.lineTo(8,-17);ctx.lineTo(11,-9);ctx.lineTo(9,10);ctx.quadraticCurveTo(0,17,-9,10);ctx.closePath();ctx.fill();ctx.stroke();ctx.fillStyle="#241d2b";ctx.fillRect(-9,-10,18,4);ctx.strokeStyle="#d8c0d7";ctx.beginPath();ctx.moveTo(-5,-5);ctx.lineTo(5,7);ctx.moveTo(5,-5);ctx.lineTo(-5,7);ctx.stroke();ctx.fillStyle="#efb6ff";ctx.fillRect(-10,-25,20,3);ctx.fillStyle="#8c4ca8";ctx.fillRect(-10,-25,20*(urn.hp/urn.maxHp),3);ctx.restore();}
   game.gems.forEach((gem) => {
     if (gem.x < cameraX - 30 || gem.x > cameraX + viewWidth + 30 || gem.y < cameraY - 30 || gem.y > cameraY + viewHeight + 30) return;
     if (gem.previousX !== undefined && gem.previousY !== undefined) {
@@ -458,6 +466,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     }
     ctx.save(); ctx.translate(gem.x, gem.y);
     const pulse = 1 + Math.sin(game.elapsed * 6 + gem.x * 0.03) * 0.08;
+    if(gem.runeCrystal){const glow=ctx.createRadialGradient(0,0,1,0,0,20);glow.addColorStop(0,"rgba(255,210,255,.8)");glow.addColorStop(.35,"rgba(217,70,239,.42)");glow.addColorStop(1,"rgba(217,70,239,0)");ctx.fillStyle=glow;ctx.beginPath();ctx.arc(0,0,20,0,Math.PI*2);ctx.fill();ctx.fillStyle="#d946ef";ctx.rotate(Math.PI/4);ctx.fillRect(-6,-6,12,12);ctx.fillStyle="#fff0ff";ctx.fillRect(-2,-2,4,4);ctx.restore();return;}
     ctx.scale(pulse, pulse);
     const icon = sprites.xpGem;
     if (icon?.complete && icon.naturalWidth > 0) {
@@ -475,6 +484,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     ctx.save(); ctx.translate(drop.x, drop.y);
     const pulse = 1 + Math.sin(game.elapsed * 7 + drop.y * 0.02) * 0.09;
     const size = drop.radius * 2.8 * pulse;
+    if(drop.kind==="food"||drop.kind==="void"){ctx.font="25px serif";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(drop.kind==="food"?"🍔":"🌀",0,0);ctx.restore();return;}
     const icon = drop.kind === "area" ? sprites.specialArea : drop.kind === "experience" ? sprites.specialXP : drop.kind === "projectile_range" ? sprites.specialRange : sprites.specialProjectiles;
     ctx.globalAlpha = 0.9 + Math.sin(game.elapsed * 5 + drop.x * 0.02) * 0.1;
     ctx.shadowColor = drop.kind === "area" ? "#e9c46a" : "#b78cff";
@@ -498,6 +508,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
   game.rings?.forEach((ring) => { ctx.globalAlpha = clamp(ring.life * 2.4, 0, 1); ctx.strokeStyle = ring.color; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(ring.x, ring.y, ring.r, 0, Math.PI * 2); ctx.stroke(); });
   ctx.restore();
   game.shots.forEach((shot) => {
+    if(shot.x<cameraX-80||shot.x>cameraX+viewWidth+80||shot.y<cameraY-80||shot.y>cameraY+viewHeight+80)return;
     ctx.save(); ctx.translate(shot.x, shot.y); ctx.rotate(Math.atan2(shot.vy, shot.vx));
     const fade = clamp(shot.life / Math.max(0.01, game.player.projectileLife), 0.25, 1);
     ctx.globalAlpha = fade;
@@ -521,6 +532,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     const hover = enemy.type === "wraith" || enemy.type === "elite" ? secondaryWave * 1.7 : Math.abs(distortion) * 0.55;
     ctx.translate(enemy.x, enemy.y + hover);
     ctx.transform(1 + distortion * 0.035, secondaryWave * 0.028, Math.sin(motionPhase * 0.43) * 0.022, 1 - distortion * 0.03, 0, 0);
+    if(enemy.isExecutioner){const aura=ctx.createRadialGradient(0,0,8,0,0,76);aura.addColorStop(0,"rgba(58,17,83,.62)");aura.addColorStop(.55,"rgba(104,38,143,.25)");aura.addColorStop(1,"rgba(104,38,143,0)");ctx.fillStyle=aura;ctx.beginPath();ctx.arc(0,0,76,0,Math.PI*2);ctx.fill();ctx.strokeStyle="rgba(197,142,255,.8)";ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,0,38+Math.sin(game.elapsed*7)*4,0,Math.PI*2);ctx.stroke();ctx.strokeStyle="#d8c4ff";ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(14,-8);ctx.lineTo(42,-40);ctx.stroke();ctx.fillStyle="#e9d5ff";ctx.beginPath();ctx.moveTo(42,-40);ctx.lineTo(49,-55);ctx.lineTo(37,-45);ctx.closePath();ctx.fill();}
     const bossInFury = enemy.type === "boss" && enemy.hp <= enemy.maxHp * 0.30;
     if (bossInFury) {
       const firePulse = 1 + Math.sin(game.elapsed * 17) * 0.08;
@@ -584,9 +596,9 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     }
     ctx.shadowBlur = 0;
     if (enemy.type === "boss" || enemy.hp < enemy.maxHp) {
-      const barW = enemy.type === "boss" ? 86 : 30;
+      const barW = enemy.type === "boss" || enemy.isExecutioner ? 86 : 30;
       ctx.fillStyle = "rgba(0,0,0,.55)"; ctx.fillRect(-barW / 2, -enemy.radius - 10, barW, 4);
-      ctx.fillStyle = bossInFury ? "#ef334f" : "#e87979"; ctx.fillRect(-barW / 2, -enemy.radius - 10, barW * clamp(enemy.hp / enemy.maxHp, 0, 1), 4);
+      ctx.fillStyle = enemy.isExecutioner ? "#b56cff" : bossInFury ? "#ef334f" : "#e87979"; ctx.fillRect(-barW / 2, -enemy.radius - 10, barW * clamp(enemy.hp / enemy.maxHp, 0, 1), 4); if(enemy.isExecutioner){ctx.font="900 9px Inter,system-ui";ctx.textAlign="center";ctx.fillStyle="#ead7ff";ctx.fillText("ALGOZ ESPECTRAL",0,-enemy.radius-15);}
     }
     ctx.restore();
   });
