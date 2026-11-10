@@ -707,7 +707,6 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
   const [exchangeAmount, setExchangeAmount] = useState("10");
   const [coinBalance, setCoinBalance] = useState(0);
   const [corruption, setCorruption] = useState(0);
-  const [corruptionPickerOpen, setCorruptionPickerOpen] = useState(false);
   const [running, setRunning] = useState(false);
   const [paused, setPaused] = useState(false);
   const [levelChoices, setLevelChoices] = useState<Upgrade[]>([]);
@@ -1394,91 +1393,57 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             </section>
 
             <div className="grid gap-3 sm:grid-cols-2">
-              <section className="fractals-gold-frame fractals-gold-corners flex min-w-0 flex-col rounded-xl p-3">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="text-[11px] font-black uppercase tracking-wider text-violet-200">Região ativa</p>
-                    <h3 className="mt-1 font-display text-lg font-bold text-white">{mission.name}</h3>
-                    <p className="text-xs text-white/55">{mission.pathName}</p>
-                  </div>
-                  <div className="shrink-0 rounded-lg border border-amber-300/25 bg-amber-400/10 px-2 py-1 text-right">
-                    <p className="text-[11px] font-semibold text-amber-100/75">Recompensa máx.</p>
-                    <p className="text-sm font-bold text-amber-200">{mission.maxFractals} FR</p>
-                  </div>
-                </div>
-                <p className="mt-3 line-clamp-3 text-xs leading-relaxed text-white/75">{mission.lore}</p>
-                <Button size="sm" variant="outline" onClick={() => setMissionPickerOpen(true)} className="mt-3 h-10 w-full border-white/15 text-xs font-bold text-white hover:bg-white/10">
-                  <MapPin className="mr-2 h-4 w-4" /> TROCAR REGIÃO <ChevronDown className="ml-1 h-4 w-4" />
-                </Button>
-              </section>
 
-              <section className="fractals-gold-frame fractals-gold-corners flex min-w-0 flex-col rounded-xl p-3">
-                <button
-                  type="button"
-                  onClick={() => setCorruptionPickerOpen((open) => !open)}
-                  aria-expanded={corruptionPickerOpen}
-                  aria-controls="fractals-corruption-options"
-                  className="flex w-full items-center justify-between gap-2 text-left"
-                >
-                  <span className="text-[11px] font-black uppercase tracking-wider text-rose-200">Risco da fenda</span>
-                  <span className="flex items-center gap-2">
-                    <span className="rounded-full border border-rose-300/30 bg-rose-400/10 px-2 py-1 text-[11px] font-bold text-rose-100">NÍVEL {corruption}</span>
-                    <ChevronDown className={`h-4 w-4 text-rose-100/70 transition-transform ${corruptionPickerOpen ? "rotate-180" : ""}`} />
+              <section className="fractals-gold-frame fractals-gold-corners flex min-w-0 flex-col rounded-xl p-3.5">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-6 w-6 items-center justify-center rounded border border-rose-400/40 bg-rose-950/60 text-rose-300"><Skull className="h-3.5 w-3.5" /></span>
+                    <span className="text-[11px] font-black uppercase tracking-wider text-rose-200">Risco da Fenda</span>
+                  </div>
+                  <span className={`rounded-full border px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider ${corruption === 0 ? "border-emerald-400/40 bg-emerald-950/40 text-emerald-200" : corruption >= 4 ? "border-rose-400/50 bg-rose-950/60 text-rose-100 shadow-[0_0_12px_rgba(244,63,94,0.3)]" : "border-amber-400/40 bg-amber-950/40 text-amber-200"}`}>
+                    {corruption === 0 ? "Paz Relativa" : "Nível " + corruption + " · " + CORRUPTION_LEVELS[corruption].name}
                   </span>
-                </button>
-                <h3 className="mt-2 font-display text-lg font-bold text-white">{CORRUPTION_LEVELS[corruption].name}</h3>
-                <p className="mt-1 text-xs leading-relaxed text-white/70">{CORRUPTION_LEVELS[corruption].description}</p>
-                <div className="mt-3 grid gap-2 rounded-lg border border-emerald-300/15 bg-emerald-300/[0.045] p-2.5">
-                  <div>
-                    <p className="text-[10px] font-black uppercase tracking-wider text-emerald-200">Bônus da corrupção</p>
-                    <p className="mt-1 text-[11px] leading-relaxed text-emerald-50/85">
-                      {corruption === 0
-                        ? "Vitória: 25 FR base, sem bônus adicional. Derrota: 2 FR por minuto sobrevivido."
-                        : `Vitória: 25 FR base + ${corruption * 15} FR de bônus. Derrota: ${2 + corruption} FR por minuto sobrevivido.`}
+                </div>
+                <p className="mt-1.5 text-xs text-white/70">{CORRUPTION_LEVELS[corruption].description}</p>
+                <div className="fractals-corruption-bar" role="radiogroup" aria-label="Níveis de corrupção da fenda">
+                  {CORRUPTION_LEVELS.map((level) => {
+                    const locked = level.level > unlockedCorruption;
+                    const active = corruption === level.level;
+                    const isDanger = level.level >= 4;
+                    return (
+                      <button key={level.level} type="button" role="radio" aria-checked={active} disabled={locked}
+                        onClick={() => setCorruption(level.level)}
+                        title={locked ? "Nível " + level.level + " bloqueado (vença a dificuldade anterior)" : "Selecionar " + level.level + ": " + level.name}
+                        className={`fractals-corruption-node ${active ? "is-active" : ""} ${isDanger ? "is-danger" : ""} ${locked ? "is-locked" : ""}`}>
+                        <span className="fractals-corruption-pip" />
+                        <span className="text-[10px] font-black">{locked ? <Lock className="inline h-2.5 w-2.5" /> : level.level}</span>
+                        <span className="text-[8px] font-semibold uppercase tracking-wider opacity-80">{level.level === 0 ? "Base" : "N" + level.level}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <div className="rounded-lg border border-emerald-400/20 bg-emerald-950/25 p-2.5">
+                    <p className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wider text-emerald-300"><Sparkles className="h-3 w-3" /> Recompensas</p>
+                    <p className="mt-1 text-[11px] font-medium leading-snug text-emerald-100/90">
+                      {corruption === 0 ? <>Vitória: <b className="text-emerald-300">25 FR</b> base<br /><span className="text-[10px] text-emerald-200/70">Derrota: +2 FR por minuto</span></> : <>Vitória: <b className="text-emerald-300">{25 + corruption * 15} FR</b> (+{corruption * 15} extra)<br /><span className="text-[10px] text-emerald-200/70">Derrota: +{2 + corruption} FR por minuto</span></>}
                     </p>
                   </div>
-                  <div className="border-t border-rose-200/10 pt-2">
-                    <p className="text-[10px] font-black uppercase tracking-wider text-rose-200">Ônus da corrupção</p>
-                    <p className="mt-1 text-[11px] leading-relaxed text-rose-50/85">
-                      {corruption === 0
-                        ? "Sem pressão adicional, sem aumento no surgimento e sem reforço de elites."
-                        : `Índice de pressão +${(corruption * 0.65).toFixed(2)} (não é multiplicador de dano) · fator de surgimento +${(corruption * 0.045).toFixed(3)} · fator de elites +${(corruption * 0.12).toFixed(2)} (chance de elite limitada a 22%).`}
+                  <div className="rounded-lg border border-rose-400/20 bg-rose-950/25 p-2.5">
+                    <p className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wider text-rose-300"><AlertTriangle className="h-3 w-3" /> Ameaça do Vazio</p>
+                    <p className="mt-1 text-[11px] font-medium leading-snug text-rose-100/90">
+                      {corruption === 0 ? <>Sem reforços do Vazio.<br /><span className="text-[10px] text-rose-200/70">Inimigos em densidade padrão.</span></> :
+                       corruption === 1 ? <>Presença inquieta.<br /><span className="text-[10px] text-rose-200/70">Inimigos +10% mais densos.</span></> :
+                       corruption === 2 ? <>Surgimento de Elites acelerado.<br /><span className="text-[10px] text-rose-200/70">Pressão constante na arena.</span></> :
+                       corruption === 3 ? <>O Vazio avança com fúria.<br /><span className="text-[10px] text-rose-200/70">Invasões massivas e rápidas.</span></> :
+                       corruption === 4 ? <>Ruptura abissal.<br /><span className="text-[10px] text-rose-200/70">Elites ferozes dominam a arena.</span></> :
+                       <>Pesadelo Irreversível.<br /><span className="text-[10px] text-rose-200/70">Agressividade e hordas máximas.</span></>}
                     </p>
                   </div>
                 </div>
-                {corruptionPickerOpen && (
-                  <div id="fractals-corruption-options" className="mt-3 grid gap-2 border-t border-white/10 pt-3">
-                    {CORRUPTION_LEVELS.map((level) => {
-                      const locked = level.level > unlockedCorruption;
-                      const active = corruption === level.level;
-                      const levelBonus = level.level === 0
-                        ? "Vitória: 25 FR base, sem bônus extra · Derrota: 2 FR/min sobrevivido."
-                        : `Vitória: 25 FR base + ${level.level * 15} FR extra · Derrota: ${2 + level.level} FR/min sobrevivido.`;
-                      const levelOnus = level.level === 0
-                        ? "Sem pressão, surgimento ou reforço de elites adicional."
-                        : `Índice de pressão +${(level.level * 0.65).toFixed(2)} (não é dano) · fator de surgimento +${(level.level * 0.045).toFixed(3)} · fator de elites +${(level.level * 0.12).toFixed(2)} (chance de elite limitada a 22%).`;
-                      return (
-                        <button
-                          key={level.level}
-                          type="button"
-                          disabled={locked}
-                          onClick={() => { setCorruption(level.level); setCorruptionPickerOpen(false); }}
-                          aria-label={locked ? `Corrupção ${level.level}: bloqueada` : `Selecionar corrupção ${level.level}: ${level.name}`}
-                          aria-pressed={active}
-                          className={`w-full rounded-lg border p-2.5 text-left transition ${active ? "border-amber-300/60 bg-amber-400/10" : locked ? "cursor-not-allowed border-white/5 bg-white/[0.02] opacity-45" : "border-white/10 bg-white/[0.025] hover:border-white/25 hover:bg-white/[0.06]"}`}
-                        >
-                          <span className="flex items-center justify-between gap-2">
-                            <span className="text-xs font-bold text-white">{locked && <Lock className="mr-1 inline h-3 w-3" />}{level.level} · {level.name}</span>
-                            {active && <span className="text-[9px] font-black uppercase tracking-wider text-amber-200">Ativo</span>}
-                          </span>
-                          <span className="mt-1 block text-[10px] leading-relaxed text-emerald-200/80">Bônus: {levelBonus}</span>
-                          <span className="mt-0.5 block text-[10px] leading-relaxed text-rose-200/80">Ônus: {levelOnus}</span>
-                        </button>
-                      );
-                    })}
-                    <p className="text-[10px] text-white/45">{unlockedCorruption < 5 ? "Vença na dificuldade atual para romper o próximo selo." : "Todos os níveis de corrupção foram desbloqueados."}</p>
-                  </div>
-                )}
+                <p className="mt-2 text-[10px] text-white/40">
+                  {unlockedCorruption < 5 ? "Nível " + (unlockedCorruption + 1) + " será desbloqueado ao derrotar o Guardião no Nível " + unlockedCorruption + "." : "✦ Todos os selos de corrupção foram rompidos."}
+                </p>
               </section>
             </div>
 
