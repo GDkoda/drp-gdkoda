@@ -1254,91 +1254,126 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         </div>
       )}
       {!running && !result && (
-        <Card className="fractals-lobby-card">
-          <div className="fractals-lobby">
-            <div className="fractals-hero">
-              <div className="fractals-hero__copy"><p className="fractals-eyebrow"><span className="fractals-eyebrow__dot"/><span>PROTOCOLO DE SOBREVIVÊNCIA · 01</span><span className="fractals-eyebrow__line"/></p><h2 className="fractals-title">ECOS <span>DOS</span><br/>FRACTAIS</h2><p className="fractals-hero__text">O Vazio abriu uma fenda. Atravesse as ruínas, recolha fragmentos e sobreviva ao despertar do guardião.</p><div className="fractals-hero__tags"><span>ROGUELIKE</span><span>12 MIN</span><span>COMBATE AUTOMÁTICO</span></div></div>
-              <div className="fractals-hero__sigil" aria-hidden="true"><div className="fractals-hero__sigil-ring"/><div className="fractals-hero__sigil-core"><Sparkles/><GemIcon/></div><span className="fractals-hero__sigil-caption">NEXUS<br/>FRACTALIS</span></div>
-            </div>
-            <div className="fractals-lobby-grid">
-              <section className="fractals-panel fractals-mission-panel">
-                <div className="fractals-panel__label"><span>01 / OPERAÇÃO ATIVA</span><b>MISSÃO</b></div>
-                <div className="fractals-mission-heading">
-                  <div className="fractals-mission-identity"><span className="fractals-mission-symbol"><MapPin/></span><div><h3>{mission.name}</h3><p>{mission.pathName}</p></div></div>
-                  <div className="fractals-mission-actions">
-                    <div className="fractals-mission-reward"><GemIcon/><b>{mission.maxFractals}</b><small>FR MÁX.</small></div>
-                    <button type="button" className="fractals-mission-select" onClick={() => setMissionPickerOpen(true)}>SELECIONAR MISSÃO <ChevronDown/></button>
+        <Card className="relative overflow-hidden rounded-2xl border border-violet-200/15 bg-gradient-to-b from-[#1b1727] via-[#13101d] to-[#100e18] p-3 text-white shadow-[0_20px_60px_rgba(0,0,0,0.45)] sm:p-5">
+          <div className="pointer-events-none absolute -right-20 -top-24 h-64 w-64 rounded-full bg-violet-500/[0.08] blur-3xl" />
+          <div className="relative space-y-4">
+            <header className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-3">
+              <div className="min-w-0">
+                <div className="mb-1 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.16em] text-violet-200">
+                  <span className="h-2 w-2 rounded-full bg-amber-300 shadow-[0_0_10px_#f59e0b]" />
+                  Sobrevivência roguelike
+                </div>
+                <h2 className="font-display text-2xl font-black tracking-wide text-white sm:text-3xl">ECOS <span className="text-amber-300">DOS</span> FRACTAIS</h2>
+                <p className="mt-1 text-xs text-white/65 sm:text-sm">Atravesse a fenda, reúna fragmentos e sobreviva ao despertar do guardião.</p>
+              </div>
+              <div className="flex items-center gap-2 rounded-xl border border-amber-300/25 bg-amber-400/10 px-3 py-2">
+                <GemIcon className="h-5 w-5 text-amber-300" />
+                <div className="text-right">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-amber-100/75">Seu saldo</p>
+                  <p className="font-mono text-lg font-black leading-tight text-amber-200">{fractalBalance.toLocaleString("pt-BR")} <span className="text-xs">FR</span></p>
+                </div>
+              </div>
+            </header>
+
+            <section className="rounded-xl border border-amber-300/30 bg-gradient-to-r from-amber-400/15 via-violet-500/10 to-amber-400/10 p-3 text-center sm:p-4">
+              <p className="mb-2 text-xs text-white/75 sm:text-sm">Sobreviva por 12 minutos. O guardião desperta ao final da incursão.</p>
+              <Button onClick={start} className="mx-auto h-12 w-full max-w-xl rounded-xl bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-500 font-display text-base font-black tracking-wider text-[#21170b] shadow-[0_0_28px_rgba(245,158,11,0.3)] transition hover:brightness-110 active:scale-[0.98]">
+                <Play className="mr-2 h-5 w-5 fill-current" /> ENTRAR NA FENDA
+              </Button>
+            </section>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <section className="flex min-w-0 flex-col rounded-xl border border-white/10 bg-white/[0.035] p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-black uppercase tracking-wider text-violet-200">Região ativa</p>
+                    <h3 className="mt-1 font-display text-lg font-bold text-white">{mission.name}</h3>
+                    <p className="text-xs text-white/55">{mission.pathName}</p>
+                  </div>
+                  <div className="shrink-0 rounded-lg border border-amber-300/25 bg-amber-400/10 px-2 py-1 text-right">
+                    <p className="text-[11px] font-semibold text-amber-100/75">Recompensa máx.</p>
+                    <p className="text-sm font-bold text-amber-200">{mission.maxFractals} FR</p>
                   </div>
                 </div>
-                <p className="fractals-mission-lore">{mission.lore}</p>
-                <p className="fractals-mission-identity-copy">{mission.identity}</p>
+                <p className="mt-3 line-clamp-3 text-xs leading-relaxed text-white/75">{mission.lore}</p>
+                <Button size="sm" variant="outline" onClick={() => setMissionPickerOpen(true)} className="mt-3 h-10 w-full border-white/15 text-xs font-bold text-white hover:bg-white/10">
+                  <MapPin className="mr-2 h-4 w-4" /> TROCAR REGIÃO <ChevronDown className="ml-1 h-4 w-4" />
+                </Button>
               </section>
-              <section className="fractals-panel fractals-corruption-panel">
-                <button type="button" className="fractals-corruption-heading" aria-expanded={corruptionExpanded} onClick={() => setCorruptionExpanded((value) => !value)}>
-                  <span><small>02 / RISCO DA FENDA</small><strong>CORRUPÇÃO</strong></span>
-                  <span className="fractals-corruption-active"><small>NÍVEL {String(corruption).padStart(2,"0")}</small><strong>{CORRUPTION_LEVELS[corruption].name}</strong><ChevronDown className={corruptionExpanded ? "is-expanded" : ""}/></span>
-                </button>
-                {!corruptionExpanded ? (
-                  <button type="button" className="fractals-corruption-current" onClick={() => setCorruptionExpanded(true)}>
-                    <span className="fractals-corruption-current__sigil"><Shield/></span>
-                    <span><strong>{CORRUPTION_LEVELS[corruption].name}</strong><small>{CORRUPTION_LEVELS[corruption].description}</small></span>
-                    <span className="fractals-corruption-current__hint">ALTERAR</span>
-                  </button>
-                ) : (
-                  <>
-                    <div className="fractals-corruption-grid">
-                      {CORRUPTION_LEVELS.map((level) => {
-                        const locked = level.level > unlockedCorruption;
-                        return <button key={level.level} type="button" disabled={locked} onClick={() => { setCorruption(level.level); setCorruptionExpanded(false); }} className={`fractals-corruption-option ${corruption === level.level ? "is-selected" : ""} ${locked ? "is-locked" : ""}`}>
-                          <span className="fractals-corruption-option__index">NÍVEL {String(level.level).padStart(2,"0")}</span><strong>{level.name}</strong><span className="fractals-corruption-option__state">{locked ? "BLOQUEADO" : completedCorruptions.includes(level.level) ? "CONCLUÍDO" : corruption === level.level ? "SELECIONADO" : "DISPONÍVEL"}</span>
-                        </button>;
-                      })}
-                    </div>
-                    <p className="fractals-corruption-description">{CORRUPTION_LEVELS[corruption].description}</p>
-                    <p className="fractals-corruption-hint">{unlockedCorruption < 5 ? "Vença para romper o próximo selo." : "Todos os selos foram rompidos."}</p>
-                  </>
-                )}
+
+              <section className="flex min-w-0 flex-col rounded-xl border border-rose-200/15 bg-white/[0.035] p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-[11px] font-black uppercase tracking-wider text-rose-200">Risco da fenda</p>
+                  <span className="rounded-full border border-rose-300/30 bg-rose-400/10 px-2 py-1 text-[11px] font-bold text-rose-100">NÍVEL {corruption}</span>
+                </div>
+                <h3 className="mt-2 font-display text-lg font-bold text-white">{CORRUPTION_LEVELS[corruption].name}</h3>
+                <p className="mt-1 min-h-[42px] text-xs leading-relaxed text-white/70">{CORRUPTION_LEVELS[corruption].description}</p>
+                <div className="mt-auto grid grid-cols-6 gap-1.5 pt-3">
+                  {CORRUPTION_LEVELS.map((level) => {
+                    const locked = level.level > unlockedCorruption;
+                    const active = corruption === level.level;
+                    return <button key={level.level} type="button" disabled={locked} onClick={() => setCorruption(level.level)} aria-label={`Corrupção ${level.level}: ${level.name}`} aria-pressed={active} className={`flex h-9 items-center justify-center rounded-lg border text-sm font-bold transition ${active ? "border-amber-300 bg-amber-400/20 text-amber-100 shadow-[0_0_12px_rgba(245,158,11,0.2)]" : locked ? "cursor-not-allowed border-white/5 bg-white/[0.02] text-white/25" : "border-white/10 bg-white/5 text-white/75 hover:border-white/25 hover:bg-white/10"}`}>
+                      {locked ? <Lock className="h-3.5 w-3.5" /> : level.level}
+                    </button>;
+                  })}
+                </div>
+                <p className="mt-2 text-[11px] text-white/50">{unlockedCorruption < 5 ? "Vença nesta dificuldade para romper o próximo selo." : "Todos os níveis de corrupção foram desbloqueados."}</p>
               </section>
             </div>
 
-            <div className="fractals-launch">
-              <div className="fractals-launch__copy"><span>O PORTAL ESTÁ INSTÁVEL</span><h3>O Vazio aguarda.</h3><p>Sobreviva por 12 minutos. O guardião desperta ao final da incursão.</p></div>
-              <Button onClick={start} className="fractals-launch__button"><Play className="h-4 w-4"/> ENTRAR NA FENDA <span>↗</span></Button>
-            </div>
-            <section className="fractals-vault">
-              <div className="fractals-vault__header"><div className="fractals-vault__brand"><div className="fractals-vault__icon"><ShoppingBag/><span/></div><div><p className="fractals-vault__eyebrow">LOJA DE PROGRESSÃO</p><h3>ARSENAL <span>DE FRACTAIS</span></h3><p>Compre melhorias permanentes e relíquias para suas expedições.</p></div></div><div className="fractals-wallet"><small>SEU COFRE</small><strong>{fractalBalance.toLocaleString("pt-BR")} <i>FR</i></strong><Button size="sm" variant="outline" className="fractals-vault__toggle" onClick={() => setShopOpen((v) => !v)}>{shopOpen ? "FECHAR LOJA" : "ABRIR LOJA"} <span>{shopOpen ? "−" : "+"}</span></Button></div></div>
-              {shopError && <p className="mt-2 text-xs text-amber-300">{shopError}</p>}
-              {shopOpen && <div className="fractals-vault__content">
-                <div className="fractals-exchange">
-                  <div className="fractals-exchange__copy"><strong><Coins/> Troca de moedas</strong><span>10 fractais = 1 moeda de ouro</span></div>
-                  <div className="fractals-exchange__balance"><small>MOEDAS</small><b>{coinBalance.toLocaleString("pt-BR")}</b></div>
-                  <div className="fractals-exchange__controls">
-                    <label><input type="number" min={10} max={fractalBalance} step={10} inputMode="numeric" value={exchangeAmount} onChange={(event) => setExchangeAmount(event.target.value)} aria-label="Quantidade de fractais para converter"/><span>FR</span></label>
-                    <span className="fractals-exchange__arrow">→</span>
-                    <strong>{Math.floor(Math.max(0, exchangeValue) / 10).toLocaleString("pt-BR")} moedas</strong>
-                    <Button size="sm" disabled={shopBusy || !exchangeValid} onClick={() => void exchangeFractals()}>TROCAR</Button>
+            <section className="rounded-xl border border-amber-300/20 bg-black/20 p-3 sm:p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-amber-300/25 bg-amber-400/10 text-amber-200"><ShoppingBag className="h-5 w-5" /></div>
+                  <div className="min-w-0">
+                    <h3 className="font-display text-base font-bold text-white sm:text-lg">Arsenal de Fractais</h3>
+                    <p className="text-xs text-white/55">Melhorias permanentes e relíquias para suas expedições.</p>
                   </div>
                 </div>
-                <div className="fractals-shop-tabs" role="tablist" aria-label="Categorias da loja"><button type="button" role="tab" aria-selected={shopSection === "permanent"} className={shopSection === "permanent" ? "is-active" : ""} onClick={() => setShopSection("permanent")}><Crown/> FORJA PERMANENTE <small>05</small></button><button type="button" role="tab" aria-selected={shopSection === "relics"} className={shopSection === "relics" ? "is-active" : ""} onClick={() => setShopSection("relics")}><Sparkles/> RELÍQUIAS DE CAMPO <small>04</small></button></div>
-                {shopSection === "permanent" && <section className="fractals-shop-section"><div className="fractals-shop-section__heading"><span>01</span><div><h4>Melhorias permanentes</h4><p>Benefícios fixos para todas as expedições.</p></div></div>
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    <div className="group relative overflow-hidden rounded-xl border border-rose-200/20 bg-gradient-to-br from-rose-400/[0.12] to-[#1b1422] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] transition hover:-translate-y-0.5 hover:border-rose-200/40"><p className="text-xs font-semibold">Vida reforçada</p><p className="text-[10px] text-muted-foreground">Nível {purchases.health}/5 · +10 de vida máxima por nível.</p><Button size="sm" className="mt-3 h-9 w-full rounded-xl bg-gradient-to-r from-amber-200 to-yellow-300 font-bold text-[#291f12] shadow-[0_5px_18px_rgba(234,179,8,0.12)] transition hover:brightness-110" disabled={shopBusy || purchases.health>=5 || (!isMaster && fractalBalance < FRACTAL_SHOP.health[purchases.health].cost)} onClick={() => void purchaseUpgrade("health")}>{purchases.health>=5 ? "Máximo" : isMaster ? "Melhorar grátis" : "Comprar · " + FRACTAL_SHOP.health[purchases.health].cost.toLocaleString("pt-BR")}</Button></div>
-                    <div className="group relative overflow-hidden rounded-xl border border-violet-200/20 bg-gradient-to-br from-violet-400/[0.12] to-[#171425] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] transition hover:-translate-y-0.5 hover:border-violet-200/40"><p className="text-xs font-semibold">Duração dos projéteis</p><p className="text-[10px] text-muted-foreground">Nível {purchases.projectile_duration}/3 · Projéteis permanecem até 1,6 s.</p><Button size="sm" className="mt-3 h-9 w-full rounded-xl bg-gradient-to-r from-amber-200 to-yellow-300 font-bold text-[#291f12] shadow-[0_5px_18px_rgba(234,179,8,0.12)] transition hover:brightness-110" disabled={shopBusy || purchases.projectile_duration>=3 || (!isMaster && fractalBalance < FRACTAL_SHOP.projectile_duration[purchases.projectile_duration].cost)} onClick={() => void purchaseUpgrade("projectile_duration")}>{purchases.projectile_duration>=3 ? "Máximo" : isMaster ? "Melhorar grátis" : "Comprar · " + FRACTAL_SHOP.projectile_duration[purchases.projectile_duration].cost.toLocaleString("pt-BR")}</Button></div>
-                    <div className="group relative overflow-hidden rounded-xl border border-violet-100/15 bg-gradient-to-br from-white/[0.07] to-[#171521] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition duration-200 hover:-translate-y-0.5 hover:border-violet-100/30 hover:shadow-[0_12px_25px_rgba(0,0,0,0.18)]"><p className="text-xs font-semibold">Ressonância de raridade</p><p className="text-[10px] text-muted-foreground">Tier {purchases.rarity}/3 · Mais chances de ofertas Raras e Épicas.</p><Button size="sm" className="mt-3 h-9 w-full rounded-xl bg-gradient-to-r from-amber-200 to-yellow-300 font-bold text-[#291f12] shadow-[0_5px_18px_rgba(234,179,8,0.12)] transition hover:brightness-110" disabled={shopBusy || purchases.rarity>=3 || (!isMaster && fractalBalance < FRACTAL_SHOP.rarity[purchases.rarity].cost)} onClick={() => void purchaseUpgrade("rarity")}>{purchases.rarity>=3 ? "Máximo" : isMaster ? "Desbloquear grátis" : "Comprar · " + FRACTAL_SHOP.rarity[purchases.rarity].cost.toLocaleString("pt-BR")}</Button></div>
-                    <div className="group relative overflow-hidden rounded-xl border border-violet-100/15 bg-gradient-to-br from-white/[0.07] to-[#171521] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition duration-200 hover:-translate-y-0.5 hover:border-violet-100/30 hover:shadow-[0_12px_25px_rgba(0,0,0,0.18)]"><p className="text-xs font-semibold">Velocidade 2x</p><p className="text-[10px] text-muted-foreground">Desbloqueia permanentemente a velocidade 2x.</p><Button size="sm" className="mt-3 h-9 w-full rounded-xl bg-gradient-to-r from-amber-200 to-yellow-300 font-bold text-[#291f12] shadow-[0_5px_18px_rgba(234,179,8,0.12)] transition hover:brightness-110" disabled={shopBusy || purchases.speed_2x || (!isMaster && fractalBalance < FRACTAL_SHOP.speed.double.cost)} onClick={() => void purchaseUpgrade("speed_2x")}>{purchases.speed_2x ? "Adquirido" : isMaster ? "Grátis" : "Comprar · 1.000"}</Button></div>
-                    <div className="group relative overflow-hidden rounded-xl border border-violet-100/15 bg-gradient-to-br from-white/[0.07] to-[#171521] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition duration-200 hover:-translate-y-0.5 hover:border-violet-100/30 hover:shadow-[0_12px_25px_rgba(0,0,0,0.18)]"><p className="text-xs font-semibold">Velocidade 3x</p><p className="text-[10px] text-muted-foreground">Requer 2x · Desbloqueia a velocidade 3x.</p><Button size="sm" className="mt-3 h-9 w-full rounded-xl bg-gradient-to-r from-amber-200 to-yellow-300 font-bold text-[#291f12] shadow-[0_5px_18px_rgba(234,179,8,0.12)] transition hover:brightness-110" disabled={shopBusy || purchases.speed_3x || (!isMaster && (!purchases.speed_2x || fractalBalance < FRACTAL_SHOP.speed.triple.cost))} onClick={() => void purchaseUpgrade("speed_3x")}>{purchases.speed_3x ? "Adquirido" : isMaster ? "Grátis" : "Comprar · 2.000"}</Button></div>
+                <Button size="sm" variant="outline" onClick={() => setShopOpen((value) => !value)} className="h-10 border-amber-300/30 px-4 text-xs font-bold text-amber-100 hover:bg-amber-400/10">
+                  {shopOpen ? "FECHAR LOJA" : "ABRIR LOJA"} <ChevronDown className={`ml-2 h-4 w-4 transition-transform ${shopOpen ? "rotate-180" : ""}`} />
+                </Button>
+              </div>
+              {shopError && <p className="mt-3 rounded-lg border border-amber-300/20 bg-amber-400/10 p-2 text-xs text-amber-200">{shopError}</p>}
+              {shopOpen && (
+                <div className="mt-4 space-y-3 border-t border-white/10 pt-3">
+                  <div className="grid gap-2 rounded-xl border border-white/10 bg-white/[0.035] p-3 sm:grid-cols-[1fr_auto] sm:items-center">
+                    <div>
+                      <div className="flex items-center gap-2 text-sm font-bold text-white"><Coins className="h-4 w-4 text-amber-300" /> Troca de moedas</div>
+                      <p className="mt-1 text-xs text-white/60">Converta 10 fractais em 1 moeda de ouro. Saldo: {coinBalance.toLocaleString("pt-BR")} moedas.</p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <input type="number" min={10} max={fractalBalance} step={10} inputMode="numeric" value={exchangeAmount} onChange={(event) => setExchangeAmount(event.target.value)} aria-label="Quantidade de fractais para converter" className="h-10 w-24 rounded-lg border border-white/15 bg-black/40 px-2 text-sm text-white" placeholder="FR" />
+                      <span className="text-xs text-white/65">= {Math.floor(Math.max(0, exchangeValue) / 10).toLocaleString("pt-BR")} moedas</span>
+                      <Button size="sm" disabled={shopBusy || !exchangeValid} onClick={() => void exchangeFractals()} className="h-10 bg-amber-300 px-4 text-xs font-black text-black hover:bg-amber-200">TROCAR</Button>
+                    </div>
                   </div>
-                </section>}
-                {shopSection === "relics" && <section className="fractals-shop-section"><div className="fractals-shop-section__heading"><span>02</span><div><h4>Relíquias de campo</h4><p>Habilite artefatos que podem cair de elites e brutamontes.</p></div></div>
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    <div className="group relative overflow-hidden rounded-xl border border-violet-100/15 bg-gradient-to-br from-white/[0.07] to-[#171521] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition duration-200 hover:-translate-y-0.5 hover:border-violet-100/30 hover:shadow-[0_12px_25px_rgba(0,0,0,0.18)]"><p className="text-xs font-semibold">Área de coleta</p><p className="text-[10px] text-muted-foreground">Nível {purchases.area}/3 · Amplia o raio de coleta e libera relíquias de elite.</p><Button size="sm" className="mt-3 h-9 w-full rounded-xl bg-gradient-to-r from-amber-200 to-yellow-300 font-bold text-[#291f12] shadow-[0_5px_18px_rgba(234,179,8,0.12)] transition hover:brightness-110" disabled={shopBusy || purchases.area>=3 || (!isMaster && fractalBalance < FRACTAL_SHOP.area[purchases.area].cost)} onClick={() => void purchaseUpgrade("area")}>{purchases.area>=3 ? "Máximo" : isMaster ? "Desbloquear grátis" : "Comprar · " + FRACTAL_SHOP.area[purchases.area].cost.toLocaleString("pt-BR")}</Button></div>
-                    <div className="group relative overflow-hidden rounded-xl border border-violet-100/15 bg-gradient-to-br from-white/[0.07] to-[#171521] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition duration-200 hover:-translate-y-0.5 hover:border-violet-100/30 hover:shadow-[0_12px_25px_rgba(0,0,0,0.18)]"><p className="text-xs font-semibold">Afinidade de experiência</p><p className="text-[10px] text-muted-foreground">Nível {purchases.experience}/3 · Mais XP por fragmento coletado.</p><Button size="sm" className="mt-3 h-9 w-full rounded-xl bg-gradient-to-r from-amber-200 to-yellow-300 font-bold text-[#291f12] shadow-[0_5px_18px_rgba(234,179,8,0.12)] transition hover:brightness-110" disabled={shopBusy || purchases.experience>=3 || (!isMaster && fractalBalance < FRACTAL_SHOP.experience[purchases.experience].cost)} onClick={() => void purchaseUpgrade("experience")}>{purchases.experience>=3 ? "Máximo" : isMaster ? "Desbloquear grátis" : "Comprar · " + FRACTAL_SHOP.experience[purchases.experience].cost.toLocaleString("pt-BR")}</Button></div>
-                    <div className="group relative overflow-hidden rounded-xl border border-violet-100/15 bg-gradient-to-br from-white/[0.07] to-[#171521] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition duration-200 hover:-translate-y-0.5 hover:border-violet-100/30 hover:shadow-[0_12px_25px_rgba(0,0,0,0.18)]"><p className="text-xs font-semibold">Alcance dos projéteis</p><p className="text-[10px] text-muted-foreground">Nível {purchases.projectile_range}/3 · Projéteis viajam mais longe; +10% por relíquia.</p><Button size="sm" className="mt-3 h-9 w-full rounded-xl bg-gradient-to-r from-amber-200 to-yellow-300 font-bold text-[#291f12] shadow-[0_5px_18px_rgba(234,179,8,0.12)] transition hover:brightness-110" disabled={shopBusy || purchases.projectile_range>=3 || (!isMaster && fractalBalance < FRACTAL_SHOP.projectile_range[purchases.projectile_range].cost)} onClick={() => void purchaseUpgrade("projectile_range")}>{purchases.projectile_range>=3 ? "Máximo" : isMaster ? "Desbloquear grátis" : "Comprar · " + FRACTAL_SHOP.projectile_range[purchases.projectile_range].cost.toLocaleString("pt-BR")}</Button></div>
-                    <div className="group relative overflow-hidden rounded-xl border border-violet-100/15 bg-gradient-to-br from-white/[0.07] to-[#171521] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition duration-200 hover:-translate-y-0.5 hover:border-violet-100/30 hover:shadow-[0_12px_25px_rgba(0,0,0,0.18)]"><p className="text-xs font-semibold">Coroa de Estilhaços</p><p className="text-[10px] text-muted-foreground">Nível {purchases.projectiles}/3 · Até +2 projéteis extras, um por coleta.</p><Button size="sm" className="mt-3 h-9 w-full rounded-xl bg-gradient-to-r from-amber-200 to-yellow-300 font-bold text-[#291f12] shadow-[0_5px_18px_rgba(234,179,8,0.12)] transition hover:brightness-110" disabled={shopBusy || purchases.projectiles>=3 || (!isMaster && fractalBalance < FRACTAL_SHOP.projectiles[purchases.projectiles].cost)} onClick={() => void purchaseUpgrade("projectiles")}>{purchases.projectiles>=3 ? "Máximo" : isMaster ? "Desbloquear grátis" : "Comprar · " + FRACTAL_SHOP.projectiles[purchases.projectiles].cost.toLocaleString("pt-BR")}</Button></div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <button type="button" role="tab" aria-selected={shopSection === "permanent"} onClick={() => setShopSection("permanent")} className={`flex min-h-10 items-center justify-center gap-2 rounded-lg border px-2 text-xs font-bold transition ${shopSection === "permanent" ? "border-amber-300/50 bg-amber-400/15 text-amber-100" : "border-white/10 bg-white/[0.025] text-white/60 hover:text-white"}`}><Crown className="h-4 w-4" /> Forja permanente</button>
+                    <button type="button" role="tab" aria-selected={shopSection === "relics"} onClick={() => setShopSection("relics")} className={`flex min-h-10 items-center justify-center gap-2 rounded-lg border px-2 text-xs font-bold transition ${shopSection === "relics" ? "border-amber-300/50 bg-amber-400/15 text-amber-100" : "border-white/10 bg-white/[0.025] text-white/60 hover:text-white"}`}><Sparkles className="h-4 w-4" /> Relíquias de campo</button>
                   </div>
-                </section>}
-              </div>}
-              <p className="fractals-vault__footnote">Relíquias podem surgir nas escolhas de nível ou cair de elites e brutamontes. Seus efeitos duram até o fim da expedição.</p>
+
+                  {shopSection === "permanent" && (
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3"><div className="flex items-center justify-between gap-2"><p className="text-sm font-bold">Vida reforçada</p><span className="text-xs font-bold text-amber-200">Nível {purchases.health}/5</span></div><p className="mt-1 text-xs text-white/60">+10 de vida máxima permanente por nível.</p><Button size="sm" className="mt-3 h-10 w-full bg-amber-300 text-xs font-black text-black hover:bg-amber-200" disabled={shopBusy || purchases.health >= 5 || (!isMaster && fractalBalance < FRACTAL_SHOP.health[purchases.health].cost)} onClick={() => void purchaseUpgrade("health")}>{purchases.health >= 5 ? "NÍVEL MÁXIMO" : isMaster ? "MELHORAR GRÁTIS" : `COMPRAR · ${FRACTAL_SHOP.health[purchases.health].cost.toLocaleString("pt-BR")} FR`}</Button></div>
+                      <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3"><div className="flex items-center justify-between gap-2"><p className="text-sm font-bold">Duração dos projéteis</p><span className="text-xs font-bold text-amber-200">Nível {purchases.projectile_duration}/3</span></div><p className="mt-1 text-xs text-white/60">Projéteis permanecem ativos por mais tempo.</p><Button size="sm" className="mt-3 h-10 w-full bg-amber-300 text-xs font-black text-black hover:bg-amber-200" disabled={shopBusy || purchases.projectile_duration >= 3 || (!isMaster && fractalBalance < FRACTAL_SHOP.projectile_duration[purchases.projectile_duration].cost)} onClick={() => void purchaseUpgrade("projectile_duration")}>{purchases.projectile_duration >= 3 ? "NÍVEL MÁXIMO" : isMaster ? "MELHORAR GRÁTIS" : `COMPRAR · ${FRACTAL_SHOP.projectile_duration[purchases.projectile_duration].cost.toLocaleString("pt-BR")} FR`}</Button></div>
+                      <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3"><div className="flex items-center justify-between gap-2"><p className="text-sm font-bold">Ressonância de raridade</p><span className="text-xs font-bold text-amber-200">Nível {purchases.rarity}/3</span></div><p className="mt-1 text-xs text-white/60">Aumenta as chances de dádivas Raras e Épicas.</p><Button size="sm" className="mt-3 h-10 w-full bg-amber-300 text-xs font-black text-black hover:bg-amber-200" disabled={shopBusy || purchases.rarity >= 3 || (!isMaster && fractalBalance < FRACTAL_SHOP.rarity[purchases.rarity].cost)} onClick={() => void purchaseUpgrade("rarity")}>{purchases.rarity >= 3 ? "NÍVEL MÁXIMO" : isMaster ? "DESBLOQUEAR GRÁTIS" : `COMPRAR · ${FRACTAL_SHOP.rarity[purchases.rarity].cost.toLocaleString("pt-BR")} FR`}</Button></div>
+                      <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3"><div className="flex items-center justify-between gap-2"><p className="text-sm font-bold">Velocidade 2x</p><span className="text-xs font-bold text-amber-200">{purchases.speed_2x ? "Adquirido" : "Bloqueado"}</span></div><p className="mt-1 text-xs text-white/60">Desbloqueia a velocidade 2x nas expedições.</p><Button size="sm" className="mt-3 h-10 w-full bg-amber-300 text-xs font-black text-black hover:bg-amber-200" disabled={shopBusy || purchases.speed_2x || (!isMaster && fractalBalance < FRACTAL_SHOP.speed.double.cost)} onClick={() => void purchaseUpgrade("speed_2x")}>{purchases.speed_2x ? "ADQUIRIDO" : isMaster ? "LIBERAR GRÁTIS" : "COMPRAR · 1.000 FR"}</Button></div>
+                      <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3"><div className="flex items-center justify-between gap-2"><p className="text-sm font-bold">Velocidade 3x</p><span className="text-xs font-bold text-amber-200">{purchases.speed_3x ? "Adquirido" : purchases.speed_2x ? "Disponível" : "Requer 2x"}</span></div><p className="mt-1 text-xs text-white/60">Desbloqueia a velocidade 3x. Requer a melhoria 2x.</p><Button size="sm" className="mt-3 h-10 w-full bg-amber-300 text-xs font-black text-black hover:bg-amber-200" disabled={shopBusy || purchases.speed_3x || (!isMaster && (!purchases.speed_2x || fractalBalance < FRACTAL_SHOP.speed.triple.cost))} onClick={() => void purchaseUpgrade("speed_3x")}>{purchases.speed_3x ? "ADQUIRIDO" : isMaster ? "LIBERAR GRÁTIS" : "COMPRAR · 2.000 FR"}</Button></div>
+                    </div>
+                  )}
+
+                  {shopSection === "relics" && (
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3"><div className="flex items-center justify-between gap-2"><p className="text-sm font-bold">Área de coleta</p><span className="text-xs font-bold text-amber-200">Nível {purchases.area}/3</span></div><p className="mt-1 text-xs text-white/60">Amplia o raio de atração de gemas e relíquias.</p><Button size="sm" className="mt-3 h-10 w-full bg-amber-300 text-xs font-black text-black hover:bg-amber-200" disabled={shopBusy || purchases.area >= 3 || (!isMaster && fractalBalance < FRACTAL_SHOP.area[purchases.area].cost)} onClick={() => void purchaseUpgrade("area")}>{purchases.area >= 3 ? "NÍVEL MÁXIMO" : isMaster ? "DESBLOQUEAR GRÁTIS" : `COMPRAR · ${FRACTAL_SHOP.area[purchases.area].cost.toLocaleString("pt-BR")} FR`}</Button></div>
+                      <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3"><div className="flex items-center justify-between gap-2"><p className="text-sm font-bold">Afinidade de experiência</p><span className="text-xs font-bold text-amber-200">Nível {purchases.experience}/3</span></div><p className="mt-1 text-xs text-white/60">+5% de XP por fragmento coletado.</p><Button size="sm" className="mt-3 h-10 w-full bg-amber-300 text-xs font-black text-black hover:bg-amber-200" disabled={shopBusy || purchases.experience >= 3 || (!isMaster && fractalBalance < FRACTAL_SHOP.experience[purchases.experience].cost)} onClick={() => void purchaseUpgrade("experience")}>{purchases.experience >= 3 ? "NÍVEL MÁXIMO" : isMaster ? "DESBLOQUEAR GRÁTIS" : `COMPRAR · ${FRACTAL_SHOP.experience[purchases.experience].cost.toLocaleString("pt-BR")} FR`}</Button></div>
+                      <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3"><div className="flex items-center justify-between gap-2"><p className="text-sm font-bold">Alcance dos projéteis</p><span className="text-xs font-bold text-amber-200">Nível {purchases.projectile_range}/3</span></div><p className="mt-1 text-xs text-white/60">Seus disparos alcançam monstros mais distantes.</p><Button size="sm" className="mt-3 h-10 w-full bg-amber-300 text-xs font-black text-black hover:bg-amber-200" disabled={shopBusy || purchases.projectile_range >= 3 || (!isMaster && fractalBalance < FRACTAL_SHOP.projectile_range[purchases.projectile_range].cost)} onClick={() => void purchaseUpgrade("projectile_range")}>{purchases.projectile_range >= 3 ? "NÍVEL MÁXIMO" : isMaster ? "DESBLOQUEAR GRÁTIS" : `COMPRAR · ${FRACTAL_SHOP.projectile_range[purchases.projectile_range].cost.toLocaleString("pt-BR")} FR`}</Button></div>
+                      <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3"><div className="flex items-center justify-between gap-2"><p className="text-sm font-bold">Coroa de Estilhaços</p><span className="text-xs font-bold text-amber-200">Nível {purchases.projectiles}/3</span></div><p className="mt-1 text-xs text-white/60">Libera até +2 projéteis extras simultâneos.</p><Button size="sm" className="mt-3 h-10 w-full bg-amber-300 text-xs font-black text-black hover:bg-amber-200" disabled={shopBusy || purchases.projectiles >= 3 || (!isMaster && fractalBalance < FRACTAL_SHOP.projectiles[purchases.projectiles].cost)} onClick={() => void purchaseUpgrade("projectiles")}>{purchases.projectiles >= 3 ? "NÍVEL MÁXIMO" : isMaster ? "DESBLOQUEAR GRÁTIS" : `COMPRAR · ${FRACTAL_SHOP.projectiles[purchases.projectiles].cost.toLocaleString("pt-BR")} FR`}</Button></div>
+                    </div>
+                  )}
+                </div>
+              )}
             </section>
           </div>
         </Card>
