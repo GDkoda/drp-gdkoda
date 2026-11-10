@@ -499,6 +499,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
   });
   ctx.save(); ctx.lineCap = "round";
   game.shots.forEach((shot) => {
+    if(shot.x<cameraX-80||shot.x>cameraX+viewWidth+80||shot.y<cameraY-80||shot.y>cameraY+viewHeight+80)return;
     const speed = Math.hypot(shot.vx, shot.vy) || 1; const len = 34;
     const tx = shot.x - shot.vx / speed * len, ty = shot.y - shot.vy / speed * len;
     const trail = ctx.createLinearGradient(tx, ty, shot.x, shot.y);
@@ -1302,7 +1303,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             }
           }
         }
-        game.enemies = game.enemies.filter((enemy) => enemy.hp > 0 && (enemy.type === "boss" || distance(enemy.x, enemy.y, game.player.x, game.player.y) < Math.max(game.width, game.height) / zoomRef.current * 1.45));
+        game.enemies = game.enemies.filter((enemy) => enemy.hp > 0 && (enemy.type === "boss" || enemy.isExecutioner || distance(enemy.x, enemy.y, game.player.x, game.player.y) < Math.max(game.width, game.height) / zoomRef.current * 1.45));
         game.gems.forEach((gem) => {
           const previousX = gem.x, previousY = gem.y;
           const d = distance(game.player.x, game.player.y, gem.x, gem.y);
