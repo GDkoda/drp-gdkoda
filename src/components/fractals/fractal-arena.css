@@ -2537,3 +2537,15 @@
   .fractals-shop-item__description { font-size: 9px; }
   .fractals-shop-buy-btn { min-width: 72px; min-height: 38px; font-size: 8px; }
 }
+
+
+/* Current compact lobby Card is rendered with utility classes instead of the
+   legacy .fractals-lobby-card selector; give that live shell the same gold rim. */
+.fractals-hub > .relative.overflow-hidden {
+  border: 1px solid rgba(245,215,142,.42) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(255,238,194,.11),
+    inset 0 1px 0 rgba(255,255,255,.18),
+    0 18px 55px rgba(0,0,0,.48),
+    0 0 20px rgba(229,183,89,.075) !important;
+}
