@@ -1721,9 +1721,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                 {!result && <Button size="sm" variant="outline" className="fractals-hud-pause" onClick={() => setPaused((value) => !value)}><Pause/></Button>}
               </div>
             </section>
-            {hud.runes.length > 0 && <div className="fractals-rune-bar absolute inset-x-2 top-[5.4rem] z-10 flex flex-wrap items-center gap-1.5 sm:inset-x-4 sm:top-[5.8rem]" aria-label="Runas ativas da build">
-              {hud.runes.map((rune) => <span key={rune.id} className={`fractals-rune-pill rarity-${rune.rarity}`} title={`${rune.name} · ${rune.rarity}`}><b>{rune.id === "power" ? "⚔" : rune.id === "haste" ? "⚡" : rune.id === "vitality" ? "✚" : rune.id === "swift" ? "➤" : rune.id === "special_area" ? "🧲" : rune.id === "special_experience" ? "🔮" : rune.id === "special_projectile_range" ? "🏹" : "✦"}</b><span>{rune.name}</span><strong>x{rune.count}</strong></span>)}
-            </div>}
+
             <div className="fractals-arena-hint pointer-events-none absolute bottom-3 left-3">WASD / setas / toque para mover</div>
             {bossMessage && !result && <div className="fractals-boss-alert pointer-events-none absolute inset-x-0 top-1/2 z-30 -translate-y-1/2 px-3 text-center"><span>⚠ ALERTA DE FENDA: O GUARDIÃO DESPERTOU ⚠</span></div>}
             {paused && !result && levelChoices.length === 0 && <div className="fractals-pause-overlay absolute inset-0 grid place-items-center overflow-y-auto p-3 sm:p-5">
@@ -1736,6 +1734,15 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
    <Button className="fractals-pause-resume mt-3 h-11 w-full font-bold" onClick={() => {setPausePanel("main");setPaused(false)}}><Play className="mr-2 h-4 w-4"/> Retomar expedição</Button>
   </> : <>
    <div className="mb-3 grid grid-cols-2 gap-2">{[["Vida",`${Math.ceil(gameRef.current?.player.hp ?? hud.hp)} / ${Math.ceil(gameRef.current?.player.maxHp ?? hud.maxHp)}`],["Dano",`${(gameRef.current?.player.damage ?? 0).toFixed(1)}`],["Velocidade",`${(gameRef.current?.player.speed ?? 0).toFixed(0)}`],["Intervalo de ataque",`${(gameRef.current?.player.fireRate ?? 0).toFixed(2)}s`],["Nível",`${gameRef.current?.player.level ?? hud.level}`],["Projéteis",`${1 + (gameRef.current?.player.projectileStacks ?? 0)}`],["Alcance",`+${Math.round((gameRef.current?.player.projectileRangeMultiplier ?? 1) * 100 - 100)}%`],["Experiência",`${Math.floor(gameRef.current?.player.xp ?? hud.xp)} / ${Math.floor(gameRef.current?.player.nextXp ?? hud.nextXp)}`],["Abates",`${gameRef.current?.kills ?? hud.kills}`],["Multiplicador",`${speedMultiplier}x`]].map(([label,value])=><div key={label} className="rounded-lg border border-white/10 bg-white/5 p-2"><p className="text-[10px] text-white/45">{label}</p><p className="text-sm font-semibold tabular-nums text-white">{value}</p></div>)}</div>
+   <section className="mt-3 rounded-xl border border-violet-300/20 bg-violet-950/20 p-3">
+    <div className="mb-2 flex items-center gap-2"><Sparkles className="h-4 w-4 text-amber-200"/><h4 className="text-xs font-black uppercase tracking-wider text-violet-100">Dádivas &amp; Runas Ativas</h4></div>
+    {Object.entries(gameRef.current?.upgradeCounts ?? {}).length > 0 ? <div className="grid grid-cols-1 gap-1.5">
+      {Object.entries(gameRef.current?.upgradeCounts ?? {}).map(([id,rune])=><div key={id} className="flex items-center justify-between gap-2 rounded-lg border border-white/10 bg-black/20 px-2.5 py-2">
+        <div className="flex min-w-0 items-center gap-2"><span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-violet-400/10 text-sm">{id==="power"?"⚔":id==="haste"?"⚡":id==="vitality"?"✚":id==="swift"?"➤":id==="special_area"?"🧲":id==="special_experience"?"🔮":id==="special_projectile_range"?"🏹":"✦"}</span><div className="min-w-0"><p className="truncate text-[11px] font-bold text-white">{rune.name}</p><p className="text-[9px] uppercase tracking-wider text-violet-200/65">{rune.rarity==="epic"?"Épica":rune.rarity==="rare"?"Rara":"Comum"}</p></div></div>
+        <strong className="shrink-0 text-xs tabular-nums text-amber-200">x{rune.count}</strong>
+      </div>)}
+    </div> : <p className="text-[10px] text-white/45">Nenhuma dádiva acumulada nesta expedição.</p>}
+   </section>
    <Button variant="outline" className="w-full border-white/15 text-white hover:bg-white/10" onClick={()=>setPausePanel("main")}><ArrowLeft className="mr-2 h-4 w-4"/> Voltar ao menu</Button>
   </>}
  </div>
