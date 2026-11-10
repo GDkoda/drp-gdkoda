@@ -1401,7 +1401,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                       <span className="h-px w-10 bg-gradient-to-l from-transparent to-amber-200/50" />
                     </div>
                     <p className="text-[9px] font-black uppercase tracking-[.3em] text-violet-200/60">
-                      {eventRewardStep > 0 ? \`DESAFIO DA FENDA · DÁDIVA \${eventRewardStep}/2\` : "O FRACTAL OFERECE SEU PODER"}
+                      {eventRewardStep > 0 ? `DESAFIO DA FENDA · DÁDIVA ${eventRewardStep}/2` : "O FRACTAL OFERECE SEU PODER"}
                     </p>
                     <h3 className="mt-2 font-display text-2xl tracking-wide text-white drop-shadow-[0_2px_12px_rgba(196,181,253,0.3)] sm:text-4xl">
                       {eventRewardStep > 0 ? "Reivindique sua recompensa" : "Escolha uma dádiva"}
@@ -1474,58 +1474,58 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                             isEpic ? "fractals-card-epic" : "",
                           ].join(" ")}
                         >
-                          <div className={\`pointer-events-none absolute -inset-8 -z-10 rounded-full blur-3xl \${palette.glow}\`} />
-                          <div className={\`pointer-events-none absolute inset-[5px] rounded-lg border \${palette.inner}\`} />
+                          <div className={`pointer-events-none absolute -inset-8 -z-10 rounded-full blur-3xl ${palette.glow}`} />
+                          <div className={`pointer-events-none absolute inset-[5px] rounded-lg border ${palette.inner}`} />
 
-                          <div className={\`pointer-events-none absolute left-2 top-2 h-5 w-5 border-l border-t \${palette.corner}\`} />
-                          <div className={\`pointer-events-none absolute right-2 top-2 h-5 w-5 border-r border-t \${palette.corner}\`} />
-                          <div className={\`pointer-events-none absolute bottom-2 left-2 h-5 w-5 border-b border-l \${palette.corner}\`} />
-                          <div className={\`pointer-events-none absolute bottom-2 right-2 h-5 w-5 border-b border-r \${palette.corner}\`} />
+                          <div className={`pointer-events-none absolute left-2 top-2 h-5 w-5 border-l border-t ${palette.corner}`} />
+                          <div className={`pointer-events-none absolute right-2 top-2 h-5 w-5 border-r border-t ${palette.corner}`} />
+                          <div className={`pointer-events-none absolute bottom-2 left-2 h-5 w-5 border-b border-l ${palette.corner}`} />
+                          <div className={`pointer-events-none absolute bottom-2 right-2 h-5 w-5 border-b border-r ${palette.corner}`} />
 
                           <div className="pointer-events-none absolute left-1/2 top-2 flex -translate-x-1/2 items-center gap-2">
-                            <span className={\`h-px w-8 \${palette.line}\`} />
-                            <span className={\`text-[9px] \${palette.accent}\`}>✦</span>
-                            <span className={\`h-px w-8 \${palette.line}\`} />
+                            <span className={`h-px w-8 ${palette.line}`} />
+                            <span className={`text-[9px] ${palette.accent}`}>✦</span>
+                            <span className={`h-px w-8 ${palette.line}`} />
                           </div>
                           <div className="pointer-events-none absolute bottom-2 left-1/2 -translate-x-1/2">
-                            <span className={\`text-[9px] \${palette.accent}\`}>✧</span>
+                            <span className={`text-[9px] ${palette.accent}`}>✧</span>
                           </div>
 
                           <div className="relative flex h-full flex-1 flex-col px-3 pb-4 pt-5 sm:px-4">
                             <div className="mb-4 flex items-center justify-between gap-2">
-                              <span className={\`rounded-full border px-2.5 py-1 text-[8px] font-black uppercase tracking-[.2em] \${palette.badge}\`}>{label}</span>
-                              <span className={\`text-[8px] font-black tracking-[.13em] \${palette.accent}\`}>{bonus}</span>
+                              <span className={`rounded-full border px-2.5 py-1 text-[8px] font-black uppercase tracking-[.2em] ${palette.badge}`}>{label}</span>
+                              <span className={`text-[8px] font-black tracking-[.13em] ${palette.accent}`}>{bonus}</span>
                             </div>
 
                             <div className="relative mx-auto mb-4">
-                              <div className={\`absolute -inset-3 rounded-full blur-xl \${palette.glow}\`} />
-                              <div className={\`relative grid h-[76px] w-[76px] place-items-center rounded-full border \${palette.inner} bg-black/20\`}>
-                                <div className={\`absolute inset-1 rounded-full border \${palette.corner}\`} />
-                                <div className={\`absolute inset-0 rounded-full \${isEpic ? "bg-[radial-gradient(circle,rgba(251,191,36,0.22),transparent_70%)]" : isRare ? "bg-[radial-gradient(circle,rgba(34,211,238,0.2),transparent_70%)]" : "bg-[radial-gradient(circle,rgba(217,180,130,0.12),transparent_70%)]"}\`} />
-                                <Icon className={\`relative h-9 w-9 \${palette.title} drop-shadow-[0_0_10px_currentColor]\`} />
+                              <div className={`absolute -inset-3 rounded-full blur-xl ${palette.glow}`} />
+                              <div className={`relative grid h-[76px] w-[76px] place-items-center rounded-full border ${palette.inner} bg-black/20`}>
+                                <div className={`absolute inset-1 rounded-full border ${palette.corner}`} />
+                                <div className={`absolute inset-0 rounded-full ${isEpic ? "bg-[radial-gradient(circle,rgba(251,191,36,0.22),transparent_70%)]" : isRare ? "bg-[radial-gradient(circle,rgba(34,211,238,0.2),transparent_70%)]" : "bg-[radial-gradient(circle,rgba(217,180,130,0.12),transparent_70%)]"}`} />
+                                <Icon className={`relative h-9 w-9 ${palette.title} drop-shadow-[0_0_10px_currentColor]`} />
                               </div>
-                              <span className={\`absolute -left-4 top-1/2 -translate-y-1/2 text-xs \${palette.accent}\`}>◇</span>
-                              <span className={\`absolute -right-4 top-1/2 -translate-y-1/2 text-xs \${palette.accent}\`}>◇</span>
+                              <span className={`absolute -left-4 top-1/2 -translate-y-1/2 text-xs ${palette.accent}`}>◇</span>
+                              <span className={`absolute -right-4 top-1/2 -translate-y-1/2 text-xs ${palette.accent}`}>◇</span>
                             </div>
 
                             <div className="text-center">
-                              <p className={\`text-[9px] font-black uppercase tracking-[.24em] \${palette.accent}\`}>
+                              <p className={`text-[9px] font-black uppercase tracking-[.24em] ${palette.accent}`}>
                                 {isEpic ? "Bênção transcendente" : isRare ? "Essência desperta" : "Fragmento ancestral"}
                               </p>
-                              <h4 className={\`mt-2 font-display text-lg font-bold leading-tight sm:text-xl \${palette.title}\`}>{upgrade.name}</h4>
+                              <h4 className={`mt-2 font-display text-lg font-bold leading-tight sm:text-xl ${palette.title}`}>{upgrade.name}</h4>
                             </div>
 
                             <div className="my-3 flex items-center gap-2">
-                              <span className={\`h-px flex-1 \${palette.line}\`} />
-                              <span className={\`text-[9px] \${palette.accent}\`}>✧</span>
-                              <span className={\`h-px flex-1 \${palette.line}\`} />
+                              <span className={`h-px flex-1 ${palette.line}`} />
+                              <span className={`text-[9px] ${palette.accent}`}>✧</span>
+                              <span className={`h-px flex-1 ${palette.line}`} />
                             </div>
 
                             <p className="flex-1 text-center text-[11px] leading-relaxed text-white/65 sm:text-xs">
                               {getUpgradeDescription(upgrade)}
                             </p>
 
-                            <div className={\`mt-4 flex items-center justify-center gap-2 rounded-lg border bg-black/20 px-3 py-2.5 text-[9px] font-black uppercase tracking-[.2em] transition-all duration-300 group-hover:bg-white/[0.07] \${palette.footer}\`}>
+                            <div className={`mt-4 flex items-center justify-center gap-2 rounded-lg border bg-black/20 px-3 py-2.5 text-[9px] font-black uppercase tracking-[.2em] transition-all duration-300 group-hover:bg-white/[0.07] ${palette.footer}`}>
                               <span>{isEpic ? "Reivindicar" : "Selar destino"}</span>
                               <span className="text-sm transition-transform duration-300 group-hover:translate-x-1">↗</span>
                             </div>
@@ -1540,7 +1540,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                   </div>
                 </div>
 
-                <style>{\`
+                <style>{`
                   @keyframes fractalRarePulse {
                     0%, 100% { box-shadow: 0 0 12px rgba(34,211,238,0.08); }
                     50% { box-shadow: 0 0 24px rgba(34,211,238,0.2); }
@@ -1554,7 +1554,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                   @media (prefers-reduced-motion: reduce) {
                     .fractals-card-rare, .fractals-card-epic { animation: none; }
                   }
-                \`}</style>
+                `}</style>
               </div>
             )}
             {result && <div className="absolute inset-0 grid place-items-center overflow-y-auto bg-[radial-gradient(ellipse_at_center,rgba(91,46,133,0.28),rgba(5,4,10,0.95)_72%)] p-4 backdrop-blur-md"><div className="w-full max-w-sm rounded-[1.6rem] border border-violet-200/20 bg-[#171320]/95 p-5 text-center shadow-[0_30px_100px_rgba(0,0,0,0.7)]"><div className="mx-auto mb-3 grid h-16 w-16 place-items-center rounded-2xl border border-amber-200/20 bg-gradient-to-br from-amber-200/15 via-violet-400/15 to-violet-950/70 shadow-[0_0_36px_rgba(167,139,250,0.18)]">{result==="victory"?<Sparkles className="h-7 w-7 text-amber-200"/>:<Skull className="h-7 w-7 text-rose-300"/>}</div><p className="text-xs uppercase tracking-[.22em] text-violet-200">{result==="victory"?"Guardião derrotado":"Expedição encerrada"}</p><h3 className="mt-1 font-display text-2xl">{result==="victory"?"O fractal silenciou":"O Vazio prevaleceu"}</h3><p className="mt-2 text-sm text-white/65">Nível {hud.level} · {hud.kills} criaturas derrotadas · {formatTime(hud.elapsed)}</p><p className="mt-2 text-xs text-amber-100/80">Recompensas e fractais ainda não são creditados neste protótipo; serão conectados após a validação segura no servidor.</p><Button className="mt-4 gap-2" onClick={()=>{setRunning(false);setResult(null);setBossMessage(false);gameRef.current=null;}}><RotateCcw className="h-4 w-4"/> Voltar à expedição</Button></div></div>}
