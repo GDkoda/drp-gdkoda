@@ -1859,13 +1859,28 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           if (game.sentinelRespawnTimer <= 0 && game.sentinelTotems.length < totemLimit) {
             while (game.sentinelTotems.length < totemLimit) {
               const index = game.sentinelTotems.length;
-              const angle = (index / Math.max(1, totemLimit)) * Math.PI * 2 + Math.PI / 6;
-              const desiredX = game.player.x + Math.cos(angle) * 118;
-              const desiredY = game.player.y + Math.sin(angle) * 118;
-              const position = resolveCemeteryCollision(desiredX, desiredY, 14, game.obstacles);
+              const totemId = game.nextSentinelTotemId++;
+              let angle = ((totemId - 1) * 2.399963229728653) % (Math.PI * 2);
+              let orbitRadius = 118;
+              let position = resolveCemeteryCollision(
+                game.player.x + Math.cos(angle) * orbitRadius,
+                game.player.y + Math.sin(angle) * orbitRadius,
+                14,
+                game.obstacles,
+              );
+              for (let attempt = 0; attempt < 10 && game.sentinelTotems.some((existing) => distance(position.x, position.y, existing.x, existing.y) < 72); attempt++) {
+                angle = (angle + 2.399963229728653) % (Math.PI * 2);
+                orbitRadius = 118 + ((attempt % 3) + 1) * 24;
+                position = resolveCemeteryCollision(
+                  game.player.x + Math.cos(angle) * orbitRadius,
+                  game.player.y + Math.sin(angle) * orbitRadius,
+                  14,
+                  game.obstacles,
+                );
+              }
               const maxHp = 260 + game.weaponLevel * 20;
               game.sentinelTotems.push({
-                id: game.nextSentinelTotemId++,
+                id: totemId,
                 x: position.x, y: position.y,
                 hp: maxHp, maxHp, attackTimer: 0.18 + index * 0.08, radius: 14,
               });
