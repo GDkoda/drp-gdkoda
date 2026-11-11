@@ -82,6 +82,7 @@ const MAX_AREA_RELIC_STACKS = 10;
 const MAX_EXPERIENCE_RELIC_STACKS = 10;
 const MAX_PROJECTILE_RANGE_STACKS = 5;
 const MAX_EXTRA_PROJECTILES = 2;
+const ORACLE_FOURTH_CHOICE_CHANCE = [0, 6, 12, 18, 24, 30, 36, 42, 48, 50, 50] as const;
 const WORLD_LIMIT = 1300;
 const CHALLENGE_EVENT_TIMES = [240, 480] as const;
 const RITUAL_DURATION = 25;
@@ -160,9 +161,11 @@ function buildLevelChoices(game: GameState, purchases: PurchaseState): Upgrade[]
 
   if (purchases.anchor_soul >= 1 && !game.bannedUpgradeIds.includes("anchor_soul") && !game.anchorReviveAvailable && game.anchorRevivesUsed < 2 && Math.random() < 0.10) {
     const replaceAt = Math.floor(Math.random() * Math.min(2, choices.length));
-    const anchorDescription = purchases.anchor_soul >= 2
-      ? "Concede uma ressurreição: retorna com 60% da vida e 6 segundos de invulnerabilidade. Com Âncora nível 3, a segunda ressurreição também explode."
-      : "Concede uma ressurreição: retorna com 40% da vida e 3 segundos de invulnerabilidade. Você pode obter até duas Âncoras por expedição, uma de cada vez.";
+    const anchorDescription = purchases.anchor_soul >= 3
+      ? "Concede uma ressurreição: retorna com 60% da vida e 6 segundos de invulnerabilidade. Na segunda morte, explode e causa dano igual ao golpe da arma equipada a todos os monstros próximos."
+      : purchases.anchor_soul >= 2
+        ? "Concede uma ressurreição: retorna com 60% da vida e 6 segundos de invulnerabilidade. Você pode obter até duas Âncoras por expedição, uma de cada vez."
+        : "Concede uma ressurreição: retorna com 40% da vida e 3 segundos de invulnerabilidade. Você pode obter até duas Âncoras por expedição, uma de cada vez.";
     const anchorGift: Upgrade = { id: "anchor_soul", name: "Âncora da Alma", description: anchorDescription, icon: Heart, rarity: "uncommon" };
     if (choices.length > 0) choices[replaceAt] = anchorGift; else choices.push(anchorGift);
   }
@@ -192,7 +195,7 @@ function buildLevelChoices(game: GameState, purchases: PurchaseState): Upgrade[]
   });
 
   // Oráculo: nível 1 abre as quatro Relíquias de Campo; o bônus cria uma quarta carta independente.
-  const oracleBonusChance = Math.min(50, purchases.oracle * 6);
+  const oracleBonusChance = ORACLE_FOURTH_CHOICE_CHANCE[clamp(purchases.oracle, 0, 10)];
   if (purchases.oracle > 0 && Math.random() * 100 < oracleBonusChance) {
     const fourthOptions = getEligibleFieldRelics(game, purchases).filter((item) => !withRarity.some((choice) => choice.id === item.id));
     if (fourthOptions.length) {
@@ -1809,7 +1812,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             const specialUpgradeId: UpgradeId = drop.kind === "area" ? "special_area" : drop.kind === "experience" ? "special_experience" : drop.kind === "projectile_range" ? "special_projectile_range" : "special_projectiles";
             const specialUpgrade = SPECIAL_UPGRADES.find((item) => item.id === specialUpgradeId)!;
             const currentRune = game.upgradeCounts[specialUpgradeId];
-            game.upgradeCounts[specialUpgradeId] = { name: specialUpgrade.name, count: (currentRune?.count ?? 0) + 1, rarity: "normal" };
+            game.upgradeCounts[specialUpgradeId] = { name: specialUpgrade.name, count: (currentRune?.count ?? 0) + 1, rarity: "uncommon" };
             const pickupNames: Record<SpecialDrop["kind"], string> = {
               area: "Ímã de Fragmentos",
               experience: "Eco do Conhecimento",
@@ -2206,7 +2209,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                       </article>
                       <article className="fractals-shop-item">
                         <div className="fractals-shop-item__slot"><Sparkles className="h-5 w-5 text-amber-300" /></div>
-                        <div className="min-w-0"><p className="fractals-shop-item__name">Oráculo das Relíquias</p><p className="fractals-shop-item__description">Nível 1 libera as quatro Relíquias de Campo nas escolhas de nível. Cada nível aumenta a chance de uma quarta carta, até 50%.</p><div className="fractals-shop-pips" aria-label={"Nível " + purchases.oracle + " de 10"}>{Array.from({length:10}).map((_,i)=><i key={i} className={i<purchases.oracle?"fractals-shop-pip is-filled":"fractals-shop-pip"}/>)}<span>{purchases.oracle}/10 · {Math.min(50,purchases.oracle*6)}%</span></div><span className="fractals-shop-item__status">{purchases.oracle>=1?"Relíquias de Campo liberadas":unlockedCorruption>=1?"Disponível":"Requer Corrupção 1"}</span></div>
+                        <div className="min-w-0"><p className="fractals-shop-item__name">Oráculo das Relíquias</p><p className="fractals-shop-item__description">Nível 1 libera as quatro Relíquias de Campo nas escolhas de nível. O bônus da quarta carta cresce de 6% por nível até o limite de 50%.</p><div className="fractals-shop-pips" aria-label={"Nível " + purchases.oracle + " de 10"}>{Array.from({length:10}).map((_,i)=><i key={i} className={i<purchases.oracle?"fractals-shop-pip is-filled":"fractals-shop-pip"}/>)}<span>{purchases.oracle}/10 · {ORACLE_FOURTH_CHOICE_CHANCE[clamp(purchases.oracle,0,10)]}%</span></div><span className="fractals-shop-item__status">{purchases.oracle>=1?"Relíquias de Campo liberadas":unlockedCorruption>=1?"Disponível":"Requer Corrupção 1"}</span></div>
                         <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || unlockedCorruption<1 && !isMaster || purchases.oracle>=10 || (!isMaster && fractalBalance<FRACTAL_SHOP.oracle[purchases.oracle])} onClick={()=>void purchaseUpgrade("oracle")}>{purchases.oracle>=10?"MAX":isMaster?"GRÁTIS":FRACTAL_SHOP.oracle[purchases.oracle].toLocaleString("pt-BR")+" FR"}</button>
                       </article>
                       <article className="fractals-shop-item">
