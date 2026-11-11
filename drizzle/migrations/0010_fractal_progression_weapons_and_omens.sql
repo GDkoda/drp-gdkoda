@@ -216,7 +216,7 @@ declare
   weapon_purchase_key text;
 begin
   if auth.uid() is null then raise exception 'É necessário entrar na conta'; end if;
-  if _corruption < 0 or _corruption > 5 then raise exception 'Nível de corrupção inválido'; end if;
+  if _corruption is null or _corruption < 0 or _corruption > 5 then raise exception 'Nível de corrupção inválido'; end if;
 
   insert into public.fractal_player_state(user_id)
   values (auth.uid()) on conflict (user_id) do nothing;
