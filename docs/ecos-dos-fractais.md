@@ -158,3 +158,50 @@ Os quatro aprimoramentos básicos exibem o valor efetivo na carta e aplicam o mu
 
 ### Observação de instalação
 A nova loja exige executar `drizzle/migrations/0006_fractal_shop_attributes_and_specials.sql` depois da migração `0005_fractal_shop_state.sql`. Sem a 0006, os novos botões de compra retornarão erro de melhoria inválida.
+
+
+## Revisão de progressão e relíquias — 11 de novembro de 2026
+
+### Raridade das relíquias
+- Todas as Relíquias de Campo e a Âncora da Alma são de raridade **Incomum**.
+- A raridade Incomum é fixa: Ressonância Rara e Transmutação Rúnica não alteram seu efeito.
+- As cartas usam identidade visual vermelho/dourado para distinguir relíquias das dádivas comuns, raras, épicas e lendárias.
+
+### Novos limites
+- Vida Reforçada: 15 níveis, +10 HP máximo por nível (+150 HP no máximo).
+- Ímã de Fragmentos: até 10 coletas por expedição, +10% por coleta (+100%).
+- Eco do Conhecimento: até 10 coletas por expedição, +5% de XP por coleta (+50%).
+- Alcance Arcano: permanece limitado a 5 coletas (+50%).
+- Coroa de Estilhaços: permanece limitada a 2 projéteis extras.
+
+### Desbloqueio e espólio das Relíquias de Campo
+- Nível 1 da compra libera a relíquia na seleção de dádivas (o Oráculo nível 1 também libera as quatro relíquias).
+- Nível 2: 1% de chance compartilhada de queda por Brutos e Elites.
+- Nível 3: 3% de chance compartilhada.
+- Nível 4: 5% de chance compartilhada.
+- A chance compartilhada usa o maior nível comprado entre as quatro relíquias; o espólio continua sorteando apenas entre as relíquias que o jogador desbloqueou individualmente.
+- As coletas de Área e Experiência agora respeitam o limite de 10 durante escolhas de nível e espólios.
+- Fortuna Fractal possui 5 níveis, cada um adicionando 10% de chance relativa aos espólios especiais, até +50%. Não cria a chance-base de queda de Relíquias; ela multiplica a chance liberada pelos níveis das relíquias.
+
+### Oráculo das Relíquias
+- Nível 1 libera a possibilidade de encontrar qualquer uma das quatro Relíquias de Campo nas opções normais de subida de nível.
+- Além disso, cada nível do Oráculo aumenta em 6 pontos percentuais a chance de uma quarta opção extra, sempre uma Relíquia de Campo elegível.
+- O bônus é limitado a 50%; níveis 9 e 10 permanecem em 50%.
+
+### Âncora da Alma
+- A compra passou a ter 3 níveis.
+- Nível 1 libera a dádiva e permite obter até duas Âncoras por expedição, sempre com apenas uma equipada por vez. A primeira consumida abre espaço para a segunda; após a segunda, não há nova Âncora.
+- Nível 1: ressurreição com 40% de vida e 3 segundos de invulnerabilidade.
+- Nível 2: ressurreição com 60% de vida e 6 segundos de invulnerabilidade.
+- Nível 3: na segunda ressurreição, uma explosão atinge os inimigos num raio de 260 unidades, causando dano equivalente ao golpe atual da arma equipada.
+- Custos: 3.500 / 7.000 / 20.000 fractais.
+
+### Compatibilidade das Relíquias de projéteis por arma
+Estado da implementação nesta revisão:
+- Revólver do Vazio (Pistola): Ricochete, Perfuração e Descarga em Cadeia funcionam nos projéteis normais. A evolução mantém os projéteis adicionais da Coroa de Estilhaços.
+- Núcleo Instável: os projéteis principais passam pelo mesmo processamento e aceitam os três efeitos. Os estilhaços da explosão secundária não recebem novos ricochetes/perfurações/cadeias.
+- Foice Espectral, Espadas Orbitais, Grilhão Gravitacional e Sentinelas Rúnicas: atualmente usam disparos auxiliares direcionados, que não entram no processamento das três relíquias. Não devem ser anunciadas como compatíveis até uma adaptação específica de cada arma.
+
+### Resposta visual e desempenho
+- O tremor de câmera por dano de contato comum foi removido; o flash vermelho de dano permanece.
+- Tremores suaves ficam reservados a eventos de maior impacto, evitando o deslocamento aleatório da câmera a cada quadro.
