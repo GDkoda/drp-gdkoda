@@ -210,3 +210,32 @@ Estado da implementação nesta revisão:
 ### Resposta visual e desempenho
 - O tremor de câmera por dano de contato comum foi removido; o flash vermelho de dano permanece.
 - Tremores suaves ficam reservados a eventos de maior impacto, evitando o deslocamento aleatório da câmera a cada quadro.
+
+
+## Ajustes de progressão e relíquias — novembro de 2026
+
+### Raridade e apresentação
+- Relíquias de Campo e Âncora da Alma têm raridade Incomum fixa; não recebem bônus da Ressonância Rara nem da Transmutação Rúnica.
+- As cartas Incomuns usam moldura vermelho/dourada para se distinguirem das demais raridades.
+
+### Relíquias de Campo
+- Ímã de Fragmentos: cada coleta concede +10% de raio de coleta, até +100% em 10 coletas.
+- Eco do Conhecimento: cada coleta concede +5% de experiência, até +50% em 10 coletas.
+- Nível 1 de cada categoria libera a relíquia nas escolhas de nível; níveis 2, 3 e 4 habilitam respectivamente 1%, 3% e 5% de chance-base de queda de Brutos e Elites.
+- A chance de queda continua compartilhada: usa o maior nível de desbloqueio entre as quatro categorias, depois aplica o bônus relativo de Fortuna Fractal.
+
+### Permanentes
+- Vida Reforçada: máximo de 15 níveis, +10 HP por nível (+150 HP).
+- Fortuna Fractal: máximo de 5 níveis, bônus relativo de +10% por nível, até +50%.
+- Oráculo das Relíquias: nível 1 libera a possibilidade de encontrar as quatro Relíquias de Campo. Além disso, concede chance de uma quarta carta: 6% por nível, com limite de 50%.
+- Âncora da Alma: três níveis; N1 concede ressurreição com 40% de vida e 3 s de invulnerabilidade; N2 melhora para 60% e 6 s; N3 faz a segunda ressurreição causar dano em inimigos próximos igual ao golpe da arma equipada. Apenas uma Âncora pode estar equipada por vez, com até duas aquisições em uma expedição.
+
+### Compatibilidade das relíquias de projéteis
+- Revólver do Vazio: Ricochete, Perfuração e Descarga em Cadeia atuam nos projéteis normais.
+- Núcleo Instável: as três atuam no orbe principal; estilhaços de explosão não propagam novamente essas propriedades.
+- Foice Espectral, Espadas Orbitais, Grilhão Gravitacional e Sentinelas Rúnicas: ainda usam ataques próprios que não encaminham essas propriedades para a rotina comum de projéteis. A integração dessas armas exige uma adaptação específica de design e não foi feita nesta atualização.
+
+### Diagnóstico técnico
+- O Ricochete não tem concessão gratuita no código: os projéteis comuns recebem somente o nível persistido da compra. A migração nova normaliza valores malformados, mas preserva níveis numéricos válidos; se o efeito continuar com a loja mostrando 0/3, é necessário inspecionar o estado específico da conta.
+- A vibração da câmera não é acionada quando o jogador recebe dano. O clarão vermelho e a aura são efeitos de renderização; a origem de eventual queda de FPS ainda precisa ser medida em execução real.
+- Migração SQL aditiva para alinhar a RPC de compra aos níveis/custos atuais: `supabase/migrations/20261111020000_fractal_shop_progression_caps.sql`. Há cópia correspondente em `drizzle/migrations/0011_fractal_shop_progression_caps.sql`.
