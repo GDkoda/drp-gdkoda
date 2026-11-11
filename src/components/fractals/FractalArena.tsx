@@ -20,7 +20,7 @@ import "./fractal-arena.css";
 type WeaponId = "void_revolver" | "unstable_core" | "spectral_scythe" | "orbital_swords" | "gravity_shackle" | "rune_sentinels";
 type OmenId = "famine" | "rupture" | "spectral_veil" | "abundance" | "revenge";
 type UpgradeId = "power" | "haste" | "vitality" | "swift" | "special_area" | "special_experience" | "special_projectile_range" | "special_projectiles" | "special_ricochet" | "special_piercing" | "special_chain_lightning" | "weapon_mastery" | "weapon_evolution" | "anchor_soul";
-type Upgrade = { id: UpgradeId; name: string; description: string; icon: typeof Zap; rarity?: "normal" | "uncommon" | "rare" | "epic" | "legendary" | "mastery" | "evolution" };
+type Upgrade = { id: UpgradeId; name: string; description: string; icon: typeof Zap; rarity?: "normal" | "uncommon" | "rare" | "epic" | "legendary" | "maestria" | "evolution" };
 type UpgradeCounts = Record<string, { name: string; count: number; rarity: string }>;
 
 type Enemy = { x: number; y: number; hp: number; maxHp: number; speed: number; radius: number; damage: number; color: string; xp: number; type: "wraith" | "brute" | "charger" | "elite" | "boss"; attack: number; flash: number; windup: number; targetX: number; targetY: number; dashTime: number; summonedAtHalf: boolean; furyTriggered: boolean; isExecutioner?: boolean; slowTimer?: number };
@@ -151,7 +151,7 @@ const MASTER_GIFT_OPTIONS: Upgrade[] = [
   ...UPGRADES,
   ...SPECIAL_UPGRADES,
   { id: "anchor_soul", name: "Âncora da Alma", description: "Concede uma ressurreição adicional.", icon: Heart },
-  { id: "weapon_mastery", name: "Ressonância da Arma", description: "Aumenta em um nível a arma equipada.", icon: Swords, rarity: "mastery" },
+  { id: "weapon_mastery", name: "Ressonância da Arma", description: "Aumenta em um nível a arma equipada.", icon: Swords, rarity: "maestria" },
   { id: "weapon_evolution", name: "Evolução da Arma", description: "Desperta a forma evoluída da arma equipada.", icon: Crown, rarity: "evolution" },
 ];
 
@@ -177,7 +177,7 @@ function buildLevelChoices(game: GameState, purchases: PurchaseState): Upgrade[]
   const core = corePool.slice(0, 2);
   const choices: Upgrade[] = [...core];
   if (game.weaponLevel < 10) {
-    choices.push({ id: "weapon_mastery", name: "Ressonância da Arma", description: "Aumenta em um nível a arma escolhida, aprimorando seu comportamento. Máximo: nível 10.", icon: Swords, rarity: "mastery" });
+    choices.push({ id: "weapon_mastery", name: "Ressonância da Arma", description: "Aumenta em um nível a arma escolhida, aprimorando seu comportamento. Máximo: nível 10.", icon: Swords, rarity: "maestria" });
   } else if (corePool[2]) {
     choices.push(corePool[2]);
   }
@@ -247,7 +247,7 @@ function rollUpgradeRarity(tier: number, transmutationChance = 0): "normal" | "r
 const UPGRADE_RARITY_MULTIPLIERS = { normal: 1, uncommon: 1, rare: 1.25, epic: 1.5 } as const;
 function getUpgradeRarityMultiplier(rarity: Upgrade["rarity"]): number {
   if (rarity === "legendary") return 1.5;
-  if (rarity === "mastery" || rarity === "evolution") return 1;
+  if (rarity === "maestria" || rarity === "evolution") return 1;
   return UPGRADE_RARITY_MULTIPLIERS[rarity ?? "normal"];
 }
 function formatUpgradePercent(value: number): string {
@@ -1369,6 +1369,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
       const game = makeGame(width, height, purchases, selectedWeapon, selectedOmen);
       spawnCemeteryUrns(game, 12);
       gameRef.current = game;
+      setMasterWeaponSelection(null);
       eventRewardRemainingRef.current = 0;
       setEventRewardStep(0);
       setHud({ hp: game.player.hp, maxHp: game.player.maxHp, xp: 0, nextXp: 12, level: 1, kills: 0, elapsed: 0, moveSpeed: Math.round(game.player.speed), fps: 0, visibleEnemies: 0, phase: "Exploração", pressure: 0, event: null, runes: [] });
@@ -1884,7 +1885,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             game.shots.push({
               x: totem.x, y: totem.y,
               vx: (dx / length) * beamSpeed, vy: (dy / length) * beamSpeed,
-              damage: getEquippedWeaponStrikeDamage(game) * (game.evolved ? 0.75 : 0.55),
+              damage: getEquippedWeaponStrikeDamage(game),
               life, maxLife: life, hitTargets: [], bouncesRemaining: 0,
               piercesRemaining: 1, kind: "sentinel_beam", targetEnemy: target,
             });
@@ -2033,7 +2034,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         if (destroyedTotems.length > 0) {
           for (const totem of destroyedTotems) {
             const burstRadius = 140;
-            const burstDamage = getEquippedWeaponStrikeDamage(game) * 2.5;
+            const weaponPower = (1 + (game.weaponLevel - 1) * 0.055) * (game.evolved ? 1.15 : 1);
+            const burstDamage = game.player.damage * weaponPower * 2.5;
             game.shots.push({
               x: totem.x, y: totem.y, vx: 0, vy: 0,
               damage: burstDamage, life: 0.18, maxLife: 0.18,
@@ -2907,7 +2909,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
     <div className="space-y-1.5">
      <label className="text-[10px] font-bold uppercase tracking-wider text-white/55">Conceder dádiva</label>
      <select value={masterGiftId} onChange={(event) => setMasterGiftId(event.target.value as UpgradeId)} className="h-10 w-full rounded-lg border border-emerald-200/20 bg-[#111720] px-3 text-xs font-semibold text-white outline-none focus:border-emerald-300/60">
-      {MASTER_GIFT_OPTIONS.map((gift, index) => <option key={gift.id + "-" + index} value={gift.id}>{gift.name}{gift.rarity === "mastery" ? " · Maestria" : gift.rarity === "evolution" ? " · Evolução" : ""}</option>)}
+      {MASTER_GIFT_OPTIONS.map((gift, index) => <option key={gift.id + "-" + index} value={gift.id}>{gift.name}{gift.rarity === "maestria" ? " · Maestria" : gift.rarity === "evolution" ? " · Evolução" : ""}</option>)}
      </select>
      <Button className="h-9 w-full bg-emerald-500/80 text-xs font-black text-[#05140f] hover:bg-emerald-400" onClick={() => {
        const gift = MASTER_GIFT_OPTIONS.find((candidate) => candidate.id === masterGiftId);
@@ -2924,7 +2926,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
     <div className="mb-2 flex items-center gap-2"><Sparkles className="h-4 w-4 text-amber-200"/><h4 className="text-xs font-black uppercase tracking-wider text-violet-100">Dádivas &amp; Runas Ativas</h4></div>
     {Object.entries(gameRef.current?.upgradeCounts ?? {}).length > 0 ? <div className="grid grid-cols-1 gap-1.5">
       {Object.entries(gameRef.current?.upgradeCounts ?? {}).map(([id,rune])=><div key={id} className="flex items-center justify-between gap-2 rounded-lg border border-white/10 bg-black/20 px-2.5 py-2">
-        <div className="flex min-w-0 items-center gap-2"><span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-violet-400/10 text-sm">{id==="power"?"⚔":id==="haste"?"⚡":id==="vitality"?"✚":id==="swift"?"➤":id==="special_area"?"🧲":id==="special_experience"?"🔮":id==="special_projectile_range"?"🏹":id==="special_ricochet"?"↗":id==="special_piercing"?"⟿":id==="special_chain_lightning"?"⚡":"✦"}</span><div className="min-w-0"><p className="truncate text-[11px] font-bold text-white">{rune.name}</p><p className="text-[9px] uppercase tracking-wider text-violet-200/65">{rune.rarity==="evolution"?"Evolução":rune.rarity==="mastery"?"Maestria":rune.rarity==="legendary"?"Lendária":rune.rarity==="epic"?"Épica":rune.rarity==="rare"?"Rara":rune.rarity==="uncommon"?"Incomum":"Comum"}</p></div></div>
+        <div className="flex min-w-0 items-center gap-2"><span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-violet-400/10 text-sm">{id==="power"?"⚔":id==="haste"?"⚡":id==="vitality"?"✚":id==="swift"?"➤":id==="special_area"?"🧲":id==="special_experience"?"🔮":id==="special_projectile_range"?"🏹":id==="special_ricochet"?"↗":id==="special_piercing"?"⟿":id==="special_chain_lightning"?"⚡":"✦"}</span><div className="min-w-0"><p className="truncate text-[11px] font-bold text-white">{rune.name}</p><p className="text-[9px] uppercase tracking-wider text-violet-200/65">{rune.rarity==="evolution"?"Evolução":rune.rarity==="maestria"?"Maestria":rune.rarity==="legendary"?"Lendária":rune.rarity==="epic"?"Épica":rune.rarity==="rare"?"Rara":rune.rarity==="uncommon"?"Incomum":"Comum"}</p></div></div>
         <strong className="shrink-0 text-xs tabular-nums text-amber-200">x{rune.count}</strong>
       </div>)}
     </div> : <p className="text-[10px] text-white/45">Nenhuma dádiva acumulada nesta expedição.</p>}
@@ -2960,7 +2962,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
 
                       const rarityBorder = rarity === "evolution"
                         ? "border-amber-200/80 bg-gradient-to-br from-fuchsia-500/25 via-cyan-400/10 to-amber-400/25 shadow-[0_0_26px_rgba(251,191,36,.25)] ring-1 ring-fuchsia-300/30"
-                        : rarity === "mastery"
+                        : rarity === "maestria"
                         ? "border-cyan-300/60 bg-gradient-to-b from-cyan-400/20 to-[#10202a] shadow-[0_0_20px_rgba(34,211,238,.18)]"
                         : rarity === "legendary"
                         ? "border-amber-300/70 bg-gradient-to-b from-amber-400/20 to-[#21180e] shadow-[0_0_18px_rgba(251,191,36,.12)]"
@@ -2974,7 +2976,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
 
                       const rarityTag = rarity === "evolution"
                         ? "text-amber-100 border-fuchsia-300/50 bg-gradient-to-r from-fuchsia-500/20 via-cyan-400/15 to-amber-400/20"
-                        : rarity === "mastery"
+                        : rarity === "maestria"
                         ? "text-cyan-100 border-cyan-300/40 bg-cyan-400/10"
                         : rarity === "legendary"
                         ? "text-amber-200 border-amber-300/40 bg-amber-400/10"
@@ -2988,7 +2990,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
 
                       const iconStyle = rarity === "evolution"
                         ? "border-amber-200/70 bg-gradient-to-br from-fuchsia-400/25 via-cyan-300/20 to-amber-300/30 text-amber-50 shadow-[0_0_18px_rgba(251,191,36,.25)]"
-                        : rarity === "mastery"
+                        : rarity === "maestria"
                         ? "border-cyan-300/50 bg-cyan-400/20 text-cyan-100"
                         : rarity === "legendary"
                         ? "border-amber-300/50 bg-amber-400/20 text-amber-100"
@@ -3055,7 +3057,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                                 {upgrade.name}
                               </p>
                               <span className={`mt-2 rounded-full border px-1.5 py-0.5 text-[7px] font-black uppercase tracking-wider sm:text-[8px] ${rarityTag}`}>
-                                {rarity === "evolution" ? "Evolução" : rarity === "mastery" ? "Maestria" : rarity === "legendary" ? "Lendária" : rarity === "uncommon" ? "Incomum" : rarity === "epic" ? "Épica" : rarity === "rare" ? "Rara" : "Normal"}
+                                {rarity === "evolution" ? "Evolução" : rarity === "maestria" ? "Maestria" : rarity === "legendary" ? "Lendária" : rarity === "uncommon" ? "Incomum" : rarity === "epic" ? "Épica" : rarity === "rare" ? "Rara" : "Normal"}
                               </span>
                             </div>
                           ) : (
@@ -3064,7 +3066,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                                 {getUpgradeDescription(upgrade)}
                               </p>
                               <span className="mt-2 text-[7px] font-bold uppercase tracking-wider text-amber-200/80 sm:text-[8px]">
-                                {rarity === "evolution" ? "Forma definitiva da arma" : rarity === "mastery" ? "Maestria · +1 nível da arma" : rarity === "uncommon" ? "Relíquia · sem bônus de raridade" : rarity === "epic" ? "+50% Potência" : rarity === "rare" ? "+25% Potência" : "100% Padrão"}
+                                {rarity === "evolution" ? "Forma definitiva da arma" : rarity === "maestria" ? "Maestria · +1 nível da arma" : rarity === "uncommon" ? "Relíquia · sem bônus de raridade" : rarity === "epic" ? "+50% Potência" : rarity === "rare" ? "+25% Potência" : "100% Padrão"}
                               </span>
                             </div>
                           )}
