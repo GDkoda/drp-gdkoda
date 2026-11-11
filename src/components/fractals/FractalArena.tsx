@@ -1911,14 +1911,36 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           if (aggroTotem) {
             enemy.windup = 0;
             enemy.dashTime = 0;
+            let aggroSpeedMultiplier = 1;
+            if (enemy.type === "boss") {
+              const bossInFury = enemy.hp <= enemy.maxHp * 0.30;
+              if (bossInFury && !enemy.furyTriggered) {
+                enemy.furyTriggered = true;
+                game.shake = 14;
+                for (let particle = 0; particle < 26; particle++) {
+                  const angle = Math.random() * Math.PI * 2;
+                  const speed = 70 + Math.random() * 190;
+                  game.particles.push({ x: enemy.x, y: enemy.y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 0.45 + Math.random() * 0.45, color: particle % 2 ? "#ff4b55" : "#ff9a54" });
+                }
+                toast.error("O GUARDIÃO ENTROU EM FÚRIA!");
+              }
+              aggroSpeedMultiplier = bossInFury ? 1.35 : enemy.hp <= enemy.maxHp * 0.5 ? 1.16 : 1;
+              if (enemy.hp <= enemy.maxHp * 0.5 && !enemy.summonedAtHalf) {
+                enemy.summonedAtHalf = true;
+                for (let index = 0; index < 3; index++) {
+                  const angle = (Math.PI * 2 * index) / 3;
+                  game.enemies.push({ x: enemy.x + Math.cos(angle) * 58, y: enemy.y + Math.sin(angle) * 58, hp: 34, maxHp: 34, speed: 62, radius: 10, damage: 8, color: "#9b91b4", xp: 2, type: "wraith", attack: 0, flash: 0, windup: 0, targetX: 0, targetY: 0, dashTime: 0, summonedAtHalf: false, furyTriggered: false });
+                }
+              }
+            }
             const totemDistance = Math.max(1, distance(enemy.x, enemy.y, aggroTotem.x, aggroTotem.y));
             if (totemDistance > aggroTotem.radius + enemy.radius + 14) {
               const separation = movementGrid ? getEnemySeparation(enemy, movementGrid) : NO_ENEMY_SEPARATION;
               const steerX = (aggroTotem.x - enemy.x) / totemDistance + separation.x * 0.24;
               const steerY = (aggroTotem.y - enemy.y) / totemDistance + separation.y * 0.24;
               const steerLength = Math.max(1, Math.hypot(steerX, steerY));
-              enemy.x += (steerX / steerLength) * enemy.speed * movementFactor * dt;
-              enemy.y += (steerY / steerLength) * enemy.speed * movementFactor * dt;
+              enemy.x += (steerX / steerLength) * enemy.speed * movementFactor * aggroSpeedMultiplier * dt;
+              enemy.y += (steerY / steerLength) * enemy.speed * movementFactor * aggroSpeedMultiplier * dt;
             } else if (enemy.attack <= 0) {
               aggroTotem.hp = Math.max(0, aggroTotem.hp - enemy.damage * (enemy.type === "brute" ? 1.35 : 1));
               enemy.attack = enemy.type === "boss" ? 1.25 : enemy.type === "brute" ? 1.1 : 0.85;
