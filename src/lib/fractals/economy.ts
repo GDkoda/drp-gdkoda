@@ -62,11 +62,6 @@ export const FRACTAL_SHOP = {
   ],
   rarity: [
     { level: 1, cost: 400, tier: 1, label: "Acesso raro" },
-    { level: 2, cost: 800, tier: 2, label: "Acesso épico" },
-    { level: 3, cost: 1400, tier: 3, label: "Ressonância superior" },
-  ],
-  rarity: [
-    { level: 1, cost: 400, tier: 1, label: "Acesso raro" },
     { level: 2, cost: 800, tier: 2, label: "Acesso raro II" },
     { level: 3, cost: 1400, tier: 3, label: "Acesso raro III" },
   ],
