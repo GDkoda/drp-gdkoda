@@ -1638,7 +1638,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             const hitY = shot.y - enemy.y;
             if (enemy.hp > 0 && hitX * hitX + hitY * hitY < hitRadius * hitRadius) {
               const appliedDamage = Math.min(enemy.hp, shot.damage);
-              enemy.hp -= shot.damage; game.totalDamageDealt += appliedDamage; enemy.flash = 0.09; for (let k = 0; k < 2; k++) game.particles.push({ x: shot.x, y: shot.y, vx: (Math.random() - 0.5) * 160, vy: (Math.random() - 0.5) * 160, life: 0.22, color: shot.isChainLightning ? "#67e8f9" : "#f3dcff" });
+              enemy.hp -= shot.damage; game.totalDamageDealt += appliedDamage; enemy.flash = 0.09; for (let k = 0; k < 2; k++) game.particles.push({ x: shot.x, y: shot.y, vx: (Math.random() - 0.5) * 160, vy: (Math.random() - 0.5) * 160, life: 0.22, color: shot.isAnchorBurst ? "#fbbf24" : shot.isChainLightning ? "#67e8f9" : "#f3dcff" });
               game.damageNumbers.push({ x: enemy.x + (Math.random() - 0.5) * 10, y: enemy.y - enemy.radius - 8, value: shot.damage, life: 0.82, maxLife: 0.82, drift: (Math.random() - 0.5) * 14 });
               if (game.damageNumbers.length > 20) game.damageNumbers.shift();
               shot.hitTargets.push(enemy);
