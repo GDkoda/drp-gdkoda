@@ -135,20 +135,21 @@ function buildLevelChoices(game: GameState, purchases: PurchaseState): Upgrade[]
   const choices: Upgrade[] = [...core];
   if (game.weaponLevel < 10) {
     choices.push({ id: "weapon_mastery", name: "Ressonância da Arma", description: "Aumenta em um nível a arma escolhida, aprimorando seu comportamento. Máximo: nível 10.", icon: Swords });
-  } else {
-    choices.push(corePool[2] ?? corePool[0] ?? UPGRADES[0]);
+  } else if (corePool[2]) {
+    choices.push(corePool[2]);
   }
 
   const fieldRelics = getEligibleFieldRelics(game, purchases);
   if (fieldRelics.length && Math.random() < 0.18) {
     const field = fieldRelics[Math.floor(Math.random() * fieldRelics.length)];
-    const replaceAt = Math.floor(Math.random() * 2);
-    choices[replaceAt] = field;
+    const replaceAt = Math.floor(Math.random() * Math.min(2, choices.length));
+    if (choices.length > 0) choices[replaceAt] = field; else choices.push(field);
   }
 
   if (purchases.anchor_soul && !game.anchorReviveAvailable && !game.anchorReviveUsed && Math.random() < 0.10) {
-    const replaceAt = Math.floor(Math.random() * 2);
-    choices[replaceAt] = { id: "anchor_soul", name: "Âncora da Alma", description: "Concede uma ressurreição nesta expedição, retornando com 40% da vida e 3 segundos de invulnerabilidade.", icon: Heart };
+    const replaceAt = Math.floor(Math.random() * Math.min(2, choices.length));
+    const anchorGift: Upgrade = { id: "anchor_soul", name: "Âncora da Alma", description: "Concede uma ressurreição nesta expedição, retornando com 40% da vida e 3 segundos de invulnerabilidade.", icon: Heart };
+    if (choices.length > 0) choices[replaceAt] = anchorGift; else choices.push(anchorGift);
   }
 
   if (game.weaponLevel >= 10 && !game.evolved && purchases[weaponProjectKey(game.weaponId)] && Math.random() < 0.33) {
@@ -156,11 +157,13 @@ function buildLevelChoices(game: GameState, purchases: PurchaseState): Upgrade[]
       void_revolver: "Seis Ecos", unstable_core: "Singularidade", spectral_scythe: "Ceifador de Almas",
       orbital_swords: "Dança das Lâminas", gravity_shackle: "Prisão do Abismo", rune_sentinels: "Arsenal Ancestral",
     };
-    choices[Math.floor(Math.random() * 2)] = {
+    const evolutionIndex = Math.floor(Math.random() * Math.min(2, choices.length));
+    const evolutionGift: Upgrade = {
       id: "weapon_evolution", name: evolutionNames[game.weaponId],
       description: "Evolução lendária: transforma permanentemente o comportamento da arma nesta expedição.",
       icon: Crown, rarity: "legendary",
     };
+    if (choices.length > 0) choices[evolutionIndex] = evolutionGift; else choices.push(evolutionGift);
   }
 
   const transmutationChance = [0, 3, 6, 10][Math.max(0, Math.min(3, purchases.transmutation))];
@@ -1605,6 +1608,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                     if (purchases.experience >= 1 && game.player.specialExperienceStacks < 6) eligible.push("experience");
                     if (purchases.projectile_range >= 1 && game.player.projectileRangeStacks < 5) eligible.push("projectile_range");
                     if (purchases.projectiles >= 1 && game.player.projectileStacks < MAX_EXTRA_PROJECTILES) eligible.push("projectiles");
+                    eligible.push("food", "void");
                     if (eligible.length) game.specialDrops.push({ x: enemy.x, y: enemy.y, kind: eligible[Math.floor(Math.random() * eligible.length)], radius: 13 });
                   }
                   if(enemy.isExecutioner){
@@ -1940,7 +1944,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                     const isDanger = level.level >= 4;
                     return (
                       <button key={level.level} type="button" role="radio" aria-checked={active} disabled={locked}
-                        onClick={() => setCorruption(level.level)}
+                        onClick={() => { setCorruption(level.level); if (level.level < 4) setSelectedOmen(null); }}
                         title={locked ? "Nível " + level.level + " bloqueado (vença a dificuldade anterior)" : "Selecionar " + level.level + ": " + level.name}
                         className={`fractals-corruption-node ${active ? "is-active" : ""} ${isDanger ? "is-danger" : ""} ${locked ? "is-locked" : ""}`}>
                         <span className="fractals-corruption-pip" />
@@ -1972,7 +1976,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                 <p className="mt-2 text-[10px] text-white/40">
                   {unlockedCorruption < 5 ? "Nível " + (unlockedCorruption + 1) + " será desbloqueado ao derrotar o Guardião no Nível " + unlockedCorruption + "." : "✦ Todos os selos de corrupção foram rompidos."}
                 </p>
-              {unlockedCorruption >= 4 && purchases.omen_archive && (
+              {corruption >= 4 && purchases.omen_archive && (
                 <section className="mt-3 rounded-xl border border-fuchsia-300/20 bg-fuchsia-950/20 p-3">
                   <div className="mb-2 flex items-center justify-between gap-2"><div><h3 className="font-display text-sm font-black uppercase tracking-wider text-fuchsia-100">Arquivo dos Presságios</h3><p className="text-[10px] text-white/55">Apenas um presságio pode acompanhar cada expedição.</p></div><span className="text-[9px] font-bold text-fuchsia-200">{selectedOmen ? OMEN_CONFIG[selectedOmen].name : "SEM PRESSÁGIO"}</span></div>
                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -2051,7 +2055,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                         <div className="fractals-shop-item__slot"><GemIcon className="h-5 w-5 text-fuchsia-300" /></div>
                         <div className="min-w-0">
                           <p className="fractals-shop-item__name">Ressonância Rara</p>
-                          <p className="fractals-shop-item__description">Aumenta as chances de dádivas Raras e Épicas.</p>
+                          <p className="fractals-shop-item__description">Aumenta o peso de dádivas Normais para Raras. Não altera diretamente a chance Épica.</p>
                           <div className="fractals-shop-pips" aria-label={"Nível " + purchases.rarity + " de 3"}>{Array.from({ length: 3 }).map((_, i) => <i key={i} className={i < purchases.rarity ? "fractals-shop-pip is-filled" : "fractals-shop-pip"} />)}<span>{purchases.rarity}/3</span></div>
                         </div>
                         <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || purchases.rarity >= 3 || (!isMaster && fractalBalance < FRACTAL_SHOP.rarity[purchases.rarity]?.cost)} onClick={() => void purchaseUpgrade("rarity")}>{purchases.rarity >= 3 ? "MAX" : isMaster ? "GRÁTIS" : FRACTAL_SHOP.rarity[purchases.rarity]?.cost.toLocaleString("pt-BR") + " FR"}</button>
