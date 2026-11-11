@@ -40,6 +40,22 @@ type ChallengeEvent = { id: 1 | 2; x: number; y: number; radius: number; remaini
 type SpriteKey = "boss" | "elite" | "wraith" | "charger" | "brute" | "playerIdle" | "playerMove" | "playerCast" | "xpGem" | "specialXP" | "specialArea" | "specialRange" | "specialProjectiles" | "projectile";
 type SpriteMap = Partial<Record<SpriteKey, HTMLImageElement>>;
 type PlayerVisualAction = "idle" | "move" | "cast";
+const WEAPON_CONFIG: Record<WeaponId, { name: string; description: string; price: number; purchaseKey: keyof PurchaseState | null; masteryKey: keyof PurchaseState; projectKey: keyof PurchaseState; evolutionName: string }> = {
+  void_revolver: { name: "Revólver do Vazio", description: "Disparos automáticos que perseguem o inimigo mais próximo.", price: 0, purchaseKey: null, masteryKey: "mastery_void_revolver", projectKey: "evolution_void_revolver", evolutionName: "Seis Ecos" },
+  unstable_core: { name: "Núcleo Instável", description: "Orbes lentos que explodem e atingem inimigos próximos.", price: 8000, purchaseKey: "weapon_nucleus", masteryKey: "mastery_nucleus", projectKey: "evolution_nucleus", evolutionName: "Singularidade" },
+  spectral_scythe: { name: "Foice Espectral", description: "Cortes espectrais de curto alcance que atravessam grupos.", price: 9000, purchaseKey: "weapon_scythe", masteryKey: "mastery_scythe", projectKey: "evolution_scythe", evolutionName: "Ceifador de Almas" },
+  orbital_swords: { name: "Espadas Orbitais", description: "Lâminas conjuradas giram ao redor do personagem e atingem ameaças próximas.", price: 10000, purchaseKey: "weapon_orbitals", masteryKey: "mastery_orbitals", projectKey: "evolution_orbitals", evolutionName: "Dança das Lâminas" },
+  gravity_shackle: { name: "Grilhão Gravitacional", description: "Pulsos atraem inimigos e os ferem dentro de uma zona gravitacional.", price: 11000, purchaseKey: "weapon_gravity", masteryKey: "mastery_gravity", projectKey: "evolution_gravity", evolutionName: "Prisão do Abismo" },
+  rune_sentinels: { name: "Sentinelas Rúnicas", description: "Cristais orbitais disparam projéteis automáticos contra alvos.", price: 12000, purchaseKey: "weapon_sentinels", masteryKey: "mastery_sentinels", projectKey: "evolution_sentinels", evolutionName: "Arsenal Ancestral" },
+};
+const OMEN_CONFIG: Record<OmenId, { name: string; description: string }> = {
+  famine: { name: "Fome Insaciável", description: "+20% de experiência e +20% de frequência de surgimento de inimigos." },
+  rupture: { name: "Ruptura", description: "+20% de dano das armas, mas +15% no intervalo entre ataques." },
+  spectral_veil: { name: "Véu Espectral", description: "+15% de velocidade de movimento, mas -15% de vida máxima." },
+  abundance: { name: "Abundância", description: "+25% de chance relativa de recompensas especiais; inimigos têm +15% de vida." },
+  revenge: { name: "Vingança", description: "Ao sofrer dano, libera uma onda ofensiva próxima. -10% de vida máxima." },
+};
+
 type PurchaseState = {
   area: number; experience: number; rarity: number; speed_2x: boolean; speed_3x: boolean;
   health: number; projectile_duration: number; projectile_range: number; projectiles: number;
@@ -154,7 +170,7 @@ function buildLevelChoices(game: GameState, purchases: PurchaseState): Upgrade[]
   }));
 
   // Oráculo: an independent fourth choice that is always an available Field Relic.
-  if (purchases.oracle > 0 && Math.random() < purchases.oracle * 3) {
+  if (purchases.oracle > 0 && Math.random() < purchases.oracle * 3 / 100) {
     const fourthOptions = getEligibleFieldRelics(game, purchases).filter((item) => !withRarity.some((choice) => choice.id === item.id));
     if (fourthOptions.length) {
       const selected = fourthOptions[Math.floor(Math.random() * fourthOptions.length)];
@@ -396,13 +412,19 @@ function resolveCemeteryCollision(x:number,y:number,radius:number,obstacles:Ceme
 }
 
 
-function makeGame(width: number, height: number, purchases: PurchaseState): GameState {
-  const maxHp = 100 + purchases.health * 10;
+function makeGame(width: number, height: number, purchases: PurchaseState, weaponId: WeaponId, omenId: OmenId | null): GameState {
+  const omenHealth = omenId === "spectral_veil" ? 0.85 : omenId === "revenge" ? 0.90 : 1;
+  const maxHp = (100 + purchases.health * 10) * omenHealth;
   const projectileLife = PROJECTILE_BASE_LIFE * PROJECTILE_DURATION_MULTIPLIERS[clamp(purchases.projectile_duration, 0, 3)];
+  const omenDamage = omenId === "rupture" ? 1.2 : 1;
   return {
     width, height, last: 0, elapsed: 0, spawnTimer: 0.4, shotTimer: 0.25, bossSpawned: false,
-    player: { x: 0, y: 0, hp: maxHp, maxHp, speed: 205, damage: 22, fireRate: 0.72, invuln: 0, hitFlash: 0, xp: 0, nextXp: 12, level: 1, pickupRadius: 85, xpMultiplier: 1, specialAreaStacks: 0, specialExperienceStacks: 0, projectileRangeStacks: 0, projectileRangeMultiplier: 1, projectileStacks: 0, projectileLife, facing: 0, castFacing: 0, castTimer: 0, moving: false, spriteAction: "idle", spriteDirection: 0, previousSpriteAction: "idle", previousSpriteDirection: 0, spriteBlend: 1 },
+    player: { x: 0, y: 0, hp: maxHp, maxHp, speed: 205 * (omenId === "spectral_veil" ? 1.15 : 1), damage: 22 * omenDamage, fireRate: 0.72 * (omenId === "rupture" ? 1.15 : 1), invuln: 0, hitFlash: 0, xp: 0, nextXp: 12, level: 1, pickupRadius: 85, xpMultiplier: omenId === "famine" ? 1.2 : 1, specialAreaStacks: 0, specialExperienceStacks: 0, projectileRangeStacks: 0, projectileRangeMultiplier: 1, projectileStacks: 0, projectileLife, facing: 0, castFacing: 0, castTimer: 0, moving: false, spriteAction: "idle", spriteDirection: 0, previousSpriteAction: "idle", previousSpriteDirection: 0, spriteBlend: 1 },
     enemies: [], shots: [], gems: [], specialDrops: [], urns: [], obstacles: createCemeteryObstacles(), nextUrnMinute: 1, nextUrnId: 1, particles: [], damageNumbers: [], pickupLabels: [], challengeEvent: null, nextChallengeEvent: 0, kills: 0, ended: false, upgradeCounts: {}, totalDamageDealt: 0, crystalsCollected: 0, highestLevel: 1,
+    weaponId, weaponLevel: 1, evolved: false, rerollsRemaining: purchases.reroll, banishesRemaining: purchases.banish, bannedUpgradeIds: [],
+    anchorReviveAvailable: false, anchorReviveUsed: false, omenId, omenSpawnMultiplier: omenId === "famine" ? 1.2 : 1,
+    omenEnemyHpMultiplier: omenId === "abundance" ? 1.15 : 1, omenRewardMultiplier: omenId === "abundance" ? 1.25 : 1,
+    omenRevengeCooldown: 0, lastObservedHp: maxHp,
   };
 }
 
@@ -426,10 +448,11 @@ function spawnEnemy(game: GameState, missionId: number, elapsed: number, corrupt
         : type === "charger"
           ? { hp: 36 * scale, speed: 105, radius: 11, damage: 10, color: "#e5a45b", xp: 2 }
           : { hp: 28 * scale, speed: 57, radius: 10, damage: 8, color: "#9b91b4", xp: 2 };
-  game.enemies.push({ x, y, ...stats, maxHp: stats.hp, type, attack: type === "boss" ? 2.2 : 0, flash: 0, windup: 0, targetX: x, targetY: y, dashTime: 0, summonedAtHalf: false, furyTriggered: false });
+  const scaledStats = { ...stats, hp: stats.hp * game.omenEnemyHpMultiplier };
+  game.enemies.push({ x, y, ...scaledStats, maxHp: scaledStats.hp, type, attack: type === "boss" ? 2.2 : 0, flash: 0, windup: 0, targetX: x, targetY: y, dashTime: 0, summonedAtHalf: false, furyTriggered: false });
   // Spawn pressure is bounded. It affects encounter density, not enemy HP directly.
   if (!boss && pressure.enemySpawnScale > 1.25 && game.enemies.length < 48 && Math.random() < 0.18) {
-    game.enemies.push({ x: x + (Math.random() - 0.5) * 70, y: y + (Math.random() - 0.5) * 70, ...stats, maxHp: stats.hp, type, attack: 0, flash: 0, windup: 0, targetX: x, targetY: y, dashTime: 0, summonedAtHalf: false, furyTriggered: false });
+    game.enemies.push({ x: x + (Math.random() - 0.5) * 70, y: y + (Math.random() - 0.5) * 70, ...scaledStats, maxHp: scaledStats.hp, type, attack: 0, flash: 0, windup: 0, targetX: x, targetY: y, dashTime: 0, summonedAtHalf: false, furyTriggered: false });
   }
 }
 
@@ -930,7 +953,9 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
   const [purchases, setPurchases] = useState<PurchaseState>(DEFAULT_PURCHASES);
   const [showPlayerHp, setShowPlayerHp] = useState(true);
   const [showDamageNumbers, setShowDamageNumbers] = useState(true);
-  const [shopSection, setShopSection] = useState<"permanent" | "relics">("permanent");
+  const [shopSection, setShopSection] = useState<"permanent" | "relics" | "weapons" | "omens">("permanent");
+  const [selectedWeapon, setSelectedWeapon] = useState<WeaponId>("void_revolver");
+  const [selectedOmen, setSelectedOmen] = useState<OmenId | null>(null);
   const [runId, setRunId] = useState<string | null>(null);
   const [isMuted, setIsMuted] = useState(() => fractalAudio.isMuted());
   const [earnedFractals, setEarnedFractals] = useState<number | null>(null);
@@ -1035,13 +1060,13 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
     try {
       // A partida só começa quando as imagens do cenário estão prontas (ou falharam e usarão o fallback vetorial).
       await preloadCemeteryImages();
-      const { data: newRunId, error: runError } = await (supabase.rpc as any)("start_fractal_run", { _corruption: corruption });
+      const { data: newRunId, error: runError } = await (supabase.rpc as any)("start_fractal_run", { _corruption: corruption, _weapon: selectedWeapon, _omen: selectedOmen });
       if (runError) { toast.error(runError.message); return; }
       setRunId(newRunId);
       const rect = canvasRef.current?.getBoundingClientRect();
       const width = Math.max(320, rect?.width ?? 760);
       const height = Math.max(380, rect?.height ?? 520);
-      const game = makeGame(width, height, purchases);
+      const game = makeGame(width, height, purchases, selectedWeapon, selectedOmen);
       spawnCemeteryUrns(game, 12);
       gameRef.current = game;
       eventRewardRemainingRef.current = 0;
@@ -1055,7 +1080,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
       preparingArenaRef.current = false;
       setPreparingArena(false);
     }
-  }, [corruption, purchases]);
+  }, [corruption, purchases, selectedWeapon, selectedOmen]);
 
   const finishRun = useCallback((victory: boolean) => {
     if (!runId) {
@@ -1131,7 +1156,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         setEventRewardStep(2);
         setSelectedUpgrade(null);
         setFlippedCardId(null);
-        setLevelChoices(buildLevelChoices(game, purchases.area, purchases.experience, purchases.projectile_range, purchases.projectiles, purchases.rarity));
+        setLevelChoices(buildLevelChoices(game, purchases));
         return;
       }
       setEventRewardStep(0);
@@ -1231,7 +1256,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               game.shake = Math.max(game.shake ?? 0, 13);
               for(let i=0;i<42;i++){const a=Math.random()*Math.PI*2,sp=70+Math.random()*260;game.particles.push({x:centerX,y:centerY,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:.5+Math.random()*.5,color:i%2?"#d8b4fe":"#f0abfc"});}
               game.challengeEvent = null; eventRewardRemainingRef.current = 2; setEventRewardStep(1); setSelectedUpgrade(null); setFlippedCardId(null);
-              setLevelChoices(buildLevelChoices(game,purchases.area,purchases.experience,purchases.projectile_range,purchases.projectiles,purchases.rarity));
+              setLevelChoices(buildLevelChoices(game,purchases));
               toast.success("Ritual da Fenda Rúnica concluído! A onda de choque rompeu a horda. Duas dádivas aguardam.");
             } else if (activeEvent.remaining <= 0) {
               game.challengeEvent = null; toast.error("O Ritual da Fenda Rúnica se dissipou antes de ser concluído.");
@@ -1480,7 +1505,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                   if(enemy.isExecutioner){
                     game.specialDrops.push({x:enemy.x-18,y:enemy.y,kind:"food",radius:15},{x:enemy.x+18,y:enemy.y,kind:"void",radius:15});
                     game.challengeEvent=null;eventRewardRemainingRef.current=2;setEventRewardStep(1);setSelectedUpgrade(null);setFlippedCardId(null);
-                    setLevelChoices(buildLevelChoices(game,purchases.area,purchases.experience,purchases.projectile_range,purchases.projectiles,purchases.rarity));
+                    setLevelChoices(buildLevelChoices(game,purchases));
                     toast.success("Algoz Espectral derrotado! O cemitério reverbera com dádivas!");
                   }
                 } else { game.ended = true; setStats({ totalDamageDealt: Math.round(game.totalDamageDealt), crystalsCollected: game.crystalsCollected, highestLevel: game.highestLevel }); setResult("victory"); fractalAudio.victory(); finishRun(true); }
@@ -1618,7 +1643,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           
           setSelectedUpgrade(null);
               setFlippedCardId(null);
-              setLevelChoices(buildLevelChoices(game, purchases.area, purchases.experience, purchases.projectile_range, purchases.projectiles, purchases.rarity));
+              setLevelChoices(buildLevelChoices(game, purchases));
         }
         if (game.player.hp <= 0 && !game.ended) { game.ended = true; setStats({ totalDamageDealt: Math.round(game.totalDamageDealt), crystalsCollected: game.crystalsCollected, highestLevel: game.highestLevel }); setResult("defeat"); fractalAudio.defeat(); finishRun(false); }
         if (game.elapsed >= RUN_DURATION_SECONDS && !game.ended && !game.bossSpawned) {
