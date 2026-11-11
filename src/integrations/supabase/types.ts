@@ -1101,7 +1101,7 @@ export type Database = {
       start_combat: { Args: never; Returns: Json }
       start_farkle_game: { Args: never; Returns: number }
       start_farkle_game_with_bet: { Args: { _wager: number }; Returns: string }
-      start_fractal_run: { Args: { _corruption: number }; Returns: string }
+      start_fractal_run: { Args: { _corruption: number; _weapon?: string; _omen?: string | null }; Returns: string }
       start_puzzle: { Args: never; Returns: Json }
       start_twentyone_game: { Args: { _wager: number }; Returns: Json }
       transfer_coins: {
