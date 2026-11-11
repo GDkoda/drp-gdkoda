@@ -196,11 +196,16 @@ A nova loja exige executar `drizzle/migrations/0006_fractal_shop_attributes_and_
 - Nível 3: na segunda ressurreição, uma explosão atinge os inimigos num raio de 260 unidades, causando dano equivalente ao golpe atual da arma equipada.
 - Custos: 3.500 / 7.000 / 20.000 fractais.
 
-### Compatibilidade das Relíquias de projéteis por arma
+### Compatibilidade das Relíquias por arma
 Estado da implementação nesta revisão:
-- Revólver do Vazio (Pistola): Ricochete, Perfuração e Descarga em Cadeia funcionam nos projéteis normais. A evolução mantém os projéteis adicionais da Coroa de Estilhaços.
-- Núcleo Instável: os projéteis principais passam pelo mesmo processamento e aceitam os três efeitos. Os estilhaços da explosão secundária não recebem novos ricochetes/perfurações/cadeias.
-- Foice Espectral, Espadas Orbitais, Grilhão Gravitacional e Sentinelas Rúnicas: atualmente usam disparos auxiliares direcionados, que não entram no processamento das três relíquias. Não devem ser anunciadas como compatíveis até uma adaptação específica de cada arma.
+- Revólver do Vazio (Pistola): Ricochete, Perfuração e Descarga em Cadeia funcionam nos projéteis normais. Ressonância de Alcance também funciona. Coroa de Estilhaços adiciona projéteis; depois da evolução, os seis disparos-base continuam somando os extras coletados.
+- Núcleo Instável: os projéteis principais aceitam Ricochete, Perfuração, Descarga em Cadeia e Ressonância de Alcance. Os estilhaços da explosão secundária não recebem novos ricochetes/perfurações/cadeias. Coroa de Estilhaços ainda não aumenta a quantidade de orbes do Núcleo.
+- Foice Espectral: os cortes são disparos auxiliares direcionados; não aceitam atualmente Ricochete, Perfuração, Descarga em Cadeia, Ressonância de Alcance ou Coroa de Estilhaços.
+- Espadas Orbitais: os impactos das lâminas são direcionados individualmente; não aceitam atualmente as três relíquias de comportamento, Ressonância de Alcance ou Coroa de Estilhaços.
+- Grilhão Gravitacional: o pulso de atração escolhe vários inimigos e gera impactos direcionados; não aceita atualmente as três relíquias de comportamento, Ressonância de Alcance ou Coroa de Estilhaços.
+- Sentinelas Rúnicas: os disparos são direcionados e estão marcados como auxiliares; apesar de serem projéteis visuais, não aceitam atualmente Ricochete, Perfuração, Descarga em Cadeia, Ressonância de Alcance ou Coroa de Estilhaços.
+
+Área e Experiência são efeitos globais e funcionam com qualquer arma. A compatibilidade descrita acima é específica das relíquias que alteram projéteis. Não anunciar efeitos não conectados até uma adaptação específica de cada arma.
 
 ### Resposta visual e desempenho
 - O tremor de câmera por dano de contato comum foi removido; o flash vermelho de dano permanece.
