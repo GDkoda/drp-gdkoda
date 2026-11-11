@@ -766,16 +766,39 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
       ctx.beginPath(); ctx.arc(0, 0, radius * 0.92, 0, Math.PI * 2); ctx.stroke();
       ctx.setLineDash([]);
       ctx.rotate(game.elapsed * (game.evolved ? -1.25 : 1.1));
-      ctx.strokeStyle = game.evolved ? "rgba(216,180,254,.50)" : "rgba(125,211,252,.50)";
-      ctx.lineWidth = 1.8;
-      for (let rune = 0; rune < 4; rune++) {
-        ctx.rotate(Math.PI / 2);
-        ctx.strokeRect(-radius * 0.34, -radius * 0.34, radius * 0.68, radius * 0.68);
+      ctx.strokeStyle = game.evolved ? "#d8b4fe" : "#38bdf8";
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      for (let point = 0; point < 5; point++) {
+        const angle = (point * 4 * Math.PI) / 5 - Math.PI / 2;
+        const px = Math.cos(angle) * (radius * 0.85);
+        const py = Math.sin(angle) * (radius * 0.85);
+        if (point === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
       }
+      ctx.closePath();
+      ctx.stroke();
       const coreGlow = game.evolved ? "#c084fc" : "#38bdf8";
       ctx.fillStyle = coreGlow;
       ctx.shadowColor = coreGlow; ctx.shadowBlur = 18;
       ctx.beginPath(); ctx.arc(0, 0, 9 + Math.sin(game.elapsed * 8) * 2, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+      return;
+    }
+
+    if (shot.kind === "sentinel_explosion") {
+      ctx.save();
+      ctx.translate(shot.x, shot.y);
+      ctx.globalAlpha = lifeRatio;
+      const radius = shot.radius ?? 140;
+      const gradient = ctx.createRadialGradient(0, 0, 4, 0, 0, radius);
+      gradient.addColorStop(0, "rgba(224,242,254,.92)");
+      gradient.addColorStop(0.28, "rgba(34,211,238,.58)");
+      gradient.addColorStop(0.72, "rgba(251,191,36,.18)");
+      gradient.addColorStop(1, "rgba(34,211,238,0)");
+      ctx.fillStyle = gradient;
+      ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "#a5f3fc"; ctx.lineWidth = 4; ctx.shadowColor = "#22d3ee"; ctx.shadowBlur = 18;
+      ctx.beginPath(); ctx.arc(0, 0, radius * (0.62 + (1 - lifeRatio) * 0.25), 0, Math.PI * 2); ctx.stroke();
       ctx.restore();
       return;
     }
@@ -933,6 +956,41 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     ctx.beginPath(); ctx.arc(ring.x, ring.y, ring.r, 0, Math.PI * 2); ctx.stroke();
   });
   ctx.restore();
+  game.sentinelTotems.forEach((totem) => {
+    if (totem.x < cameraX - 65 || totem.x > cameraX + viewWidth + 65 || totem.y < cameraY - 85 || totem.y > cameraY + viewHeight + 45) return;
+    ctx.save();
+    ctx.translate(totem.x, totem.y);
+    const pulse = 1 + Math.sin(game.elapsed * 4 + totem.id) * 0.08;
+    const aura = ctx.createRadialGradient(0, -10, 3, 0, -10, 48 * pulse);
+    aura.addColorStop(0, "rgba(34,211,238,.34)");
+    aura.addColorStop(0.55, "rgba(14,165,233,.14)");
+    aura.addColorStop(1, "rgba(14,165,233,0)");
+    ctx.fillStyle = aura;
+    ctx.beginPath(); ctx.arc(0, -10, 48 * pulse, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "rgba(0,0,0,.48)";
+    ctx.beginPath(); ctx.ellipse(0, 10, 22, 8, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#0b2633"; ctx.strokeStyle = "#67e8f9"; ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(-13, 12); ctx.lineTo(-10, -24); ctx.lineTo(-5, -34);
+    ctx.lineTo(5, -34); ctx.lineTo(10, -24); ctx.lineTo(13, 12);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = "rgba(250,204,21,.85)"; ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.moveTo(-8, -16); ctx.lineTo(8, -16); ctx.moveTo(-9, 5); ctx.lineTo(9, 5); ctx.stroke();
+    const glyphY = -43 + Math.sin(game.elapsed * 3.2 + totem.id) * 3;
+    ctx.save();
+    ctx.translate(0, glyphY);
+    ctx.rotate(game.elapsed * 0.8);
+    ctx.shadowColor = "#22d3ee"; ctx.shadowBlur = 14;
+    ctx.fillStyle = "#a5f3fc";
+    ctx.beginPath(); ctx.moveTo(0, -7); ctx.lineTo(6, 0); ctx.lineTo(0, 7); ctx.lineTo(-6, 0); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = "#fef08a"; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(0, -4); ctx.lineTo(0, 4); ctx.moveTo(-4, 0); ctx.lineTo(4, 0); ctx.stroke();
+    ctx.restore();
+    ctx.fillStyle = "rgba(2,6,23,.88)"; ctx.fillRect(-17, -57, 34, 4);
+    ctx.fillStyle = "#22d3ee"; ctx.fillRect(-17, -57, 34 * clamp(totem.hp / totem.maxHp, 0, 1), 4);
+    ctx.strokeStyle = "rgba(226,232,240,.65)"; ctx.lineWidth = 0.7; ctx.strokeRect(-17, -57, 34, 4);
+    ctx.restore();
+  });
   game.enemies.forEach((enemy) => {
     if (enemy.x < cameraX - 88 || enemy.x > cameraX + viewWidth + 88 || enemy.y < cameraY - 100 || enemy.y > cameraY + viewHeight + 100) return;
     ctx.save();
@@ -1195,6 +1253,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
   const [showDamageNumbers, setShowDamageNumbers] = useState(true);
   const [shopSection, setShopSection] = useState<"permanent" | "relics" | "weapons" | "omens">("permanent");
   const [selectedWeapon, setSelectedWeapon] = useState<WeaponId>("void_revolver");
+  const [masterWeaponSelection, setMasterWeaponSelection] = useState<WeaponId | null>(null);
+  const [masterGiftId, setMasterGiftId] = useState<UpgradeId>("power");
   const [selectedOmen, setSelectedOmen] = useState<OmenId | null>(null);
   const [runId, setRunId] = useState<string | null>(null);
   const [isMuted, setIsMuted] = useState(() => fractalAudio.isMuted());
@@ -1714,33 +1774,12 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             }
             game.shotTimer = game.player.fireRate * 1.35;
           } else if (game.weaponId === "rune_sentinels") {
-            const sentinelCount = Math.min(5, 2 + Math.floor(game.weaponLevel / 3) + (game.evolved ? 1 : 0));
-            const sortedByHp = [...targets].sort((a, b) => b.hp - a.hp);
-            for (let index = 0; index < sentinelCount; index++) {
-              const enemy = sortedByHp[index % sortedByHp.length];
-              if (!enemy) continue;
-              const angle = game.elapsed * 1.5 + (index * Math.PI * 2) / sentinelCount;
-              const sentinelX = game.player.x + Math.cos(angle) * 55;
-              const sentinelY = game.player.y + Math.sin(angle) * 55;
-              const dx = enemy.x - sentinelX, dy = enemy.y - sentinelY;
-              const length = Math.max(1, Math.hypot(dx, dy));
-              const speed = 750;
-              const life = length / speed + 0.15;
-              game.shots.push({
-                x: sentinelX, y: sentinelY,
-                vx: (dx / length) * speed, vy: (dy / length) * speed,
-                damage: weaponDamage * (game.evolved ? 0.75 : 0.55),
-                life, maxLife: life, hitTargets: [],
-                bouncesRemaining: 0, piercesRemaining: 1,
-                kind: "sentinel_beam", targetEnemy: enemy,
-              });
-            }
-            game.player.castFacing = directionFromVector(target.x - game.player.x, target.y - game.player.y);
-            game.player.castTimer = 0.24;
+            // Os totens estacionários disparam por conta própria; este timer apenas evita
+            // que o loop genérico de armas execute repetidamente enquanto há alvos.
             game.shotTimer = game.player.fireRate * 0.8;
           }
 
-          if (game.weaponId !== "orbital_swords") fractalAudio.shoot();
+          if (game.weaponId !== "orbital_swords" && game.weaponId !== "rune_sentinels") fractalAudio.shoot();
         }
         const desiredAction: PlayerVisualAction = game.player.castTimer > 0 ? "cast" : game.player.moving ? "move" : "idle";
         const desiredDirection = desiredAction === "cast" ? game.player.castFacing : game.player.facing;
@@ -1812,12 +1851,78 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         // Projectiles and temporary fields have bounded lifetimes; don't cull attacks just because
         // the camera moved away while they were still travelling or dealing area damage.
         game.shots = game.shots.filter((shot) => shot.life > 0);
+        if (game.weaponId === "rune_sentinels") {
+          game.sentinelRespawnTimer = Math.max(0, game.sentinelRespawnTimer - dt);
+          const baseTotemLimit = game.weaponLevel >= 10 ? 3 : game.weaponLevel >= 5 ? 2 : 1;
+          const totemLimit = baseTotemLimit + game.player.projectileStacks;
+          if (game.sentinelRespawnTimer <= 0 && game.sentinelTotems.length < totemLimit) {
+            while (game.sentinelTotems.length < totemLimit) {
+              const index = game.sentinelTotems.length;
+              const angle = (index / Math.max(1, totemLimit)) * Math.PI * 2 + Math.PI / 6;
+              const desiredX = game.player.x + Math.cos(angle) * 118;
+              const desiredY = game.player.y + Math.sin(angle) * 118;
+              const position = resolveCemeteryCollision(desiredX, desiredY, 14, game.obstacles);
+              const maxHp = 260 + game.weaponLevel * 20;
+              game.sentinelTotems.push({
+                id: game.nextSentinelTotemId++,
+                x: position.x, y: position.y,
+                hp: maxHp, maxHp, attackTimer: 0.18 + index * 0.08, radius: 14,
+              });
+            }
+          }
+          for (const totem of game.sentinelTotems) {
+            totem.attackTimer -= dt;
+            if (totem.attackTimer > 0 || totem.hp <= 0) continue;
+            const target = game.enemies
+              .filter((enemy) => enemy.hp > 0 && distance(totem.x, totem.y, enemy.x, enemy.y) <= 420)
+              .sort((a, b) => distance(totem.x, totem.y, a.x, a.y) - distance(totem.x, totem.y, b.x, b.y))[0];
+            if (!target) continue;
+            const dx = target.x - totem.x, dy = target.y - totem.y;
+            const length = Math.max(1, Math.hypot(dx, dy));
+            const beamSpeed = 750;
+            const life = length / beamSpeed + 0.15;
+            game.shots.push({
+              x: totem.x, y: totem.y,
+              vx: (dx / length) * beamSpeed, vy: (dy / length) * beamSpeed,
+              damage: getEquippedWeaponStrikeDamage(game) * (game.evolved ? 0.75 : 0.55),
+              life, maxLife: life, hitTargets: [], bouncesRemaining: 0,
+              piercesRemaining: 1, kind: "sentinel_beam", targetEnemy: target,
+            });
+            totem.attackTimer = Math.max(0.28, game.player.fireRate * 0.8);
+          }
+        } else {
+          game.sentinelTotems = [];
+          game.sentinelRespawnTimer = 0;
+        }
+
         const movementGrid = game.enemies.length < 20 ? buildEnemySpatialGrid(game.enemies) : null;
         for (const enemy of game.enemies) {
           const d = Math.max(1, distance(game.player.x, game.player.y, enemy.x, enemy.y));
           enemy.flash = Math.max(0, enemy.flash - dt);
           enemy.attack = Math.max(0, enemy.attack - dt);
-          if (enemy.type === "boss") {
+          const movementFactor = (enemy.slowTimer ?? 0) > 0 ? 0.7 : 1;
+          enemy.slowTimer = Math.max(0, (enemy.slowTimer ?? 0) - dt);
+          const aggroTotem = game.weaponId === "rune_sentinels"
+            ? game.sentinelTotems
+                .filter((totem) => totem.hp > 0 && distance(enemy.x, enemy.y, totem.x, totem.y) <= 280)
+                .sort((a, b) => distance(enemy.x, enemy.y, a.x, a.y) - distance(enemy.x, enemy.y, b.x, b.y))[0]
+            : undefined;
+          if (aggroTotem) {
+            enemy.windup = 0;
+            enemy.dashTime = 0;
+            const totemDistance = Math.max(1, distance(enemy.x, enemy.y, aggroTotem.x, aggroTotem.y));
+            if (totemDistance > aggroTotem.radius + enemy.radius + 14) {
+              const separation = movementGrid ? getEnemySeparation(enemy, movementGrid) : NO_ENEMY_SEPARATION;
+              const steerX = (aggroTotem.x - enemy.x) / totemDistance + separation.x * 0.24;
+              const steerY = (aggroTotem.y - enemy.y) / totemDistance + separation.y * 0.24;
+              const steerLength = Math.max(1, Math.hypot(steerX, steerY));
+              enemy.x += (steerX / steerLength) * enemy.speed * movementFactor * dt;
+              enemy.y += (steerY / steerLength) * enemy.speed * movementFactor * dt;
+            } else if (enemy.attack <= 0) {
+              aggroTotem.hp = Math.max(0, aggroTotem.hp - enemy.damage * (enemy.type === "brute" ? 1.35 : 1));
+              enemy.attack = enemy.type === "boss" ? 1.25 : enemy.type === "brute" ? 1.1 : 0.85;
+            }
+          } else if (enemy.type === "boss") {
             const inFury = enemy.hp <= enemy.maxHp * 0.30;
             if (inFury && !enemy.furyTriggered) {
               enemy.furyTriggered = true;
@@ -1846,12 +1951,12 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             const steerY = (game.player.y - enemy.y) / d + separation.y * 0.28;
             const steerLength = Math.max(1, Math.hypot(steerX, steerY));
             const phaseTwoSpeed = inFury ? 1.35 : enemy.hp <= enemy.maxHp * 0.5 ? 1.16 : 1;
-            enemy.x += (steerX / steerLength) * enemy.speed * phaseTwoSpeed * dt;
-            enemy.y += (steerY / steerLength) * enemy.speed * phaseTwoSpeed * dt;
+            enemy.x += (steerX / steerLength) * enemy.speed * movementFactor * phaseTwoSpeed * dt;
+            enemy.y += (steerY / steerLength) * enemy.speed * movementFactor * phaseTwoSpeed * dt;
           } else if (enemy.type === "charger") {
             if (enemy.dashTime > 0) {
               enemy.dashTime = Math.max(0, enemy.dashTime - dt);
-              enemy.x += enemy.targetX * 390 * dt; enemy.y += enemy.targetY * 390 * dt;
+              enemy.x += enemy.targetX * 390 * movementFactor * dt; enemy.y += enemy.targetY * 390 * movementFactor * dt;
               const dashDistance = distance(game.player.x, game.player.y, enemy.x, enemy.y);
               if (dashDistance < enemy.radius + 20 && game.player.invuln <= 0) { game.player.hp = Math.max(0, game.player.hp - enemy.damage); game.player.invuln = .65; game.player.hitFlash = 0.3;  enemy.dashTime = 0; }
             } else if (enemy.windup > 0) {
@@ -1868,8 +1973,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               const steerX = (game.player.x - enemy.x) / d + separation.x * 0.22;
               const steerY = (game.player.y - enemy.y) / d + separation.y * 0.22;
               const steerLength = Math.max(1, Math.hypot(steerX, steerY));
-              enemy.x += (steerX / steerLength) * enemy.speed * dt;
-              enemy.y += (steerY / steerLength) * enemy.speed * dt;
+              enemy.x += (steerX / steerLength) * enemy.speed * movementFactor * dt;
+              enemy.y += (steerY / steerLength) * enemy.speed * movementFactor * dt;
               if (d < enemy.radius + 15 && enemy.attack <= 0 && game.player.invuln <= 0) { game.player.hp = Math.max(0, game.player.hp - enemy.damage); game.player.invuln = .65; game.player.hitFlash = 0.3;  enemy.attack = 1.1; }
             }
           } else if (enemy.type === "brute") {
@@ -1888,8 +1993,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                 const steerX = (game.player.x - enemy.x) / d * approach + separation.x * 0.26;
                 const steerY = (game.player.y - enemy.y) / d * approach + separation.y * 0.26;
                 const steerLength = Math.max(1, Math.hypot(steerX, steerY));
-                enemy.x += (steerX / steerLength) * enemy.speed * dt;
-                enemy.y += (steerY / steerLength) * enemy.speed * dt;
+                enemy.x += (steerX / steerLength) * enemy.speed * movementFactor * dt;
+                enemy.y += (steerY / steerLength) * enemy.speed * movementFactor * dt;
               }
               if (d < enemy.radius + 15 && enemy.attack <= 0 && game.player.invuln <= 0) { game.player.hp = Math.max(0, game.player.hp - enemy.damage); game.player.invuln = .72; game.player.hitFlash = 0.3;  enemy.attack = 1.2; }
             }
@@ -1903,8 +2008,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               const steerX = ux * approach + tangentX * 0.34 + separation.x * 0.48;
               const steerY = uy * approach + tangentY * 0.34 + separation.y * 0.48;
               const steerLength = Math.max(1, Math.hypot(steerX, steerY));
-              enemy.x += (steerX / steerLength) * enemy.speed * dt;
-              enemy.y += (steerY / steerLength) * enemy.speed * dt;
+              enemy.x += (steerX / steerLength) * enemy.speed * movementFactor * dt;
+              enemy.y += (steerY / steerLength) * enemy.speed * movementFactor * dt;
             } else {
               const targetRadius = 92;
               const approach = clamp((d - targetRadius) / 65, -0.42, 0.72);
@@ -1912,8 +2017,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               const steerX = ux * approach - uy * side * 0.48 + separation.x * 0.38;
               const steerY = uy * approach + ux * side * 0.48 + separation.y * 0.38;
               const steerLength = Math.max(1, Math.hypot(steerX, steerY));
-              enemy.x += (steerX / steerLength) * enemy.speed * dt;
-              enemy.y += (steerY / steerLength) * enemy.speed * dt;
+              enemy.x += (steerX / steerLength) * enemy.speed * movementFactor * dt;
+              enemy.y += (steerY / steerLength) * enemy.speed * movementFactor * dt;
             }
             if (enemy.type === "elite" && enemy.attack <= 0) {
               if (d < 105 && game.player.invuln <= 0) { game.player.hp = Math.max(0, game.player.hp - 7); game.player.invuln = 0.35; game.player.hitFlash = 0.3;  }
@@ -1924,6 +2029,32 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             }
           }
         }
+        const destroyedTotems = game.sentinelTotems.filter((totem) => totem.hp <= 0);
+        if (destroyedTotems.length > 0) {
+          for (const totem of destroyedTotems) {
+            const burstRadius = 140;
+            const burstDamage = getEquippedWeaponStrikeDamage(game) * 2.5;
+            game.shots.push({
+              x: totem.x, y: totem.y, vx: 0, vy: 0,
+              damage: burstDamage, life: 0.18, maxLife: 0.18,
+              hitTargets: [], bouncesRemaining: 0, piercesRemaining: 0,
+              kind: "sentinel_explosion", radius: burstRadius,
+            });
+            (game.rings ??= []).push({ x: totem.x, y: totem.y, r: 12, max: burstRadius, life: 0.68, color: "#38bdf8" });
+            for (let particle = 0; particle < 30; particle++) {
+              const angle = Math.random() * Math.PI * 2;
+              const speed = 70 + Math.random() * 220;
+              game.particles.push({
+                x: totem.x, y: totem.y,
+                vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
+                life: 0.4 + Math.random() * 0.55,
+                color: particle % 2 ? "#fbbf24" : "#22d3ee",
+              });
+            }
+          }
+          game.sentinelTotems = game.sentinelTotems.filter((totem) => totem.hp > 0);
+          game.sentinelRespawnTimer = 5;
+        }
         for (const enemy of game.enemies) { const resolved = resolveCemeteryCollision(enemy.x, enemy.y, enemy.radius, game.obstacles); enemy.x = resolved.x; enemy.y = resolved.y; }
         const collisionGrid = buildEnemySpatialGrid(game.enemies);
         for (const shot of game.shots) {
@@ -1933,7 +2064,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             shot.pulseTimer = 0.4;
             shot.hitTargets = [];
           }
-          const wideAttack = shot.kind === "scythe_slash" || isPulsingField;
+          const wideAttack = shot.kind === "scythe_slash" || shot.kind === "sentinel_explosion" || isPulsingField;
           const nearbyTargets = wideAttack ? game.enemies : getNearbyEnemies(shot.x, shot.y, collisionGrid);
           for (const enemy of nearbyTargets) {
             if (enemy.hp <= 0 || shot.hitTargets.includes(enemy)) continue;
@@ -1942,7 +2073,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             const hitY = shot.y - enemy.y;
             const hitDistanceSquared = hitX * hitX + hitY * hitY;
             let hit = false;
-            if (shot.kind === "plasma_puddle" || shot.kind === "gravity_well") {
+            if (shot.kind === "plasma_puddle" || shot.kind === "gravity_well" || shot.kind === "sentinel_explosion") {
               const radius = (shot.radius ?? 90) + enemy.radius;
               hit = hitDistanceSquared <= radius * radius;
             } else if (shot.kind === "scythe_slash") {
@@ -1960,6 +2091,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               game.damageNumbers.push({ x: enemy.x + (Math.random() - 0.5) * 10, y: enemy.y - enemy.radius - 8, value: shot.damage, life: 0.82, maxLife: 0.82, drift: (Math.random() - 0.5) * 14 });
               if (game.damageNumbers.length > 20) game.damageNumbers.shift();
               shot.hitTargets.push(enemy);
+              if (shot.kind === "plasma_puddle") enemy.slowTimer = Math.max(enemy.slowTimer ?? 0, 0.5);
 
               // Descarga em cadeia: cada impacto do projétil original pode chamar alvos extras.
               const supportsChainRelic = shot.kind === undefined || shot.kind === "bullet" || shot.kind === "revolver_empowered" || shot.kind === "plasma_core";
@@ -2035,7 +2167,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               }
 
               // Cortes, lâminas e campos atingem todos os alvos da forma durante cada pulso.
-              if (shot.kind === "scythe_slash" || shot.kind === "orbital_blade" || isPulsingField) continue;
+              if (shot.kind === "scythe_slash" || shot.kind === "orbital_blade" || shot.kind === "sentinel_explosion" || isPulsingField) continue;
 
               // Perfuração prioriza inimigos alinhados à frente; ricochete busca um novo alvo quando não há alvo alinhado.
               let continued = false;
@@ -2075,7 +2207,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           }
         }
         for (const shot of game.shots) {
-          if (shot.life <= 0 || shot.kind === "orbital_blade" || shot.kind === "scythe_slash" || shot.kind === "gravity_well" || shot.kind === "plasma_puddle") continue;
+          if (shot.life <= 0 || shot.kind === "orbital_blade" || shot.kind === "scythe_slash" || shot.kind === "gravity_well" || shot.kind === "plasma_puddle" || shot.kind === "sentinel_explosion") continue;
           for (const urn of game.urns) {
             if (urn.broken) continue;
             const dx = shot.x - urn.x, dy = shot.y - urn.y;
@@ -2739,6 +2871,52 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
    <div className="fractals-pause-actions grid grid-cols-2 gap-2"><Button variant="outline" className="h-auto justify-start gap-2 rounded-xl border-violet-100/15 bg-white/[0.055] py-3 text-white shadow-inner hover:border-violet-100/35 hover:bg-violet-300/10" onClick={() => setPausePanel("attributes")}><UserRound className="h-4 w-4"/> Atributos</Button><Button variant="outline" className="h-auto justify-start gap-2 rounded-xl border-violet-100/15 bg-white/[0.055] py-3 text-white shadow-inner hover:border-violet-100/35 hover:bg-violet-300/10" onClick={toggleFullscreen}><Maximize className="h-4 w-4"/> Tela cheia</Button><Button variant="outline" className="h-auto justify-start gap-2 rounded-xl border-violet-100/15 bg-white/[0.055] py-3 text-white shadow-inner hover:border-violet-100/35 hover:bg-violet-300/10" onClick={() => setShowPlayerHp((v) => !v)}><Heart className="h-4 w-4 text-rose-300"/> HP: {showPlayerHp ? "visível" : "oculto"}</Button><Button variant="outline" className="h-auto justify-start gap-2 rounded-xl border-violet-100/15 bg-white/[0.055] py-3 text-white shadow-inner hover:border-violet-100/35 hover:bg-violet-300/10" onClick={() => setShowDamageNumbers((v) => !v)}><Swords className="h-4 w-4 text-amber-200"/> Dano: {showDamageNumbers ? "visível" : "oculto"}</Button></div>
    <Button variant="destructive" className="mt-3 h-10 w-full border border-rose-300/25 bg-rose-950/55 font-bold text-rose-100 hover:bg-rose-900/70" onClick={() => { const game = gameRef.current; if (!game || game.ended) return; game.ended = true; setStats({ totalDamageDealt: Math.round(game.totalDamageDealt), crystalsCollected: game.crystalsCollected, highestLevel: game.highestLevel }); setResult("defeat"); setPaused(false); setPausePanel("main"); fractalAudio.defeat(); finishRun(false); }}><Skull className="mr-2 h-4 w-4"/> Desistir da partida</Button>
     <div className="fractals-pause-speed mt-3 rounded-2xl p-3"><div className="mb-2 flex items-center gap-2 text-xs font-semibold text-white/75"><Gauge className="h-4 w-4"/> Velocidade da expedição</div><div className="grid grid-cols-3 gap-2">{([1,2,3] as const).map((speed) => <Button key={speed} size="sm" variant={speedMultiplier===speed?"default":"outline"} disabled={!isMaster && (speed===2 ? !purchases.speed_2x : speed===3 ? !purchases.speed_3x : false)} className={!isMaster && speed>1?"border-white/10 opacity-45":""} onClick={()=>setSpeedMultiplier(speed)}>{speed}x{!isMaster && (speed===2 ? !purchases.speed_2x : speed===3 ? !purchases.speed_3x : false)?" 🔒":""}</Button>)}</div>{!isMaster && <p className="mt-2 text-[10px] text-white/45">Desbloqueie 2x e 3x na loja de fractais.</p>}{isMaster && <><p className="mt-2 text-[10px] text-emerald-200/70">Acesso de mestre: todas as velocidades liberadas para testes.</p><Button variant="outline" size="sm" className="mt-2 h-8 w-full border-emerald-200/25 bg-emerald-400/[0.07] text-[10px] text-emerald-100 hover:bg-emerald-400/15" onClick={() => { const game = gameRef.current; if (!game) return; game.enemies = Array.from({length:50},(_,index) => { const angle = index / 50 * Math.PI * 2; const ring = 46 + (index % 3) * 29; const x = game.player.x + Math.cos(angle) * ring; const y = game.player.y + Math.sin(angle) * ring; return { x, y, hp: 100000, maxHp: 100000, speed: 22, radius: 10, damage: 0, color: "#9b91b4", xp: 0, type: "wraith" as const, attack: 0, flash: 0, windup: 0, targetX: x, targetY: y, dashTime: 0, summonedAtHalf: false, furyTriggered: false }; }); game.spawnTimer = Number.MAX_SAFE_INTEGER; game.bossSpawned = true; setPaused(false); toast.info("Teste de carga ativo: 50 monstros na arena. Confira o FPS e o contador 50/50 no topo."); }}>TESTE DE CARGA · 50 MONSTROS</Button></>}</div>
+   {isMaster && <section className="mt-3 space-y-3 rounded-2xl border border-emerald-300/25 bg-emerald-950/25 p-3 shadow-[0_0_24px_rgba(16,185,129,.08)]">
+    <div className="flex items-center gap-2"><Shield className="h-4 w-4 text-emerald-200"/><h4 className="text-xs font-black uppercase tracking-[.16em] text-emerald-100">Ferramentas do Mestre</h4></div>
+    <div className="space-y-1.5">
+     <label className="text-[10px] font-bold uppercase tracking-wider text-white/55">Troca rápida de arma</label>
+     <select value={masterWeaponSelection ?? gameRef.current?.weaponId ?? selectedWeapon} onChange={(event) => {
+       const nextWeapon = event.target.value as WeaponId;
+       setMasterWeaponSelection(nextWeapon);
+       const game = gameRef.current;
+       if (!game) return;
+       game.weaponId = nextWeapon;
+       game.shots = [];
+       game.sentinelTotems = [];
+       game.sentinelRespawnTimer = 0;
+       game.shotTimer = 0.25;
+       game.revolverShotCount = 0;
+       game.orbitalPulseTimer = 0;
+       game.player.castTimer = 0;
+       toast.info("Arma alterada para " + WEAPON_CONFIG[nextWeapon].name + ".");
+     }} className="h-10 w-full rounded-lg border border-emerald-200/20 bg-[#111720] px-3 text-xs font-semibold text-white outline-none focus:border-emerald-300/60">
+      {(Object.keys(WEAPON_CONFIG) as WeaponId[]).map((weaponId) => <option key={weaponId} value={weaponId}>{WEAPON_CONFIG[weaponId].name}</option>)}
+     </select>
+    </div>
+    <Button variant="outline" className="h-9 w-full border-amber-300/30 bg-amber-400/10 text-xs font-bold text-amber-100 hover:bg-amber-400/20" onClick={() => {
+      const game = gameRef.current;
+      if (!game) return;
+      if (!game.evolved) {
+        game.evolved = true;
+        game.player.damage *= 1.35;
+        game.player.fireRate /= 1.10;
+        game.rings = [...(game.rings ?? []), { x: game.player.x, y: game.player.y, r: 12, max: 230, life: 1.2, color: "#fbbf24" }];
+      }
+      toast.success(WEAPON_CONFIG[game.weaponId].evolutionName + " forçada pelo Mestre!");
+    }}><Crown className="mr-2 h-4 w-4"/> Forçar Evolução</Button>
+    <div className="space-y-1.5">
+     <label className="text-[10px] font-bold uppercase tracking-wider text-white/55">Conceder dádiva</label>
+     <select value={masterGiftId} onChange={(event) => setMasterGiftId(event.target.value as UpgradeId)} className="h-10 w-full rounded-lg border border-emerald-200/20 bg-[#111720] px-3 text-xs font-semibold text-white outline-none focus:border-emerald-300/60">
+      {MASTER_GIFT_OPTIONS.map((gift, index) => <option key={gift.id + "-" + index} value={gift.id}>{gift.name}{gift.rarity === "mastery" ? " · Maestria" : gift.rarity === "evolution" ? " · Evolução" : ""}</option>)}
+     </select>
+     <Button className="h-9 w-full bg-emerald-500/80 text-xs font-black text-[#05140f] hover:bg-emerald-400" onClick={() => {
+       const gift = MASTER_GIFT_OPTIONS.find((candidate) => candidate.id === masterGiftId);
+       if (!gift || !gameRef.current) return;
+       applyUpgrade(gift);
+       toast.success(gift.name + " adicionada ao personagem.");
+     }}><Sparkles className="mr-2 h-4 w-4"/> Adicionar ao Personagem</Button>
+    </div>
+   </section>}
    <Button className="fractals-pause-resume mt-3 h-11 w-full font-bold" onClick={() => {setPausePanel("main");setPaused(false)}}><Play className="mr-2 h-4 w-4"/> Retomar expedição</Button>
   </> : <>
    <div className="mb-3 grid grid-cols-2 gap-2">{[["Vida",`${Math.ceil(gameRef.current?.player.hp ?? hud.hp)} / ${Math.ceil(gameRef.current?.player.maxHp ?? hud.maxHp)}`],["Dano",`${(gameRef.current?.player.damage ?? 0).toFixed(1)}`],["Velocidade",`${(gameRef.current?.player.speed ?? 0).toFixed(0)}`],["Intervalo de ataque",`${(gameRef.current?.player.fireRate ?? 0).toFixed(2)}s`],["Nível",`${gameRef.current?.player.level ?? hud.level}`],["Projéteis",`${1 + (gameRef.current?.player.projectileStacks ?? 0)}`],["Alcance",`+${Math.round((gameRef.current?.player.projectileRangeMultiplier ?? 1) * 100 - 100)}%`],["Experiência",`${Math.floor(gameRef.current?.player.xp ?? hud.xp)} / ${Math.floor(gameRef.current?.player.nextXp ?? hud.nextXp)}`],["Abates",`${gameRef.current?.kills ?? hud.kills}`],["Multiplicador",`${speedMultiplier}x`],["Arma",WEAPON_CONFIG[gameRef.current?.weaponId ?? selectedWeapon].name],["Nível da arma",`${gameRef.current?.weaponLevel ?? 1}/10`],["Presságio",gameRef.current?.omenId ? OMEN_CONFIG[gameRef.current.omenId].name : "Nenhum"]].map(([label,value])=><div key={label} className="rounded-lg border border-white/10 bg-white/5 p-2"><p className="text-[10px] text-white/45">{label}</p><p className="text-sm font-semibold tabular-nums text-white">{value}</p></div>)}</div>
