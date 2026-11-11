@@ -3,11 +3,13 @@
  * Currency writes and unlocks must be performed by server-side RPCs; these
  * constants are display/game-design configuration, not an authority boundary.
  */
+// Ressonância Rara changes only the Normal/Rare distribution.
+// Épicas are created by Transmutação Rúnica, which promotes an eligible Rare roll.
 export const FRACTAL_RARITY_TIERS = [
   { tier: 0, normal: 100, rare: 0, epic: 0, label: "Normal" },
   { tier: 1, normal: 85, rare: 15, epic: 0, label: "Rara" },
-  { tier: 2, normal: 70, rare: 23, epic: 7, label: "Épica" },
-  { tier: 3, normal: 60, rare: 27, epic: 13, label: "Ressonância superior" },
+  { tier: 2, normal: 75, rare: 25, epic: 0, label: "Rara aprimorada" },
+  { tier: 3, normal: 65, rare: 35, epic: 0, label: "Ressonância máxima" },
 ] as const;
 
 export const FRACTAL_SHOP = {
@@ -63,6 +65,26 @@ export const FRACTAL_SHOP = {
     { level: 2, cost: 800, tier: 2, label: "Acesso épico" },
     { level: 3, cost: 1400, tier: 3, label: "Ressonância superior" },
   ],
+  rarity: [
+    { level: 1, cost: 400, tier: 1, label: "Acesso raro" },
+    { level: 2, cost: 800, tier: 2, label: "Acesso raro II" },
+    { level: 3, cost: 1400, tier: 3, label: "Acesso raro III" },
+  ],
+  reroll: [500, 800, 1200, 1700, 2300, 3000, 3800, 4700, 5700, 6800],
+  oracle: [1000, 2000, 4000, 8000, 16000, 32000, 64000, 128000, 256000, 512000],
+  banish: [600, 1000, 1500, 2200, 3000],
+  fortune: [800, 1400, 2300],
+  transmutation: [1500, 2700, 4500],
+  anchor_soul: 3500,
+  omen_archive: 6000,
+  weapons: {
+    nucleus: 8000,
+    scythe: 9000,
+    orbitals: 10000,
+    gravity: 11000,
+    sentinels: 12000,
+  },
+  evolution_project: 5000,
   speed: {
     double: { cost: 1000, multiplier: 2 },
     triple: { cost: 2000, multiplier: 3 },
