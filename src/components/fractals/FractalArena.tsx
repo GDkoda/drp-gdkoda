@@ -24,10 +24,22 @@ type Upgrade = { id: UpgradeId; name: string; description: string; icon: typeof 
 type UpgradeCounts = Record<string, { name: string; count: number; rarity: string }>;
 
 type Enemy = { x: number; y: number; hp: number; maxHp: number; speed: number; radius: number; damage: number; color: string; xp: number; type: "wraith" | "brute" | "charger" | "elite" | "boss"; attack: number; flash: number; windup: number; targetX: number; targetY: number; dashTime: number; summonedAtHalf: boolean; furyTriggered: boolean; isExecutioner?: boolean };
+type ShotKind =
+  | "bullet"
+  | "revolver_empowered"
+  | "plasma_core"
+  | "plasma_puddle"
+  | "scythe_slash"
+  | "orbital_blade"
+  | "gravity_well"
+  | "sentinel_beam";
+
 type Shot = {
   x: number; y: number; vx: number; vy: number; damage: number; life: number;
   hitTargets: Enemy[]; bouncesRemaining: number; piercesRemaining: number;
   isChainLightning?: boolean; isSplash?: boolean; isAnchorBurst?: boolean; targetEnemy?: Enemy;
+  kind?: ShotKind; radius?: number; maxLife?: number; angle?: number; arcSpan?: number;
+  bladeIndex?: number; totalBlades?: number; pulseTimer?: number; hasDetonated?: boolean;
 };
 type Gem = { x: number; y: number; value: number; radius: number; previousX?: number; previousY?: number; runeCrystal?: boolean };
 type SpecialDrop = { x: number; y: number; kind: "area" | "experience" | "projectile_range" | "projectiles" | "food" | "void"; radius: number };
@@ -111,6 +123,7 @@ type GameState = {
   player: { x: number; y: number; hp: number; maxHp: number; speed: number; damage: number; fireRate: number; invuln: number; hitFlash: number; xp: number; nextXp: number; level: number; pickupRadius: number; xpMultiplier: number; specialAreaStacks: number; specialExperienceStacks: number; projectileRangeStacks: number; projectileRangeMultiplier: number; projectileStacks: number; projectileLife: number; facing: number; castFacing: number; castTimer: number; moving: boolean; spriteAction: PlayerVisualAction; spriteDirection: number; previousSpriteAction: PlayerVisualAction; previousSpriteDirection: number; spriteBlend: number };
   enemies: Enemy[]; shots: Shot[]; gems: Gem[]; specialDrops: SpecialDrop[]; urns: BreakableUrn[]; obstacles: CemeteryObstacle[]; nextUrnMinute: number; nextUrnId: number; particles: Particle[]; damageNumbers: DamageNumber[]; pickupLabels: PickupLabel[]; challengeEvent: ChallengeEvent | null; nextChallengeEvent: number; kills: number; ended: boolean; upgradeCounts: UpgradeCounts; totalDamageDealt: number; crystalsCollected: number; highestLevel: number;
   weaponId: WeaponId; weaponLevel: number; evolved: boolean; rerollsRemaining: number; banishesRemaining: number; bannedUpgradeIds: string[];
+  revolverShotCount?: number; orbitalPulseTimer?: number;
   anchorReviveAvailable: boolean; anchorRevivesUsed: number; omenId: OmenId | null; omenSpawnMultiplier: number; omenEnemyHpMultiplier: number; omenRewardMultiplier: number; omenRevengeCooldown: number; lastObservedHp: number;
   shake?: number; rings?: { x: number; y: number; r: number; max: number; life: number; color: string }[];
 };
@@ -448,10 +461,26 @@ function makeGame(width: number, height: number, purchases: PurchaseState, weapo
     player: { x: 0, y: 0, hp: maxHp, maxHp, speed: 205 * (omenId === "spectral_veil" ? 1.15 : 1), damage: 22 * omenDamage, fireRate: 0.72 * (omenId === "rupture" ? 1.15 : 1), invuln: 0, hitFlash: 0, xp: 0, nextXp: 12, level: 1, pickupRadius: 85, xpMultiplier: omenId === "famine" ? 1.2 : 1, specialAreaStacks: 0, specialExperienceStacks: 0, projectileRangeStacks: 0, projectileRangeMultiplier: 1, projectileStacks: 0, projectileLife, facing: 0, castFacing: 0, castTimer: 0, moving: false, spriteAction: "idle", spriteDirection: 0, previousSpriteAction: "idle", previousSpriteDirection: 0, spriteBlend: 1 },
     enemies: [], shots: [], gems: [], specialDrops: [], urns: [], obstacles: createCemeteryObstacles(), nextUrnMinute: 1, nextUrnId: 1, particles: [], damageNumbers: [], pickupLabels: [], challengeEvent: null, nextChallengeEvent: 0, kills: 0, ended: false, upgradeCounts: {}, totalDamageDealt: 0, crystalsCollected: 0, highestLevel: 1,
     weaponId, weaponLevel: 1, evolved: false, rerollsRemaining: purchases.reroll, banishesRemaining: purchases.banish, bannedUpgradeIds: [],
+    revolverShotCount: 0, orbitalPulseTimer: 0,
     anchorReviveAvailable: false, anchorRevivesUsed: 0, omenId, omenSpawnMultiplier: omenId === "famine" ? 1.2 : 1,
     omenEnemyHpMultiplier: omenId === "abundance" ? 1.15 : 1, omenRewardMultiplier: omenId === "abundance" ? 1.25 : 1,
     omenRevengeCooldown: 0, lastObservedHp: maxHp,
   };
+}
+
+function spawnPlasmaPuddle(game: GameState, x: number, y: number, coreDamage: number) {
+  const radius = (game.evolved ? 170 : 90) * (1 + game.player.specialAreaStacks * 0.1);
+  const life = game.evolved ? 2.5 : 1.5;
+  game.shots.push({
+    x, y, vx: 0, vy: 0,
+    damage: coreDamage * (game.evolved ? 0.45 : 0.30),
+    life, maxLife: life, hitTargets: [], bouncesRemaining: 0, piercesRemaining: 999,
+    kind: "plasma_puddle", radius, pulseTimer: 0.38,
+  });
+  (game.rings ??= []).push({
+    x, y, r: 10, max: radius, life: 0.42,
+    color: game.evolved ? "#a855f7" : "#ef4444",
+  });
 }
 
 function getEquippedWeaponStrikeDamage(game: GameState): number {
@@ -694,12 +723,117 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     }
     ctx.restore();
   });
-  ctx.save(); ctx.lineCap = "round";
   game.shots.forEach((shot) => {
-    if(shot.x<cameraX-80||shot.x>cameraX+viewWidth+80||shot.y<cameraY-80||shot.y>cameraY+viewHeight+80)return;
-    const speed = Math.hypot(shot.vx, shot.vy) || 1; const len = 34;
-    const tx = shot.x - shot.vx / speed * len, ty = shot.y - shot.vy / speed * len;
-    const trail = ctx.createLinearGradient(tx, ty, shot.x, shot.y);
+    if (shot.x < cameraX - 280 || shot.x > cameraX + viewWidth + 280 || shot.y < cameraY - 280 || shot.y > cameraY + viewHeight + 280) return;
+    const lifeRatio = clamp(shot.life / Math.max(0.01, shot.maxLife ?? game.player.projectileLife), 0.08, 1);
+
+    if (shot.kind === "gravity_well") {
+      ctx.save();
+      ctx.translate(shot.x, shot.y);
+      ctx.globalAlpha = Math.min(1, lifeRatio * 1.25);
+      const radius = shot.radius ?? 160;
+      const pulse = 1 + Math.sin(game.elapsed * 7) * 0.035;
+      const halo = ctx.createRadialGradient(0, 0, 5, 0, 0, radius);
+      halo.addColorStop(0, game.evolved ? "rgba(35,12,58,.82)" : "rgba(8,35,62,.76)");
+      halo.addColorStop(0.48, game.evolved ? "rgba(147,51,234,.20)" : "rgba(14,165,233,.18)");
+      halo.addColorStop(1, "rgba(14,165,233,0)");
+      ctx.fillStyle = halo;
+      ctx.beginPath(); ctx.arc(0, 0, radius * pulse, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = game.evolved ? "rgba(192,132,252,.9)" : "rgba(56,189,248,.85)";
+      ctx.lineWidth = 2.5;
+      ctx.setLineDash([10, 8]);
+      ctx.lineDashOffset = -game.elapsed * 24;
+      ctx.beginPath(); ctx.arc(0, 0, radius * 0.92, 0, Math.PI * 2); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.rotate(game.elapsed * (game.evolved ? -1.25 : 1.1));
+      ctx.strokeStyle = game.evolved ? "rgba(216,180,254,.50)" : "rgba(125,211,252,.50)";
+      ctx.lineWidth = 1.8;
+      for (let rune = 0; rune < 4; rune++) {
+        ctx.rotate(Math.PI / 2);
+        ctx.strokeRect(-radius * 0.34, -radius * 0.34, radius * 0.68, radius * 0.68);
+      }
+      ctx.fillStyle = game.evolved ? "#c084fc" : "#38bdf8";
+      ctx.shadowColor = ctx.fillStyle; ctx.shadowBlur = 18;
+      ctx.beginPath(); ctx.arc(0, 0, 9 + Math.sin(game.elapsed * 8) * 2, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+      return;
+    }
+
+    if (shot.kind === "plasma_puddle") {
+      ctx.save();
+      ctx.translate(shot.x, shot.y);
+      ctx.globalAlpha = Math.min(1, lifeRatio * 1.35);
+      const radius = (shot.radius ?? 90) * (0.92 + Math.sin(game.elapsed * 8) * 0.08);
+      const gradient = ctx.createRadialGradient(0, 0, 3, 0, 0, radius);
+      if (game.evolved) {
+        gradient.addColorStop(0, "rgba(30,8,48,.94)");
+        gradient.addColorStop(0.42, "rgba(147,51,234,.58)");
+        gradient.addColorStop(0.78, "rgba(126,34,206,.20)");
+        gradient.addColorStop(1, "rgba(88,28,135,0)");
+      } else {
+        gradient.addColorStop(0, "rgba(239,68,68,.82)");
+        gradient.addColorStop(0.52, "rgba(249,115,22,.43)");
+        gradient.addColorStop(1, "rgba(239,68,68,0)");
+      }
+      ctx.fillStyle = gradient;
+      ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = game.evolved ? "rgba(216,180,254,.65)" : "rgba(254,202,202,.65)";
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(0, 0, radius * 0.72, game.elapsed * 0.4, game.elapsed * 0.4 + Math.PI * 1.5); ctx.stroke();
+      ctx.restore();
+      return;
+    }
+
+    if (shot.kind === "scythe_slash") {
+      ctx.save();
+      ctx.translate(shot.x, shot.y);
+      ctx.globalAlpha = lifeRatio;
+      const radius = shot.radius ?? 180;
+      const span = shot.arcSpan ?? Math.PI * 1.1;
+      const centerAngle = shot.angle ?? 0;
+      const startAngle = centerAngle - span / 2;
+      const endAngle = centerAngle + span / 2;
+      const progress = 1 - lifeRatio;
+      ctx.lineCap = "round";
+      ctx.shadowColor = game.evolved ? "#6ee7b7" : "#10b981";
+      ctx.shadowBlur = 18;
+      ctx.strokeStyle = game.evolved ? "#a7f3d0" : "#34d399";
+      ctx.lineWidth = 12 * (1 - progress * 0.42);
+      ctx.beginPath(); ctx.arc(0, 0, radius, startAngle, endAngle); ctx.stroke();
+      ctx.shadowBlur = 5;
+      ctx.strokeStyle = "#f0fdf4";
+      ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.arc(0, 0, radius + 5, startAngle, endAngle); ctx.stroke();
+      ctx.restore();
+      return;
+    }
+
+    if (shot.kind === "orbital_blade") {
+      ctx.save();
+      ctx.translate(shot.x, shot.y);
+      ctx.rotate((shot.angle ?? 0) + Math.PI / 2);
+      ctx.shadowColor = "#fbbf24";
+      ctx.shadowBlur = 14;
+      ctx.fillStyle = "#fef08a";
+      ctx.beginPath();
+      ctx.moveTo(0, -22); ctx.lineTo(5, -2); ctx.lineTo(3, 13);
+      ctx.lineTo(0, 19); ctx.lineTo(-3, 13); ctx.lineTo(-5, -2);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = "#a855f7"; ctx.fillRect(-7, 3, 14, 4);
+      ctx.fillStyle = "#fbbf24"; ctx.fillRect(-2, 7, 4, 10);
+      ctx.strokeStyle = "#fff7d6"; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(0, -17); ctx.lineTo(0, 11); ctx.stroke();
+      ctx.restore();
+      return;
+    }
+
+    const speed = Math.hypot(shot.vx, shot.vy) || 1;
+    const trailLength = shot.kind === "sentinel_beam" ? 42 : shot.kind === "plasma_core" ? 28 : 24;
+    const tailX = shot.x - shot.vx / speed * trailLength;
+    const tailY = shot.y - shot.vy / speed * trailLength;
+    ctx.save();
+    ctx.lineCap = "round";
+    const trail = ctx.createLinearGradient(tailX, tailY, shot.x, shot.y);
     if (shot.isAnchorBurst) {
       trail.addColorStop(0, "rgba(251,191,36,0)");
       trail.addColorStop(1, "rgba(255,241,179,.98)");
@@ -708,38 +842,73 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
       trail.addColorStop(0, "rgba(34,211,238,0)");
       trail.addColorStop(1, "rgba(207,250,254,.98)");
       ctx.strokeStyle = trail; ctx.lineWidth = 3.5;
+    } else if (shot.kind === "revolver_empowered") {
+      trail.addColorStop(0, "rgba(168,85,247,0)");
+      trail.addColorStop(1, "rgba(253,224,71,.98)");
+      ctx.strokeStyle = trail; ctx.lineWidth = 4.5;
+    } else if (shot.kind === "plasma_core") {
+      trail.addColorStop(0, "rgba(239,68,68,0)");
+      trail.addColorStop(1, game.evolved ? "rgba(216,180,254,.95)" : "rgba(252,165,165,.95)");
+      ctx.strokeStyle = trail; ctx.lineWidth = 6;
+    } else if (shot.kind === "sentinel_beam") {
+      trail.addColorStop(0, "rgba(45,212,191,0)");
+      trail.addColorStop(1, "rgba(204,251,241,.98)");
+      ctx.strokeStyle = trail; ctx.lineWidth = 3.2;
     } else {
       trail.addColorStop(0, "rgba(183,122,255,0)");
-      trail.addColorStop(1, "rgba(226,196,255,.75)");
-      ctx.strokeStyle = trail; ctx.lineWidth = 5;
+      trail.addColorStop(1, "rgba(226,196,255,.80)");
+      ctx.strokeStyle = trail; ctx.lineWidth = 3.5;
     }
-    ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(shot.x, shot.y); ctx.stroke();
-  });
-  game.rings?.forEach((ring) => { ctx.globalAlpha = clamp(ring.life * 2.4, 0, 1); ctx.strokeStyle = ring.color; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(ring.x, ring.y, ring.r, 0, Math.PI * 2); ctx.stroke(); });
-  ctx.restore();
-  game.shots.forEach((shot) => {
-    if(shot.x<cameraX-80||shot.x>cameraX+viewWidth+80||shot.y<cameraY-80||shot.y>cameraY+viewHeight+80)return;
-    ctx.save(); ctx.translate(shot.x, shot.y); ctx.rotate(Math.atan2(shot.vy, shot.vx));
-    const fade = clamp(shot.life / Math.max(0.01, game.player.projectileLife), 0.25, 1);
-    ctx.globalAlpha = fade;
-    const projectile = sprites.projectile;
+    ctx.globalAlpha = lifeRatio;
+    ctx.beginPath(); ctx.moveTo(tailX, tailY); ctx.lineTo(shot.x, shot.y); ctx.stroke();
+    ctx.restore();
+
+    ctx.save();
+    ctx.translate(shot.x, shot.y);
+    ctx.rotate(Math.atan2(shot.vy, shot.vx));
+    ctx.globalAlpha = lifeRatio;
     if (shot.isAnchorBurst) {
-      ctx.shadowColor = "#fbbf24"; ctx.shadowBlur = 14;
-      ctx.fillStyle = "#fff1b3";
-      ctx.beginPath(); ctx.moveTo(9, 0); ctx.lineTo(2, -2); ctx.lineTo(4, -7); ctx.lineTo(-7, 1); ctx.lineTo(-1, 2); ctx.lineTo(-4, 7); ctx.closePath(); ctx.fill();
+      ctx.shadowColor = "#fbbf24"; ctx.shadowBlur = 14; ctx.fillStyle = "#fff1b3";
+      ctx.beginPath(); ctx.moveTo(10, 0); ctx.lineTo(2, -2); ctx.lineTo(4, -7); ctx.lineTo(-7, 1); ctx.lineTo(-1, 2); ctx.lineTo(-4, 7); ctx.closePath(); ctx.fill();
     } else if (shot.isChainLightning) {
-      ctx.shadowColor = "#67e8f9"; ctx.shadowBlur = 12;
-      ctx.fillStyle = "#a5f3fc";
+      ctx.shadowColor = "#67e8f9"; ctx.shadowBlur = 12; ctx.fillStyle = "#a5f3fc";
       ctx.beginPath(); ctx.moveTo(9, 0); ctx.lineTo(2, -2); ctx.lineTo(4, -7); ctx.lineTo(-7, 1); ctx.lineTo(-1, 2); ctx.lineTo(-4, 7); ctx.closePath(); ctx.fill();
-    } else if (projectile?.complete && projectile.naturalWidth > 0) {
-      ctx.shadowColor = "#b77aff"; ctx.shadowBlur = 0;
-      ctx.drawImage(projectile, -15, -9, 30, 18);
+    } else if (shot.kind === "revolver_empowered") {
+      ctx.shadowColor = "#fbbf24"; ctx.shadowBlur = 17; ctx.fillStyle = "#fef08a";
+      ctx.beginPath(); ctx.moveTo(16, 0); ctx.lineTo(-8, -5); ctx.lineTo(-4, 0); ctx.lineTo(-8, 5); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = "#c084fc"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(9, 0); ctx.lineTo(-5, 0); ctx.stroke();
+    } else if (shot.kind === "plasma_core") {
+      const coreRadius = shot.radius ?? 13;
+      ctx.shadowColor = game.evolved ? "#a855f7" : "#ef4444"; ctx.shadowBlur = 18;
+      ctx.fillStyle = game.evolved ? "#d8b4fe" : "#fca5a5";
+      ctx.beginPath(); ctx.arc(0, 0, coreRadius, 0, Math.PI * 2); ctx.fill();
+      ctx.shadowBlur = 3; ctx.strokeStyle = "#fff1f2"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(0, 0, coreRadius * 0.56, 0, Math.PI * 2); ctx.stroke();
+    } else if (shot.kind === "sentinel_beam") {
+      ctx.shadowColor = "#2dd4bf"; ctx.shadowBlur = 13; ctx.fillStyle = "#ccfbf1";
+      ctx.fillRect(-12, -2.5, 24, 5);
+      ctx.fillStyle = "#fef3c7"; ctx.beginPath(); ctx.moveTo(11, 0); ctx.lineTo(3, -5); ctx.lineTo(-2, 0); ctx.lineTo(3, 5); ctx.closePath(); ctx.fill();
+    } else if (shot.kind === "bullet") {
+      ctx.shadowColor = "#c084fc"; ctx.shadowBlur = 9; ctx.fillStyle = "#e9d5ff";
+      ctx.beginPath(); ctx.moveTo(11, 0); ctx.lineTo(-5, -3); ctx.lineTo(-5, 3); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = "#fff1ce"; ctx.beginPath(); ctx.moveTo(6, 0); ctx.lineTo(0, -1.2); ctx.lineTo(-4, 0); ctx.closePath(); ctx.fill();
     } else {
-      ctx.shadowColor = "#b77aff"; ctx.shadowBlur = 0; ctx.fillStyle = "#c39aff";
-      ctx.beginPath(); ctx.moveTo(9,0); ctx.lineTo(0,-4); ctx.lineTo(-10,0); ctx.lineTo(0,4); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = "#fff1ce"; ctx.beginPath(); ctx.moveTo(5,0); ctx.lineTo(0,-1.5); ctx.lineTo(-5,0); ctx.lineTo(0,1.5); ctx.closePath(); ctx.fill();
+      const projectile = sprites.projectile;
+      if (projectile?.complete && projectile.naturalWidth > 0) {
+        ctx.shadowColor = "#b77aff"; ctx.shadowBlur = 0;
+        ctx.drawImage(projectile, -15, -9, 30, 18);
+      } else {
+        ctx.shadowColor = "#b77aff"; ctx.shadowBlur = 0; ctx.fillStyle = "#c39aff";
+        ctx.beginPath(); ctx.moveTo(9, 0); ctx.lineTo(0, -4); ctx.lineTo(-10, 0); ctx.lineTo(0, 4); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = "#fff1ce"; ctx.beginPath(); ctx.moveTo(5, 0); ctx.lineTo(0, -1.5); ctx.lineTo(-5, 0); ctx.lineTo(0, 1.5); ctx.closePath(); ctx.fill();
+      }
     }
     ctx.restore();
+  });
+  game.rings?.forEach((ring) => {
+    ctx.globalAlpha = clamp(ring.life * 2.4, 0, 1);
+    ctx.strokeStyle = ring.color; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(ring.x, ring.y, ring.r, 0, Math.PI * 2); ctx.stroke();
   });
   game.enemies.forEach((enemy) => {
     if (enemy.x < cameraX - 88 || enemy.x > cameraX + viewWidth + 88 || enemy.y < cameraY - 100 || enemy.y > cameraY + viewHeight + 100) return;
@@ -1422,74 +1591,117 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             return da - pa - (db - pb);
           });
           const target = targets[0];
-          const d = Math.max(1, distance(game.player.x, game.player.y, target.x, target.y));
           const baseAngle = Math.atan2(target.y - game.player.y, target.x - game.player.x);
           const weaponPower = (1 + (game.weaponLevel - 1) * 0.055) * (game.evolved ? 1.15 : 1);
           const weaponDamage = game.player.damage * weaponPower;
-          const pushShot = (x: number, y: number, enemy: Enemy, damage: number, speed: number, options: Partial<Shot> = {}) => {
-            const dx = enemy.x - x, dy = enemy.y - y, length = Math.max(1, Math.hypot(dx, dy));
-            game.shots.push({
-              x, y, vx: dx / length * speed, vy: dy / length * speed, damage,
-              life: Math.max(0.18, length / speed + 0.24), hitTargets: [], bouncesRemaining: 0, piercesRemaining: 0,
-              isChainLightning: true, targetEnemy: enemy, ...options,
-            });
-          };
-          game.player.castFacing = directionFromVector(target.x - game.player.x, target.y - game.player.y);
-          game.player.castTimer = 0.24;
 
-          if (game.weaponId === "spectral_scythe") {
-            const radius = game.evolved ? 255 : 205;
-            const count = game.evolved ? 5 : Math.min(3, 1 + Math.floor(game.weaponLevel / 4));
-            const nearby = targets.filter((enemy) => distance(game.player.x, game.player.y, enemy.x, enemy.y) <= radius).slice(0, count);
-            for (const enemy of nearby.length ? nearby : [target]) pushShot(game.player.x, game.player.y, enemy, weaponDamage * (game.evolved ? 1.05 : 0.9), 900);
-            game.rings = [...(game.rings ?? []), { x: game.player.x, y: game.player.y, r: 22, max: radius, life: 0.22, color: "#c4b5fd" }];
-          } else if (game.weaponId === "orbital_swords") {
-            const count = Math.min(8, 2 + Math.floor(game.weaponLevel / 2) + (game.evolved ? 2 : 0));
-            const nearby = targets.filter((enemy) => distance(game.player.x, game.player.y, enemy.x, enemy.y) <= (game.evolved ? 185 : 145)).slice(0, count);
-            nearby.forEach((enemy, index) => {
-              const angle = game.elapsed * 2.8 + index * Math.PI * 2 / count;
-              const sx = game.player.x + Math.cos(angle) * 66, sy = game.player.y + Math.sin(angle) * 66;
-              pushShot(sx, sy, enemy, weaponDamage * 0.72, 760);
-            });
-            game.rings = [...(game.rings ?? []), { x: game.player.x, y: game.player.y, r: 62, max: 86, life: 0.18, color: "#a78bfa" }];
-          } else if (game.weaponId === "gravity_shackle") {
-            const radius = game.evolved ? 300 : 235;
-            const nearby = targets.filter((enemy) => distance(game.player.x, game.player.y, enemy.x, enemy.y) <= radius).slice(0, game.evolved ? 7 : 5);
-            for (const enemy of nearby) {
-              const dx = game.player.x - enemy.x, dy = game.player.y - enemy.y, length = Math.max(1, Math.hypot(dx, dy));
-              const pull = Math.min(game.evolved ? 72 : 48, length * 0.28);
-              enemy.x += dx / length * pull; enemy.y += dy / length * pull;
-              pushShot(game.player.x, game.player.y, enemy, weaponDamage * (game.evolved ? 0.88 : 0.68), 680);
-            }
-            game.rings = [...(game.rings ?? []), { x: game.player.x, y: game.player.y, r: 18, max: radius, life: 0.42, color: "#67e8f9" }];
-          } else if (game.weaponId === "rune_sentinels") {
-            const count = Math.min(5, 2 + Math.floor(game.weaponLevel / 3) + (game.evolved ? 1 : 0));
-            for (let index = 0; index < count; index++) {
-              const enemy = targets[index % targets.length];
-              const angle = game.elapsed * 0.7 + index * Math.PI * 2 / count;
-              const sx = game.player.x + Math.cos(angle) * 62, sy = game.player.y + Math.sin(angle) * 62;
-              pushShot(sx, sy, enemy, weaponDamage * 0.64, 520);
-              game.particles.push({ x: sx, y: sy, vx: 0, vy: 0, life: 0.18, color: "#fbbf24" });
-            }
-          } else {
-            const isNucleus = game.weaponId === "unstable_core";
-            const projectileCount = game.weaponId === "void_revolver" ? (game.evolved ? 6 + game.player.projectileStacks : 1 + game.player.projectileStacks) : 1;
-            const spread = projectileCount === 1 ? [0] : game.evolved && game.weaponId === "void_revolver"
-              ? Array.from({ length: projectileCount }, (_, index) => (index - (projectileCount - 1) / 2) * 0.11)
-              : projectileCount === 2 ? [-0.095, 0.095] : [-0.16, 0, 0.16];
-            const speed = (isNucleus ? 310 : 440) * game.player.projectileRangeMultiplier;
-            const damageScale = game.weaponId === "void_revolver" && projectileCount > 1 ? 0.68 : isNucleus ? 1.45 : 1;
+          if (game.weaponId === "void_revolver") {
+            game.revolverShotCount = (game.revolverShotCount ?? 0) + 1;
+            const isEmpowered = game.revolverShotCount % 6 === 0;
+            const projectileCount = game.evolved ? 6 + game.player.projectileStacks : 1 + game.player.projectileStacks;
+            const spread = projectileCount === 1 ? [0] : game.evolved
+              ? Array.from({ length: projectileCount }, (_, index) => (index - (projectileCount - 1) / 2) * 0.13)
+              : projectileCount === 2 ? [-0.08, 0.08] : [-0.15, 0, 0.15];
+            const speed = (isEmpowered ? 580 : 470) * game.player.projectileRangeMultiplier;
+            const damageMultiplier = isEmpowered ? 2.4 : game.evolved ? 0.85 : 1;
             for (const angleOffset of spread) {
               const angle = baseAngle + angleOffset;
+              const life = game.player.projectileLife * (isEmpowered ? 1.25 : 1);
               game.shots.push({
-                x: game.player.x, y: game.player.y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
-                damage: weaponDamage * damageScale, life: game.player.projectileLife * (isNucleus ? 1.15 : 1),
-                hitTargets: [], bouncesRemaining: purchases.ricochet, piercesRemaining: purchases.piercing,
+                x: game.player.x, y: game.player.y,
+                vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
+                damage: weaponDamage * damageMultiplier, life, maxLife: life,
+                hitTargets: [], bouncesRemaining: purchases.ricochet + (game.evolved ? 1 : 0),
+                piercesRemaining: purchases.piercing + (isEmpowered ? 3 : 0),
+                kind: isEmpowered ? "revolver_empowered" : "bullet",
               });
             }
+            game.player.castFacing = directionFromVector(target.x - game.player.x, target.y - game.player.y);
+            game.player.castTimer = 0.24;
+            game.shotTimer = game.player.fireRate * 0.95;
+          } else if (game.weaponId === "unstable_core") {
+            const speed = 280 * game.player.projectileRangeMultiplier;
+            const life = game.player.projectileLife * 1.3;
+            game.shots.push({
+              x: game.player.x, y: game.player.y,
+              vx: Math.cos(baseAngle) * speed, vy: Math.sin(baseAngle) * speed,
+              damage: weaponDamage * 1.5, life, maxLife: life,
+              hitTargets: [], bouncesRemaining: 0, piercesRemaining: 0,
+              kind: "plasma_core", radius: game.evolved ? 18 : 13,
+            });
+            game.player.castFacing = directionFromVector(target.x - game.player.x, target.y - game.player.y);
+            game.player.castTimer = 0.24;
+            game.shotTimer = game.player.fireRate * 1.25;
+          } else if (game.weaponId === "spectral_scythe") {
+            const arcSpan = game.evolved ? Math.PI * 2 : Math.PI * 1.1;
+            const slashRadius = (game.evolved ? 240 : 180) * (1 + game.player.specialAreaStacks * 0.1);
+            game.shots.push({
+              x: game.player.x, y: game.player.y, vx: 0, vy: 0,
+              damage: weaponDamage * (game.evolved ? 1.4 : 1.1),
+              life: 0.28, maxLife: 0.28, hitTargets: [],
+              bouncesRemaining: 0, piercesRemaining: 999,
+              kind: "scythe_slash", angle: baseAngle, arcSpan, radius: slashRadius,
+            });
+            game.player.castFacing = directionFromVector(target.x - game.player.x, target.y - game.player.y);
+            game.player.castTimer = 0.24;
+            game.shotTimer = game.player.fireRate * 1.05;
+          } else if (game.weaponId === "orbital_swords") {
+            const bladeCount = Math.min(8, 3 + Math.floor(game.weaponLevel / 3) + (game.evolved ? 3 : 0));
+            game.shots = game.shots.filter((shot) => shot.kind !== "orbital_blade" || (shot.bladeIndex ?? 0) < bladeCount);
+            for (let index = 0; index < bladeCount; index++) {
+              const existing = game.shots.find((shot) => shot.kind === "orbital_blade" && shot.bladeIndex === index);
+              if (existing) {
+                existing.totalBlades = bladeCount;
+                continue;
+              }
+              game.shots.push({
+                x: game.player.x, y: game.player.y, vx: 0, vy: 0,
+                damage: weaponDamage * 0.75, life: 9999, maxLife: 9999,
+                hitTargets: [], bouncesRemaining: 0, piercesRemaining: 999,
+                kind: "orbital_blade", bladeIndex: index, totalBlades: bladeCount, radius: 20,
+              });
+            }
+            game.shotTimer = 0.5;
+          } else if (game.weaponId === "gravity_shackle") {
+            const wellRadius = (game.evolved ? 230 : 160) * (1 + game.player.specialAreaStacks * 0.1);
+            game.shots.push({
+              x: target.x, y: target.y, vx: 0, vy: 0,
+              damage: weaponDamage * (game.evolved ? 0.6 : 0.45),
+              life: 2.2, maxLife: 2.2, hitTargets: [],
+              bouncesRemaining: 0, piercesRemaining: 999,
+              kind: "gravity_well", radius: wellRadius, pulseTimer: 0.38,
+            });
+            game.player.castFacing = directionFromVector(target.x - game.player.x, target.y - game.player.y);
+            game.player.castTimer = 0.24;
+            game.shotTimer = game.player.fireRate * 1.35;
+          } else if (game.weaponId === "rune_sentinels") {
+            const sentinelCount = Math.min(5, 2 + Math.floor(game.weaponLevel / 3) + (game.evolved ? 1 : 0));
+            const sortedByHp = [...targets].sort((a, b) => b.hp - a.hp);
+            for (let index = 0; index < sentinelCount; index++) {
+              const enemy = sortedByHp[index % sortedByHp.length];
+              if (!enemy) continue;
+              const angle = game.elapsed * 1.5 + (index * Math.PI * 2) / sentinelCount;
+              const sentinelX = game.player.x + Math.cos(angle) * 55;
+              const sentinelY = game.player.y + Math.sin(angle) * 55;
+              const dx = enemy.x - sentinelX, dy = enemy.y - sentinelY;
+              const length = Math.max(1, Math.hypot(dx, dy));
+              const speed = 750;
+              const life = length / speed + 0.15;
+              game.shots.push({
+                x: sentinelX, y: sentinelY,
+                vx: (dx / length) * speed, vy: (dy / length) * speed,
+                damage: weaponDamage * (game.evolved ? 0.75 : 0.55),
+                life, maxLife: life, hitTargets: [],
+                bouncesRemaining: 0, piercesRemaining: 1,
+                kind: "sentinel_beam", targetEnemy: enemy,
+              });
+            }
+            game.player.castFacing = directionFromVector(target.x - game.player.x, target.y - game.player.y);
+            game.player.castTimer = 0.24;
+            game.shotTimer = game.player.fireRate * 0.8;
           }
-          fractalAudio.shoot();
-          game.shotTimer = game.player.fireRate * (game.weaponId === "gravity_shackle" ? 1.18 : game.weaponId === "unstable_core" ? 1.12 : 1);
+
+          if (game.weaponId !== "orbital_swords") fractalAudio.shoot();
         }
         const desiredAction: PlayerVisualAction = game.player.castTimer > 0 ? "cast" : game.player.moving ? "move" : "idle";
         const desiredDirection = desiredAction === "cast" ? game.player.castFacing : game.player.facing;
@@ -1503,21 +1715,64 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           game.player.spriteBlend = Math.min(1, game.player.spriteBlend + dt / 0.12);
         }
         game.shots.forEach((shot) => {
-          if (shot.targetEnemy) {
-            if (shot.targetEnemy.hp <= 0) { shot.life = 0; return; }
-            const dx = shot.targetEnemy.x - shot.x, dy = shot.targetEnemy.y - shot.y;
-            const d = Math.max(1, Math.hypot(dx, dy));
-            const speed = Math.max(1, Math.hypot(shot.vx, shot.vy));
-            shot.vx = (dx / d) * speed;
-            shot.vy = (dy / d) * speed;
+          if (shot.kind === "orbital_blade") {
+            const bladeCount = Math.max(1, shot.totalBlades ?? 3);
+            const bladeIndex = shot.bladeIndex ?? 0;
+            const isOuterBlade = game.evolved && bladeIndex >= 4;
+            const orbitSpeed = isOuterBlade ? -3.2 : 2.8;
+            const orbitDistance = isOuterBlade ? 95 : 68;
+            const angle = game.elapsed * orbitSpeed + (bladeIndex * Math.PI * 2) / bladeCount;
+            shot.x = game.player.x + Math.cos(angle) * orbitDistance;
+            shot.y = game.player.y + Math.sin(angle) * orbitDistance;
+            shot.angle = angle;
+          } else if (shot.kind === "scythe_slash") {
+            shot.x = game.player.x;
+            shot.y = game.player.y;
+          } else if (shot.kind === "gravity_well") {
+            const pullForce = game.evolved ? 75 : 45;
+            const radius = shot.radius ?? 160;
+            for (const enemy of game.enemies) {
+              if (enemy.hp <= 0) continue;
+              const dx = shot.x - enemy.x, dy = shot.y - enemy.y;
+              const d = Math.max(1, Math.hypot(dx, dy));
+              if (d <= radius) {
+                const pull = Math.min(pullForce * dt, Math.max(0, d - 8));
+                enemy.x += (dx / d) * pull;
+                enemy.y += (dy / d) * pull;
+              }
+            }
+          } else if (shot.kind !== "plasma_puddle") {
+            if (shot.targetEnemy) {
+              if (shot.targetEnemy.hp <= 0) { shot.life = 0; return; }
+              const dx = shot.targetEnemy.x - shot.x, dy = shot.targetEnemy.y - shot.y;
+              const d = Math.max(1, Math.hypot(dx, dy));
+              const speed = Math.max(1, Math.hypot(shot.vx, shot.vy));
+              shot.vx = (dx / d) * speed;
+              shot.vy = (dy / d) * speed;
+            }
+            shot.x += shot.vx * dt;
+            shot.y += shot.vy * dt;
           }
-          shot.x += shot.vx * dt;
-          shot.y += shot.vy * dt;
+          if (shot.kind === "gravity_well" || shot.kind === "plasma_puddle") {
+            shot.pulseTimer = (shot.pulseTimer ?? 0) - dt;
+          }
           shot.life -= dt;
         });
-        const currentZoom = zoomRef.current;
-        const cameraLeft = game.player.x - game.width / (2 * currentZoom), cameraTop = game.player.y - game.height / (2 * currentZoom);
-        game.shots = game.shots.filter((shot) => shot.life > 0 && shot.x > cameraLeft - 20 && shot.x < cameraLeft + game.width / currentZoom + 20 && shot.y > cameraTop - 20 && shot.y < cameraTop + game.height / currentZoom + 20);
+        // The Core leaves a damaging singularity either on impact or when its flight expires.
+        for (const shot of [...game.shots]) {
+          if (shot.kind === "plasma_core" && shot.life <= 0 && !shot.hasDetonated) {
+            shot.hasDetonated = true;
+            spawnPlasmaPuddle(game, shot.x, shot.y, shot.damage);
+          }
+        }
+        game.orbitalPulseTimer = (game.orbitalPulseTimer ?? 0) - dt;
+        if (game.orbitalPulseTimer <= 0) {
+          for (const shot of game.shots) if (shot.kind === "orbital_blade") shot.hitTargets = [];
+          game.orbitalPulseTimer = 0.35;
+        }
+        // Projectiles and temporary fields have bounded lifetimes; don't cull attacks just because
+        // the camera moved away while they were still travelling or dealing area damage.
+        game.shots = game.shots.filter((shot) => shot.life > 0);
         const movementGrid = game.enemies.length < 20 ? buildEnemySpatialGrid(game.enemies) : null;
         for (const enemy of game.enemies) {
           const d = Math.max(1, distance(game.player.x, game.player.y, enemy.x, enemy.y));
@@ -1633,13 +1888,34 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         for (const enemy of game.enemies) { const resolved = resolveCemeteryCollision(enemy.x, enemy.y, enemy.radius, game.obstacles); enemy.x = resolved.x; enemy.y = resolved.y; }
         const collisionGrid = buildEnemySpatialGrid(game.enemies);
         for (const shot of game.shots) {
-          for (const enemy of getNearbyEnemies(shot.x, shot.y, collisionGrid)) {
-            if (shot.hitTargets.includes(enemy)) continue;
+          const isPulsingField = shot.kind === "plasma_puddle" || shot.kind === "gravity_well";
+          if (isPulsingField) {
+            if ((shot.pulseTimer ?? 0) > 0) continue;
+            shot.pulseTimer = 0.4;
+            shot.hitTargets = [];
+          }
+          const wideAttack = shot.kind === "scythe_slash" || isPulsingField;
+          const nearbyTargets = wideAttack ? game.enemies : getNearbyEnemies(shot.x, shot.y, collisionGrid);
+          for (const enemy of nearbyTargets) {
+            if (enemy.hp <= 0 || shot.hitTargets.includes(enemy)) continue;
             if (shot.targetEnemy && shot.targetEnemy !== enemy) continue;
-            const hitRadius = enemy.radius + 5;
             const hitX = shot.x - enemy.x;
             const hitY = shot.y - enemy.y;
-            if (enemy.hp > 0 && hitX * hitX + hitY * hitY < hitRadius * hitRadius) {
+            const hitDistanceSquared = hitX * hitX + hitY * hitY;
+            let hit = false;
+            if (shot.kind === "plasma_puddle" || shot.kind === "gravity_well") {
+              const radius = (shot.radius ?? 90) + enemy.radius;
+              hit = hitDistanceSquared <= radius * radius;
+            } else if (shot.kind === "scythe_slash") {
+              const radius = (shot.radius ?? 180) + enemy.radius;
+              const targetAngle = Math.atan2(enemy.y - shot.y, enemy.x - shot.x);
+              const angleDifference = Math.atan2(Math.sin(targetAngle - (shot.angle ?? 0)), Math.cos(targetAngle - (shot.angle ?? 0)));
+              hit = hitDistanceSquared <= radius * radius && Math.abs(angleDifference) <= (shot.arcSpan ?? Math.PI * 1.1) / 2;
+            } else {
+              const hitRadius = enemy.radius + (shot.kind === "orbital_blade" ? (shot.radius ?? 20) : shot.kind === "plasma_core" ? (shot.radius ?? 13) : 5);
+              hit = hitDistanceSquared < hitRadius * hitRadius;
+            }
+            if (hit) {
               const appliedDamage = Math.min(enemy.hp, shot.damage);
               enemy.hp -= shot.damage; game.totalDamageDealt += appliedDamage; enemy.flash = 0.09; for (let k = 0; k < 2; k++) game.particles.push({ x: shot.x, y: shot.y, vx: (Math.random() - 0.5) * 160, vy: (Math.random() - 0.5) * 160, life: 0.22, color: shot.isAnchorBurst ? "#fbbf24" : shot.isChainLightning ? "#67e8f9" : "#f3dcff" });
               game.damageNumbers.push({ x: enemy.x + (Math.random() - 0.5) * 10, y: enemy.y - enemy.radius - 8, value: shot.damage, life: 0.82, maxLife: 0.82, drift: (Math.random() - 0.5) * 14 });
@@ -1721,6 +1997,18 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                   (game.rings ??= []).push({ x: enemy.x, y: enemy.y, r: 6, max: big ? 140 : 46, life: big ? 0.6 : 0.32, color: big ? "#e9c46a" : "#c9a2ff" });
                   if (big) game.shake = Math.max(game.shake ?? 0, enemy.type === "boss" ? 16 : 9); }
               }
+              if (shot.kind === "plasma_core") {
+                if (!shot.hasDetonated) {
+                  shot.hasDetonated = true;
+                  spawnPlasmaPuddle(game, shot.x, shot.y, shot.damage);
+                }
+                shot.life = 0;
+                break;
+              }
+
+              // Cortes, lâminas e campos atingem todos os alvos da forma durante cada pulso.
+              if (shot.kind === "scythe_slash" || shot.kind === "orbital_blade" || isPulsingField) continue;
+
               // Perfuração prioriza inimigos alinhados à frente; ricochete busca um novo alvo quando não há alvo alinhado.
               let continued = false;
               const projectileSpeed = Math.max(1, Math.hypot(shot.vx, shot.vy));
@@ -1759,12 +2047,16 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           }
         }
         for (const shot of game.shots) {
-          if (shot.life <= 0) continue;
+          if (shot.life <= 0 || shot.kind === "orbital_blade" || shot.kind === "scythe_slash" || shot.kind === "gravity_well" || shot.kind === "plasma_puddle") continue;
           for (const urn of game.urns) {
             if (urn.broken) continue;
             const dx = shot.x - urn.x, dy = shot.y - urn.y;
             if (dx*dx + dy*dy <= (urn.radius + 6) * (urn.radius + 6)) {
               shot.life = 0; urn.hp -= shot.damage >= 45 ? 2 : 1;
+              if (shot.kind === "plasma_core" && !shot.hasDetonated) {
+                shot.hasDetonated = true;
+                spawnPlasmaPuddle(game, shot.x, shot.y, shot.damage);
+              }
               for(let p=0;p<4;p++){const a=Math.random()*Math.PI*2,sp=25+Math.random()*85;game.particles.push({x:urn.x,y:urn.y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:.25+Math.random()*.25,color:"#b7a4b9"});}
               if(urn.hp<=0){urn.broken=true;for(let p=0;p<18;p++){const a=Math.random()*Math.PI*2,sp=45+Math.random()*170;game.particles.push({x:urn.x,y:urn.y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:.35+Math.random()*.45,color:p%2?"#c4b5c5":"#8f7b99"});}
                 const roll = Math.random();
