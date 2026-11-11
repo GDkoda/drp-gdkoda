@@ -753,8 +753,9 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
         ctx.rotate(Math.PI / 2);
         ctx.strokeRect(-radius * 0.34, -radius * 0.34, radius * 0.68, radius * 0.68);
       }
-      ctx.fillStyle = game.evolved ? "#c084fc" : "#38bdf8";
-      ctx.shadowColor = ctx.fillStyle; ctx.shadowBlur = 18;
+      const coreGlow = game.evolved ? "#c084fc" : "#38bdf8";
+      ctx.fillStyle = coreGlow;
+      ctx.shadowColor = coreGlow; ctx.shadowBlur = 18;
       ctx.beginPath(); ctx.arc(0, 0, 9 + Math.sin(game.elapsed * 8) * 2, 0, Math.PI * 2); ctx.fill();
       ctx.restore();
       return;
