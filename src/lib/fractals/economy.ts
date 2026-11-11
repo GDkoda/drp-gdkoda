@@ -43,6 +43,21 @@ export const FRACTAL_SHOP = {
     { level: 2, cost: 1200, label: "Estilhaços II" },
     { level: 3, cost: 1800, label: "Estilhaços III" },
   ],
+  ricochet: [
+    { level: 1, cost: 500, label: "Ricochete I" },
+    { level: 2, cost: 900, label: "Ricochete II" },
+    { level: 3, cost: 1400, label: "Ricochete III" },
+  ],
+  piercing: [
+    { level: 1, cost: 600, label: "Perfuração I" },
+    { level: 2, cost: 1000, label: "Perfuração II" },
+    { level: 3, cost: 1500, label: "Perfuração III" },
+  ],
+  chain_lightning: [
+    { level: 1, cost: 700, label: "Descarga I" },
+    { level: 2, cost: 1200, label: "Descarga II" },
+    { level: 3, cost: 1800, label: "Descarga III" },
+  ],
   rarity: [
     { level: 1, cost: 400, tier: 1, label: "Acesso raro" },
     { level: 2, cost: 800, tier: 2, label: "Acesso épico" },
