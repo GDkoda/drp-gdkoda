@@ -1199,6 +1199,12 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
     const game = gameRef.current;
     if (!game || game.banishesRemaining <= 0 || upgrade.id === "weapon_mastery" || upgrade.id === "weapon_evolution") return;
     if (game.bannedUpgradeIds.includes(upgrade.id)) return;
+    const isBasicGift = UPGRADES.some((item) => item.id === upgrade.id);
+    const remainingBasicGifts = UPGRADES.filter((item) => !game.bannedUpgradeIds.includes(item.id));
+    if (isBasicGift && remainingBasicGifts.length <= 1) {
+      toast.error("Mantenha pelo menos uma dádiva básica disponível para a partida.");
+      return;
+    }
     game.bannedUpgradeIds.push(upgrade.id);
     game.banishesRemaining -= 1;
     setSelectedUpgrade(null);
@@ -1320,7 +1326,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         }
         // O Guardião só desperta ao fim dos 12 minutos completos.
         game.shotTimer -= dt;
-        if (game.shotTimer <= 0 && game.enemies.length > 0) {
+        if (game.shotTimer <= 0 && game.enemies.some((enemy) => enemy.hp > 0)) {
           const targets = [...game.enemies].filter((enemy) => enemy.hp > 0).sort((a, b) => {
             const da = distance(game.player.x, game.player.y, a.x, a.y);
             const db = distance(game.player.x, game.player.y, b.x, b.y);
