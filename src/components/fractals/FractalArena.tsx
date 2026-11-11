@@ -17,15 +17,17 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import "./fractal-arena.css";
 
-type UpgradeId = "power" | "haste" | "vitality" | "swift" | "special_area" | "special_experience" | "special_projectile_range" | "special_projectiles";
-type Upgrade = { id: UpgradeId; name: string; description: string; icon: typeof Zap; rarity?: "normal" | "rare" | "epic" };
+type WeaponId = "void_revolver" | "unstable_core" | "spectral_scythe" | "orbital_swords" | "gravity_shackle" | "rune_sentinels";
+type OmenId = "famine" | "rupture" | "spectral_veil" | "abundance" | "revenge";
+type UpgradeId = "power" | "haste" | "vitality" | "swift" | "special_area" | "special_experience" | "special_projectile_range" | "special_projectiles" | "weapon_mastery" | "weapon_evolution" | "anchor_soul";
+type Upgrade = { id: UpgradeId; name: string; description: string; icon: typeof Zap; rarity?: "normal" | "rare" | "epic" | "legendary" };
 type UpgradeCounts = Record<string, { name: string; count: number; rarity: string }>;
 
 type Enemy = { x: number; y: number; hp: number; maxHp: number; speed: number; radius: number; damage: number; color: string; xp: number; type: "wraith" | "brute" | "charger" | "elite" | "boss"; attack: number; flash: number; windup: number; targetX: number; targetY: number; dashTime: number; summonedAtHalf: boolean; furyTriggered: boolean; isExecutioner?: boolean };
 type Shot = {
   x: number; y: number; vx: number; vy: number; damage: number; life: number;
   hitTargets: Enemy[]; bouncesRemaining: number; piercesRemaining: number;
-  isChainLightning?: boolean; targetEnemy?: Enemy;
+  isChainLightning?: boolean; isSplash?: boolean; targetEnemy?: Enemy;
 };
 type Gem = { x: number; y: number; value: number; radius: number; previousX?: number; previousY?: number; runeCrystal?: boolean };
 type SpecialDrop = { x: number; y: number; kind: "area" | "experience" | "projectile_range" | "projectiles" | "food" | "void"; radius: number };
@@ -42,11 +44,21 @@ type PurchaseState = {
   area: number; experience: number; rarity: number; speed_2x: boolean; speed_3x: boolean;
   health: number; projectile_duration: number; projectile_range: number; projectiles: number;
   ricochet: number; piercing: number; chain_lightning: number;
+  reroll: number; oracle: number; banish: number; fortune: number; transmutation: number;
+  anchor_soul: boolean; omen_archive: boolean;
+  weapon_nucleus: boolean; weapon_scythe: boolean; weapon_orbitals: boolean; weapon_gravity: boolean; weapon_sentinels: boolean;
+  mastery_void_revolver: boolean; mastery_nucleus: boolean; mastery_scythe: boolean; mastery_orbitals: boolean; mastery_gravity: boolean; mastery_sentinels: boolean;
+  evolution_void_revolver: boolean; evolution_nucleus: boolean; evolution_scythe: boolean; evolution_orbitals: boolean; evolution_gravity: boolean; evolution_sentinels: boolean;
 };
 const DEFAULT_PURCHASES: PurchaseState = {
   area: 0, experience: 0, rarity: 0, speed_2x: false, speed_3x: false,
   health: 0, projectile_duration: 0, projectile_range: 0, projectiles: 0,
   ricochet: 0, piercing: 0, chain_lightning: 0,
+  reroll: 0, oracle: 0, banish: 0, fortune: 0, transmutation: 0,
+  anchor_soul: false, omen_archive: false,
+  weapon_nucleus: false, weapon_scythe: false, weapon_orbitals: false, weapon_gravity: false, weapon_sentinels: false,
+  mastery_void_revolver: false, mastery_nucleus: false, mastery_scythe: false, mastery_orbitals: false, mastery_gravity: false, mastery_sentinels: false,
+  evolution_void_revolver: false, evolution_nucleus: false, evolution_scythe: false, evolution_orbitals: false, evolution_gravity: false, evolution_sentinels: false,
 };
 const PROJECTILE_DURATION_MULTIPLIERS = [1, 1.25, 1.5, 2] as const;
 const PROJECTILE_BASE_LIFE = 0.8;
@@ -57,20 +69,21 @@ const RITUAL_DURATION = 25;
 const RITUAL_WINDOW = 50;
 const EXECUTIONER_WINDOW = 60;
 function parsePurchaseState(raw: any): PurchaseState {
-  return {
-    area: Number(raw?.area ?? 0), experience: Number(raw?.experience ?? 0), rarity: Number(raw?.rarity ?? 0),
-    speed_2x: !!raw?.speed_2x, speed_3x: !!raw?.speed_3x,
-    health: Number(raw?.health ?? 0), projectile_duration: Number(raw?.projectile_duration ?? 0),
-    projectile_range: Number(raw?.projectile_range ?? 0), projectiles: Number(raw?.projectiles ?? 0),
-    ricochet: Number(raw?.ricochet ?? 0), piercing: Number(raw?.piercing ?? 0),
-    chain_lightning: Number(raw?.chain_lightning ?? 0),
-  };
+  const defaults = DEFAULT_PURCHASES;
+  const numericKeys = ["area","experience","rarity","health","projectile_duration","projectile_range","projectiles","ricochet","piercing","chain_lightning","reroll","oracle","banish","fortune","transmutation"] as const;
+  const booleanKeys = Object.keys(defaults).filter((key) => !numericKeys.includes(key as typeof numericKeys[number])) as Array<keyof PurchaseState>;
+  const parsed = { ...defaults, ...raw } as PurchaseState;
+  for (const key of numericKeys) parsed[key] = Math.max(0, Number(raw?.[key] ?? 0));
+  for (const key of booleanKeys) (parsed as any)[key] = Boolean(raw?.[key] ?? false);
+  return parsed;
 }
 
 type GameState = {
   width: number; height: number; last: number; elapsed: number; spawnTimer: number; shotTimer: number; bossSpawned: boolean;
   player: { x: number; y: number; hp: number; maxHp: number; speed: number; damage: number; fireRate: number; invuln: number; hitFlash: number; xp: number; nextXp: number; level: number; pickupRadius: number; xpMultiplier: number; specialAreaStacks: number; specialExperienceStacks: number; projectileRangeStacks: number; projectileRangeMultiplier: number; projectileStacks: number; projectileLife: number; facing: number; castFacing: number; castTimer: number; moving: boolean; spriteAction: PlayerVisualAction; spriteDirection: number; previousSpriteAction: PlayerVisualAction; previousSpriteDirection: number; spriteBlend: number };
   enemies: Enemy[]; shots: Shot[]; gems: Gem[]; specialDrops: SpecialDrop[]; urns: BreakableUrn[]; obstacles: CemeteryObstacle[]; nextUrnMinute: number; nextUrnId: number; particles: Particle[]; damageNumbers: DamageNumber[]; pickupLabels: PickupLabel[]; challengeEvent: ChallengeEvent | null; nextChallengeEvent: number; kills: number; ended: boolean; upgradeCounts: UpgradeCounts; totalDamageDealt: number; crystalsCollected: number; highestLevel: number;
+  weaponId: WeaponId; weaponLevel: number; evolved: boolean; rerollsRemaining: number; banishesRemaining: number; bannedUpgradeIds: string[];
+  anchorReviveAvailable: boolean; anchorReviveUsed: boolean; omenId: OmenId | null; omenSpawnMultiplier: number; omenEnemyHpMultiplier: number; omenRewardMultiplier: number; omenRevengeCooldown: number; lastObservedHp: number;
   shake?: number; rings?: { x: number; y: number; r: number; max: number; life: number; color: string }[];
 };
 
@@ -88,32 +101,80 @@ const SPECIAL_UPGRADES: Upgrade[] = [
   { id: "special_projectiles", name: "Coroa de Estilhaços", description: "+1 projétil por coleta. Até 2 extras por expedição.", icon: Swords },
 ];
 
-function buildLevelChoices(game: GameState, areaLevel: number, experienceLevel: number, rangeLevel: number, projectilesLevel: number, rarityTier: number): Upgrade[] {
-  const core = [...UPGRADES].sort(() => Math.random() - 0.5).slice(0, 3);
-  const available = SPECIAL_UPGRADES.filter((item) => {
-    if (item.id === "special_area") return areaLevel >= 1 && game.player.specialAreaStacks < 5;
-    if (item.id === "special_experience") return experienceLevel >= 1 && game.player.specialExperienceStacks < 6;
-    if (item.id === "special_projectile_range") return rangeLevel >= 1 && game.player.projectileRangeStacks < 5;
-    return projectilesLevel >= 1 && game.player.projectileStacks < MAX_EXTRA_PROJECTILES;
+function weaponProjectKey(weapon: WeaponId) {
+  return ({ void_revolver: "evolution_void_revolver", unstable_core: "evolution_nucleus", spectral_scythe: "evolution_scythe", orbital_swords: "evolution_orbitals", gravity_shackle: "evolution_gravity", rune_sentinels: "evolution_sentinels" } as const)[weapon];
+}
+function getEligibleFieldRelics(game: GameState, purchases: PurchaseState): Upgrade[] {
+  return SPECIAL_UPGRADES.filter((item) => {
+    if (game.bannedUpgradeIds.includes(item.id)) return false;
+    if (item.id === "special_area") return purchases.area >= 1 && game.player.specialAreaStacks < 5;
+    if (item.id === "special_experience") return purchases.experience >= 1 && game.player.specialExperienceStacks < 6;
+    if (item.id === "special_projectile_range") return purchases.projectile_range >= 1 && game.player.projectileRangeStacks < 5;
+    return purchases.projectiles >= 1 && game.player.projectileStacks < MAX_EXTRA_PROJECTILES;
   });
-  if (available.length && Math.random() < 0.18) {
-    const special = available[Math.floor(Math.random() * available.length)];
-    return [...core.slice(0, 2), special].map((upgrade) => ({ ...upgrade, rarity: upgrade.id.startsWith("special_") ? undefined : rollUpgradeRarity(rarityTier) }));
+}
+function buildLevelChoices(game: GameState, purchases: PurchaseState): Upgrade[] {
+  const corePool = UPGRADES.filter((item) => !game.bannedUpgradeIds.includes(item.id)).sort(() => Math.random() - 0.5);
+  const core = corePool.slice(0, 2);
+  const choices: Upgrade[] = [...core];
+  if (game.weaponLevel < 10) {
+    choices.push({ id: "weapon_mastery", name: "Ressonância da Arma", description: "Aumenta em um nível a arma escolhida, aprimorando seu comportamento. Máximo: nível 10.", icon: Swords });
+  } else {
+    choices.push(corePool[2] ?? corePool[0] ?? UPGRADES[0]);
   }
-  return core.map((upgrade) => ({ ...upgrade, rarity: rollUpgradeRarity(rarityTier) }));
+
+  const fieldRelics = getEligibleFieldRelics(game, purchases);
+  if (fieldRelics.length && Math.random() < 0.18) {
+    const field = fieldRelics[Math.floor(Math.random() * fieldRelics.length)];
+    const replaceAt = Math.floor(Math.random() * 2);
+    choices[replaceAt] = field;
+  }
+
+  if (purchases.anchor_soul && !game.anchorReviveAvailable && !game.anchorReviveUsed && Math.random() < 0.10) {
+    const replaceAt = Math.floor(Math.random() * 2);
+    choices[replaceAt] = { id: "anchor_soul", name: "Âncora da Alma", description: "Concede uma ressurreição nesta expedição, retornando com 40% da vida e 3 segundos de invulnerabilidade.", icon: Heart };
+  }
+
+  if (game.weaponLevel >= 10 && !game.evolved && purchases[weaponProjectKey(game.weaponId)] && Math.random() < 0.33) {
+    const evolutionNames: Record<WeaponId, string> = {
+      void_revolver: "Seis Ecos", unstable_core: "Singularidade", spectral_scythe: "Ceifador de Almas",
+      orbital_swords: "Dança das Lâminas", gravity_shackle: "Prisão do Abismo", rune_sentinels: "Arsenal Ancestral",
+    };
+    choices[Math.floor(Math.random() * 2)] = {
+      id: "weapon_evolution", name: evolutionNames[game.weaponId],
+      description: "Evolução lendária: transforma permanentemente o comportamento da arma nesta expedição.",
+      icon: Crown, rarity: "legendary",
+    };
+  }
+
+  const transmutationChance = [0, 3, 6, 10][Math.max(0, Math.min(3, purchases.transmutation))];
+  const withRarity = choices.map((upgrade) => ({
+    ...upgrade,
+    rarity: upgrade.rarity ?? (upgrade.id.startsWith("special_") || upgrade.id === "anchor_soul" ? undefined : rollUpgradeRarity(purchases.rarity, transmutationChance)),
+  }));
+
+  // Oráculo: an independent fourth choice that is always an available Field Relic.
+  if (purchases.oracle > 0 && Math.random() < purchases.oracle * 3) {
+    const fourthOptions = getEligibleFieldRelics(game, purchases).filter((item) => !withRarity.some((choice) => choice.id === item.id));
+    if (fourthOptions.length) {
+      const selected = fourthOptions[Math.floor(Math.random() * fourthOptions.length)];
+      withRarity.push({ ...selected });
+    }
+  }
+  return withRarity;
 }
 
-function rollUpgradeRarity(tier: number): "normal" | "rare" | "epic" {
+function rollUpgradeRarity(tier: number, transmutationChance = 0): "normal" | "rare" | "epic" {
   const odds = FRACTAL_RARITY_TIERS[Math.max(0, Math.min(3, tier))];
   const roll = Math.random() * 100;
   if (roll < odds.epic) return "epic";
-  if (roll < odds.epic + odds.rare) return "rare";
+  if (roll < odds.epic + odds.rare) return Math.random() * 100 < transmutationChance ? "epic" : "rare";
   return "normal";
 }
 
 const UPGRADE_RARITY_MULTIPLIERS = { normal: 1, rare: 1.25, epic: 1.5 } as const;
 function getUpgradeRarityMultiplier(rarity: Upgrade["rarity"]): number {
-  return UPGRADE_RARITY_MULTIPLIERS[rarity ?? "normal"];
+  return rarity === "legendary" ? 1.5 : UPGRADE_RARITY_MULTIPLIERS[rarity ?? "normal"];
 }
 function formatUpgradePercent(value: number): string {
   return value.toLocaleString("pt-BR", { maximumFractionDigits: 1 });
@@ -125,6 +186,9 @@ function getUpgradeDescription(upgrade: Upgrade): string {
     case "haste": return `Velocidade de ataque +${formatUpgradePercent(18 * multiplier)}% (intervalo entre disparos menor).`;
     case "vitality": return `Vida máxima +${formatUpgradePercent(15 * multiplier)}% e cura ${formatUpgradePercent(25 * multiplier)}% da vida máxima anterior.`;
     case "swift": return `Velocidade de movimento +${formatUpgradePercent(10 * multiplier)}%.`;
+    case "weapon_mastery": return upgrade.description;
+    case "weapon_evolution": return upgrade.description;
+    case "anchor_soul": return upgrade.description;
     default: return upgrade.description;
   }
 }
