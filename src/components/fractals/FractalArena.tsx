@@ -19,11 +19,11 @@ import "./fractal-arena.css";
 
 type WeaponId = "void_revolver" | "unstable_core" | "spectral_scythe" | "orbital_swords" | "gravity_shackle" | "rune_sentinels";
 type OmenId = "famine" | "rupture" | "spectral_veil" | "abundance" | "revenge";
-type UpgradeId = "power" | "haste" | "vitality" | "swift" | "special_area" | "special_experience" | "special_projectile_range" | "special_projectiles" | "weapon_mastery" | "weapon_evolution" | "anchor_soul";
-type Upgrade = { id: UpgradeId; name: string; description: string; icon: typeof Zap; rarity?: "normal" | "uncommon" | "rare" | "epic" | "legendary" };
+type UpgradeId = "power" | "haste" | "vitality" | "swift" | "special_area" | "special_experience" | "special_projectile_range" | "special_projectiles" | "special_ricochet" | "special_piercing" | "special_chain_lightning" | "weapon_mastery" | "weapon_evolution" | "anchor_soul";
+type Upgrade = { id: UpgradeId; name: string; description: string; icon: typeof Zap; rarity?: "normal" | "uncommon" | "rare" | "epic" | "legendary" | "mastery" | "evolution" };
 type UpgradeCounts = Record<string, { name: string; count: number; rarity: string }>;
 
-type Enemy = { x: number; y: number; hp: number; maxHp: number; speed: number; radius: number; damage: number; color: string; xp: number; type: "wraith" | "brute" | "charger" | "elite" | "boss"; attack: number; flash: number; windup: number; targetX: number; targetY: number; dashTime: number; summonedAtHalf: boolean; furyTriggered: boolean; isExecutioner?: boolean };
+type Enemy = { x: number; y: number; hp: number; maxHp: number; speed: number; radius: number; damage: number; color: string; xp: number; type: "wraith" | "brute" | "charger" | "elite" | "boss"; attack: number; flash: number; windup: number; targetX: number; targetY: number; dashTime: number; summonedAtHalf: boolean; furyTriggered: boolean; isExecutioner?: boolean; slowTimer?: number };
 type ShotKind =
   | "bullet"
   | "revolver_empowered"
@@ -32,7 +32,8 @@ type ShotKind =
   | "scythe_slash"
   | "orbital_blade"
   | "gravity_well"
-  | "sentinel_beam";
+  | "sentinel_beam"
+  | "sentinel_explosion";
 
 type Shot = {
   x: number; y: number; vx: number; vy: number; damage: number; life: number;
@@ -42,7 +43,8 @@ type Shot = {
   bladeIndex?: number; totalBlades?: number; pulseTimer?: number; hasDetonated?: boolean;
 };
 type Gem = { x: number; y: number; value: number; radius: number; previousX?: number; previousY?: number; runeCrystal?: boolean };
-type SpecialDrop = { x: number; y: number; kind: "area" | "experience" | "projectile_range" | "projectiles" | "food" | "void"; radius: number };
+type SpecialDrop = { x: number; y: number; kind: "area" | "experience" | "projectile_range" | "projectiles" | "ricochet" | "piercing" | "chain_lightning" | "food" | "void"; radius: number };
+type SentinelTotem = { id: number; x: number; y: number; hp: number; maxHp: number; attackTimer: number; radius: number };
 type BreakableUrn = { id: number; x: number; y: number; hp: number; maxHp: number; radius: number; broken: boolean };
 type CemeteryObstacle = { x: number; y: number; radius: number; kind: "gravestone" | "cross" | "mausoleum" | "torch" };
 type Particle = { x: number; y: number; vx: number; vy: number; life: number; color: string };
@@ -120,8 +122,8 @@ function parsePurchaseState(raw: any): PurchaseState {
 
 type GameState = {
   width: number; height: number; last: number; elapsed: number; spawnTimer: number; shotTimer: number; bossSpawned: boolean;
-  player: { x: number; y: number; hp: number; maxHp: number; speed: number; damage: number; fireRate: number; invuln: number; hitFlash: number; xp: number; nextXp: number; level: number; pickupRadius: number; xpMultiplier: number; specialAreaStacks: number; specialExperienceStacks: number; projectileRangeStacks: number; projectileRangeMultiplier: number; projectileStacks: number; projectileLife: number; facing: number; castFacing: number; castTimer: number; moving: boolean; spriteAction: PlayerVisualAction; spriteDirection: number; previousSpriteAction: PlayerVisualAction; previousSpriteDirection: number; spriteBlend: number };
-  enemies: Enemy[]; shots: Shot[]; gems: Gem[]; specialDrops: SpecialDrop[]; urns: BreakableUrn[]; obstacles: CemeteryObstacle[]; nextUrnMinute: number; nextUrnId: number; particles: Particle[]; damageNumbers: DamageNumber[]; pickupLabels: PickupLabel[]; challengeEvent: ChallengeEvent | null; nextChallengeEvent: number; kills: number; ended: boolean; upgradeCounts: UpgradeCounts; totalDamageDealt: number; crystalsCollected: number; highestLevel: number;
+  player: { x: number; y: number; hp: number; maxHp: number; speed: number; damage: number; fireRate: number; invuln: number; hitFlash: number; xp: number; nextXp: number; level: number; pickupRadius: number; xpMultiplier: number; specialAreaStacks: number; specialExperienceStacks: number; projectileRangeStacks: number; projectileRangeMultiplier: number; projectileStacks: number; relicRicochet: number; relicPiercing: number; relicChainLightning: number; projectileLife: number; facing: number; castFacing: number; castTimer: number; moving: boolean; spriteAction: PlayerVisualAction; spriteDirection: number; previousSpriteAction: PlayerVisualAction; previousSpriteDirection: number; spriteBlend: number };
+  enemies: Enemy[]; shots: Shot[]; gems: Gem[]; specialDrops: SpecialDrop[]; sentinelTotems: SentinelTotem[]; sentinelRespawnTimer: number; nextSentinelTotemId: number; urns: BreakableUrn[]; obstacles: CemeteryObstacle[]; nextUrnMinute: number; nextUrnId: number; particles: Particle[]; damageNumbers: DamageNumber[]; pickupLabels: PickupLabel[]; challengeEvent: ChallengeEvent | null; nextChallengeEvent: number; kills: number; ended: boolean; upgradeCounts: UpgradeCounts; totalDamageDealt: number; crystalsCollected: number; highestLevel: number;
   weaponId: WeaponId; weaponLevel: number; evolved: boolean; rerollsRemaining: number; banishesRemaining: number; bannedUpgradeIds: string[];
   revolverShotCount?: number; orbitalPulseTimer?: number;
   anchorReviveAvailable: boolean; anchorRevivesUsed: number; omenId: OmenId | null; omenSpawnMultiplier: number; omenEnemyHpMultiplier: number; omenRewardMultiplier: number; omenRevengeCooldown: number; lastObservedHp: number;
@@ -140,6 +142,17 @@ const SPECIAL_UPGRADES: Upgrade[] = [
   { id: "special_experience", name: "Eco do Conhecimento", description: "+5% de experiência por coleta (máx. +50%, 10 coletas).", icon: Sparkles },
   { id: "special_projectile_range", name: "Ressonância de Alcance", description: "+10% de distância dos projéteis por coleta (máx. +50%).", icon: Zap },
   { id: "special_projectiles", name: "Coroa de Estilhaços", description: "+1 projétil por coleta. Até 2 extras por expedição.", icon: Swords },
+  { id: "special_ricochet", name: "Ricochete Instável", description: "Projéteis do Revólver ricocheteiam em até +1 inimigo por nível (máx. 3).", icon: Orbit },
+  { id: "special_piercing", name: "Perfuração Espectral", description: "Projéteis do Revólver atravessam +1 inimigo por nível (máx. 3).", icon: Target },
+  { id: "special_chain_lightning", name: "Descarga em Cadeia", description: "Impactos do projétil saltam para +1 alvo por nível (máx. 3).", icon: Zap },
+];
+
+const MASTER_GIFT_OPTIONS: Upgrade[] = [
+  ...UPGRADES,
+  ...SPECIAL_UPGRADES,
+  { id: "anchor_soul", name: "Âncora da Alma", description: "Concede uma ressurreição adicional.", icon: Heart },
+  { id: "weapon_mastery", name: "Ressonância da Arma", description: "Aumenta em um nível a arma equipada.", icon: Swords, rarity: "mastery" },
+  { id: "weapon_evolution", name: "Evolução da Arma", description: "Desperta a forma evoluída da arma equipada.", icon: Crown, rarity: "evolution" },
 ];
 
 function weaponProjectKey(weapon: WeaponId) {
@@ -152,7 +165,11 @@ function getEligibleFieldRelics(game: GameState, purchases: PurchaseState): Upgr
     if (item.id === "special_area") return (oracleUnlocksFieldRelics || purchases.area >= 1) && game.player.specialAreaStacks < MAX_AREA_RELIC_STACKS;
     if (item.id === "special_experience") return (oracleUnlocksFieldRelics || purchases.experience >= 1) && game.player.specialExperienceStacks < MAX_EXPERIENCE_RELIC_STACKS;
     if (item.id === "special_projectile_range") return (oracleUnlocksFieldRelics || purchases.projectile_range >= 1) && game.player.projectileRangeStacks < MAX_PROJECTILE_RANGE_STACKS;
-    return (oracleUnlocksFieldRelics || purchases.projectiles >= 1) && game.player.projectileStacks < MAX_EXTRA_PROJECTILES;
+    if (item.id === "special_projectiles") return (oracleUnlocksFieldRelics || purchases.projectiles >= 1) && game.player.projectileStacks < MAX_EXTRA_PROJECTILES;
+    if (item.id === "special_ricochet") return purchases.ricochet >= 1 && game.player.relicRicochet < 3;
+    if (item.id === "special_piercing") return purchases.piercing >= 1 && game.player.relicPiercing < 3;
+    if (item.id === "special_chain_lightning") return purchases.chain_lightning >= 1 && game.player.relicChainLightning < 3;
+    return false;
   });
 }
 function buildLevelChoices(game: GameState, purchases: PurchaseState): Upgrade[] {
@@ -160,7 +177,7 @@ function buildLevelChoices(game: GameState, purchases: PurchaseState): Upgrade[]
   const core = corePool.slice(0, 2);
   const choices: Upgrade[] = [...core];
   if (game.weaponLevel < 10) {
-    choices.push({ id: "weapon_mastery", name: "Ressonância da Arma", description: "Aumenta em um nível a arma escolhida, aprimorando seu comportamento. Máximo: nível 10.", icon: Swords });
+    choices.push({ id: "weapon_mastery", name: "Ressonância da Arma", description: "Aumenta em um nível a arma escolhida, aprimorando seu comportamento. Máximo: nível 10.", icon: Swords, rarity: "mastery" });
   } else if (corePool[2]) {
     choices.push(corePool[2]);
   }
@@ -192,7 +209,7 @@ function buildLevelChoices(game: GameState, purchases: PurchaseState): Upgrade[]
     const evolutionGift: Upgrade = {
       id: "weapon_evolution", name: evolutionNames[game.weaponId],
       description: "Evolução lendária: transforma permanentemente o comportamento da arma nesta expedição.",
-      icon: Crown, rarity: "legendary",
+      icon: Crown, rarity: "evolution",
     };
     if (choices.length > 0) choices[evolutionIndex] = evolutionGift; else choices.push(evolutionGift);
   }
@@ -229,7 +246,9 @@ function rollUpgradeRarity(tier: number, transmutationChance = 0): "normal" | "r
 
 const UPGRADE_RARITY_MULTIPLIERS = { normal: 1, uncommon: 1, rare: 1.25, epic: 1.5 } as const;
 function getUpgradeRarityMultiplier(rarity: Upgrade["rarity"]): number {
-  return rarity === "legendary" ? 1.5 : UPGRADE_RARITY_MULTIPLIERS[rarity ?? "normal"];
+  if (rarity === "legendary") return 1.5;
+  if (rarity === "mastery" || rarity === "evolution") return 1;
+  return UPGRADE_RARITY_MULTIPLIERS[rarity ?? "normal"];
 }
 function formatUpgradePercent(value: number): string {
   return value.toLocaleString("pt-BR", { maximumFractionDigits: 1 });
@@ -458,8 +477,8 @@ function makeGame(width: number, height: number, purchases: PurchaseState, weapo
   const omenDamage = omenId === "rupture" ? 1.2 : 1;
   return {
     width, height, last: 0, elapsed: 0, spawnTimer: 0.4, shotTimer: 0.25, bossSpawned: false,
-    player: { x: 0, y: 0, hp: maxHp, maxHp, speed: 205 * (omenId === "spectral_veil" ? 1.15 : 1), damage: 22 * omenDamage, fireRate: 0.72 * (omenId === "rupture" ? 1.15 : 1), invuln: 0, hitFlash: 0, xp: 0, nextXp: 12, level: 1, pickupRadius: 85, xpMultiplier: omenId === "famine" ? 1.2 : 1, specialAreaStacks: 0, specialExperienceStacks: 0, projectileRangeStacks: 0, projectileRangeMultiplier: 1, projectileStacks: 0, projectileLife, facing: 0, castFacing: 0, castTimer: 0, moving: false, spriteAction: "idle", spriteDirection: 0, previousSpriteAction: "idle", previousSpriteDirection: 0, spriteBlend: 1 },
-    enemies: [], shots: [], gems: [], specialDrops: [], urns: [], obstacles: createCemeteryObstacles(), nextUrnMinute: 1, nextUrnId: 1, particles: [], damageNumbers: [], pickupLabels: [], challengeEvent: null, nextChallengeEvent: 0, kills: 0, ended: false, upgradeCounts: {}, totalDamageDealt: 0, crystalsCollected: 0, highestLevel: 1,
+    player: { x: 0, y: 0, hp: maxHp, maxHp, speed: 205 * (omenId === "spectral_veil" ? 1.15 : 1), damage: 22 * omenDamage, fireRate: 0.72 * (omenId === "rupture" ? 1.15 : 1), invuln: 0, hitFlash: 0, xp: 0, nextXp: 12, level: 1, pickupRadius: 85, xpMultiplier: omenId === "famine" ? 1.2 : 1, specialAreaStacks: 0, specialExperienceStacks: 0, projectileRangeStacks: 0, projectileRangeMultiplier: 1, projectileStacks: 0, relicRicochet: 0, relicPiercing: 0, relicChainLightning: 0, projectileLife, facing: 0, castFacing: 0, castTimer: 0, moving: false, spriteAction: "idle", spriteDirection: 0, previousSpriteAction: "idle", previousSpriteDirection: 0, spriteBlend: 1 },
+    enemies: [], shots: [], gems: [], specialDrops: [], sentinelTotems: [], sentinelRespawnTimer: 0, nextSentinelTotemId: 1, urns: [], obstacles: createCemeteryObstacles(), nextUrnMinute: 1, nextUrnId: 1, particles: [], damageNumbers: [], pickupLabels: [], challengeEvent: null, nextChallengeEvent: 0, kills: 0, ended: false, upgradeCounts: {}, totalDamageDealt: 0, crystalsCollected: 0, highestLevel: 1,
     weaponId, weaponLevel: 1, evolved: false, rerollsRemaining: purchases.reroll, banishesRemaining: purchases.banish, bannedUpgradeIds: [],
     revolverShotCount: 0, orbitalPulseTimer: 0,
     anchorReviveAvailable: false, anchorRevivesUsed: 0, omenId, omenSpawnMultiplier: omenId === "famine" ? 1.2 : 1,
@@ -485,10 +504,10 @@ function spawnPlasmaPuddle(game: GameState, x: number, y: number, coreDamage: nu
 
 function getEquippedWeaponStrikeDamage(game: GameState): number {
   const weaponPower = (1 + (game.weaponLevel - 1) * 0.055) * (game.evolved ? 1.15 : 1);
-  const weaponMultiplier = game.weaponId === "unstable_core" ? 1.5
-    : game.weaponId === "spectral_scythe" ? (game.evolved ? 1.4 : 1.1)
+  const weaponMultiplier = game.weaponId === "unstable_core" ? 1.275
+    : game.weaponId === "spectral_scythe" ? (game.evolved ? 1.68 : 1.32)
     : game.weaponId === "orbital_swords" ? 0.75
-    : game.weaponId === "gravity_shackle" ? (game.evolved ? 0.6 : 0.45)
+    : game.weaponId === "gravity_shackle" ? (game.evolved ? 0.75 : 0.5625)
     : game.weaponId === "rune_sentinels" ? (game.evolved ? 0.75 : 0.55)
     : game.weaponId === "void_revolver" && game.evolved ? 0.85
     : 1;
@@ -798,13 +817,13 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
       const progress = 1 - lifeRatio;
       ctx.lineCap = "round";
       ctx.shadowColor = game.evolved ? "#6ee7b7" : "#10b981";
-      ctx.shadowBlur = 18;
+      ctx.shadowBlur = 28;
       ctx.strokeStyle = game.evolved ? "#a7f3d0" : "#34d399";
-      ctx.lineWidth = 12 * (1 - progress * 0.42);
+      ctx.lineWidth = 26 * (1 - progress * 0.42);
       ctx.beginPath(); ctx.arc(0, 0, radius, startAngle, endAngle); ctx.stroke();
-      ctx.shadowBlur = 5;
+      ctx.shadowBlur = 10;
       ctx.strokeStyle = "#f0fdf4";
-      ctx.lineWidth = 2.5;
+      ctx.lineWidth = 8;
       ctx.beginPath(); ctx.arc(0, 0, radius + 5, startAngle, endAngle); ctx.stroke();
       ctx.restore();
       return;
@@ -1363,20 +1382,24 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
     if (upgrade.id === "special_experience" && game.player.specialExperienceStacks < MAX_EXPERIENCE_RELIC_STACKS) { game.player.specialExperienceStacks += 1; game.player.xpMultiplier = 1 + game.player.specialExperienceStacks * 0.05; }
     if (upgrade.id === "special_projectile_range" && game.player.projectileRangeStacks < MAX_PROJECTILE_RANGE_STACKS) { game.player.projectileRangeStacks += 1; game.player.projectileRangeMultiplier = 1 + game.player.projectileRangeStacks * 0.10; }
     if (upgrade.id === "special_projectiles" && game.player.projectileStacks < MAX_EXTRA_PROJECTILES) game.player.projectileStacks += 1;
+    if (upgrade.id === "special_ricochet" && game.player.relicRicochet < 3) game.player.relicRicochet += 1;
+    if (upgrade.id === "special_piercing" && game.player.relicPiercing < 3) game.player.relicPiercing += 1;
+    if (upgrade.id === "special_chain_lightning" && game.player.relicChainLightning < 3) game.player.relicChainLightning += 1;
     if (upgrade.id === "weapon_mastery" && game.weaponLevel < 10) {
       game.weaponLevel += 1;
       game.player.damage *= 1 + 0.045 * rarityPower;
       game.player.fireRate /= 1 + 0.0125 * rarityPower;
       game.pickupLabels.push({ x: game.player.x, y: game.player.y - 28, text: `Arma nível ${game.weaponLevel}/10`, life: 1.4, maxLife: 1.4 });
     }
-    if (upgrade.id === "weapon_evolution" && game.weaponLevel >= 10 && purchases[weaponProjectKey(game.weaponId)]) {
+    if (upgrade.id === "weapon_evolution" && !game.evolved && (isMaster || (game.weaponLevel >= 10 && purchases[weaponProjectKey(game.weaponId)]))) {
+      if (isMaster) game.weaponLevel = 10;
       game.evolved = true;
       game.player.damage *= 1.35;
       game.player.fireRate /= 1.10;
       game.rings = [...(game.rings ?? []), { x: game.player.x, y: game.player.y, r: 12, max: 230, life: 1.2, color: "#fbbf24" }];
       toast.success(`${WEAPON_CONFIG[game.weaponId].evolutionName} despertou!`);
     }
-    if (upgrade.id === "anchor_soul" && purchases.anchor_soul >= 1 && game.anchorRevivesUsed < 2 && !game.anchorReviveAvailable) {
+    if (upgrade.id === "anchor_soul" && (isMaster || purchases.anchor_soul >= 1) && game.anchorRevivesUsed < 2 && !game.anchorReviveAvailable) {
       game.anchorReviveAvailable = true;
       game.pickupLabels.push({ x: game.player.x, y: game.player.y - 28, text: "Âncora da Alma vinculada", life: 1.5, maxLife: 1.5 });
     }
@@ -1401,7 +1424,9 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
       setEventRewardStep(0);
     }
     setLevelChoices([]);
-  }, [purchases]);
+  }, [isMaster, purchases]);
+
+  const applyUpgrade = (upgrade: Upgrade) => chooseUpgrade(upgrade);
 
   const rerollGiftChoices = () => {
     const game = gameRef.current;
@@ -1615,8 +1640,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                 x: game.player.x, y: game.player.y,
                 vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
                 damage: weaponDamage * damageMultiplier, life, maxLife: life,
-                hitTargets: [], bouncesRemaining: purchases.ricochet + (game.evolved ? 1 : 0),
-                piercesRemaining: purchases.piercing + (isEmpowered ? 3 : 0),
+                hitTargets: [], bouncesRemaining: game.player.relicRicochet + (game.evolved ? 1 : 0),
+                piercesRemaining: game.player.relicPiercing + (isEmpowered ? 3 : 0),
                 kind: isEmpowered ? "revolver_empowered" : "bullet",
               });
             }
@@ -1624,33 +1649,38 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             game.player.castTimer = 0.24;
             game.shotTimer = game.player.fireRate * 0.95;
           } else if (game.weaponId === "unstable_core") {
-            const speed = 280 * game.player.projectileRangeMultiplier;
+            const speed = 165 * game.player.projectileRangeMultiplier;
             const life = game.player.projectileLife * 1.3;
             game.shots.push({
               x: game.player.x, y: game.player.y,
               vx: Math.cos(baseAngle) * speed, vy: Math.sin(baseAngle) * speed,
-              damage: weaponDamage * 1.5, life, maxLife: life,
+              damage: weaponDamage * 1.275, life, maxLife: life,
               hitTargets: [], bouncesRemaining: 0, piercesRemaining: 0,
               kind: "plasma_core", radius: game.evolved ? 18 : 13,
             });
             game.player.castFacing = directionFromVector(target.x - game.player.x, target.y - game.player.y);
             game.player.castTimer = 0.24;
-            game.shotTimer = game.player.fireRate * 1.25;
+            game.shotTimer = game.player.fireRate * 0.55;
           } else if (game.weaponId === "spectral_scythe") {
-            const arcSpan = game.evolved ? Math.PI * 2 : Math.PI * 1.1;
-            const slashRadius = (game.evolved ? 240 : 180) * (1 + game.player.specialAreaStacks * 0.1);
+            const arcSpan = game.evolved ? Math.PI * 1.15 : Math.PI * 0.55;
+            const slashRadius = (game.evolved ? 135 : 95) * (1 + game.player.specialAreaStacks * 0.1);
+            const facingVector = PLAYER_DIRECTION_VECTORS[game.player.facing] ?? PLAYER_DIRECTION_VECTORS[0];
+            const slashAngle = Math.atan2(facingVector.y, facingVector.x);
             game.shots.push({
               x: game.player.x, y: game.player.y, vx: 0, vy: 0,
-              damage: weaponDamage * (game.evolved ? 1.4 : 1.1),
+              damage: weaponDamage * (game.evolved ? 1.68 : 1.32),
               life: 0.28, maxLife: 0.28, hitTargets: [],
               bouncesRemaining: 0, piercesRemaining: 999,
-              kind: "scythe_slash", angle: baseAngle, arcSpan, radius: slashRadius,
+              kind: "scythe_slash", angle: slashAngle, arcSpan, radius: slashRadius,
             });
-            game.player.castFacing = directionFromVector(target.x - game.player.x, target.y - game.player.y);
+            game.player.castFacing = game.player.facing;
             game.player.castTimer = 0.24;
             game.shotTimer = game.player.fireRate * 1.05;
           } else if (game.weaponId === "orbital_swords") {
-            const bladeCount = Math.min(8, 3 + Math.floor(game.weaponLevel / 3) + (game.evolved ? 3 : 0));
+            const baseBlades = game.weaponLevel >= 10 ? 8 : 3 + Math.floor((game.weaponLevel - 1) / 2);
+            const relicBlades = game.player.projectileStacks ?? 0;
+            const evolutionBlades = game.evolved ? 4 : 0;
+            const bladeCount = Math.min(14, baseBlades + relicBlades + evolutionBlades);
             game.shots = game.shots.filter((shot) => shot.kind !== "orbital_blade" || (shot.bladeIndex ?? 0) < bladeCount);
             for (let index = 0; index < bladeCount; index++) {
               const existing = game.shots.find((shot) => shot.kind === "orbital_blade" && shot.bladeIndex === index);
@@ -1669,15 +1699,19 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             game.shotTimer = 0.5;
           } else if (game.weaponId === "gravity_shackle") {
             const wellRadius = (game.evolved ? 230 : 160) * (1 + game.player.specialAreaStacks * 0.1);
-            game.shots.push({
-              x: target.x, y: target.y, vx: 0, vy: 0,
-              damage: weaponDamage * (game.evolved ? 0.6 : 0.45),
-              life: 2.2, maxLife: 2.2, hitTargets: [],
-              bouncesRemaining: 0, piercesRemaining: 999,
-              kind: "gravity_well", radius: wellRadius, pulseTimer: 0.38,
-            });
-            game.player.castFacing = directionFromVector(target.x - game.player.x, target.y - game.player.y);
-            game.player.castTimer = 0.24;
+            const maxActiveWells = (game.weaponLevel >= 10 ? 3 : game.weaponLevel >= 5 ? 2 : 1) + game.player.projectileStacks;
+            const activeWells = game.shots.filter((shot) => shot.kind === "gravity_well" && shot.life > 0).length;
+            if (activeWells < maxActiveWells) {
+              game.shots.push({
+                x: target.x, y: target.y, vx: 0, vy: 0,
+                damage: weaponDamage * (game.evolved ? 0.75 : 0.5625),
+                life: 2.2, maxLife: 2.2, hitTargets: [],
+                bouncesRemaining: 0, piercesRemaining: 999,
+                kind: "gravity_well", radius: wellRadius, pulseTimer: 0.38,
+              });
+              game.player.castFacing = directionFromVector(target.x - game.player.x, target.y - game.player.y);
+              game.player.castTimer = 0.24;
+            }
             game.shotTimer = game.player.fireRate * 1.35;
           } else if (game.weaponId === "rune_sentinels") {
             const sentinelCount = Math.min(5, 2 + Math.floor(game.weaponLevel / 3) + (game.evolved ? 1 : 0));
@@ -1723,9 +1757,9 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           if (shot.kind === "orbital_blade") {
             const bladeCount = Math.max(1, shot.totalBlades ?? 3);
             const bladeIndex = shot.bladeIndex ?? 0;
-            const isOuterBlade = game.evolved && bladeIndex >= 4;
+            const isOuterBlade = game.evolved && bladeIndex >= 8;
             const orbitSpeed = isOuterBlade ? -3.2 : 2.8;
-            const orbitDistance = isOuterBlade ? 95 : 68;
+            const orbitDistance = isOuterBlade ? 98 : 65;
             const angle = game.elapsed * orbitSpeed + (bladeIndex * Math.PI * 2) / bladeCount;
             shot.x = game.player.x + Math.cos(angle) * orbitDistance;
             shot.y = game.player.y + Math.sin(angle) * orbitDistance;
@@ -1734,7 +1768,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             shot.x = game.player.x;
             shot.y = game.player.y;
           } else if (shot.kind === "gravity_well") {
-            const pullForce = game.evolved ? 75 : 45;
+            const pullForce = game.evolved ? 100 : 60;
             const radius = shot.radius ?? 160;
             for (const enemy of game.enemies) {
               if (enemy.hp <= 0) continue;
@@ -1929,8 +1963,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
 
               // Descarga em cadeia: cada impacto do projétil original pode chamar alvos extras.
               const supportsChainRelic = shot.kind === undefined || shot.kind === "bullet" || shot.kind === "revolver_empowered" || shot.kind === "plasma_core";
-              if (!shot.isChainLightning && supportsChainRelic && purchases.chain_lightning > 0) {
-                const chainLevel = Math.min(3, purchases.chain_lightning);
+              if (!shot.isChainLightning && supportsChainRelic && game.player.relicChainLightning > 0) {
+                const chainLevel = Math.min(3, game.player.relicChainLightning);
                 const chainCount = chainLevel;
                 const chainDamage = [0, 0.55, 0.65, 0.75][chainLevel];
                 const chainRange = [0, 180, 215, 250][chainLevel];
@@ -1962,7 +1996,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                 if (enemy.type !== "boss") {
                   game.gems.push({ x: enemy.x, y: enemy.y, value: enemy.xp, radius: 5 });
                   const fortuneBonus = [0, 0.10, 0.20, 0.30, 0.40, 0.50][Math.max(0, Math.min(5, purchases.fortune))];
-                  const highestFieldRelicLevel = Math.max(purchases.area, purchases.experience, purchases.projectile_range, purchases.projectiles);
+                  const highestFieldRelicLevel = Math.max(purchases.area, purchases.experience, purchases.projectile_range, purchases.projectiles, purchases.ricochet, purchases.piercing, purchases.chain_lightning);
                   const baseRelicDropChance = [0, 0, 0.01, 0.03, 0.05][Math.max(0, Math.min(4, highestFieldRelicLevel))];
                   const specialDropChance = baseRelicDropChance > 0
                     ? Math.min(0.12, baseRelicDropChance * (1 + fortuneBonus) * game.omenRewardMultiplier)
@@ -1973,6 +2007,9 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                     if (purchases.experience >= 1 && game.player.specialExperienceStacks < MAX_EXPERIENCE_RELIC_STACKS) eligible.push("experience");
                     if (purchases.projectile_range >= 1 && game.player.projectileRangeStacks < MAX_PROJECTILE_RANGE_STACKS) eligible.push("projectile_range");
                     if (purchases.projectiles >= 1 && game.player.projectileStacks < MAX_EXTRA_PROJECTILES) eligible.push("projectiles");
+                    if (purchases.ricochet >= 1 && game.player.relicRicochet < 3) eligible.push("ricochet");
+                    if (purchases.piercing >= 1 && game.player.relicPiercing < 3) eligible.push("piercing");
+                    if (purchases.chain_lightning >= 1 && game.player.relicChainLightning < 3) eligible.push("chain_lightning");
                     eligible.push("food", "void");
                     if (eligible.length) game.specialDrops.push({ x: enemy.x, y: enemy.y, kind: eligible[Math.floor(Math.random() * eligible.length)], radius: 13 });
                   }
@@ -2055,9 +2092,21 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                 const specialMultiplier = (1 + fortuneBonus) * game.omenRewardMultiplier;
                 const foodChance = Math.min(0.18, 0.09 * specialMultiplier);
                 const voidChance = Math.min(0.04, 0.01 * specialMultiplier);
+                const highestFieldRelicLevel = Math.max(purchases.area, purchases.experience, purchases.projectile_range, purchases.projectiles, purchases.ricochet, purchases.piercing, purchases.chain_lightning);
+                const baseRelicDropChance = [0, 0, 0.01, 0.03, 0.05][Math.max(0, Math.min(4, highestFieldRelicLevel))];
+                const relicChance = Math.min(0.12, baseRelicDropChance * specialMultiplier);
+                const eligibleRelics: SpecialDrop["kind"][] = [];
+                if (purchases.area >= 1 && game.player.specialAreaStacks < MAX_AREA_RELIC_STACKS) eligibleRelics.push("area");
+                if (purchases.experience >= 1 && game.player.specialExperienceStacks < MAX_EXPERIENCE_RELIC_STACKS) eligibleRelics.push("experience");
+                if (purchases.projectile_range >= 1 && game.player.projectileRangeStacks < MAX_PROJECTILE_RANGE_STACKS) eligibleRelics.push("projectile_range");
+                if (purchases.projectiles >= 1 && game.player.projectileStacks < MAX_EXTRA_PROJECTILES) eligibleRelics.push("projectiles");
+                if (purchases.ricochet >= 1 && game.player.relicRicochet < 3) eligibleRelics.push("ricochet");
+                if (purchases.piercing >= 1 && game.player.relicPiercing < 3) eligibleRelics.push("piercing");
+                if (purchases.chain_lightning >= 1 && game.player.relicChainLightning < 3) eligibleRelics.push("chain_lightning");
                 if (roll < 0.20) game.gems.push({ x: urn.x, y: urn.y, value: 15, radius: 8, runeCrystal: true });
-                else if (roll < 0.20 + foodChance) game.specialDrops.push({ x: urn.x, y: urn.y, kind: "food", radius: 14 });
-                else if (roll < 0.20 + foodChance + voidChance) game.specialDrops.push({ x: urn.x, y: urn.y, kind: "void", radius: 14 });
+                else if (eligibleRelics.length && roll < 0.20 + relicChance) game.specialDrops.push({ x: urn.x, y: urn.y, kind: eligibleRelics[Math.floor(Math.random() * eligibleRelics.length)], radius: 13 });
+                else if (roll < 0.20 + relicChance + foodChance) game.specialDrops.push({ x: urn.x, y: urn.y, kind: "food", radius: 14 });
+                else if (roll < 0.20 + relicChance + foodChance + voidChance) game.specialDrops.push({ x: urn.x, y: urn.y, kind: "void", radius: 14 });
                 // A Fortuna aumenta apenas o peso dos espólios especiais; cristais de XP mantêm 20%.
               }
               break;
@@ -2092,7 +2141,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             if(drop.kind==="food"){game.player.hp=Math.min(game.player.maxHp,game.player.hp+game.player.maxHp*.4);game.pickupLabels.push({x:game.player.x,y:game.player.y-28,text:"+40% HP! Iguaria Cósmica 🍔",life:1.8,maxLife:1.8});drop.radius=0;fractalAudio.special();return;}
             if(drop.kind==="void"){for(const gem of game.gems){gem.x=game.player.x;gem.y=game.player.y;}game.pickupLabels.push({x:game.player.x,y:game.player.y-28,text:"Vórtice do Vazio! Cristais Sugados!",life:1.8,maxLife:1.8});drop.radius=0;fractalAudio.special();return;}
             fractalAudio.special();
-            const specialUpgradeId: UpgradeId = drop.kind === "area" ? "special_area" : drop.kind === "experience" ? "special_experience" : drop.kind === "projectile_range" ? "special_projectile_range" : "special_projectiles";
+            const specialUpgradeId: UpgradeId = drop.kind === "area" ? "special_area" : drop.kind === "experience" ? "special_experience" : drop.kind === "projectile_range" ? "special_projectile_range" : drop.kind === "projectiles" ? "special_projectiles" : drop.kind === "ricochet" ? "special_ricochet" : drop.kind === "piercing" ? "special_piercing" : "special_chain_lightning";
             const specialUpgrade = SPECIAL_UPGRADES.find((item) => item.id === specialUpgradeId)!;
             const currentRune = game.upgradeCounts[specialUpgradeId];
             game.upgradeCounts[specialUpgradeId] = { name: specialUpgrade.name, count: (currentRune?.count ?? 0) + 1, rarity: "uncommon" };
@@ -2101,6 +2150,9 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               experience: "Eco do Conhecimento",
               projectile_range: "Ressonância de Alcance",
               projectiles: "Coroa de Estilhaços",
+              ricochet: "Ricochete Instável",
+              piercing: "Perfuração Espectral",
+              chain_lightning: "Descarga em Cadeia",
               food: "Iguaria de uma Dimensão Perdida",
               void: "Vórtice do Vazio",
             };
@@ -2109,6 +2161,9 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             if (drop.kind === "experience" && game.player.specialExperienceStacks < MAX_EXPERIENCE_RELIC_STACKS) { game.player.specialExperienceStacks += 1; game.player.xpMultiplier = 1 + game.player.specialExperienceStacks * 0.05; }
             if (drop.kind === "projectile_range" && game.player.projectileRangeStacks < MAX_PROJECTILE_RANGE_STACKS) { game.player.projectileRangeStacks += 1; game.player.projectileRangeMultiplier = 1 + game.player.projectileRangeStacks * 0.10; }
             if (drop.kind === "projectiles" && game.player.projectileStacks < MAX_EXTRA_PROJECTILES) game.player.projectileStacks += 1;
+            if (drop.kind === "ricochet" && game.player.relicRicochet < 3) game.player.relicRicochet += 1;
+            if (drop.kind === "piercing" && game.player.relicPiercing < 3) game.player.relicPiercing += 1;
+            if (drop.kind === "chain_lightning" && game.player.relicChainLightning < 3) game.player.relicChainLightning += 1;
             drop.radius = 0;
           }
         });
@@ -2691,7 +2746,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
     <div className="mb-2 flex items-center gap-2"><Sparkles className="h-4 w-4 text-amber-200"/><h4 className="text-xs font-black uppercase tracking-wider text-violet-100">Dádivas &amp; Runas Ativas</h4></div>
     {Object.entries(gameRef.current?.upgradeCounts ?? {}).length > 0 ? <div className="grid grid-cols-1 gap-1.5">
       {Object.entries(gameRef.current?.upgradeCounts ?? {}).map(([id,rune])=><div key={id} className="flex items-center justify-between gap-2 rounded-lg border border-white/10 bg-black/20 px-2.5 py-2">
-        <div className="flex min-w-0 items-center gap-2"><span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-violet-400/10 text-sm">{id==="power"?"⚔":id==="haste"?"⚡":id==="vitality"?"✚":id==="swift"?"➤":id==="special_area"?"🧲":id==="special_experience"?"🔮":id==="special_projectile_range"?"🏹":"✦"}</span><div className="min-w-0"><p className="truncate text-[11px] font-bold text-white">{rune.name}</p><p className="text-[9px] uppercase tracking-wider text-violet-200/65">{rune.rarity==="legendary"?"Lendária":rune.rarity==="epic"?"Épica":rune.rarity==="rare"?"Rara":rune.rarity==="uncommon"?"Incomum":"Comum"}</p></div></div>
+        <div className="flex min-w-0 items-center gap-2"><span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-violet-400/10 text-sm">{id==="power"?"⚔":id==="haste"?"⚡":id==="vitality"?"✚":id==="swift"?"➤":id==="special_area"?"🧲":id==="special_experience"?"🔮":id==="special_projectile_range"?"🏹":id==="special_ricochet"?"↗":id==="special_piercing"?"⟿":id==="special_chain_lightning"?"⚡":"✦"}</span><div className="min-w-0"><p className="truncate text-[11px] font-bold text-white">{rune.name}</p><p className="text-[9px] uppercase tracking-wider text-violet-200/65">{rune.rarity==="evolution"?"Evolução":rune.rarity==="mastery"?"Maestria":rune.rarity==="legendary"?"Lendária":rune.rarity==="epic"?"Épica":rune.rarity==="rare"?"Rara":rune.rarity==="uncommon"?"Incomum":"Comum"}</p></div></div>
         <strong className="shrink-0 text-xs tabular-nums text-amber-200">x{rune.count}</strong>
       </div>)}
     </div> : <p className="text-[10px] text-white/45">Nenhuma dádiva acumulada nesta expedição.</p>}
@@ -2725,7 +2780,11 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                       const isSelected = selectedUpgrade?.id === upgrade.id;
                       const isFlipped = flippedCardId === upgrade.id;
 
-                      const rarityBorder = rarity === "legendary"
+                      const rarityBorder = rarity === "evolution"
+                        ? "border-amber-200/80 bg-gradient-to-br from-fuchsia-500/25 via-cyan-400/10 to-amber-400/25 shadow-[0_0_26px_rgba(251,191,36,.25)] ring-1 ring-fuchsia-300/30"
+                        : rarity === "mastery"
+                        ? "border-cyan-300/60 bg-gradient-to-b from-cyan-400/20 to-[#10202a] shadow-[0_0_20px_rgba(34,211,238,.18)]"
+                        : rarity === "legendary"
                         ? "border-amber-300/70 bg-gradient-to-b from-amber-400/20 to-[#21180e] shadow-[0_0_18px_rgba(251,191,36,.12)]"
                         : rarity === "uncommon"
                         ? "border-rose-400/70 bg-gradient-to-br from-rose-500/25 via-amber-500/15 to-[#25120f] shadow-[0_0_18px_rgba(244,63,94,.18)]"
@@ -2735,7 +2794,11 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                         ? "border-sky-300/40 bg-gradient-to-b from-sky-500/10 to-[#101724]"
                         : "border-amber-200/20 bg-gradient-to-b from-white/[0.05] to-[#181420]";
 
-                      const rarityTag = rarity === "legendary"
+                      const rarityTag = rarity === "evolution"
+                        ? "text-amber-100 border-fuchsia-300/50 bg-gradient-to-r from-fuchsia-500/20 via-cyan-400/15 to-amber-400/20"
+                        : rarity === "mastery"
+                        ? "text-cyan-100 border-cyan-300/40 bg-cyan-400/10"
+                        : rarity === "legendary"
                         ? "text-amber-200 border-amber-300/40 bg-amber-400/10"
                         : rarity === "uncommon"
                         ? "text-amber-100 border-rose-300/50 bg-rose-500/20"
@@ -2745,7 +2808,11 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                         ? "text-sky-200 border-sky-300/30 bg-sky-400/10"
                         : "text-amber-100/70 border-white/10 bg-white/5";
 
-                      const iconStyle = rarity === "legendary"
+                      const iconStyle = rarity === "evolution"
+                        ? "border-amber-200/70 bg-gradient-to-br from-fuchsia-400/25 via-cyan-300/20 to-amber-300/30 text-amber-50 shadow-[0_0_18px_rgba(251,191,36,.25)]"
+                        : rarity === "mastery"
+                        ? "border-cyan-300/50 bg-cyan-400/20 text-cyan-100"
+                        : rarity === "legendary"
                         ? "border-amber-300/50 bg-amber-400/20 text-amber-100"
                         : rarity === "uncommon"
                         ? "border-rose-300/60 bg-gradient-to-br from-rose-500/30 to-amber-400/25 text-amber-100"
@@ -2810,7 +2877,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                                 {upgrade.name}
                               </p>
                               <span className={`mt-2 rounded-full border px-1.5 py-0.5 text-[7px] font-black uppercase tracking-wider sm:text-[8px] ${rarityTag}`}>
-                                {rarity === "legendary" ? "Lendária" : rarity === "uncommon" ? "Incomum" : rarity === "epic" ? "Épica" : rarity === "rare" ? "Rara" : "Normal"}
+                                {rarity === "evolution" ? "Evolução" : rarity === "mastery" ? "Maestria" : rarity === "legendary" ? "Lendária" : rarity === "uncommon" ? "Incomum" : rarity === "epic" ? "Épica" : rarity === "rare" ? "Rara" : "Normal"}
                               </span>
                             </div>
                           ) : (
@@ -2819,7 +2886,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                                 {getUpgradeDescription(upgrade)}
                               </p>
                               <span className="mt-2 text-[7px] font-bold uppercase tracking-wider text-amber-200/80 sm:text-[8px]">
-                                {rarity === "uncommon" ? "Relíquia · sem bônus de raridade" : rarity === "epic" ? "+50% Potência" : rarity === "rare" ? "+25% Potência" : "100% Padrão"}
+                                {rarity === "evolution" ? "Forma definitiva da arma" : rarity === "mastery" ? "Maestria · +1 nível da arma" : rarity === "uncommon" ? "Relíquia · sem bônus de raridade" : rarity === "epic" ? "+50% Potência" : rarity === "rare" ? "+25% Potência" : "100% Padrão"}
                               </span>
                             </div>
                           )}
