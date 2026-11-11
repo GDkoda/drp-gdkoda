@@ -905,11 +905,13 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     }
     ctx.restore();
   });
+  ctx.save();
   game.rings?.forEach((ring) => {
     ctx.globalAlpha = clamp(ring.life * 2.4, 0, 1);
     ctx.strokeStyle = ring.color; ctx.lineWidth = 3;
     ctx.beginPath(); ctx.arc(ring.x, ring.y, ring.r, 0, Math.PI * 2); ctx.stroke();
   });
+  ctx.restore();
   game.enemies.forEach((enemy) => {
     if (enemy.x < cameraX - 88 || enemy.x > cameraX + viewWidth + 88 || enemy.y < cameraY - 100 || enemy.y > cameraY + viewHeight + 100) return;
     ctx.save();
@@ -1652,6 +1654,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               const existing = game.shots.find((shot) => shot.kind === "orbital_blade" && shot.bladeIndex === index);
               if (existing) {
                 existing.totalBlades = bladeCount;
+                existing.damage = weaponDamage * 0.75;
                 continue;
               }
               game.shots.push({
@@ -1922,23 +1925,9 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               if (game.damageNumbers.length > 20) game.damageNumbers.shift();
               shot.hitTargets.push(enemy);
 
-              // Núcleo Instável: o impacto libera estilhaços explosivos contra até três alvos próximos.
-              if (game.weaponId === "unstable_core" && !shot.isSplash) {
-                const radius = game.evolved ? 190 : 135;
-                const splashTargets = game.enemies
-                  .filter((candidate) => candidate !== enemy && candidate.hp > 0 && distance(enemy.x, enemy.y, candidate.x, candidate.y) <= radius)
-                  .sort((a, b) => distance(enemy.x, enemy.y, a.x, a.y) - distance(enemy.x, enemy.y, b.x, b.y))
-                  .slice(0, game.evolved ? 5 : 3);
-                for (const candidate of splashTargets) {
-                  const splashDistance = Math.max(1, distance(enemy.x, enemy.y, candidate.x, candidate.y));
-                  const splashSpeed = 780;
-                  game.shots.push({ x: enemy.x, y: enemy.y, vx: (candidate.x - enemy.x) / splashDistance * splashSpeed, vy: (candidate.y - enemy.y) / splashDistance * splashSpeed, damage: shot.damage * (game.evolved ? 0.68 : 0.52), life: splashDistance / splashSpeed + 0.22, hitTargets: [enemy], bouncesRemaining: 0, piercesRemaining: 0, isChainLightning: true, isSplash: true, targetEnemy: candidate });
-                }
-                game.rings = [...(game.rings ?? []), { x: enemy.x, y: enemy.y, r: 12, max: radius, life: 0.35, color: "#d8b4fe" }];
-              }
-
               // Descarga em cadeia: cada impacto do projétil original pode chamar alvos extras.
-              if (!shot.isChainLightning && purchases.chain_lightning > 0) {
+              const supportsChainRelic = shot.kind === undefined || shot.kind === "bullet" || shot.kind === "revolver_empowered" || shot.kind === "plasma_core";
+              if (!shot.isChainLightning && supportsChainRelic && purchases.chain_lightning > 0) {
                 const chainLevel = Math.min(3, purchases.chain_lightning);
                 const chainCount = chainLevel;
                 const chainDamage = [0, 0.55, 0.65, 0.75][chainLevel];
