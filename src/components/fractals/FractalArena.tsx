@@ -53,12 +53,12 @@ type SpriteKey = "boss" | "elite" | "wraith" | "charger" | "brute" | "playerIdle
 type SpriteMap = Partial<Record<SpriteKey, HTMLImageElement>>;
 type PlayerVisualAction = "idle" | "move" | "cast";
 const WEAPON_CONFIG: Record<WeaponId, { name: string; description: string; price: number; purchaseKey: keyof PurchaseState | null; masteryKey: keyof PurchaseState; projectKey: keyof PurchaseState; evolutionName: string }> = {
-  void_revolver: { name: "Revólver do Vazio", description: "Disparos automáticos que perseguem o inimigo mais próximo.", price: 0, purchaseKey: null, masteryKey: "mastery_void_revolver", projectKey: "evolution_void_revolver", evolutionName: "Seis Ecos" },
-  unstable_core: { name: "Núcleo Instável", description: "Orbes lentos que explodem e atingem inimigos próximos.", price: 8000, purchaseKey: "weapon_nucleus", masteryKey: "mastery_nucleus", projectKey: "evolution_nucleus", evolutionName: "Singularidade" },
-  spectral_scythe: { name: "Foice Espectral", description: "Cortes espectrais de curto alcance que atravessam grupos.", price: 9000, purchaseKey: "weapon_scythe", masteryKey: "mastery_scythe", projectKey: "evolution_scythe", evolutionName: "Ceifador de Almas" },
-  orbital_swords: { name: "Espadas Orbitais", description: "Lâminas conjuradas giram ao redor do personagem e atingem ameaças próximas.", price: 10000, purchaseKey: "weapon_orbitals", masteryKey: "mastery_orbitals", projectKey: "evolution_orbitals", evolutionName: "Dança das Lâminas" },
-  gravity_shackle: { name: "Grilhão Gravitacional", description: "Pulsos atraem inimigos e os ferem dentro de uma zona gravitacional.", price: 11000, purchaseKey: "weapon_gravity", masteryKey: "mastery_gravity", projectKey: "evolution_gravity", evolutionName: "Prisão do Abismo" },
-  rune_sentinels: { name: "Sentinelas Rúnicas", description: "Cristais orbitais disparam projéteis automáticos contra alvos.", price: 12000, purchaseKey: "weapon_sentinels", masteryKey: "mastery_sentinels", projectKey: "evolution_sentinels", evolutionName: "Arsenal Ancestral" },
+  void_revolver: { name: "Revólver do Vazio", description: "Rajadas lineares de precisão; a cada seis disparos, uma bala dourada reforçada.", price: 0, purchaseKey: null, masteryKey: "mastery_void_revolver", projectKey: "evolution_void_revolver", evolutionName: "Seis Ecos" },
+  unstable_core: { name: "Núcleo Instável", description: "Orbe lento de plasma que deixa uma poça corrosiva ao atingir um alvo ou esgotar seu alcance.", price: 8000, purchaseKey: "weapon_nucleus", masteryKey: "mastery_nucleus", projectKey: "evolution_nucleus", evolutionName: "Singularidade" },
+  spectral_scythe: { name: "Foice Espectral", description: "Um arco cortante de quase 200° que se torna um golpe circular completo ao evoluir.", price: 9000, purchaseKey: "weapon_scythe", masteryKey: "mastery_scythe", projectKey: "evolution_scythe", evolutionName: "Ceifador de Almas" },
+  orbital_swords: { name: "Espadas Orbitais", description: "Lâminas físicas permanecem em órbita e ferem ameaças por contato.", price: 10000, purchaseKey: "weapon_orbitals", masteryKey: "mastery_orbitals", projectKey: "evolution_orbitals", evolutionName: "Dança das Lâminas" },
+  gravity_shackle: { name: "Grilhão Gravitacional", description: "Cria um selo rúnico que puxa monstros para o centro e os fere em pulsos.", price: 11000, purchaseKey: "weapon_gravity", masteryKey: "mastery_gravity", projectKey: "evolution_gravity", evolutionName: "Prisão do Abismo" },
+  rune_sentinels: { name: "Sentinelas Rúnicas", description: "Sentinelas orbitais disparam feixes rúnicos rápidos contra os alvos mais resistentes.", price: 12000, purchaseKey: "weapon_sentinels", masteryKey: "mastery_sentinels", projectKey: "evolution_sentinels", evolutionName: "Arsenal Ancestral" },
 };
 const OMEN_CONFIG: Record<OmenId, { name: string; description: string }> = {
   famine: { name: "Fome Insaciável", description: "+20% de experiência e +20% de frequência de surgimento de inimigos." },
@@ -485,11 +485,12 @@ function spawnPlasmaPuddle(game: GameState, x: number, y: number, coreDamage: nu
 
 function getEquippedWeaponStrikeDamage(game: GameState): number {
   const weaponPower = (1 + (game.weaponLevel - 1) * 0.055) * (game.evolved ? 1.15 : 1);
-  const weaponMultiplier = game.weaponId === "unstable_core" ? 1.45
-    : game.weaponId === "spectral_scythe" ? (game.evolved ? 1.05 : 0.90)
-    : game.weaponId === "orbital_swords" ? 0.72
-    : game.weaponId === "gravity_shackle" ? (game.evolved ? 0.88 : 0.68)
-    : game.weaponId === "rune_sentinels" ? 0.64
+  const weaponMultiplier = game.weaponId === "unstable_core" ? 1.5
+    : game.weaponId === "spectral_scythe" ? (game.evolved ? 1.4 : 1.1)
+    : game.weaponId === "orbital_swords" ? 0.75
+    : game.weaponId === "gravity_shackle" ? (game.evolved ? 0.6 : 0.45)
+    : game.weaponId === "rune_sentinels" ? (game.evolved ? 0.75 : 0.55)
+    : game.weaponId === "void_revolver" && game.evolved ? 0.85
     : 1;
   return Math.max(1, Math.round(game.player.damage * weaponPower * weaponMultiplier));
 }
