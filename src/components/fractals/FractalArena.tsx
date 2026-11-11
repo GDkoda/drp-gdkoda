@@ -22,7 +22,11 @@ type Upgrade = { id: UpgradeId; name: string; description: string; icon: typeof 
 type UpgradeCounts = Record<string, { name: string; count: number; rarity: string }>;
 
 type Enemy = { x: number; y: number; hp: number; maxHp: number; speed: number; radius: number; damage: number; color: string; xp: number; type: "wraith" | "brute" | "charger" | "elite" | "boss"; attack: number; flash: number; windup: number; targetX: number; targetY: number; dashTime: number; summonedAtHalf: boolean; furyTriggered: boolean; isExecutioner?: boolean };
-type Shot = { x: number; y: number; vx: number; vy: number; damage: number; life: number };
+type Shot = {
+  x: number; y: number; vx: number; vy: number; damage: number; life: number;
+  hitTargets: Enemy[]; bouncesRemaining: number; piercesRemaining: number;
+  isChainLightning?: boolean; targetEnemy?: Enemy;
+};
 type Gem = { x: number; y: number; value: number; radius: number; previousX?: number; previousY?: number; runeCrystal?: boolean };
 type SpecialDrop = { x: number; y: number; kind: "area" | "experience" | "projectile_range" | "projectiles" | "food" | "void"; radius: number };
 type BreakableUrn = { id: number; x: number; y: number; hp: number; maxHp: number; radius: number; broken: boolean };
@@ -37,10 +41,12 @@ type PlayerVisualAction = "idle" | "move" | "cast";
 type PurchaseState = {
   area: number; experience: number; rarity: number; speed_2x: boolean; speed_3x: boolean;
   health: number; projectile_duration: number; projectile_range: number; projectiles: number;
+  ricochet: number; piercing: number; chain_lightning: number;
 };
 const DEFAULT_PURCHASES: PurchaseState = {
   area: 0, experience: 0, rarity: 0, speed_2x: false, speed_3x: false,
   health: 0, projectile_duration: 0, projectile_range: 0, projectiles: 0,
+  ricochet: 0, piercing: 0, chain_lightning: 0,
 };
 const PROJECTILE_DURATION_MULTIPLIERS = [1, 1.25, 1.5, 2] as const;
 const PROJECTILE_BASE_LIFE = 0.8;
@@ -56,6 +62,8 @@ function parsePurchaseState(raw: any): PurchaseState {
     speed_2x: !!raw?.speed_2x, speed_3x: !!raw?.speed_3x,
     health: Number(raw?.health ?? 0), projectile_duration: Number(raw?.projectile_duration ?? 0),
     projectile_range: Number(raw?.projectile_range ?? 0), projectiles: Number(raw?.projectiles ?? 0),
+    ricochet: Number(raw?.ricochet ?? 0), piercing: Number(raw?.piercing ?? 0),
+    chain_lightning: Number(raw?.chain_lightning ?? 0),
   };
 }
 
@@ -565,8 +573,16 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     const speed = Math.hypot(shot.vx, shot.vy) || 1; const len = 34;
     const tx = shot.x - shot.vx / speed * len, ty = shot.y - shot.vy / speed * len;
     const trail = ctx.createLinearGradient(tx, ty, shot.x, shot.y);
-    trail.addColorStop(0, "rgba(183,122,255,0)"); trail.addColorStop(1, "rgba(226,196,255,.75)");
-    ctx.strokeStyle = trail; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(shot.x, shot.y); ctx.stroke();
+    if (shot.isChainLightning) {
+      trail.addColorStop(0, "rgba(34,211,238,0)");
+      trail.addColorStop(1, "rgba(207,250,254,.98)");
+      ctx.strokeStyle = trail; ctx.lineWidth = 3.5;
+    } else {
+      trail.addColorStop(0, "rgba(183,122,255,0)");
+      trail.addColorStop(1, "rgba(226,196,255,.75)");
+      ctx.strokeStyle = trail; ctx.lineWidth = 5;
+    }
+    ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(shot.x, shot.y); ctx.stroke();
   });
   game.rings?.forEach((ring) => { ctx.globalAlpha = clamp(ring.life * 2.4, 0, 1); ctx.strokeStyle = ring.color; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(ring.x, ring.y, ring.r, 0, Math.PI * 2); ctx.stroke(); });
   ctx.restore();
@@ -576,7 +592,11 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     const fade = clamp(shot.life / Math.max(0.01, game.player.projectileLife), 0.25, 1);
     ctx.globalAlpha = fade;
     const projectile = sprites.projectile;
-    if (projectile?.complete && projectile.naturalWidth > 0) {
+    if (shot.isChainLightning) {
+      ctx.shadowColor = "#67e8f9"; ctx.shadowBlur = 12;
+      ctx.fillStyle = "#a5f3fc";
+      ctx.beginPath(); ctx.moveTo(9, 0); ctx.lineTo(2, -2); ctx.lineTo(4, -7); ctx.lineTo(-7, 1); ctx.lineTo(-1, 2); ctx.lineTo(-4, 7); ctx.closePath(); ctx.fill();
+    } else if (projectile?.complete && projectile.naturalWidth > 0) {
       ctx.shadowColor = "#b77aff"; ctx.shadowBlur = 0;
       ctx.drawImage(projectile, -15, -9, 30, 18);
     } else {
@@ -1189,6 +1209,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             game.shots.push({
               x: game.player.x, y: game.player.y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
               damage: game.player.damage * damageScale, life: game.player.projectileLife,
+              hitTargets: [], bouncesRemaining: purchases.ricochet, piercesRemaining: purchases.piercing,
             });
           }
           fractalAudio.shoot();
@@ -1205,7 +1226,19 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         } else if (game.player.spriteBlend < 1) {
           game.player.spriteBlend = Math.min(1, game.player.spriteBlend + dt / 0.12);
         }
-        game.shots.forEach((shot) => { shot.x += shot.vx * dt; shot.y += shot.vy * dt; shot.life -= dt; });
+        game.shots.forEach((shot) => {
+          if (shot.targetEnemy) {
+            if (shot.targetEnemy.hp <= 0) { shot.life = 0; return; }
+            const dx = shot.targetEnemy.x - shot.x, dy = shot.targetEnemy.y - shot.y;
+            const d = Math.max(1, Math.hypot(dx, dy));
+            const speed = Math.max(1, Math.hypot(shot.vx, shot.vy));
+            shot.vx = (dx / d) * speed;
+            shot.vy = (dy / d) * speed;
+          }
+          shot.x += shot.vx * dt;
+          shot.y += shot.vy * dt;
+          shot.life -= dt;
+        });
         const currentZoom = zoomRef.current;
         const cameraLeft = game.player.x - game.width / (2 * currentZoom), cameraTop = game.player.y - game.height / (2 * currentZoom);
         game.shots = game.shots.filter((shot) => shot.life > 0 && shot.x > cameraLeft - 20 && shot.x < cameraLeft + game.width / currentZoom + 20 && shot.y > cameraTop - 20 && shot.y < cameraTop + game.height / currentZoom + 20);
@@ -1330,9 +1363,39 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             const hitY = shot.y - enemy.y;
             if (enemy.hp > 0 && hitX * hitX + hitY * hitY < hitRadius * hitRadius) {
               const appliedDamage = Math.min(enemy.hp, shot.damage);
-              enemy.hp -= shot.damage; game.totalDamageDealt += appliedDamage; enemy.flash = 0.09; shot.life = 0; for (let k = 0; k < 2; k++) game.particles.push({ x: shot.x, y: shot.y, vx: (Math.random() - 0.5) * 160, vy: (Math.random() - 0.5) * 160, life: 0.22, color: "#f3dcff" });
+              enemy.hp -= shot.damage; game.totalDamageDealt += appliedDamage; enemy.flash = 0.09; for (let k = 0; k < 2; k++) game.particles.push({ x: shot.x, y: shot.y, vx: (Math.random() - 0.5) * 160, vy: (Math.random() - 0.5) * 160, life: 0.22, color: shot.isChainLightning ? "#67e8f9" : "#f3dcff" });
               game.damageNumbers.push({ x: enemy.x + (Math.random() - 0.5) * 10, y: enemy.y - enemy.radius - 8, value: shot.damage, life: 0.82, maxLife: 0.82, drift: (Math.random() - 0.5) * 14 });
               if (game.damageNumbers.length > 20) game.damageNumbers.shift();
+              shot.hitTargets.push(enemy);
+
+              // Descarga em cadeia: cada impacto do projétil original pode chamar alvos extras.
+              if (!shot.isChainLightning && purchases.chain_lightning > 0) {
+                const chainLevel = Math.min(3, purchases.chain_lightning);
+                const chainCount = chainLevel;
+                const chainDamage = [0, 0.55, 0.65, 0.75][chainLevel];
+                const chainRange = [0, 180, 215, 250][chainLevel];
+                const chainSpeed = 720;
+                const chainTargets = game.enemies
+                  .filter((candidate) => candidate !== enemy && candidate.hp > 0 && !shot.hitTargets.includes(candidate) && distance(enemy.x, enemy.y, candidate.x, candidate.y) <= chainRange)
+                  .sort((a, b) => distance(enemy.x, enemy.y, a.x, a.y) - distance(enemy.x, enemy.y, b.x, b.y))
+                  .slice(0, chainCount);
+                for (const chainTarget of chainTargets) {
+                  const chainDistance = Math.max(1, distance(enemy.x, enemy.y, chainTarget.x, chainTarget.y));
+                  game.shots.push({
+                    x: enemy.x, y: enemy.y,
+                    vx: ((chainTarget.x - enemy.x) / chainDistance) * chainSpeed,
+                    vy: ((chainTarget.y - enemy.y) / chainDistance) * chainSpeed,
+                    damage: Math.max(1, Math.round(shot.damage * chainDamage)),
+                    life: chainDistance / chainSpeed + 0.2,
+                    hitTargets: [...shot.hitTargets],
+                    bouncesRemaining: 0,
+                    piercesRemaining: 0,
+                    isChainLightning: true,
+                    targetEnemy: chainTarget,
+                  });
+                }
+              }
+
               if (enemy.hp <= 0) {
                 game.kills += 1;
                 fractalAudio.kill(enemy.type === "boss" || enemy.type === "elite");
@@ -1360,6 +1423,52 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                   (game.rings ??= []).push({ x: enemy.x, y: enemy.y, r: 6, max: big ? 140 : 46, life: big ? 0.6 : 0.32, color: big ? "#e9c46a" : "#c9a2ff" });
                   if (big) game.shake = Math.max(game.shake ?? 0, enemy.type === "boss" ? 16 : 9); }
               }
+              // Perfuração prioriza inimigos alinhados à frente; ricochete busca um novo alvo quando não há alvo alinhado.
+              let continued = false;
+              const projectileSpeed = Math.max(1, Math.hypot(shot.vx, shot.vy));
+              const dirX = shot.vx / projectileSpeed, dirY = shot.vy / projectileSpeed;
+
+              if (!shot.isChainLightning && shot.piercesRemaining > 0) {
+                const forwardTarget = game.enemies
+                  .map((candidate) => {
+                    const dx = candidate.x - enemy.x, dy = candidate.y - enemy.y;
+                    return { candidate, forward: dx * dirX + dy * dirY, lateral: Math.abs(dx * dirY - dy * dirX) };
+                  })
+                  .filter(({ candidate, forward, lateral }) =>
+                    candidate.hp > 0 && !shot.hitTargets.includes(candidate) &&
+                    forward > enemy.radius + candidate.radius + 8 &&
+                    forward <= 260 && lateral <= candidate.radius + 15
+                  )
+                  .sort((a, b) => a.forward - b.forward)[0];
+
+                if (forwardTarget) {
+                  shot.targetEnemy = undefined;
+                  shot.x = enemy.x + dirX * (enemy.radius + 8);
+                  shot.y = enemy.y + dirY * (enemy.radius + 8);
+                  shot.piercesRemaining -= 1;
+                  shot.life = Math.max(shot.life, forwardTarget.forward / projectileSpeed + 0.18);
+                  continued = true;
+                }
+              }
+
+              if (!continued && !shot.isChainLightning && shot.bouncesRemaining > 0) {
+                const nextTarget = game.enemies
+                  .filter((candidate) => candidate !== enemy && candidate.hp > 0 && !shot.hitTargets.includes(candidate) && distance(enemy.x, enemy.y, candidate.x, candidate.y) <= 280)
+                  .sort((a, b) => distance(enemy.x, enemy.y, a.x, a.y) - distance(enemy.x, enemy.y, b.x, b.y))[0];
+                if (nextTarget) {
+                  const nextDistance = Math.max(1, distance(enemy.x, enemy.y, nextTarget.x, nextTarget.y));
+                  shot.x = enemy.x;
+                  shot.y = enemy.y;
+                  shot.vx = ((nextTarget.x - enemy.x) / nextDistance) * projectileSpeed;
+                  shot.vy = ((nextTarget.y - enemy.y) / nextDistance) * projectileSpeed;
+                  shot.targetEnemy = nextTarget;
+                  shot.bouncesRemaining -= 1;
+                  shot.life = Math.max(shot.life, nextDistance / projectileSpeed + 0.18);
+                  continued = true;
+                }
+              }
+
+              if (!continued) shot.life = 0;
               break;
             }
           }
@@ -1761,6 +1870,33 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                           <div className="fractals-shop-pips" aria-label={"Nível " + purchases.projectiles + " de 3"}>{Array.from({ length: 3 }).map((_, i) => <i key={i} className={i < purchases.projectiles ? "fractals-shop-pip is-filled" : "fractals-shop-pip"} />)}<span>{purchases.projectiles}/3</span></div>
                         </div>
                         <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || purchases.projectiles >= 3 || (!isMaster && fractalBalance < FRACTAL_SHOP.projectiles[purchases.projectiles]?.cost)} onClick={() => void purchaseUpgrade("projectiles")}>{purchases.projectiles >= 3 ? "MAX" : isMaster ? "GRÁTIS" : FRACTAL_SHOP.projectiles[purchases.projectiles]?.cost.toLocaleString("pt-BR") + " FR"}</button>
+                      </article>
+                      <article className="fractals-shop-item">
+                        <div className="fractals-shop-item__slot"><RotateCw className="h-5 w-5 text-cyan-300" /></div>
+                        <div className="min-w-0">
+                          <p className="fractals-shop-item__name">Ricochete Arcano</p>
+                          <p className="fractals-shop-item__description">Projéteis saltam para outros inimigos após o impacto.</p>
+                          <div className="fractals-shop-pips" aria-label={"Nível " + purchases.ricochet + " de 3"}>{Array.from({ length: 3 }).map((_, i) => <i key={i} className={i < purchases.ricochet ? "fractals-shop-pip is-filled" : "fractals-shop-pip"} />)}<span>{purchases.ricochet}/3</span></div>
+                        </div>
+                        <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || purchases.ricochet >= 3 || (!isMaster && fractalBalance < FRACTAL_SHOP.ricochet[purchases.ricochet]?.cost)} onClick={() => void purchaseUpgrade("ricochet")}>{purchases.ricochet >= 3 ? "MAX" : isMaster ? "GRÁTIS" : FRACTAL_SHOP.ricochet[purchases.ricochet]?.cost.toLocaleString("pt-BR") + " FR"}</button>
+                      </article>
+                      <article className="fractals-shop-item">
+                        <div className="fractals-shop-item__slot"><Target className="h-5 w-5 text-violet-300" /></div>
+                        <div className="min-w-0">
+                          <p className="fractals-shop-item__name">Perfuração Espectral</p>
+                          <p className="fractals-shop-item__description">Projéteis atravessam inimigos e continuam na mesma direção.</p>
+                          <div className="fractals-shop-pips" aria-label={"Nível " + purchases.piercing + " de 3"}>{Array.from({ length: 3 }).map((_, i) => <i key={i} className={i < purchases.piercing ? "fractals-shop-pip is-filled" : "fractals-shop-pip"} />)}<span>{purchases.piercing}/3</span></div>
+                        </div>
+                        <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || purchases.piercing >= 3 || (!isMaster && fractalBalance < FRACTAL_SHOP.piercing[purchases.piercing]?.cost)} onClick={() => void purchaseUpgrade("piercing")}>{purchases.piercing >= 3 ? "MAX" : isMaster ? "GRÁTIS" : FRACTAL_SHOP.piercing[purchases.piercing]?.cost.toLocaleString("pt-BR") + " FR"}</button>
+                      </article>
+                      <article className="fractals-shop-item">
+                        <div className="fractals-shop-item__slot"><Zap className="h-5 w-5 text-sky-300" /></div>
+                        <div className="min-w-0">
+                          <p className="fractals-shop-item__name">Descarga em Cadeia</p>
+                          <p className="fractals-shop-item__description">Cada impacto libera choques elétricos contra alvos próximos.</p>
+                          <div className="fractals-shop-pips" aria-label={"Nível " + purchases.chain_lightning + " de 3"}>{Array.from({ length: 3 }).map((_, i) => <i key={i} className={i < purchases.chain_lightning ? "fractals-shop-pip is-filled" : "fractals-shop-pip"} />)}<span>{purchases.chain_lightning}/3</span></div>
+                        </div>
+                        <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || purchases.chain_lightning >= 3 || (!isMaster && fractalBalance < FRACTAL_SHOP.chain_lightning[purchases.chain_lightning]?.cost)} onClick={() => void purchaseUpgrade("chain_lightning")}>{purchases.chain_lightning >= 3 ? "MAX" : isMaster ? "GRÁTIS" : FRACTAL_SHOP.chain_lightning[purchases.chain_lightning]?.cost.toLocaleString("pt-BR") + " FR"}</button>
                       </article>
                     </div>
                   )}
