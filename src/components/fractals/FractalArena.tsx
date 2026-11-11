@@ -1188,10 +1188,29 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
   const rerollGiftChoices = () => {
     const game = gameRef.current;
     if (!game || game.rerollsRemaining <= 0 || levelChoices.length === 0) return;
+
+    const choiceSignature = (choices: Upgrade[]) =>
+      choices.map((choice) => `${choice.id}:${choice.rarity ?? "normal"}`).sort().join("|");
+    const previousSignature = choiceSignature(levelChoices);
+
     game.rerollsRemaining -= 1;
     setSelectedUpgrade(null);
     setFlippedCardId(null);
-    setLevelChoices(buildLevelChoices(game, purchases));
+
+    let nextChoices = buildLevelChoices(game, purchases);
+    // A rerrolagem deve realmente trocar a seleção. Evita consumir um uso
+    // quando o sorteio devolve exatamente as mesmas cartas e raridades.
+    for (let attempt = 0; attempt < 8 && choiceSignature(nextChoices) === previousSignature; attempt += 1) {
+      nextChoices = buildLevelChoices(game, purchases);
+    }
+
+    if (choiceSignature(nextChoices) === previousSignature) {
+      game.rerollsRemaining += 1;
+      toast.error("Não há outra combinação disponível. Sua rerrolagem foi devolvida.");
+      return;
+    }
+
+    setLevelChoices(nextChoices);
     toast.info(`Dádivas rerroladas. Restam ${game.rerollsRemaining} uso(s) nesta partida.`);
   };
 
@@ -1199,18 +1218,41 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
     const game = gameRef.current;
     if (!game || game.banishesRemaining <= 0 || upgrade.id === "weapon_mastery" || upgrade.id === "weapon_evolution") return;
     if (game.bannedUpgradeIds.includes(upgrade.id)) return;
+
     const isBasicGift = UPGRADES.some((item) => item.id === upgrade.id);
     const remainingBasicGifts = UPGRADES.filter((item) => !game.bannedUpgradeIds.includes(item.id));
     if (isBasicGift && remainingBasicGifts.length <= 1) {
       toast.error("Mantenha pelo menos uma dádiva básica disponível para a partida.");
       return;
     }
+
+    const targetChoiceCount = levelChoices.length;
+    const remainingChoices = levelChoices.filter((choice) => choice.id !== upgrade.id);
     game.bannedUpgradeIds.push(upgrade.id);
     game.banishesRemaining -= 1;
+
+    // O Exílio remove a dádiva da partida e repõe o espaço com outra opção
+    // elegível, sem duplicar cartas que o jogador decidiu manter.
+    const replacements: Upgrade[] = [];
+    for (let attempt = 0; attempt < 8 && remainingChoices.length + replacements.length < targetChoiceCount; attempt += 1) {
+      for (const candidate of buildLevelChoices(game, purchases)) {
+        const alreadyVisible = [...remainingChoices, ...replacements].some((choice) => choice.id === candidate.id);
+        if (candidate.id === upgrade.id || alreadyVisible) continue;
+        replacements.push(candidate);
+        if (remainingChoices.length + replacements.length >= targetChoiceCount) break;
+      }
+    }
+
+    const nextChoices = [...remainingChoices, ...replacements].slice(0, targetChoiceCount);
     setSelectedUpgrade(null);
     setFlippedCardId(null);
-    setLevelChoices((current) => current.filter((choice) => choice.id !== upgrade.id));
-    toast.info(`${upgrade.name} foi exilada e não voltará nesta partida.`);
+    setLevelChoices(nextChoices);
+
+    if (nextChoices.length < targetChoiceCount) {
+      toast.info(`${upgrade.name} foi exilada. Não havia outra dádiva elegível para preencher todos os espaços.`);
+    } else {
+      toast.info(`${upgrade.name} foi exilada e substituída. Ela não voltará nesta partida.`);
+    }
   };
 
   useEffect(() => {
@@ -2321,7 +2363,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-1.5 sm:gap-3">
+                  <div className={`grid gap-1.5 sm:gap-3 ${levelChoices.length === 4 ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-3"}`}>
                     {levelChoices.map((upgrade) => {
                       const Icon = upgrade.icon;
                       const rarity = upgrade.rarity ?? "normal";
