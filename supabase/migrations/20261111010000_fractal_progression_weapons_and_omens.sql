@@ -168,7 +168,7 @@ begin
 
     if price is null then raise exception 'Preço da melhoria não configurado'; end if;
 
-    if _upgrade like 'evolution\_%' escape '\' then
+    if pg_catalog.left(_upgrade, 10) = 'evolution_' then
       mastery_key := case _upgrade
         when 'evolution_void_revolver' then 'mastery_void_revolver'
         when 'evolution_nucleus' then 'mastery_nucleus'
