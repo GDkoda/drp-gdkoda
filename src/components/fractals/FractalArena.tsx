@@ -1358,6 +1358,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         const collisionGrid = buildEnemySpatialGrid(game.enemies);
         for (const shot of game.shots) {
           for (const enemy of getNearbyEnemies(shot.x, shot.y, collisionGrid)) {
+            if (shot.hitTargets.includes(enemy)) continue;
+            if (shot.targetEnemy && shot.targetEnemy !== enemy) continue;
             const hitRadius = enemy.radius + 5;
             const hitX = shot.x - enemy.x;
             const hitY = shot.y - enemy.y;
