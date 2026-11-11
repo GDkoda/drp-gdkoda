@@ -2277,40 +2277,40 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                         <div className="fractals-shop-item__slot"><Orbit className="h-5 w-5 text-violet-300" /></div>
                         <div className="min-w-0">
                           <p className="fractals-shop-item__name">Vórtice Coletor</p>
-                          <p className="fractals-shop-item__description">Amplia o raio de atração de fragmentos.</p>
-                          <div className="fractals-shop-pips" aria-label={"Nível " + purchases.area + " de 3"}>{Array.from({ length: 3 }).map((_, i) => <i key={i} className={i < purchases.area ? "fractals-shop-pip is-filled" : "fractals-shop-pip"} />)}<span>{purchases.area}/3</span></div>
+                          <p className="fractals-shop-item__description">Cada coleta dá +10% de raio, até +100% (10 coletas). N1 libera a escolha; N2/N3/N4: 1%/3%/5% de queda em Brutos e Elites.</p>
+                          <div className="fractals-shop-pips" aria-label={"Nível " + purchases.area + " de 4"}>{Array.from({ length: 4 }).map((_, i) => <i key={i} className={i < purchases.area ? "fractals-shop-pip is-filled" : "fractals-shop-pip"} />)}<span>{purchases.area}/4</span></div>
                         </div>
-                        <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || purchases.area >= 3 || (!isMaster && fractalBalance < FRACTAL_SHOP.area[purchases.area]?.cost)} onClick={() => void purchaseUpgrade("area")}>{purchases.area >= 3 ? "MAX" : isMaster ? "GRÁTIS" : FRACTAL_SHOP.area[purchases.area]?.cost.toLocaleString("pt-BR") + " FR"}</button>
+                        <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || purchases.area >= 4 || (!isMaster && fractalBalance < FRACTAL_SHOP.area[purchases.area]?.cost)} onClick={() => void purchaseUpgrade("area")}>{purchases.area >= 4 ? "MAX" : isMaster ? "GRÁTIS" : FRACTAL_SHOP.area[purchases.area]?.cost.toLocaleString("pt-BR") + " FR"}</button>
                       </article>
 
                       <article className="fractals-shop-item">
                         <div className="fractals-shop-item__slot"><Sparkles className="h-5 w-5 text-amber-300" /></div>
                         <div className="min-w-0">
                           <p className="fractals-shop-item__name">Afinidade de XP</p>
-                          <p className="fractals-shop-item__description">+5% de XP por fragmento coletado.</p>
-                          <div className="fractals-shop-pips" aria-label={"Nível " + purchases.experience + " de 3"}>{Array.from({ length: 3 }).map((_, i) => <i key={i} className={i < purchases.experience ? "fractals-shop-pip is-filled" : "fractals-shop-pip"} />)}<span>{purchases.experience}/3</span></div>
+                          <p className="fractals-shop-item__description">Cada coleta dá +5% de XP, até +50% (10 coletas). N1 libera a escolha; N2/N3/N4: 1%/3%/5% de queda em Brutos e Elites.</p>
+                          <div className="fractals-shop-pips" aria-label={"Nível " + purchases.experience + " de 4"}>{Array.from({ length: 4 }).map((_, i) => <i key={i} className={i < purchases.experience ? "fractals-shop-pip is-filled" : "fractals-shop-pip"} />)}<span>{purchases.experience}/4</span></div>
                         </div>
-                        <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || purchases.experience >= 3 || (!isMaster && fractalBalance < FRACTAL_SHOP.experience[purchases.experience]?.cost)} onClick={() => void purchaseUpgrade("experience")}>{purchases.experience >= 3 ? "MAX" : isMaster ? "GRÁTIS" : FRACTAL_SHOP.experience[purchases.experience]?.cost.toLocaleString("pt-BR") + " FR"}</button>
+                        <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || purchases.experience >= 4 || (!isMaster && fractalBalance < FRACTAL_SHOP.experience[purchases.experience]?.cost)} onClick={() => void purchaseUpgrade("experience")}>{purchases.experience >= 4 ? "MAX" : isMaster ? "GRÁTIS" : FRACTAL_SHOP.experience[purchases.experience]?.cost.toLocaleString("pt-BR") + " FR"}</button>
                       </article>
 
                       <article className="fractals-shop-item">
                         <div className="fractals-shop-item__slot"><Target className="h-5 w-5 text-teal-300" /></div>
                         <div className="min-w-0">
                           <p className="fractals-shop-item__name">Alcance Arcano</p>
-                          <p className="fractals-shop-item__description">Disparos alcançam inimigos mais distantes.</p>
-                          <div className="fractals-shop-pips" aria-label={"Nível " + purchases.projectile_range + " de 3"}>{Array.from({ length: 3 }).map((_, i) => <i key={i} className={i < purchases.projectile_range ? "fractals-shop-pip is-filled" : "fractals-shop-pip"} />)}<span>{purchases.projectile_range}/3</span></div>
+                          <p className="fractals-shop-item__description">+10% de distância por coleta, até +50%. N1 libera a escolha; N2/N3/N4: 1%/3%/5% de queda em Brutos e Elites.</p>
+                          <div className="fractals-shop-pips" aria-label={"Nível " + purchases.projectile_range + " de 4"}>{Array.from({ length: 4 }).map((_, i) => <i key={i} className={i < purchases.projectile_range ? "fractals-shop-pip is-filled" : "fractals-shop-pip"} />)}<span>{purchases.projectile_range}/4</span></div>
                         </div>
-                        <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || purchases.projectile_range >= 3 || (!isMaster && fractalBalance < FRACTAL_SHOP.projectile_range[purchases.projectile_range]?.cost)} onClick={() => void purchaseUpgrade("projectile_range")}>{purchases.projectile_range >= 3 ? "MAX" : isMaster ? "GRÁTIS" : FRACTAL_SHOP.projectile_range[purchases.projectile_range]?.cost.toLocaleString("pt-BR") + " FR"}</button>
+                        <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || purchases.projectile_range >= 4 || (!isMaster && fractalBalance < FRACTAL_SHOP.projectile_range[purchases.projectile_range]?.cost)} onClick={() => void purchaseUpgrade("projectile_range")}>{purchases.projectile_range >= 4 ? "MAX" : isMaster ? "GRÁTIS" : FRACTAL_SHOP.projectile_range[purchases.projectile_range]?.cost.toLocaleString("pt-BR") + " FR"}</button>
                       </article>
 
                       <article className="fractals-shop-item">
                         <div className="fractals-shop-item__slot"><Swords className="h-5 w-5 text-indigo-300" /></div>
                         <div className="min-w-0">
                           <p className="fractals-shop-item__name">Coroa de Estilhaços</p>
-                          <p className="fractals-shop-item__description">Libera até +2 projéteis extras simultâneos.</p>
-                          <div className="fractals-shop-pips" aria-label={"Nível " + purchases.projectiles + " de 3"}>{Array.from({ length: 3 }).map((_, i) => <i key={i} className={i < purchases.projectiles ? "fractals-shop-pip is-filled" : "fractals-shop-pip"} />)}<span>{purchases.projectiles}/3</span></div>
+                          <p className="fractals-shop-item__description">Cada coleta adiciona um projétil, até +2. N1 libera a escolha; N2/N3/N4: 1%/3%/5% de queda em Brutos e Elites.</p>
+                          <div className="fractals-shop-pips" aria-label={"Nível " + purchases.projectiles + " de 4"}>{Array.from({ length: 4 }).map((_, i) => <i key={i} className={i < purchases.projectiles ? "fractals-shop-pip is-filled" : "fractals-shop-pip"} />)}<span>{purchases.projectiles}/4</span></div>
                         </div>
-                        <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || purchases.projectiles >= 3 || (!isMaster && fractalBalance < FRACTAL_SHOP.projectiles[purchases.projectiles]?.cost)} onClick={() => void purchaseUpgrade("projectiles")}>{purchases.projectiles >= 3 ? "MAX" : isMaster ? "GRÁTIS" : FRACTAL_SHOP.projectiles[purchases.projectiles]?.cost.toLocaleString("pt-BR") + " FR"}</button>
+                        <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || purchases.projectiles >= 4 || (!isMaster && fractalBalance < FRACTAL_SHOP.projectiles[purchases.projectiles]?.cost)} onClick={() => void purchaseUpgrade("projectiles")}>{purchases.projectiles >= 4 ? "MAX" : isMaster ? "GRÁTIS" : FRACTAL_SHOP.projectiles[purchases.projectiles]?.cost.toLocaleString("pt-BR") + " FR"}</button>
                       </article>
                       <article className="fractals-shop-item">
                         <div className="fractals-shop-item__slot"><RotateCw className="h-5 w-5 text-cyan-300" /></div>
