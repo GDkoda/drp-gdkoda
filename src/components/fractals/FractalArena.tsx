@@ -146,7 +146,7 @@ function buildLevelChoices(game: GameState, purchases: PurchaseState): Upgrade[]
     if (choices.length > 0) choices[replaceAt] = field; else choices.push(field);
   }
 
-  if (purchases.anchor_soul && !game.anchorReviveAvailable && !game.anchorReviveUsed && Math.random() < 0.10) {
+  if (purchases.anchor_soul && !game.bannedUpgradeIds.includes("anchor_soul") && !game.anchorReviveAvailable && !game.anchorReviveUsed && Math.random() < 0.10) {
     const replaceAt = Math.floor(Math.random() * Math.min(2, choices.length));
     const anchorGift: Upgrade = { id: "anchor_soul", name: "Âncora da Alma", description: "Concede uma ressurreição nesta expedição, retornando com 40% da vida e 3 segundos de invulnerabilidade.", icon: Heart };
     if (choices.length > 0) choices[replaceAt] = anchorGift; else choices.push(anchorGift);
@@ -2056,7 +2056,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                         <div className="fractals-shop-item__slot"><GemIcon className="h-5 w-5 text-fuchsia-300" /></div>
                         <div className="min-w-0">
                           <p className="fractals-shop-item__name">Ressonância Rara</p>
-                          <p className="fractals-shop-item__description">Aumenta o peso de dádivas Normais para Raras. Não altera diretamente a chance Épica.</p>
+                          <p className="fractals-shop-item__description">Aumenta o peso de dádivas Normais para Raras. A promoção para Épica pertence à Transmutação.</p>
                           <div className="fractals-shop-pips" aria-label={"Nível " + purchases.rarity + " de 3"}>{Array.from({ length: 3 }).map((_, i) => <i key={i} className={i < purchases.rarity ? "fractals-shop-pip is-filled" : "fractals-shop-pip"} />)}<span>{purchases.rarity}/3</span></div>
                         </div>
                         <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || purchases.rarity >= 3 || (!isMaster && fractalBalance < FRACTAL_SHOP.rarity[purchases.rarity]?.cost)} onClick={() => void purchaseUpgrade("rarity")}>{purchases.rarity >= 3 ? "MAX" : isMaster ? "GRÁTIS" : FRACTAL_SHOP.rarity[purchases.rarity]?.cost.toLocaleString("pt-BR") + " FR"}</button>
