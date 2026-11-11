@@ -6,7 +6,7 @@ import candlesImg from "@/assets/fractals/candles.png";
 import catUrnImg from "@/assets/fractals/cat-urn.png";
 import { useCallback, useEffect, useRef, useState, type PointerEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, Heart, Move, Pause, Play, RotateCcw, RotateCw, Check, Shield, Skull, Sparkles, Swords, Zap, Maximize, UserRound, Gauge, ArrowLeft, ShoppingBag, Crown, Gem as GemIcon, MapPin, Flame, Leaf, Snowflake, Orbit, Lock, Link2, ChevronDown, Coins, Timer, Target, ZoomIn, ZoomOut, Volume2, VolumeX } from "lucide-react";
+import { AlertTriangle, Heart, Move, Pause, Play, RotateCcw, RotateCw, Check, Shield, Skull, Sparkles, Swords, Zap, Maximize, UserRound, Gauge, ArrowLeft, ShoppingBag, Crown, Gem as GemIcon, MapPin, Flame, Leaf, Snowflake, Orbit, Lock, Link2, ChevronDown, Coins, Timer, Target, ZoomIn, ZoomOut, Volume2, VolumeX, Ban, Clover, Dna, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { getDifficultySnapshot } from "@/lib/fractals/difficulty";
@@ -2283,7 +2283,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
     <div className="mb-2 flex items-center gap-2"><Sparkles className="h-4 w-4 text-amber-200"/><h4 className="text-xs font-black uppercase tracking-wider text-violet-100">Dádivas &amp; Runas Ativas</h4></div>
     {Object.entries(gameRef.current?.upgradeCounts ?? {}).length > 0 ? <div className="grid grid-cols-1 gap-1.5">
       {Object.entries(gameRef.current?.upgradeCounts ?? {}).map(([id,rune])=><div key={id} className="flex items-center justify-between gap-2 rounded-lg border border-white/10 bg-black/20 px-2.5 py-2">
-        <div className="flex min-w-0 items-center gap-2"><span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-violet-400/10 text-sm">{id==="power"?"⚔":id==="haste"?"⚡":id==="vitality"?"✚":id==="swift"?"➤":id==="special_area"?"🧲":id==="special_experience"?"🔮":id==="special_projectile_range"?"🏹":"✦"}</span><div className="min-w-0"><p className="truncate text-[11px] font-bold text-white">{rune.name}</p><p className="text-[9px] uppercase tracking-wider text-violet-200/65">{rune.rarity==="epic"?"Épica":rune.rarity==="rare"?"Rara":"Comum"}</p></div></div>
+        <div className="flex min-w-0 items-center gap-2"><span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-violet-400/10 text-sm">{id==="power"?"⚔":id==="haste"?"⚡":id==="vitality"?"✚":id==="swift"?"➤":id==="special_area"?"🧲":id==="special_experience"?"🔮":id==="special_projectile_range"?"🏹":"✦"}</span><div className="min-w-0"><p className="truncate text-[11px] font-bold text-white">{rune.name}</p><p className="text-[9px] uppercase tracking-wider text-violet-200/65">{rune.rarity==="legendary"?"Lendária":rune.rarity==="epic"?"Épica":rune.rarity==="rare"?"Rara":"Comum"}</p></div></div>
         <strong className="shrink-0 text-xs tabular-nums text-amber-200">x{rune.count}</strong>
       </div>)}
     </div> : <p className="text-[10px] text-white/45">Nenhuma dádiva acumulada nesta expedição.</p>}
@@ -2303,6 +2303,11 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                       {eventRewardStep > 0 ? "Escolha sua recompensa" : "Selecione uma Dádiva"}
                     </h3>
                     <p className="text-[9px] text-white/45">Toque para selecionar · Use o ícone de giro para ler os detalhes</p>
+                    <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
+                      <span className="rounded-full border border-sky-300/20 bg-sky-400/10 px-2.5 py-1 text-[9px] font-bold text-sky-100">Rerrolagens: {gameRef.current?.rerollsRemaining ?? 0}</span>
+                      <span className="rounded-full border border-rose-300/20 bg-rose-400/10 px-2.5 py-1 text-[9px] font-bold text-rose-100">Exílios: {gameRef.current?.banishesRemaining ?? 0}</span>
+                      <Button size="sm" variant="outline" disabled={(gameRef.current?.rerollsRemaining ?? 0) <= 0} onClick={rerollGiftChoices} className="h-8 border-sky-300/30 bg-sky-400/10 px-3 text-[9px] font-black text-sky-100 hover:bg-sky-400/20"><RotateCcw className="mr-1.5 h-3 w-3"/> RERROLAR OPÇÕES</Button>
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-3 gap-1.5 sm:gap-3">
@@ -2312,19 +2317,25 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                       const isSelected = selectedUpgrade?.id === upgrade.id;
                       const isFlipped = flippedCardId === upgrade.id;
 
-                      const rarityBorder = rarity === "epic"
+                      const rarityBorder = rarity === "legendary"
+                        ? "border-amber-300/70 bg-gradient-to-b from-amber-400/20 to-[#21180e] shadow-[0_0_18px_rgba(251,191,36,.12)]"
+                        : rarity === "epic"
                         ? "border-fuchsia-400/50 bg-gradient-to-b from-fuchsia-500/15 to-[#1c1226]"
                         : rarity === "rare"
                         ? "border-sky-300/40 bg-gradient-to-b from-sky-500/10 to-[#101724]"
                         : "border-amber-200/20 bg-gradient-to-b from-white/[0.05] to-[#181420]";
 
-                      const rarityTag = rarity === "epic"
+                      const rarityTag = rarity === "legendary"
+                        ? "text-amber-200 border-amber-300/40 bg-amber-400/10"
+                        : rarity === "epic"
                         ? "text-fuchsia-200 border-fuchsia-300/30 bg-fuchsia-400/10"
                         : rarity === "rare"
                         ? "text-sky-200 border-sky-300/30 bg-sky-400/10"
                         : "text-amber-100/70 border-white/10 bg-white/5";
 
-                      const iconStyle = rarity === "epic"
+                      const iconStyle = rarity === "legendary"
+                        ? "border-amber-300/50 bg-amber-400/20 text-amber-100"
+                        : rarity === "epic"
                         ? "border-fuchsia-300/40 bg-fuchsia-400/20 text-fuchsia-100"
                         : rarity === "rare"
                         ? "border-sky-300/40 bg-sky-400/20 text-sky-100"
@@ -2356,12 +2367,19 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                             onClick={(e) => {
                               e.stopPropagation();
                               fractalAudio.cardFlip();
-                               setFlippedCardId(isFlipped ? null : upgrade.id);
+                              setFlippedCardId(isFlipped ? null : upgrade.id);
                             }}
                             className="absolute right-1.5 top-1.5 z-10 flex h-6 w-6 items-center justify-center rounded-full border border-white/20 bg-black/40 text-white/70 backdrop-blur-sm transition hover:bg-white/20 hover:text-white"
                           >
                             <RotateCw className={`h-3 w-3 transition-transform duration-300 ${isFlipped ? "rotate-180 text-amber-300" : ""}`} />
                           </button>
+                          {(gameRef.current?.banishesRemaining ?? 0) > 0 && upgrade.id !== "weapon_mastery" && upgrade.id !== "weapon_evolution" && (
+                            <button type="button" title="Banir esta dádiva nesta partida" aria-label={`Banir ${upgrade.name}`}
+                              onClick={(event) => { event.stopPropagation(); banishGiftChoice(upgrade); }}
+                              className="absolute right-9 top-1.5 z-10 flex h-6 w-6 items-center justify-center rounded-full border border-rose-300/25 bg-rose-950/70 text-rose-200 transition hover:bg-rose-500/30">
+                              <Ban className="h-3 w-3"/>
+                            </button>
+                          )}
 
                           {isSelected && (
                             <div className="absolute left-1.5 top-1.5 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-amber-400 text-black shadow-md">
@@ -2378,7 +2396,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                                 {upgrade.name}
                               </p>
                               <span className={`mt-2 rounded-full border px-1.5 py-0.5 text-[7px] font-black uppercase tracking-wider sm:text-[8px] ${rarityTag}`}>
-                                {rarity === "epic" ? "Épica" : rarity === "rare" ? "Rara" : "Normal"}
+                                {rarity === "legendary" ? "Lendária" : rarity === "epic" ? "Épica" : rarity === "rare" ? "Rara" : "Normal"}
                               </span>
                             </div>
                           ) : (
