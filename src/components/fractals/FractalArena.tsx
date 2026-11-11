@@ -1877,7 +1877,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                         <div className="fractals-shop-item__slot"><RotateCw className="h-5 w-5 text-cyan-300" /></div>
                         <div className="min-w-0">
                           <p className="fractals-shop-item__name">Ricochete Arcano</p>
-                          <p className="fractals-shop-item__description">Projéteis saltam para outros inimigos após o impacto.</p>
+                          <p className="fractals-shop-item__description">I: +1 alvo · II: +2 · III: +3 alvos por ricochete.</p>
                           <div className="fractals-shop-pips" aria-label={"Nível " + purchases.ricochet + " de 3"}>{Array.from({ length: 3 }).map((_, i) => <i key={i} className={i < purchases.ricochet ? "fractals-shop-pip is-filled" : "fractals-shop-pip"} />)}<span>{purchases.ricochet}/3</span></div>
                         </div>
                         <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || purchases.ricochet >= 3 || (!isMaster && fractalBalance < FRACTAL_SHOP.ricochet[purchases.ricochet]?.cost)} onClick={() => void purchaseUpgrade("ricochet")}>{purchases.ricochet >= 3 ? "MAX" : isMaster ? "GRÁTIS" : FRACTAL_SHOP.ricochet[purchases.ricochet]?.cost.toLocaleString("pt-BR") + " FR"}</button>
@@ -1886,7 +1886,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                         <div className="fractals-shop-item__slot"><Target className="h-5 w-5 text-violet-300" /></div>
                         <div className="min-w-0">
                           <p className="fractals-shop-item__name">Perfuração Espectral</p>
-                          <p className="fractals-shop-item__description">Projéteis atravessam inimigos e continuam na mesma direção.</p>
+                          <p className="fractals-shop-item__description">I: atravessa +1 alvo · II: +2 · III: +3, mantendo o dano.</p>
                           <div className="fractals-shop-pips" aria-label={"Nível " + purchases.piercing + " de 3"}>{Array.from({ length: 3 }).map((_, i) => <i key={i} className={i < purchases.piercing ? "fractals-shop-pip is-filled" : "fractals-shop-pip"} />)}<span>{purchases.piercing}/3</span></div>
                         </div>
                         <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || purchases.piercing >= 3 || (!isMaster && fractalBalance < FRACTAL_SHOP.piercing[purchases.piercing]?.cost)} onClick={() => void purchaseUpgrade("piercing")}>{purchases.piercing >= 3 ? "MAX" : isMaster ? "GRÁTIS" : FRACTAL_SHOP.piercing[purchases.piercing]?.cost.toLocaleString("pt-BR") + " FR"}</button>
@@ -1895,7 +1895,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                         <div className="fractals-shop-item__slot"><Zap className="h-5 w-5 text-sky-300" /></div>
                         <div className="min-w-0">
                           <p className="fractals-shop-item__name">Descarga em Cadeia</p>
-                          <p className="fractals-shop-item__description">Cada impacto libera choques elétricos contra alvos próximos.</p>
+                          <p className="fractals-shop-item__description">I: 1 alvo/55% · II: 2/65% · III: 3/75% de dano.</p>
                           <div className="fractals-shop-pips" aria-label={"Nível " + purchases.chain_lightning + " de 3"}>{Array.from({ length: 3 }).map((_, i) => <i key={i} className={i < purchases.chain_lightning ? "fractals-shop-pip is-filled" : "fractals-shop-pip"} />)}<span>{purchases.chain_lightning}/3</span></div>
                         </div>
                         <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || purchases.chain_lightning >= 3 || (!isMaster && fractalBalance < FRACTAL_SHOP.chain_lightning[purchases.chain_lightning]?.cost)} onClick={() => void purchaseUpgrade("chain_lightning")}>{purchases.chain_lightning >= 3 ? "MAX" : isMaster ? "GRÁTIS" : FRACTAL_SHOP.chain_lightning[purchases.chain_lightning]?.cost.toLocaleString("pt-BR") + " FR"}</button>
