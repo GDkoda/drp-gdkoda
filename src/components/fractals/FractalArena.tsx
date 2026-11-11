@@ -1141,6 +1141,23 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
     if (upgrade.id === "special_experience" && game.player.specialExperienceStacks < 6) { game.player.specialExperienceStacks += 1; game.player.xpMultiplier = 1 + game.player.specialExperienceStacks * 0.05; }
     if (upgrade.id === "special_projectile_range" && game.player.projectileRangeStacks < 5) { game.player.projectileRangeStacks += 1; game.player.projectileRangeMultiplier = 1 + game.player.projectileRangeStacks * 0.10; }
     if (upgrade.id === "special_projectiles" && game.player.projectileStacks < MAX_EXTRA_PROJECTILES) game.player.projectileStacks += 1;
+    if (upgrade.id === "weapon_mastery" && game.weaponLevel < 10) {
+      game.weaponLevel += 1;
+      game.player.damage *= 1 + 0.045 * rarityPower;
+      game.player.fireRate /= 1 + 0.0125 * rarityPower;
+      game.pickupLabels.push({ x: game.player.x, y: game.player.y - 28, text: `Arma nível ${game.weaponLevel}/10`, life: 1.4, maxLife: 1.4 });
+    }
+    if (upgrade.id === "weapon_evolution" && game.weaponLevel >= 10 && purchases[weaponProjectKey(game.weaponId)]) {
+      game.evolved = true;
+      game.player.damage *= 1.35;
+      game.player.fireRate /= 1.10;
+      game.rings = [...(game.rings ?? []), { x: game.player.x, y: game.player.y, r: 12, max: 230, life: 1.2, color: "#fbbf24" }];
+      toast.success(`${WEAPON_CONFIG[game.weaponId].evolutionName} despertou!`);
+    }
+    if (upgrade.id === "anchor_soul" && purchases.anchor_soul && !game.anchorReviveUsed) {
+      game.anchorReviveAvailable = true;
+      game.pickupLabels.push({ x: game.player.x, y: game.player.y - 28, text: "Âncora da Alma vinculada", life: 1.5, maxLife: 1.5 });
+    }
     if (upgrade.id === "power") game.player.damage *= 1 + 0.30 * rarityPower;
     // Attack speed uses a direct rate multiplier, so the displayed bonus matches the real effect.
     if (upgrade.id === "haste") game.player.fireRate /= 1 + 0.18 * rarityPower;
@@ -1269,7 +1286,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
 
         const snapshot = getDifficultySnapshot(missionId, game.elapsed, corruption);
         const eventDensityBonus = game.challengeEvent ? 2 : 0;
-        const spawnInterval = clamp(1.18 / (snapshot.enemySpawnScale + eventDensityBonus), 0.22, 1.35);
+        const spawnInterval = clamp(1.18 / (snapshot.enemySpawnScale * game.omenSpawnMultiplier + eventDensityBonus), 0.22, 1.35);
         game.spawnTimer -= dt;
         if (game.spawnTimer <= 0 && game.enemies.length < 50 && game.elapsed < RUN_DURATION_SECONDS) {
           spawnEnemy(game, missionId, game.elapsed, corruption);
@@ -1278,31 +1295,82 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         // O Guardião só desperta ao fim dos 12 minutos completos.
         game.shotTimer -= dt;
         if (game.shotTimer <= 0 && game.enemies.length > 0) {
-          let target = game.enemies[0]; let bestScore = Infinity;
-          for (const enemy of game.enemies) {
-            const d = distance(game.player.x, game.player.y, enemy.x, enemy.y);
-            const priority = enemy.type === "boss" ? 95 : enemy.type === "elite" ? 28 : enemy.type === "charger" ? 12 : 0;
-            const score = d - priority;
-            if (score < bestScore) { bestScore = score; target = enemy; }
-          }
+          const targets = [...game.enemies].filter((enemy) => enemy.hp > 0).sort((a, b) => {
+            const da = distance(game.player.x, game.player.y, a.x, a.y);
+            const db = distance(game.player.x, game.player.y, b.x, b.y);
+            const pa = a.type === "boss" ? 95 : a.type === "elite" ? 28 : a.type === "charger" ? 12 : 0;
+            const pb = b.type === "boss" ? 95 : b.type === "elite" ? 28 : b.type === "charger" ? 12 : 0;
+            return da - pa - (db - pb);
+          });
+          const target = targets[0];
           const d = Math.max(1, distance(game.player.x, game.player.y, target.x, target.y));
           const baseAngle = Math.atan2(target.y - game.player.y, target.x - game.player.x);
-          const projectileCount = 1 + game.player.projectileStacks;
-          const spread = projectileCount === 1 ? [0] : projectileCount === 2 ? [-0.095, 0.095] : [-0.16, 0, 0.16];
-          const speed = 440 * game.player.projectileRangeMultiplier;
-          const damageScale = projectileCount === 1 ? 1 : 0.68;
+          const weaponPower = (1 + (game.weaponLevel - 1) * 0.055) * (game.evolved ? 1.15 : 1);
+          const weaponDamage = game.player.damage * weaponPower;
+          const pushShot = (x: number, y: number, enemy: Enemy, damage: number, speed: number, options: Partial<Shot> = {}) => {
+            const dx = enemy.x - x, dy = enemy.y - y, length = Math.max(1, Math.hypot(dx, dy));
+            game.shots.push({
+              x, y, vx: dx / length * speed, vy: dy / length * speed, damage,
+              life: Math.max(0.18, length / speed + 0.24), hitTargets: [], bouncesRemaining: 0, piercesRemaining: 0,
+              isChainLightning: true, targetEnemy: enemy, ...options,
+            });
+          };
           game.player.castFacing = directionFromVector(target.x - game.player.x, target.y - game.player.y);
           game.player.castTimer = 0.24;
-          for (const angleOffset of spread) {
-            const angle = baseAngle + angleOffset;
-            game.shots.push({
-              x: game.player.x, y: game.player.y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
-              damage: game.player.damage * damageScale, life: game.player.projectileLife,
-              hitTargets: [], bouncesRemaining: purchases.ricochet, piercesRemaining: purchases.piercing,
+
+          if (game.weaponId === "spectral_scythe") {
+            const radius = game.evolved ? 255 : 205;
+            const count = game.evolved ? 5 : Math.min(3, 1 + Math.floor(game.weaponLevel / 4));
+            const nearby = targets.filter((enemy) => distance(game.player.x, game.player.y, enemy.x, enemy.y) <= radius).slice(0, count);
+            for (const enemy of nearby.length ? nearby : [target]) pushShot(game.player.x, game.player.y, enemy, weaponDamage * (game.evolved ? 1.05 : 0.9), 900);
+            game.rings = [...(game.rings ?? []), { x: game.player.x, y: game.player.y, r: 22, max: radius, life: 0.22, color: "#c4b5fd" }];
+          } else if (game.weaponId === "orbital_swords") {
+            const count = Math.min(8, 2 + Math.floor(game.weaponLevel / 2) + (game.evolved ? 2 : 0));
+            const nearby = targets.filter((enemy) => distance(game.player.x, game.player.y, enemy.x, enemy.y) <= (game.evolved ? 185 : 145)).slice(0, count);
+            nearby.forEach((enemy, index) => {
+              const angle = game.elapsed * 2.8 + index * Math.PI * 2 / count;
+              const sx = game.player.x + Math.cos(angle) * 66, sy = game.player.y + Math.sin(angle) * 66;
+              pushShot(sx, sy, enemy, weaponDamage * 0.72, 760);
             });
+            game.rings = [...(game.rings ?? []), { x: game.player.x, y: game.player.y, r: 62, max: 86, life: 0.18, color: "#a78bfa" }];
+          } else if (game.weaponId === "gravity_shackle") {
+            const radius = game.evolved ? 300 : 235;
+            const nearby = targets.filter((enemy) => distance(game.player.x, game.player.y, enemy.x, enemy.y) <= radius).slice(0, game.evolved ? 7 : 5);
+            for (const enemy of nearby) {
+              const dx = game.player.x - enemy.x, dy = game.player.y - enemy.y, length = Math.max(1, Math.hypot(dx, dy));
+              const pull = Math.min(game.evolved ? 72 : 48, length * 0.28);
+              enemy.x += dx / length * pull; enemy.y += dy / length * pull;
+              pushShot(game.player.x, game.player.y, enemy, weaponDamage * (game.evolved ? 0.88 : 0.68), 680);
+            }
+            game.rings = [...(game.rings ?? []), { x: game.player.x, y: game.player.y, r: 18, max: radius, life: 0.42, color: "#67e8f9" }];
+          } else if (game.weaponId === "rune_sentinels") {
+            const count = Math.min(5, 2 + Math.floor(game.weaponLevel / 3) + (game.evolved ? 1 : 0));
+            for (let index = 0; index < count; index++) {
+              const enemy = targets[index % targets.length];
+              const angle = game.elapsed * 0.7 + index * Math.PI * 2 / count;
+              const sx = game.player.x + Math.cos(angle) * 62, sy = game.player.y + Math.sin(angle) * 62;
+              pushShot(sx, sy, enemy, weaponDamage * 0.64, 520);
+              game.particles.push({ x: sx, y: sy, vx: 0, vy: 0, life: 0.18, color: "#fbbf24" });
+            }
+          } else {
+            const isNucleus = game.weaponId === "unstable_core";
+            const projectileCount = game.weaponId === "void_revolver" ? (game.evolved ? 6 : 1 + game.player.projectileStacks) : 1;
+            const spread = projectileCount === 1 ? [0] : game.evolved && game.weaponId === "void_revolver"
+              ? Array.from({ length: projectileCount }, (_, index) => (index - (projectileCount - 1) / 2) * 0.11)
+              : projectileCount === 2 ? [-0.095, 0.095] : [-0.16, 0, 0.16];
+            const speed = (isNucleus ? 310 : 440) * game.player.projectileRangeMultiplier;
+            const damageScale = game.weaponId === "void_revolver" && projectileCount > 1 ? 0.68 : isNucleus ? 1.45 : 1;
+            for (const angleOffset of spread) {
+              const angle = baseAngle + angleOffset;
+              game.shots.push({
+                x: game.player.x, y: game.player.y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
+                damage: weaponDamage * damageScale, life: game.player.projectileLife * (isNucleus ? 1.15 : 1),
+                hitTargets: [], bouncesRemaining: purchases.ricochet, piercesRemaining: purchases.piercing,
+              });
+            }
           }
           fractalAudio.shoot();
-          game.shotTimer = game.player.fireRate;
+          game.shotTimer = game.player.fireRate * (game.weaponId === "gravity_shackle" ? 1.18 : game.weaponId === "unstable_core" ? 1.12 : 1);
         }
         const desiredAction: PlayerVisualAction = game.player.castTimer > 0 ? "cast" : game.player.moving ? "move" : "idle";
         const desiredDirection = desiredAction === "cast" ? game.player.castFacing : game.player.facing;
@@ -1459,6 +1527,21 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               if (game.damageNumbers.length > 20) game.damageNumbers.shift();
               shot.hitTargets.push(enemy);
 
+              // Núcleo Instável: o impacto libera estilhaços explosivos contra até três alvos próximos.
+              if (game.weaponId === "unstable_core" && !shot.isSplash) {
+                const radius = game.evolved ? 190 : 135;
+                const splashTargets = game.enemies
+                  .filter((candidate) => candidate !== enemy && candidate.hp > 0 && distance(enemy.x, enemy.y, candidate.x, candidate.y) <= radius)
+                  .sort((a, b) => distance(enemy.x, enemy.y, a.x, a.y) - distance(enemy.x, enemy.y, b.x, b.y))
+                  .slice(0, game.evolved ? 5 : 3);
+                for (const candidate of splashTargets) {
+                  const splashDistance = Math.max(1, distance(enemy.x, enemy.y, candidate.x, candidate.y));
+                  const splashSpeed = 780;
+                  game.shots.push({ x: enemy.x, y: enemy.y, vx: (candidate.x - enemy.x) / splashDistance * splashSpeed, vy: (candidate.y - enemy.y) / splashDistance * splashSpeed, damage: shot.damage * (game.evolved ? 0.68 : 0.52), life: splashDistance / splashSpeed + 0.22, hitTargets: [enemy], bouncesRemaining: 0, piercesRemaining: 0, isChainLightning: true, isSplash: true, targetEnemy: candidate });
+                }
+                game.rings = [...(game.rings ?? []), { x: enemy.x, y: enemy.y, r: 12, max: radius, life: 0.35, color: "#d8b4fe" }];
+              }
+
               // Descarga em cadeia: cada impacto do projétil original pode chamar alvos extras.
               if (!shot.isChainLightning && purchases.chain_lightning > 0) {
                 const chainLevel = Math.min(3, purchases.chain_lightning);
@@ -1492,8 +1575,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                 fractalAudio.kill(enemy.type === "boss" || enemy.type === "elite");
                 if (enemy.type !== "boss") {
                   game.gems.push({ x: enemy.x, y: enemy.y, value: enemy.xp, radius: 5 });
-                  const specialDropTier = Math.max(purchases.area, purchases.experience, purchases.projectile_range, purchases.projectiles);
-                  const specialDropChance = specialDropTier >= 3 ? 0.03 : specialDropTier >= 2 ? 0.01 : 0;
+                  const fortuneBonus = [0, 0.10, 0.20, 0.30][Math.max(0, Math.min(3, purchases.fortune))];
+                  const specialDropChance = purchases.fortune > 0 ? Math.min(0.12, 0.025 * (1 + fortuneBonus) * game.omenRewardMultiplier) : 0;
                   if (!enemy.isExecutioner && (enemy.type === "elite" || enemy.type === "brute") && specialDropChance > 0 && Math.random() < specialDropChance) {
                     const eligible: SpecialDrop["kind"][] = [];
                     if (purchases.area >= 1 && game.player.specialAreaStacks < 5) eligible.push("area");
@@ -1560,11 +1643,15 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               shot.life = 0; urn.hp -= shot.damage >= 45 ? 2 : 1;
               for(let p=0;p<4;p++){const a=Math.random()*Math.PI*2,sp=25+Math.random()*85;game.particles.push({x:urn.x,y:urn.y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:.25+Math.random()*.25,color:"#b7a4b9"});}
               if(urn.hp<=0){urn.broken=true;for(let p=0;p<18;p++){const a=Math.random()*Math.PI*2,sp=45+Math.random()*170;game.particles.push({x:urn.x,y:urn.y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:.35+Math.random()*.45,color:p%2?"#c4b5c5":"#8f7b99"});}
-                const roll=Math.random();
-                if(roll<.20)game.gems.push({x:urn.x,y:urn.y,value:15,radius:8,runeCrystal:true});
-                else if(roll<.29)game.specialDrops.push({x:urn.x,y:urn.y,kind:"food",radius:14});
-                else if(roll<.30)game.specialDrops.push({x:urn.x,y:urn.y,kind:"void",radius:14});
-                // Os 70% restantes não geram recompensa.
+                const roll = Math.random();
+                const fortuneBonus = [0, 0.10, 0.20, 0.30][Math.max(0, Math.min(3, purchases.fortune))];
+                const specialMultiplier = (1 + fortuneBonus) * game.omenRewardMultiplier;
+                const foodChance = Math.min(0.18, 0.09 * specialMultiplier);
+                const voidChance = Math.min(0.04, 0.01 * specialMultiplier);
+                if (roll < 0.20) game.gems.push({ x: urn.x, y: urn.y, value: 15, radius: 8, runeCrystal: true });
+                else if (roll < 0.20 + foodChance) game.specialDrops.push({ x: urn.x, y: urn.y, kind: "food", radius: 14 });
+                else if (roll < 0.20 + foodChance + voidChance) game.specialDrops.push({ x: urn.x, y: urn.y, kind: "void", radius: 14 });
+                // A Fortuna aumenta apenas o peso dos espólios especiais; cristais de XP mantêm 20%.
               }
               break;
             }
@@ -1644,6 +1731,33 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           setSelectedUpgrade(null);
               setFlippedCardId(null);
               setLevelChoices(buildLevelChoices(game, purchases));
+        }
+        if (game.omenId === "revenge") {
+          game.omenRevengeCooldown = Math.max(0, game.omenRevengeCooldown - dt);
+          if (game.player.hp < game.lastObservedHp && game.omenRevengeCooldown <= 0) {
+            const radius = 145;
+            const targets = game.enemies.filter((enemy) => enemy.hp > 0 && distance(game.player.x, game.player.y, enemy.x, enemy.y) <= radius).slice(0, 10);
+            for (const enemy of targets) {
+              const hitDistance = Math.max(1, distance(game.player.x, game.player.y, enemy.x, enemy.y));
+              game.shots.push({ x: game.player.x, y: game.player.y, vx: (enemy.x - game.player.x) / hitDistance * 850, vy: (enemy.y - game.player.y) / hitDistance * 850, damage: game.player.damage * 0.55, life: hitDistance / 850 + 0.25, hitTargets: [], bouncesRemaining: 0, piercesRemaining: 0, isChainLightning: true, targetEnemy: enemy });
+            }
+            game.rings = [...(game.rings ?? []), { x: game.player.x, y: game.player.y, r: 18, max: radius, life: 0.35, color: "#fb7185" }];
+            game.omenRevengeCooldown = 4;
+          }
+          game.lastObservedHp = game.player.hp;
+        }
+        if (game.player.hp <= 0 && game.anchorReviveAvailable && !game.anchorReviveUsed) {
+          game.anchorReviveAvailable = false;
+          game.anchorReviveUsed = true;
+          game.player.hp = Math.max(1, game.player.maxHp * 0.40);
+          game.player.invuln = 3;
+          game.rings = [...(game.rings ?? []), { x: game.player.x, y: game.player.y, r: 10, max: 220, life: 1.1, color: "#fbbf24" }];
+          for (let i = 0; i < 32; i++) {
+            const angle = Math.random() * Math.PI * 2, speed = 45 + Math.random() * 180;
+            game.particles.push({ x: game.player.x, y: game.player.y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 0.45 + Math.random() * 0.55, color: i % 2 ? "#fbbf24" : "#f5d0fe" });
+          }
+          game.pickupLabels.push({ x: game.player.x, y: game.player.y - 35, text: "ÂNCORA DA ALMA · RESSURREIÇÃO", life: 2.2, maxLife: 2.2 });
+          toast.success("A Âncora da Alma impediu sua queda!");
         }
         if (game.player.hp <= 0 && !game.ended) { game.ended = true; setStats({ totalDamageDealt: Math.round(game.totalDamageDealt), crystalsCollected: game.crystalsCollected, highestLevel: game.highestLevel }); setResult("defeat"); fractalAudio.defeat(); finishRun(false); }
         if (game.elapsed >= RUN_DURATION_SECONDS && !game.ended && !game.bossSpawned) {
