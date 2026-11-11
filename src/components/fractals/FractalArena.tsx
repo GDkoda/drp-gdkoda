@@ -1431,26 +1431,13 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               const dirX = shot.vx / projectileSpeed, dirY = shot.vy / projectileSpeed;
 
               if (!shot.isChainLightning && shot.piercesRemaining > 0) {
-                const forwardTarget = game.enemies
-                  .map((candidate) => {
-                    const dx = candidate.x - enemy.x, dy = candidate.y - enemy.y;
-                    return { candidate, forward: dx * dirX + dy * dirY, lateral: Math.abs(dx * dirY - dy * dirX) };
-                  })
-                  .filter(({ candidate, forward, lateral }) =>
-                    candidate.hp > 0 && !shot.hitTargets.includes(candidate) &&
-                    forward > enemy.radius + candidate.radius + 8 &&
-                    forward <= 260 && lateral <= candidate.radius + 15
-                  )
-                  .sort((a, b) => a.forward - b.forward)[0];
-
-                if (forwardTarget) {
-                  shot.targetEnemy = undefined;
-                  shot.x = enemy.x + dirX * (enemy.radius + 8);
-                  shot.y = enemy.y + dirY * (enemy.radius + 8);
-                  shot.piercesRemaining -= 1;
-                  shot.life = Math.max(shot.life, forwardTarget.forward / projectileSpeed + 0.18);
-                  continued = true;
-                }
+                // A perfuração sempre mantém o vetor original; o projétil segue mesmo sem outro alvo alinhado.
+                shot.targetEnemy = undefined;
+                shot.x = enemy.x + dirX * (enemy.radius + 8);
+                shot.y = enemy.y + dirY * (enemy.radius + 8);
+                shot.piercesRemaining -= 1;
+                shot.life = Math.max(shot.life, 0.6);
+                continued = true;
               }
 
               if (!continued && !shot.isChainLightning && shot.bouncesRemaining > 0) {
