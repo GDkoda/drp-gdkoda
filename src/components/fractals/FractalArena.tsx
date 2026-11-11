@@ -122,8 +122,8 @@ const UPGRADES: Upgrade[] = [
 ];
 
 const SPECIAL_UPGRADES: Upgrade[] = [
-  { id: "special_area", name: "Ímã de Fragmentos", description: "+10% de alcance de coleta por coleta (máx. +50%).", icon: Move },
-  { id: "special_experience", name: "Eco do Conhecimento", description: "+5% de experiência por coleta (máx. +30%).", icon: Sparkles },
+  { id: "special_area", name: "Ímã de Fragmentos", description: "+10% de alcance de coleta por coleta (máx. +100%, 10 coletas).", icon: Move },
+  { id: "special_experience", name: "Eco do Conhecimento", description: "+5% de experiência por coleta (máx. +50%, 10 coletas).", icon: Sparkles },
   { id: "special_projectile_range", name: "Ressonância de Alcance", description: "+10% de distância dos projéteis por coleta (máx. +50%).", icon: Zap },
   { id: "special_projectiles", name: "Coroa de Estilhaços", description: "+1 projétil por coleta. Até 2 extras por expedição.", icon: Swords },
 ];
@@ -697,7 +697,11 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     const speed = Math.hypot(shot.vx, shot.vy) || 1; const len = 34;
     const tx = shot.x - shot.vx / speed * len, ty = shot.y - shot.vy / speed * len;
     const trail = ctx.createLinearGradient(tx, ty, shot.x, shot.y);
-    if (shot.isChainLightning) {
+    if (shot.isAnchorBurst) {
+      trail.addColorStop(0, "rgba(251,191,36,0)");
+      trail.addColorStop(1, "rgba(255,241,179,.98)");
+      ctx.strokeStyle = trail; ctx.lineWidth = 4;
+    } else if (shot.isChainLightning) {
       trail.addColorStop(0, "rgba(34,211,238,0)");
       trail.addColorStop(1, "rgba(207,250,254,.98)");
       ctx.strokeStyle = trail; ctx.lineWidth = 3.5;
@@ -716,7 +720,11 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     const fade = clamp(shot.life / Math.max(0.01, game.player.projectileLife), 0.25, 1);
     ctx.globalAlpha = fade;
     const projectile = sprites.projectile;
-    if (shot.isChainLightning) {
+    if (shot.isAnchorBurst) {
+      ctx.shadowColor = "#fbbf24"; ctx.shadowBlur = 14;
+      ctx.fillStyle = "#fff1b3";
+      ctx.beginPath(); ctx.moveTo(9, 0); ctx.lineTo(2, -2); ctx.lineTo(4, -7); ctx.lineTo(-7, 1); ctx.lineTo(-1, 2); ctx.lineTo(-4, 7); ctx.closePath(); ctx.fill();
+    } else if (shot.isChainLightning) {
       ctx.shadowColor = "#67e8f9"; ctx.shadowBlur = 12;
       ctx.fillStyle = "#a5f3fc";
       ctx.beginPath(); ctx.moveTo(9, 0); ctx.lineTo(2, -2); ctx.lineTo(4, -7); ctx.lineTo(-7, 1); ctx.lineTo(-1, 2); ctx.lineTo(-4, 7); ctx.closePath(); ctx.fill();
@@ -2145,10 +2153,10 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                         <div className="fractals-shop-item__slot"><Heart className="h-5 w-5 text-rose-300" /></div>
                         <div className="min-w-0">
                           <p className="fractals-shop-item__name">Vida Reforçada</p>
-                          <p className="fractals-shop-item__description">+10 de vida máxima permanente por nível.</p>
-                          <div className="fractals-shop-pips" aria-label={"Nível " + purchases.health + " de 5"}>{Array.from({ length: 5 }).map((_, i) => <i key={i} className={i < purchases.health ? "fractals-shop-pip is-filled" : "fractals-shop-pip"} />)}<span>{purchases.health}/5</span></div>
+                          <p className="fractals-shop-item__description">+10 de vida máxima permanente por nível, até +150 no nível 15.</p>
+                          <div className="fractals-shop-pips" aria-label={"Nível " + purchases.health + " de 15"}>{Array.from({ length: 15 }).map((_, i) => <i key={i} className={i < purchases.health ? "fractals-shop-pip is-filled" : "fractals-shop-pip"} />)}<span>{purchases.health}/15</span></div>
                         </div>
-                        <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || purchases.health >= 5 || (!isMaster && fractalBalance < FRACTAL_SHOP.health[purchases.health]?.cost)} onClick={() => void purchaseUpgrade("health")}>{purchases.health >= 5 ? "MAX" : isMaster ? "GRÁTIS" : FRACTAL_SHOP.health[purchases.health]?.cost.toLocaleString("pt-BR") + " FR"}</button>
+                        <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || purchases.health >= 15 || (!isMaster && fractalBalance < FRACTAL_SHOP.health[purchases.health]?.cost)} onClick={() => void purchaseUpgrade("health")}>{purchases.health >= 15 ? "MAX" : isMaster ? "GRÁTIS" : FRACTAL_SHOP.health[purchases.health]?.cost.toLocaleString("pt-BR") + " FR"}</button>
                       </article>
 
                       <article className="fractals-shop-item">
@@ -2198,7 +2206,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                       </article>
                       <article className="fractals-shop-item">
                         <div className="fractals-shop-item__slot"><Sparkles className="h-5 w-5 text-amber-300" /></div>
-                        <div className="min-w-0"><p className="fractals-shop-item__name">Oráculo das Relíquias</p><p className="fractals-shop-item__description">Chance de uma quarta opção adicional, sempre uma Relíquia de Campo válida.</p><div className="fractals-shop-pips" aria-label={"Nível " + purchases.oracle + " de 10"}>{Array.from({length:10}).map((_,i)=><i key={i} className={i<purchases.oracle?"fractals-shop-pip is-filled":"fractals-shop-pip"}/>)}<span>{purchases.oracle}/10 · {purchases.oracle*3}%</span></div><span className="fractals-shop-item__status">{unlockedCorruption>=1?"Disponível":"Requer Corrupção 1"}</span></div>
+                        <div className="min-w-0"><p className="fractals-shop-item__name">Oráculo das Relíquias</p><p className="fractals-shop-item__description">Nível 1 libera as quatro Relíquias de Campo nas escolhas de nível. Cada nível aumenta a chance de uma quarta carta, até 50%.</p><div className="fractals-shop-pips" aria-label={"Nível " + purchases.oracle + " de 10"}>{Array.from({length:10}).map((_,i)=><i key={i} className={i<purchases.oracle?"fractals-shop-pip is-filled":"fractals-shop-pip"}/>)}<span>{purchases.oracle}/10 · {Math.min(50,purchases.oracle*6)}%</span></div><span className="fractals-shop-item__status">{purchases.oracle>=1?"Relíquias de Campo liberadas":unlockedCorruption>=1?"Disponível":"Requer Corrupção 1"}</span></div>
                         <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || unlockedCorruption<1 && !isMaster || purchases.oracle>=10 || (!isMaster && fractalBalance<FRACTAL_SHOP.oracle[purchases.oracle])} onClick={()=>void purchaseUpgrade("oracle")}>{purchases.oracle>=10?"MAX":isMaster?"GRÁTIS":FRACTAL_SHOP.oracle[purchases.oracle].toLocaleString("pt-BR")+" FR"}</button>
                       </article>
                       <article className="fractals-shop-item">
@@ -2208,8 +2216,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                       </article>
                       <article className="fractals-shop-item">
                         <div className="fractals-shop-item__slot"><Clover className="h-5 w-5 text-emerald-300" /></div>
-                        <div className="min-w-0"><p className="fractals-shop-item__name">Fortuna Fractal</p><p className="fractals-shop-item__description">Melhora espólios especiais de urnas e a chance de recompensa de Elites e Brutamontes.</p><div className="fractals-shop-pips" aria-label={"Nível " + purchases.fortune + " de 3"}>{Array.from({length:3}).map((_,i)=><i key={i} className={i<purchases.fortune?"fractals-shop-pip is-filled":"fractals-shop-pip"}/>)}<span>{purchases.fortune}/3</span></div><span className="fractals-shop-item__status">{unlockedCorruption>=2?"Disponível":"Requer Corrupção 2"}</span></div>
-                        <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || unlockedCorruption<2 && !isMaster || purchases.fortune>=3 || (!isMaster && fractalBalance<FRACTAL_SHOP.fortune[purchases.fortune])} onClick={()=>void purchaseUpgrade("fortune")}>{purchases.fortune>=3?"MAX":isMaster?"GRÁTIS":FRACTAL_SHOP.fortune[purchases.fortune].toLocaleString("pt-BR")+" FR"}</button>
+                        <div className="min-w-0"><p className="fractals-shop-item__name">Fortuna Fractal</p><p className="fractals-shop-item__description">Aumenta em até 50% a chance relativa de espólios especiais de urnas e Relíquias de Campo em Brutos e Elites.</p><div className="fractals-shop-pips" aria-label={"Nível " + purchases.fortune + " de 5"}>{Array.from({length:5}).map((_,i)=><i key={i} className={i<purchases.fortune?"fractals-shop-pip is-filled":"fractals-shop-pip"}/>)}<span>{purchases.fortune}/5 · +{purchases.fortune*10}%</span></div><span className="fractals-shop-item__status">{unlockedCorruption>=2?"Disponível":"Requer Corrupção 2"}</span></div>
+                        <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || unlockedCorruption<2 && !isMaster || purchases.fortune>=5 || (!isMaster && fractalBalance<FRACTAL_SHOP.fortune[purchases.fortune])} onClick={()=>void purchaseUpgrade("fortune")}>{purchases.fortune>=5?"MAX":isMaster?"GRÁTIS":FRACTAL_SHOP.fortune[purchases.fortune].toLocaleString("pt-BR")+" FR"}</button>
                       </article>
                       <article className="fractals-shop-item">
                         <div className="fractals-shop-item__slot"><Dna className="h-5 w-5 text-fuchsia-300" /></div>
@@ -2218,8 +2226,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                       </article>
                       <article className="fractals-shop-item">
                         <div className="fractals-shop-item__slot"><Heart className="h-5 w-5 text-rose-300" /></div>
-                        <div className="min-w-0"><p className="fractals-shop-item__name">Âncora da Alma</p><p className="fractals-shop-item__description">Libera uma dádiva que concede uma ressurreição ao ser escolhida durante a partida.</p><span className="fractals-shop-item__status">{purchases.anchor_soul?"Dádiva liberada":unlockedCorruption>=2?"Requer compra única":"Requer Corrupção 2"}</span></div>
-                        <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || purchases.anchor_soul || unlockedCorruption<2 && !isMaster || (!isMaster && fractalBalance<FRACTAL_SHOP.anchor_soul)} onClick={()=>void purchaseUpgrade("anchor_soul")}>{purchases.anchor_soul?"ADQUIRIDA":isMaster?"GRÁTIS":FRACTAL_SHOP.anchor_soul.toLocaleString("pt-BR")+" FR"}</button>
+                        <div className="min-w-0"><p className="fractals-shop-item__name">Âncora da Alma</p><p className="fractals-shop-item__description">Até duas ressurreições por expedição, uma Âncora equipada por vez. N1: 40% de vida/3s; N2: 60%/6s; N3: explosão na segunda morte.</p><div className="fractals-shop-pips" aria-label={"Nível " + purchases.anchor_soul + " de 3"}>{Array.from({length:3}).map((_,i)=><i key={i} className={i<purchases.anchor_soul?"fractals-shop-pip is-filled":"fractals-shop-pip"}/>)}<span>{purchases.anchor_soul}/3</span></div><span className="fractals-shop-item__status">{purchases.anchor_soul>=3?"Explosão da segunda Âncora liberada":purchases.anchor_soul>=2?"Recuperação reforçada liberada":purchases.anchor_soul>=1?"Ressurreição liberada":unlockedCorruption>=2?"Disponível":"Requer Corrupção 2"}</span></div>
+                        <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || purchases.anchor_soul>=3 || unlockedCorruption<2 && !isMaster || (!isMaster && fractalBalance<FRACTAL_SHOP.anchor_soul[purchases.anchor_soul]?.cost)} onClick={()=>void purchaseUpgrade("anchor_soul")}>{purchases.anchor_soul>=3?"MAX":isMaster?"GRÁTIS":FRACTAL_SHOP.anchor_soul[purchases.anchor_soul]?.cost.toLocaleString("pt-BR")+" FR"}</button>
                       </article>
                       <article className="fractals-shop-item">
                         <div className="fractals-shop-item__slot"><BookOpen className="h-5 w-5 text-fuchsia-300" /></div>
@@ -2397,7 +2405,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
     <div className="mb-2 flex items-center gap-2"><Sparkles className="h-4 w-4 text-amber-200"/><h4 className="text-xs font-black uppercase tracking-wider text-violet-100">Dádivas &amp; Runas Ativas</h4></div>
     {Object.entries(gameRef.current?.upgradeCounts ?? {}).length > 0 ? <div className="grid grid-cols-1 gap-1.5">
       {Object.entries(gameRef.current?.upgradeCounts ?? {}).map(([id,rune])=><div key={id} className="flex items-center justify-between gap-2 rounded-lg border border-white/10 bg-black/20 px-2.5 py-2">
-        <div className="flex min-w-0 items-center gap-2"><span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-violet-400/10 text-sm">{id==="power"?"⚔":id==="haste"?"⚡":id==="vitality"?"✚":id==="swift"?"➤":id==="special_area"?"🧲":id==="special_experience"?"🔮":id==="special_projectile_range"?"🏹":"✦"}</span><div className="min-w-0"><p className="truncate text-[11px] font-bold text-white">{rune.name}</p><p className="text-[9px] uppercase tracking-wider text-violet-200/65">{rune.rarity==="legendary"?"Lendária":rune.rarity==="epic"?"Épica":rune.rarity==="rare"?"Rara":"Comum"}</p></div></div>
+        <div className="flex min-w-0 items-center gap-2"><span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-violet-400/10 text-sm">{id==="power"?"⚔":id==="haste"?"⚡":id==="vitality"?"✚":id==="swift"?"➤":id==="special_area"?"🧲":id==="special_experience"?"🔮":id==="special_projectile_range"?"🏹":"✦"}</span><div className="min-w-0"><p className="truncate text-[11px] font-bold text-white">{rune.name}</p><p className="text-[9px] uppercase tracking-wider text-violet-200/65">{rune.rarity==="legendary"?"Lendária":rune.rarity==="epic"?"Épica":rune.rarity==="rare"?"Rara":rune.rarity==="uncommon"?"Incomum":"Comum"}</p></div></div>
         <strong className="shrink-0 text-xs tabular-nums text-amber-200">x{rune.count}</strong>
       </div>)}
     </div> : <p className="text-[10px] text-white/45">Nenhuma dádiva acumulada nesta expedição.</p>}
@@ -2433,6 +2441,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
 
                       const rarityBorder = rarity === "legendary"
                         ? "border-amber-300/70 bg-gradient-to-b from-amber-400/20 to-[#21180e] shadow-[0_0_18px_rgba(251,191,36,.12)]"
+                        : rarity === "uncommon"
+                        ? "border-rose-400/70 bg-gradient-to-br from-rose-500/25 via-amber-500/15 to-[#25120f] shadow-[0_0_18px_rgba(244,63,94,.18)]"
                         : rarity === "epic"
                         ? "border-fuchsia-400/50 bg-gradient-to-b from-fuchsia-500/15 to-[#1c1226]"
                         : rarity === "rare"
@@ -2441,6 +2451,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
 
                       const rarityTag = rarity === "legendary"
                         ? "text-amber-200 border-amber-300/40 bg-amber-400/10"
+                        : rarity === "uncommon"
+                        ? "text-amber-100 border-rose-300/50 bg-rose-500/20"
                         : rarity === "epic"
                         ? "text-fuchsia-200 border-fuchsia-300/30 bg-fuchsia-400/10"
                         : rarity === "rare"
@@ -2449,6 +2461,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
 
                       const iconStyle = rarity === "legendary"
                         ? "border-amber-300/50 bg-amber-400/20 text-amber-100"
+                        : rarity === "uncommon"
+                        ? "border-rose-300/60 bg-gradient-to-br from-rose-500/30 to-amber-400/25 text-amber-100"
                         : rarity === "epic"
                         ? "border-fuchsia-300/40 bg-fuchsia-400/20 text-fuchsia-100"
                         : rarity === "rare"
@@ -2510,7 +2524,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                                 {upgrade.name}
                               </p>
                               <span className={`mt-2 rounded-full border px-1.5 py-0.5 text-[7px] font-black uppercase tracking-wider sm:text-[8px] ${rarityTag}`}>
-                                {rarity === "legendary" ? "Lendária" : rarity === "epic" ? "Épica" : rarity === "rare" ? "Rara" : "Normal"}
+                                {rarity === "legendary" ? "Lendária" : rarity === "uncommon" ? "Incomum" : rarity === "epic" ? "Épica" : rarity === "rare" ? "Rara" : "Normal"}
                               </span>
                             </div>
                           ) : (
@@ -2519,7 +2533,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                                 {getUpgradeDescription(upgrade)}
                               </p>
                               <span className="mt-2 text-[7px] font-bold uppercase tracking-wider text-amber-200/80 sm:text-[8px]">
-                                {rarity === "epic" ? "+50% Potência" : rarity === "rare" ? "+25% Potência" : "100% Padrão"}
+                                {rarity === "uncommon" ? "Relíquia · sem bônus de raridade" : rarity === "epic" ? "+50% Potência" : rarity === "rare" ? "+25% Potência" : "100% Padrão"}
                               </span>
                             </div>
                           )}
