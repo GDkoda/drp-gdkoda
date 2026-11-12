@@ -58,6 +58,7 @@ A auditoria não acessou o projeto Supabase conectado e, portanto, **não confir
 2. Resolver o timestamp duplicado de forma compatível com o histórico remoto; só então executar qualquer `db push`.
 3. Confirmar a existência, assinatura, permissões de execução, autenticação e políticas RLS das cinco RPCs.
 4. Testar compra, troca de moedas, início/fim de expedição e crédito de recompensas com uma conta de teste.
+5. Aplicar e validar `20261112030000_fractal_dash_upgrade.sql`; confirmar compra dos três níveis da Ruptura Cinética e persistência após recarregar a conta.
 
 As alterações de gameplay desta entrega são no frontend; elas não acrescentaram novas tabelas, RPCs ou migrações SQL.
 
@@ -65,9 +66,9 @@ As alterações de gameplay desta entrega são no frontend; elas não acrescenta
 
 - O seletor de missão atualmente marca apenas a missão de ID 1 como disponível. Confirmar que a primeira publicação deve conter apenas essa missão; caso contrário, completar/desbloquear e testar as missões restantes.
 - O jogo agora exige viewport de pelo menos 1024px e ponteiro preciso. Validar em desktop real e confirmar que celulares/tablets recebem apenas o aviso de PC.
-- O dash é acionado por Espaço, tem duração de 0,18s, cooldown de 1,25s e invulnerabilidade curta. Testar colisão contra obstáculos, direção quando parado, uso repetido e interação com pausa/telas de dádiva.
+- O dash é acionado por Espaço e tem duração de 0,18s. A permanente Ruptura Cinética concede: nível 1, invulnerabilidade durante o dash; nível 2, dano de 10% do golpe da arma aos inimigos atravessados (uma vez por alvo em cada investida); nível 3, segunda investida em sequência e correção de direção. Testar colisão contra obstáculos, dano, invulnerabilidade, janela da segunda investida, recarga e interação com pausa/telas de dádiva.
 - Testar cada uma das seis armas nos níveis iniciais, no nível 10 e na evolução; verificar que só aparecem as dádivas exclusivas da arma equipada e que os efeitos respeitam o limite de três níveis.
-- Fazer teste de estresse com o painel do Mestre (50 inimigos), comparando FPS com Grilhão normal/evoluído e Núcleo normal/evoluído. A otimização recente reutiliza uma referência direta para a aura do Grilhão, remove um `filter()` de disparos por frame nas armas que não usam Grilhão e pré-aquece os dois sprites de raio fixo. Isso foi verificado estaticamente, não por perfil de execução.
+- Fazer teste de estresse com o painel do Mestre (50 inimigos), comparando FPS com Grilhão normal/evoluído e Núcleo normal/evoluído. A otimização atual reutiliza uma referência direta para a aura do Grilhão, elimina `filter()` de disparos por frame quando a arma não usa Grilhão, pré-aquece os sprites e pré-compõe o anel rúnico evoluído no canvas-base. A aura deixa de usar composição aditiva e apenas o selo central gira. Isso foi verificado estaticamente, não por perfil de execução; medir FPS e tempo de frame antes/depois em Grilhão normal e evoluído.
 
 ## Configuração e publicação
 
