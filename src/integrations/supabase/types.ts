@@ -339,6 +339,8 @@ export type Database = {
           corruption_level: number
           finished_at: string | null
           id: string
+          selected_omen: string | null
+          selected_weapon: string
           started_at: string
           status: string
           user_id: string
@@ -347,6 +349,8 @@ export type Database = {
           corruption_level: number
           finished_at?: string | null
           id?: string
+          selected_omen?: string | null
+          selected_weapon?: string
           started_at?: string
           status?: string
           user_id: string
@@ -355,6 +359,8 @@ export type Database = {
           corruption_level?: number
           finished_at?: string | null
           id?: string
+          selected_omen?: string | null
+          selected_weapon?: string
           started_at?: string
           status?: string
           user_id?: string
@@ -1101,7 +1107,10 @@ export type Database = {
       start_combat: { Args: never; Returns: Json }
       start_farkle_game: { Args: never; Returns: number }
       start_farkle_game_with_bet: { Args: { _wager: number }; Returns: string }
-      start_fractal_run: { Args: { _corruption: number; _weapon?: string; _omen?: string | null }; Returns: string }
+      start_fractal_run: {
+        Args: { _corruption: number; _omen?: string; _weapon?: string }
+        Returns: string
+      }
       start_puzzle: { Args: never; Returns: Json }
       start_twentyone_game: { Args: { _wager: number }; Returns: Json }
       transfer_coins: {

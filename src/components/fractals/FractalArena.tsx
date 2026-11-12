@@ -385,6 +385,24 @@ function preloadCemeteryImages(): Promise<void> {
   return Promise.all(CEMETERY_IMAGE_SOURCES.map(preloadCemeteryImage)).then(() => undefined);
 }
 const groundPatternCache = new WeakMap<CanvasRenderingContext2D, CanvasPattern>();
+const RUNE_PHRASE = "ᚷᚱᛁᛚᚺᚨᛟ ᚷᚱᚨᚹᛁᛏᚨᚲᛁᛟᚾᚨᛚ · ";
+const runeRingCache = new Map<number, HTMLCanvasElement>();
+function drawRuneRing(ctx: CanvasRenderingContext2D, radius: number) {
+  const key = Math.round(radius / 4) * 4;
+  let c = runeRingCache.get(key);
+  if (!c) {
+    c = document.createElement("canvas"); const size = Math.ceil(key * 2 + 40); c.width = size; c.height = size;
+    const g = c.getContext("2d")!; g.translate(size / 2, size / 2);
+    g.font = "bold 13px serif"; g.fillStyle = "#f0abfc"; g.textAlign = "center"; g.textBaseline = "middle";
+    const glyphs = Array.from(RUNE_PHRASE); const step = 13 / key;
+    const total = Math.floor((Math.PI * 2) / step);
+    for (let i = 0; i < total; i++) { const a = i * ((Math.PI * 2) / total); g.save(); g.rotate(a); g.translate(0, -key); g.fillText(glyphs[i % glyphs.length], 0, 0); g.restore(); }
+    g.strokeStyle = "rgba(232,121,249,.7)"; g.lineWidth = 1.2;
+    g.beginPath(); g.arc(0, 0, key - 10, 0, Math.PI * 2); g.stroke(); g.beginPath(); g.arc(0, 0, key + 10, 0, Math.PI * 2); g.stroke();
+    runeRingCache.set(key, c);
+  }
+  ctx.drawImage(c, -c.width / 2, -c.height / 2);
+}
 function drawSprite(ctx: CanvasRenderingContext2D, src: string, size: number, footY: number): boolean {
   const img = cemImg(src); if (!img) return false;
   ctx.drawImage(img, -size / 2, footY - size, size, size); return true;
@@ -547,7 +565,7 @@ function spawnEnemy(game: GameState, missionId: number, elapsed: number, corrupt
 
 function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: number, missionId: number, sprites: SpriteMap = {}, showPlayerHp = true, showDamageNumbers = true, zoom = 1) {
   const { width, height, player } = game;
-  const safeZoom = clamp(zoom, 0.75, 1.35);
+  const safeZoom = clamp(zoom, 0.6, 1.6);
   const viewWidth = width / safeZoom;
   const viewHeight = height / safeZoom;
   const cameraX = player.x - viewWidth / 2;
@@ -629,7 +647,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
   for(const prop of game.obstacles){if(prop.x<cameraX-90||prop.x>cameraX+viewWidth+90||prop.y<cameraY-90||prop.y>cameraY+viewHeight+90)continue;ctx.save();ctx.translate(prop.x,prop.y);
     {const sh=prop.kind==="mausoleum"?[60,18]:[22,8];ctx.fillStyle="rgba(0,0,0,.45)";ctx.beginPath();ctx.ellipse(0,prop.radius*.55,sh[0],sh[1],0,0,Math.PI*2);ctx.fill();}
     if(prop.kind==="torch"){const pulse=1+Math.sin(game.elapsed*4.2+prop.x*.02)*.12;const glow=ctx.createRadialGradient(0,-22,2,0,-22,60*pulse);glow.addColorStop(0,"rgba(255,190,110,.35)");glow.addColorStop(1,"rgba(255,150,60,0)");ctx.fillStyle=glow;ctx.beginPath();ctx.arc(0,-22,60*pulse,0,Math.PI*2);ctx.fill();}
-    const spr=prop.kind==="mausoleum"?[mausoleumImg,140,40]:prop.kind==="cross"?[crossImg,62,22]:prop.kind==="torch"?[candlesImg,58,20]:[gravestoneImg,60,22];
+    const spS=clamp(Math.min(game.width,game.height)/720,0.72,1.15);const spr0=prop.kind==="mausoleum"?[mausoleumImg,140,40]:prop.kind==="cross"?[crossImg,62,22]:prop.kind==="torch"?[candlesImg,58,20]:[gravestoneImg,60,22];const spr=[spr0[0],(spr0[1] as number)*spS,(spr0[2] as number)*spS];
     if(drawSprite(ctx,spr[0] as string,spr[1] as number,spr[2] as number)){ctx.restore();continue;}
     if(prop.kind==="torch"){const pulse=1+Math.sin(game.elapsed*3.8+prop.x*.02)*.12;const glow=ctx.createRadialGradient(0,-14,2,0,-14,42*pulse);glow.addColorStop(0,"rgba(193,117,255,.42)");glow.addColorStop(.45,"rgba(128,67,190,.16)");glow.addColorStop(1,"rgba(128,67,190,0)");ctx.fillStyle=glow;ctx.beginPath();ctx.arc(0,-14,42*pulse,0,Math.PI*2);ctx.fill();ctx.fillStyle="#292333";ctx.strokeStyle="#746181";ctx.fillRect(-5,-4,10,21);ctx.strokeRect(-5,-4,10,21);ctx.fillStyle="#d8a8ff";ctx.beginPath();ctx.moveTo(0,-31);ctx.quadraticCurveTo(13,-18,2,-8);ctx.quadraticCurveTo(-10,-15,0,-31);ctx.fill();ctx.fillStyle="#ffd99a";ctx.beginPath();ctx.arc(0,-17,3,0,Math.PI*2);ctx.fill();}
     else if(prop.kind==="mausoleum"){ctx.fillStyle="rgba(0,0,0,.45)";ctx.beginPath();ctx.ellipse(0,18,54,17,0,0,Math.PI*2);ctx.fill();ctx.fillStyle="#25212d";ctx.strokeStyle="#75677e";ctx.lineWidth=3;ctx.fillRect(-42,-22,84,42);ctx.strokeRect(-42,-22,84,42);ctx.beginPath();ctx.moveTo(-48,-22);ctx.lineTo(-35,-48);ctx.lineTo(35,-48);ctx.lineTo(48,-22);ctx.closePath();ctx.fill();ctx.stroke();ctx.fillStyle="#100e17";ctx.fillRect(-12,-5,24,25);ctx.strokeStyle="#9a83a5";ctx.strokeRect(-12,-5,24,25);}
@@ -689,7 +707,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     const sentinel = sprites.elite;
     if (sentinel?.complete && sentinel.naturalWidth > 0) {
       ctx.shadowColor = "#bd8cff";
-      ctx.shadowBlur = 22;
+      ctx.shadowBlur = 0;
       ctx.drawImage(sentinel, -35, -44, 70, 82);
     }
     ctx.shadowBlur = 0;
@@ -711,7 +729,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     if (gem.previousX !== undefined && gem.previousY !== undefined) {
       const trail = ctx.createLinearGradient(gem.previousX, gem.previousY, gem.x, gem.y);
       trail.addColorStop(0, "rgba(167,139,250,0)"); trail.addColorStop(.55, "rgba(167,139,250,.48)"); trail.addColorStop(1, "rgba(56,189,248,.95)");
-      ctx.save(); ctx.strokeStyle = trail; ctx.lineWidth = 2.5; ctx.shadowColor = "#38bdf8"; ctx.shadowBlur = 12; ctx.beginPath(); ctx.moveTo(gem.previousX, gem.previousY); ctx.lineTo(gem.x, gem.y); ctx.stroke(); ctx.restore();
+      ctx.save(); ctx.strokeStyle = trail; ctx.lineWidth = 2.5; ctx.shadowColor = "#38bdf8"; ctx.shadowBlur = 0; ctx.beginPath(); ctx.moveTo(gem.previousX, gem.previousY); ctx.lineTo(gem.x, gem.y); ctx.stroke(); ctx.restore();
     }
     ctx.save(); ctx.translate(gem.x, gem.y);
     const pulse = 1 + Math.sin(game.elapsed * 6 + gem.x * 0.03) * 0.08;
@@ -774,15 +792,13 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
       ctx.rotate(rot);
       if (game.evolved) {
         ctx.strokeStyle = "#e879f9"; ctx.lineWidth = 3;
-        ctx.shadowColor = "#c084fc"; ctx.shadowBlur = 14;
-        const r = (shot.radius ?? 160) * 0.72;
-        ctx.beginPath(); ctx.moveTo(0, -r);
-        ctx.lineTo(r * 0.82, r * 0.45);
-        ctx.lineTo(-r * 0.82, -r * 0.22);
-        ctx.lineTo(0, r);
-        ctx.lineTo(-r * 0.82, r * 0.45);
-        ctx.lineTo(r * 0.82, -r * 0.22);
-        ctx.closePath(); ctx.stroke();
+        const r = (shot.radius ?? 160) * 0.66;
+        // Hexagrama unicursal (traço contínuo): topo → base dir. → sup. esq. → base → sup. dir. → base esq.
+        const hx = r * Math.cos(Math.PI / 6), hy = r * 0.5;
+        ctx.beginPath(); ctx.moveTo(0, -r); ctx.lineTo(hx, hy); ctx.lineTo(-hx, -hy); ctx.lineTo(0, r); ctx.lineTo(hx, -hy); ctx.lineTo(-hx, hy); ctx.closePath(); ctx.stroke();
+        ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.stroke();
+        ctx.rotate(-rot * 2);
+        drawRuneRing(ctx, (shot.radius ?? 160) * 0.8);
       } else {
         ctx.strokeStyle = "#38bdf8"; ctx.lineWidth = 2.5; ctx.beginPath();
         for (let point = 0; point < 5; point++) {
@@ -794,7 +810,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
       }
       const coreGlow = game.evolved ? "#c084fc" : "#38bdf8";
       ctx.fillStyle = coreGlow;
-      ctx.shadowColor = coreGlow; ctx.shadowBlur = 18;
+      ctx.shadowColor = coreGlow; ctx.shadowBlur = 0;
       ctx.beginPath(); ctx.arc(0, 0, 9 + Math.sin(game.elapsed * 8) * 2, 0, Math.PI * 2); ctx.fill();
       ctx.restore();
       return;
@@ -806,13 +822,13 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
       ctx.globalAlpha = lifeRatio;
       const radius = shot.radius ?? 140;
       const gradient = ctx.createRadialGradient(0, 0, 4, 0, 0, radius);
-      gradient.addColorStop(0, "rgba(224,242,254,.92)");
-      gradient.addColorStop(0.28, "rgba(34,211,238,.58)");
+      gradient.addColorStop(0, game.evolved ? "rgba(254,226,226,.92)" : "rgba(224,242,254,.92)");
+      gradient.addColorStop(0.28, game.evolved ? "rgba(220,38,38,.6)" : "rgba(34,211,238,.58)");
       gradient.addColorStop(0.72, "rgba(251,191,36,.18)");
       gradient.addColorStop(1, "rgba(34,211,238,0)");
       ctx.fillStyle = gradient;
       ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = "#a5f3fc"; ctx.lineWidth = 4; ctx.shadowColor = "#22d3ee"; ctx.shadowBlur = 18;
+      ctx.strokeStyle = "#a5f3fc"; ctx.lineWidth = 4; ctx.shadowColor = "#22d3ee"; ctx.shadowBlur = 0;
       ctx.beginPath(); ctx.arc(0, 0, radius * (0.62 + (1 - lifeRatio) * 0.25), 0, Math.PI * 2); ctx.stroke();
       ctx.restore();
       return;
@@ -854,15 +870,24 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
       const endAngle = centerAngle + span / 2;
       const progress = 1 - lifeRatio;
       ctx.lineCap = "round";
-      ctx.shadowColor = game.evolved ? "#d946ef" : "#a855f7";
-      ctx.shadowBlur = 28;
-      ctx.strokeStyle = game.evolved ? "#e879f9" : "#c084fc";
-      ctx.lineWidth = game.evolved ? 82 : 72;
-      ctx.beginPath(); ctx.arc(0, 0, radius, startAngle, endAngle); ctx.stroke();
-      ctx.shadowBlur = 18;
-      ctx.strokeStyle = "#f5d0fe";
-      ctx.lineWidth = game.evolved ? 26 : 22;
-      ctx.beginPath(); ctx.arc(0, 0, radius + 5, startAngle, endAngle); ctx.stroke();
+      const sweepEnd = startAngle + span * Math.min(1, 0.35 + progress * 1.6);
+      ctx.globalAlpha = lifeRatio * 0.28;
+      ctx.strokeStyle = "#14b8a6"; ctx.lineWidth = game.evolved ? 40 : 32;
+      ctx.beginPath(); ctx.arc(0, 0, radius - 6, startAngle, sweepEnd); ctx.stroke();
+      ctx.globalAlpha = lifeRatio * 0.55;
+      ctx.strokeStyle = "#5eead4"; ctx.lineWidth = game.evolved ? 18 : 14;
+      ctx.beginPath(); ctx.arc(0, 0, radius, startAngle, sweepEnd); ctx.stroke();
+      if (game.evolved) {
+        ctx.globalAlpha = lifeRatio * 0.85;
+        ctx.strokeStyle = "#05080f"; ctx.lineWidth = 5;
+        ctx.beginPath(); ctx.arc(0, 0, radius - 3, startAngle, sweepEnd); ctx.stroke();
+        ctx.strokeStyle = "#2dd4bf"; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(0, 0, radius - 16, startAngle, sweepEnd); ctx.stroke();
+      }
+      ctx.globalAlpha = lifeRatio * 0.9;
+      ctx.strokeStyle = "#ccfbf1";
+      ctx.lineWidth = game.evolved ? 3 : 2.5;
+      ctx.beginPath(); ctx.arc(0, 0, radius + 5, startAngle, sweepEnd); ctx.stroke();
       ctx.restore();
       return;
     }
@@ -872,7 +897,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
       ctx.translate(shot.x, shot.y);
       ctx.rotate((shot.angle ?? 0) + Math.PI / 2);
       ctx.shadowColor = "#fbbf24";
-      ctx.shadowBlur = 14;
+      ctx.shadowBlur = 0;
       ctx.fillStyle = "#fef08a";
       ctx.beginPath();
       ctx.moveTo(0, -22); ctx.lineTo(5, -2); ctx.lineTo(3, 13);
@@ -910,8 +935,8 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
       trail.addColorStop(1, game.evolved ? "rgba(216,180,254,.95)" : "rgba(252,165,165,.95)");
       ctx.strokeStyle = trail; ctx.lineWidth = 6;
     } else if (shot.kind === "sentinel_beam") {
-      trail.addColorStop(0, "rgba(45,212,191,0)");
-      trail.addColorStop(1, "rgba(204,251,241,.98)");
+      trail.addColorStop(0, game.evolved ? "rgba(127,29,29,0)" : "rgba(45,212,191,0)");
+      trail.addColorStop(1, game.evolved ? "rgba(248,113,113,.98)" : "rgba(204,251,241,.98)");
       ctx.strokeStyle = trail; ctx.lineWidth = 3.2;
     } else {
       trail.addColorStop(0, "rgba(183,122,255,0)");
@@ -927,28 +952,28 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     ctx.rotate(Math.atan2(shot.vy, shot.vx));
     ctx.globalAlpha = lifeRatio;
     if (shot.isAnchorBurst) {
-      ctx.shadowColor = "#fbbf24"; ctx.shadowBlur = 14; ctx.fillStyle = "#fff1b3";
+      ctx.shadowColor = "#fbbf24"; ctx.shadowBlur = 0; ctx.fillStyle = "#fff1b3";
       ctx.beginPath(); ctx.moveTo(10, 0); ctx.lineTo(2, -2); ctx.lineTo(4, -7); ctx.lineTo(-7, 1); ctx.lineTo(-1, 2); ctx.lineTo(-4, 7); ctx.closePath(); ctx.fill();
     } else if (shot.isChainLightning) {
-      ctx.shadowColor = "#67e8f9"; ctx.shadowBlur = 12; ctx.fillStyle = "#a5f3fc";
+      ctx.shadowColor = "#67e8f9"; ctx.shadowBlur = 0; ctx.fillStyle = "#a5f3fc";
       ctx.beginPath(); ctx.moveTo(9, 0); ctx.lineTo(2, -2); ctx.lineTo(4, -7); ctx.lineTo(-7, 1); ctx.lineTo(-1, 2); ctx.lineTo(-4, 7); ctx.closePath(); ctx.fill();
     } else if (shot.kind === "revolver_empowered") {
-      ctx.shadowColor = "#fbbf24"; ctx.shadowBlur = 17; ctx.fillStyle = "#fef08a";
+      ctx.shadowColor = "#fbbf24"; ctx.shadowBlur = 0; ctx.fillStyle = "#fef08a";
       ctx.beginPath(); ctx.moveTo(16, 0); ctx.lineTo(-8, -5); ctx.lineTo(-4, 0); ctx.lineTo(-8, 5); ctx.closePath(); ctx.fill();
       ctx.strokeStyle = "#c084fc"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(9, 0); ctx.lineTo(-5, 0); ctx.stroke();
     } else if (shot.kind === "plasma_core") {
       const coreRadius = shot.radius ?? 13;
-      ctx.shadowColor = game.evolved ? "#a855f7" : "#ef4444"; ctx.shadowBlur = 18;
+      ctx.shadowColor = game.evolved ? "#a855f7" : "#ef4444"; ctx.shadowBlur = 0;
       ctx.fillStyle = game.evolved ? "#d8b4fe" : "#fca5a5";
       ctx.beginPath(); ctx.arc(0, 0, coreRadius, 0, Math.PI * 2); ctx.fill();
-      ctx.shadowBlur = 3; ctx.strokeStyle = "#fff1f2"; ctx.lineWidth = 2;
+      ctx.shadowBlur = 0; ctx.strokeStyle = "#fff1f2"; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(0, 0, coreRadius * 0.56, 0, Math.PI * 2); ctx.stroke();
     } else if (shot.kind === "sentinel_beam") {
-      ctx.shadowColor = "#2dd4bf"; ctx.shadowBlur = 13; ctx.fillStyle = "#ccfbf1";
+      ctx.fillStyle = game.evolved ? "#dc2626" : "#ccfbf1";
       ctx.fillRect(-12, -2.5, 24, 5);
-      ctx.fillStyle = "#fef3c7"; ctx.beginPath(); ctx.moveTo(11, 0); ctx.lineTo(3, -5); ctx.lineTo(-2, 0); ctx.lineTo(3, 5); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = game.evolved ? "#fecaca" : "#fef3c7"; ctx.beginPath(); ctx.moveTo(11, 0); ctx.lineTo(3, -5); ctx.lineTo(-2, 0); ctx.lineTo(3, 5); ctx.closePath(); ctx.fill();
     } else if (shot.kind === "bullet") {
-      ctx.shadowColor = "#c084fc"; ctx.shadowBlur = 9; ctx.fillStyle = "#e9d5ff";
+      ctx.shadowColor = "#c084fc"; ctx.shadowBlur = 0; ctx.fillStyle = "#e9d5ff";
       ctx.beginPath(); ctx.moveTo(11, 0); ctx.lineTo(-5, -3); ctx.lineTo(-5, 3); ctx.closePath(); ctx.fill();
       ctx.fillStyle = "#fff1ce"; ctx.beginPath(); ctx.moveTo(6, 0); ctx.lineTo(0, -1.2); ctx.lineTo(-4, 0); ctx.closePath(); ctx.fill();
     } else {
@@ -978,26 +1003,27 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     ctx.translate(totem.x, totem.y);
     const pulse = 1 + Math.sin(game.elapsed * 4 + totem.id) * 0.08;
     const aura = ctx.createRadialGradient(0, -10, 3, 0, -10, 48 * pulse);
-    aura.addColorStop(0, "rgba(34,211,238,.34)");
-    aura.addColorStop(0.55, "rgba(14,165,233,.14)");
+    const ev = game.evolved;
+    aura.addColorStop(0, ev ? "rgba(220,38,38,.38)" : "rgba(34,211,238,.34)");
+    aura.addColorStop(0.55, ev ? "rgba(127,29,29,.16)" : "rgba(14,165,233,.14)");
     aura.addColorStop(1, "rgba(14,165,233,0)");
     ctx.fillStyle = aura;
     ctx.beginPath(); ctx.arc(0, -10, 48 * pulse, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = "rgba(0,0,0,.48)";
     ctx.beginPath(); ctx.ellipse(0, 10, 22, 8, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = "#0b2633"; ctx.strokeStyle = "#67e8f9"; ctx.lineWidth = 2;
+    ctx.fillStyle = ev ? "#2a0707" : "#0b2633"; ctx.strokeStyle = ev ? "#ef4444" : "#67e8f9"; ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(-13, 12); ctx.lineTo(-10, -24); ctx.lineTo(-5, -34);
     ctx.lineTo(5, -34); ctx.lineTo(10, -24); ctx.lineTo(13, 12);
     ctx.closePath(); ctx.fill(); ctx.stroke();
-    ctx.strokeStyle = "rgba(250,204,21,.85)"; ctx.lineWidth = 1.4;
+    ctx.strokeStyle = ev ? "rgba(248,113,113,.9)" : "rgba(250,204,21,.85)"; ctx.lineWidth = 1.4;
     ctx.beginPath(); ctx.moveTo(-8, -16); ctx.lineTo(8, -16); ctx.moveTo(-9, 5); ctx.lineTo(9, 5); ctx.stroke();
     const glyphY = -43 + Math.sin(game.elapsed * 3.2 + totem.id) * 3;
     ctx.save();
     ctx.translate(0, glyphY);
     ctx.rotate(game.elapsed * 0.8);
-    ctx.shadowColor = "#22d3ee"; ctx.shadowBlur = 14;
-    ctx.fillStyle = "#a5f3fc";
+    ctx.shadowColor = "#22d3ee"; ctx.shadowBlur = 0;
+    ctx.fillStyle = ev ? "#f87171" : "#a5f3fc";
     ctx.beginPath(); ctx.moveTo(0, -7); ctx.lineTo(6, 0); ctx.lineTo(0, 7); ctx.lineTo(-6, 0); ctx.closePath(); ctx.fill();
     ctx.strokeStyle = "#fef08a"; ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.moveTo(0, -4); ctx.lineTo(0, 4); ctx.moveTo(-4, 0); ctx.lineTo(4, 0); ctx.stroke();
@@ -1075,7 +1101,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
       ctx.beginPath(); ctx.moveTo(-enemy.radius*.9, enemy.radius*.65); ctx.lineTo(-enemy.radius*.8,-enemy.radius*.7); ctx.lineTo(-enemy.radius*.35,-enemy.radius*1.15); ctx.lineTo(enemy.radius*.35,-enemy.radius*1.15); ctx.lineTo(enemy.radius*.8,-enemy.radius*.7); ctx.lineTo(enemy.radius*.9,enemy.radius*.65); ctx.lineTo(0,enemy.radius*1.05); ctx.closePath();ctx.fill();
       ctx.strokeStyle="#d7b5ff";ctx.lineWidth=3;ctx.stroke();
       ctx.fillStyle="#08060d";ctx.beginPath();ctx.ellipse(0,-enemy.radius*.15,enemy.radius*.42,enemy.radius*.55,0,0,Math.PI*2);ctx.fill();
-      ctx.fillStyle="#caa1ff";ctx.shadowColor="#c17cff";ctx.shadowBlur=18;ctx.fillRect(-enemy.radius*.25,-enemy.radius*.2,enemy.radius*.16,4);ctx.fillRect(enemy.radius*.1,-enemy.radius*.2,enemy.radius*.16,4);
+      ctx.fillStyle="#caa1ff";ctx.shadowColor="#c17cff";ctx.shadowBlur = 0;ctx.fillRect(-enemy.radius*.25,-enemy.radius*.2,enemy.radius*.16,4);ctx.fillRect(enemy.radius*.1,-enemy.radius*.2,enemy.radius*.16,4);
       ctx.strokeStyle="rgba(211,166,255,.65)";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-enemy.radius*.7,enemy.radius*.6);ctx.lineTo(-enemy.radius*1.3,enemy.radius*1.3);ctx.moveTo(enemy.radius*.7,enemy.radius*.6);ctx.lineTo(enemy.radius*1.3,enemy.radius*1.3);ctx.stroke();
     }
     ctx.shadowBlur = 0;
@@ -1199,9 +1225,9 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     ctx.fillStyle="#17121f";ctx.beginPath();ctx.moveTo(-8,-9);ctx.lineTo(0,-20);ctx.lineTo(9,-10);ctx.lineTo(4,-8);ctx.lineTo(-5,-7);ctx.closePath();ctx.fill();
     ctx.fillStyle="#d9c4ff";ctx.fillRect(-4,-7,2.5,2);ctx.fillRect(2,-7,2.5,2);
     ctx.strokeStyle="#d7b5ff";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(8,-1);ctx.lineTo(17,-12);ctx.stroke();
-    ctx.fillStyle="#d5a7ff";ctx.shadowColor="#bd7cff";ctx.shadowBlur=16;ctx.beginPath();ctx.arc(18,-13,3.5,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle="#d5a7ff";ctx.shadowColor="#bd7cff";ctx.shadowBlur = 0;ctx.beginPath();ctx.arc(18,-13,3.5,0,Math.PI*2);ctx.fill();
   }
-  ctx.shadowBlur=0; ctx.globalAlpha=1;
+  ctx.shadowBlur = 0; ctx.globalAlpha=1;
   if (showPlayerHp) {
     const barW = 42, barY = -44, ratio = clamp(player.hp / Math.max(1, player.maxHp), 0, 1);
     ctx.fillStyle = "rgba(8,6,15,.82)"; ctx.fillRect(-barW / 2 - 1, barY - 1, barW + 2, 6);
@@ -1258,7 +1284,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
   const [stats, setStats] = useState({ totalDamageDealt: 0, crystalsCollected: 0, highestLevel: 1 });
   const [result, setResult] = useState<"victory" | "defeat" | null>(null);
   const [bossMessage, setBossMessage] = useState(false);
-  const [pausePanel, setPausePanel] = useState<"main" | "attributes" | "master">("main");
+  const [pausePanel, setPausePanel] = useState<"main" | "attributes" | "runes" | "master">("main");
   const [masterGiftListOpen, setMasterGiftListOpen] = useState(false);
   const [speedMultiplier, setSpeedMultiplier] = useState<1 | 2 | 3>(1);
   const [zoom, setZoom] = useState(1);
@@ -1740,7 +1766,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             }
             game.player.castFacing = directionFromVector(target.x - game.player.x, target.y - game.player.y);
             game.player.castTimer = 0.24;
-            game.shotTimer = game.player.fireRate * 1.65;
+            game.shotTimer = game.player.fireRate * 3.3;
           } else if (game.weaponId === "spectral_scythe") {
             const arcSpan = game.evolved ? Math.PI * 1.15 : Math.PI * 0.55;
             const slashRadius = (game.evolved ? 135 : 95) * (1 + game.player.specialAreaStacks * 0.1);
@@ -1759,7 +1785,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               game.particles.push({
                 x: game.player.x + Math.cos(pAngle) * pDist, y: game.player.y + Math.sin(pAngle) * pDist,
                 vx: Math.cos(pAngle) * (40 + Math.random() * 80), vy: Math.sin(pAngle) * (40 + Math.random() * 80),
-                life: 0.35 + Math.random() * 0.25, color: Math.random() > 0.4 ? "#c084fc" : "#e879f9",
+                life: 0.35 + Math.random() * 0.25, color: game.evolved ? (Math.random() > 0.5 ? "#2dd4bf" : "#0b0f17") : (Math.random() > 0.4 ? "#5eead4" : "#99f6e4"),
               });
             }
             game.player.castFacing = game.player.facing;
@@ -2111,15 +2137,15 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               hitTargets: [], bouncesRemaining: 0, piercesRemaining: 0,
               kind: "sentinel_explosion", radius: burstRadius,
             });
-            (game.rings ??= []).push({ x: totem.x, y: totem.y, r: 12, max: burstRadius, life: 0.68, color: "#38bdf8" });
-            for (let particle = 0; particle < 30; particle++) {
+            (game.rings ??= []).push({ x: totem.x, y: totem.y, r: 12, max: burstRadius, life: 0.68, color: game.evolved ? "#dc2626" : "#38bdf8" });
+            for (let particle = 0; particle < 14; particle++) {
               const angle = Math.random() * Math.PI * 2;
               const speed = 70 + Math.random() * 220;
               game.particles.push({
                 x: totem.x, y: totem.y,
                 vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
                 life: 0.4 + Math.random() * 0.55,
-                color: particle % 2 ? "#fbbf24" : "#22d3ee",
+                color: game.evolved ? (particle % 2 ? "#7f1d1d" : "#ef4444") : (particle % 2 ? "#fbbf24" : "#22d3ee"),
               });
             }
           }
@@ -2831,7 +2857,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                       <article className="fractals-shop-item">
                         <div className="fractals-shop-item__slot"><Heart className="h-5 w-5 text-rose-300" /></div>
                         <div className="min-w-0"><p className="fractals-shop-item__name">Âncora da Alma</p><p className="fractals-shop-item__description">Até duas ressurreições por expedição, uma Âncora equipada por vez. N1: 40% de vida/3s; N2: 60%/6s; N3: explosão na segunda morte.</p><div className="fractals-shop-pips" aria-label={"Nível " + purchases.anchor_soul + " de 3"}>{Array.from({length:3}).map((_,i)=><i key={i} className={i<purchases.anchor_soul?"fractals-shop-pip is-filled":"fractals-shop-pip"}/>)}<span>{purchases.anchor_soul}/3</span></div><span className="fractals-shop-item__status">{purchases.anchor_soul>=3?"Explosão da segunda Âncora liberada":purchases.anchor_soul>=2?"Recuperação reforçada liberada":purchases.anchor_soul>=1?"Ressurreição liberada":unlockedCorruption>=2?"Disponível":"Requer Corrupção 2"}</span></div>
-                        <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || purchases.anchor_soul>=3 || unlockedCorruption<2 && !isMaster || (!isMaster && fractalBalance<FRACTAL_SHOP.anchor_soul[purchases.anchor_soul]?.cost)} onClick={()=>void purchaseUpgrade("anchor_soul")}>{purchases.anchor_soul>=3?"MAX":isMaster?"GRÁTIS":FRACTAL_SHOP.anchor_soul[purchases.anchor_soul]?.cost.toLocaleString("pt-BR")+" FR"}</button>
+                        <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || purchases.anchor_soul>=3 || unlockedCorruption<2 && !isMaster || (!isMaster && fractalBalance<Number(FRACTAL_SHOP.anchor_soul[purchases.anchor_soul] ?? 0))} onClick={()=>void purchaseUpgrade("anchor_soul")}>{purchases.anchor_soul>=3?"MAX":isMaster?"GRÁTIS":Number(FRACTAL_SHOP.anchor_soul[purchases.anchor_soul] ?? 0).toLocaleString("pt-BR")+" FR"}</button>
                       </article>
                       <article className="fractals-shop-item">
                         <div className="fractals-shop-item__slot"><BookOpen className="h-5 w-5 text-fuchsia-300" /></div>
@@ -2985,9 +3011,9 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                   <button type="button" aria-label="Aumentar velocidade" disabled={speedMultiplier === 3 || (!isMaster && (speedMultiplier === 1 ? !purchases.speed_2x : !purchases.speed_3x))} onClick={() => setSpeedMultiplier((value) => value === 1 ? 2 : 3)}>+</button>
                 </div>
                 <div className="fractals-hud-control-group" aria-label="Zoom da fase">
-                  <button type="button" aria-label="Diminuir zoom" disabled={zoom <= 0.75} onClick={() => { const next = clamp(zoomRef.current - 0.1, 0.75, 1.35); zoomRef.current = next; setZoom(next); }}><ZoomOut/></button>
+                  <button type="button" aria-label="Diminuir zoom" disabled={zoom <= 0.6} onClick={() => { const next = clamp(zoomRef.current - 0.1, 0.6, 1.6); zoomRef.current = next; setZoom(next); }}><ZoomOut/></button>
                   <b>{Math.round(zoom * 100)}%</b>
-                  <button type="button" aria-label="Aumentar zoom" disabled={zoom >= 1.35} onClick={() => { const next = clamp(zoomRef.current + 0.1, 0.75, 1.35); zoomRef.current = next; setZoom(next); }}><ZoomIn/></button>
+                  <button type="button" aria-label="Aumentar zoom" disabled={zoom >= 1.6} onClick={() => { const next = clamp(zoomRef.current + 0.1, 0.6, 1.6); zoomRef.current = next; setZoom(next); }}><ZoomIn/></button>
                 </div>
                 {!result && <Button size="sm" variant="outline" className="fractals-hud-pause" onClick={() => setPaused((value) => !value)}><Pause/></Button>}
               </div>
@@ -2999,14 +3025,16 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
  <div className={`fractals-pause-panel relative w-full ${pausePanel === "master" ? "max-w-3xl" : "max-w-md"} overflow-hidden p-4 sm:p-5`}>
   <div className="fractals-pause-header mb-4 flex items-center justify-between pb-3"><div><p className="text-[9px] font-bold uppercase tracking-[.24em] text-violet-200/70">Ecos dos Fractais · Refúgio</p><h3 className="mt-1 font-display text-2xl text-white">Expedição pausada</h3></div><div className="grid h-11 w-11 place-items-center rounded-2xl border border-amber-200/20 bg-amber-200/10 text-amber-100 shadow-[0_0_24px_rgba(251,191,36,0.12)]"><Pause className="h-5 w-5"/></div></div>
   {pausePanel === "main" ? <>
-   <div className="fractals-pause-actions grid grid-cols-2 gap-2"><Button variant="outline" className="h-auto justify-start gap-2 rounded-xl border-violet-100/15 bg-white/[0.055] py-3 text-white shadow-inner hover:border-violet-100/35 hover:bg-violet-300/10" onClick={() => setPausePanel("attributes")}><UserRound className="h-4 w-4"/> Atributos</Button><Button variant="outline" className="h-auto justify-start gap-2 rounded-xl border-violet-100/15 bg-white/[0.055] py-3 text-white shadow-inner hover:border-violet-100/35 hover:bg-violet-300/10" onClick={toggleFullscreen}><Maximize className="h-4 w-4"/> Tela cheia</Button><Button variant="outline" className="h-auto justify-start gap-2 rounded-xl border-violet-100/15 bg-white/[0.055] py-3 text-white shadow-inner hover:border-violet-100/35 hover:bg-violet-300/10" onClick={() => setShowPlayerHp((v) => !v)}><Heart className="h-4 w-4 text-rose-300"/> HP: {showPlayerHp ? "visível" : "oculto"}</Button><Button variant="outline" className="h-auto justify-start gap-2 rounded-xl border-violet-100/15 bg-white/[0.055] py-3 text-white shadow-inner hover:border-violet-100/35 hover:bg-violet-300/10" onClick={() => setShowDamageNumbers((v) => !v)}><Swords className="h-4 w-4 text-amber-200"/> Dano: {showDamageNumbers ? "visível" : "oculto"}</Button></div>
+   <div className="fractals-pause-actions grid grid-cols-2 gap-2"><Button variant="outline" className="h-auto justify-start gap-2 rounded-xl border-violet-100/15 bg-white/[0.055] py-3 text-white shadow-inner hover:border-violet-100/35 hover:bg-violet-300/10" onClick={() => setPausePanel("attributes")}><UserRound className="h-4 w-4"/> Atributos</Button><Button variant="outline" className="h-auto justify-start gap-2 rounded-xl border-violet-100/15 bg-white/[0.055] py-3 text-white shadow-inner hover:border-violet-100/35 hover:bg-violet-300/10" onClick={() => setPausePanel("runes")}><Sparkles className="h-4 w-4 text-amber-200"/> Dádivas &amp; Runas</Button><Button variant="outline" className="h-auto justify-start gap-2 rounded-xl border-violet-100/15 bg-white/[0.055] py-3 text-white shadow-inner hover:border-violet-100/35 hover:bg-violet-300/10" onClick={toggleFullscreen}><Maximize className="h-4 w-4"/> Tela cheia</Button><Button variant="outline" className="h-auto justify-start gap-2 rounded-xl border-violet-100/15 bg-white/[0.055] py-3 text-white shadow-inner hover:border-violet-100/35 hover:bg-violet-300/10" onClick={() => setShowPlayerHp((v) => !v)}><Heart className="h-4 w-4 text-rose-300"/> HP: {showPlayerHp ? "visível" : "oculto"}</Button><Button variant="outline" className="h-auto justify-start gap-2 rounded-xl border-violet-100/15 bg-white/[0.055] py-3 text-white shadow-inner hover:border-violet-100/35 hover:bg-violet-300/10" onClick={() => setShowDamageNumbers((v) => !v)}><Swords className="h-4 w-4 text-amber-200"/> Dano: {showDamageNumbers ? "visível" : "oculto"}</Button></div>
    <Button variant="destructive" className="mt-3 h-10 w-full border border-rose-300/25 bg-rose-950/55 font-bold text-rose-100 hover:bg-rose-900/70" onClick={() => { const game = gameRef.current; if (!game || game.ended) return; game.ended = true; setStats({ totalDamageDealt: Math.round(game.totalDamageDealt), crystalsCollected: game.crystalsCollected, highestLevel: game.highestLevel }); setResult("defeat"); setPaused(false); setPausePanel("main"); fractalAudio.defeat(); finishRun(false); }}><Skull className="mr-2 h-4 w-4"/> Desistir da partida</Button>
     <div className="fractals-pause-speed mt-3 rounded-2xl p-3"><div className="mb-2 flex items-center gap-2 text-xs font-semibold text-white/75"><Gauge className="h-4 w-4"/> Velocidade da expedição</div><div className="grid grid-cols-3 gap-2">{([1,2,3] as const).map((speed) => <Button key={speed} size="sm" variant={speedMultiplier===speed?"default":"outline"} disabled={!isMaster && (speed===2 ? !purchases.speed_2x : speed===3 ? !purchases.speed_3x : false)} className={!isMaster && speed>1?"border-white/10 opacity-45":""} onClick={()=>setSpeedMultiplier(speed)}>{speed}x{!isMaster && (speed===2 ? !purchases.speed_2x : speed===3 ? !purchases.speed_3x : false)?" 🔒":""}</Button>)}</div>{!isMaster && <p className="mt-2 text-[10px] text-white/45">Desbloqueie 2x e 3x na loja de fractais.</p>}{isMaster && <p className="mt-2 text-[10px] text-emerald-200/70">Acesso de mestre: todas as velocidades liberadas para testes.</p>}</div>
     {isMaster && <Button className="mt-3 h-12 w-full border border-amber-200/50 bg-gradient-to-r from-amber-300 via-emerald-300 to-emerald-500 font-black tracking-wide text-[#08130e] shadow-[0_0_28px_rgba(52,211,153,.22)] hover:brightness-110" onClick={() => { setMasterGiftListOpen(false); setPausePanel("master"); }}><Crown className="mr-2 h-5 w-5"/> Painel do Mestre</Button>}
     <Button className="fractals-pause-resume mt-3 h-11 w-full font-bold" onClick={() => {setPausePanel("main");setPaused(false)}}><Play className="mr-2 h-4 w-4"/> Retomar expedição</Button>
   </> : pausePanel === "attributes" ? <>
    <div className="mb-3 grid grid-cols-2 gap-2">{[["Vida",`${Math.ceil(gameRef.current?.player.hp ?? hud.hp)} / ${Math.ceil(gameRef.current?.player.maxHp ?? hud.maxHp)}`],["Dano",`${(gameRef.current?.player.damage ?? 0).toFixed(1)}`],["Velocidade",`${(gameRef.current?.player.speed ?? 0).toFixed(0)}`],["Intervalo de ataque",`${(gameRef.current?.player.fireRate ?? 0).toFixed(2)}s`],["Nível",`${gameRef.current?.player.level ?? hud.level}`],["Projéteis",`${1 + (gameRef.current?.player.projectileStacks ?? 0)}`],["Ricochete",`${gameRef.current?.player.relicRicochet ?? 0}/3`],["Perfuração",`${gameRef.current?.player.relicPiercing ?? 0}/3`],["Descarga em Cadeia",`${gameRef.current?.player.relicChainLightning ?? 0}/3`],["Sentinelas ativas",`${gameRef.current?.sentinelTotems.length ?? 0}`],["Alcance",`+${Math.round((gameRef.current?.player.projectileRangeMultiplier ?? 1) * 100 - 100)}%`],["Experiência",`${Math.floor(gameRef.current?.player.xp ?? hud.xp)} / ${Math.floor(gameRef.current?.player.nextXp ?? hud.nextXp)}`],["Abates",`${gameRef.current?.kills ?? hud.kills}`],["Multiplicador",`${speedMultiplier}x`],["Arma",WEAPON_CONFIG[gameRef.current?.weaponId ?? selectedWeapon].name],["Nível da arma",`${gameRef.current?.weaponLevel ?? 1}/10`],["Presságio",gameRef.current?.omenId ? OMEN_CONFIG[gameRef.current.omenId].name : "Nenhum"]].map(([label,value])=><div key={label} className="rounded-lg border border-white/10 bg-white/5 p-2"><p className="text-[10px] text-white/45">{label}</p><p className="text-sm font-semibold tabular-nums text-white">{value}</p></div>)}</div>
-   <section className="mt-3 rounded-xl border border-violet-300/20 bg-violet-950/20 p-3">
+   <Button variant="outline" className="w-full border-white/15 text-white hover:bg-white/10" onClick={()=>setPausePanel("main")}><ArrowLeft className="mr-2 h-4 w-4"/> Voltar ao menu</Button>
+  </> : pausePanel === "runes" ? <>
+   <section className="mb-3 max-h-[60vh] overflow-y-auto rounded-xl border border-violet-300/20 bg-violet-950/20 p-3">
     <div className="mb-2 flex items-center gap-2"><Sparkles className="h-4 w-4 text-amber-200"/><h4 className="text-xs font-black uppercase tracking-wider text-violet-100">Dádivas &amp; Runas Ativas</h4></div>
     {Object.entries(gameRef.current?.upgradeCounts ?? {}).length > 0 ? <div className="grid grid-cols-1 gap-1.5">
       {Object.entries(gameRef.current?.upgradeCounts ?? {}).map(([id,rune])=><div key={id} className="flex items-center justify-between gap-2 rounded-lg border border-white/10 bg-black/20 px-2.5 py-2">
