@@ -6,9 +6,10 @@ import candlesImg from "@/assets/fractals/candles.png";
 import catUrnImg from "@/assets/fractals/cat-urn.png";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, Heart, Move, Pause, Play, RotateCcw, RotateCw, Check, Shield, Skull, Sparkles, Swords, Zap, Maximize, UserRound, Gauge, ArrowLeft, ShoppingBag, Crown, Gem as GemIcon, MapPin, Flame, Leaf, Snowflake, Orbit, Lock, Link2, ChevronDown, Coins, Timer, Target, ZoomIn, ZoomOut, Volume2, VolumeX, Ban, Clover, Dna, BookOpen, Monitor, Keyboard } from "lucide-react";
+import { AlertTriangle, Heart, Move, Pause, Play, RotateCcw, RotateCw, Check, Shield, Skull, Sparkles, Swords, Zap, Maximize, UserRound, Gauge, ArrowLeft, ShoppingBag, Crown, Gem as GemIcon, MapPin, Flame, Leaf, Snowflake, Orbit, Lock, Link2, ChevronDown, Coins, Timer, Target, ZoomIn, ZoomOut, Volume2, VolumeX, Ban, Clover, Dna, BookOpen, Monitor, Keyboard, Diamond } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { getDifficultySnapshot } from "@/lib/fractals/difficulty";
 import { fractalAudio } from "@/lib/fractals/audio";
 import { CORRUPTION_LEVELS, FRACTAL_MISSIONS, RUN_DURATION_SECONDS } from "@/lib/fractals/config";
@@ -63,6 +64,184 @@ const WEAPON_CONFIG: Record<WeaponId, { name: string; description: string; price
   gravity_shackle: { name: "Grilhão Gravitacional", description: "Projeta uma aura rúnica intermitente ao redor do herói que desacelera inimigos; sua evolução mantém a aura ativa.", price: 11000, purchaseKey: "weapon_gravity", masteryKey: "mastery_gravity", projectKey: "evolution_gravity", evolutionName: "Prisão do Abismo" },
   rune_sentinels: { name: "Sentinelas Rúnicas", description: "Sentinelas orbitais disparam feixes rúnicos rápidos contra os alvos mais resistentes.", price: 12000, purchaseKey: "weapon_sentinels", masteryKey: "mastery_sentinels", projectKey: "evolution_sentinels", evolutionName: "Arsenal Ancestral" },
 };
+
+type ShopItemInfo = {
+  title: string;
+  category: string;
+  summary: string;
+  details: string[];
+};
+
+const SHOP_ITEM_INFO: Record<string, ShopItemInfo> = {
+  health: { title: "Vida Reforçada", category: "Melhoria permanente", summary: "+10 de vida máxima por nível.", details: [
+    "Cada nível comprado acrescenta permanentemente 10 pontos à vida máxima do personagem.",
+    "São 15 níveis no total, chegando a +150 de vida máxima.",
+    "O bônus já é aplicado no início de cada expedição."
+  ]},
+  projectile_duration: { title: "Duração de Projéteis", category: "Melhoria permanente", summary: "Aumenta o tempo de vida dos projéteis.", details: [
+    "Aumenta a duração-base dos projéteis para que permaneçam ativos por mais tempo.",
+    "Multiplicadores: nível 1 = 1,25x; nível 2 = 1,5x; nível 3 = 2x a duração inicial.",
+    "O nível máximo dobra a duração-base. Não altera diretamente o dano do impacto."
+  ]},
+  rarity: { title: "Ressonância Rara", category: "Melhoria permanente", summary: "Aumenta a chance de Dádivas Raras.", details: [
+    "Altera a distribuição das dádivas comuns que entram no sorteio de raridade.",
+    "Nível 1: 85% Normal e 15% Rara. Nível 2: 75% Normal e 25% Rara. Nível 3: 65% Normal e 35% Rara.",
+    "Não cria dádivas Épicas. A promoção de Rara para Épica é função exclusiva da Transmutação Rúnica.",
+    "Relíquias de Campo e Dádivas Exclusivas de Arma têm raridade Incomum fixa e não participam desse sorteio."
+  ]},
+  speed_2x: { title: "Aceleração 2x", category: "Melhoria permanente", summary: "Desbloqueia a velocidade 2x nas expedições.", details: [
+    "Libera a opção de velocidade 2x no menu de pausa durante uma expedição.",
+    "É um desbloqueio permanente e não precisa ser comprado novamente a cada partida."
+  ]},
+  speed_3x: { title: "Aceleração 3x", category: "Melhoria permanente", summary: "Desbloqueia 3x; exige a Aceleração 2x.", details: [
+    "Libera a opção de velocidade 3x no menu de pausa durante uma expedição.",
+    "É necessário possuir a Aceleração 2x antes de comprar este desbloqueio.",
+    "O desbloqueio é permanente."
+  ]},
+  reroll: { title: "Rerrolagem de Dádivas", category: "Controle das escolhas", summary: "+1 rerrolagem por nível, por expedição.", details: [
+    "Cada nível comprado concede uma rerrolagem adicional em cada expedição.",
+    "Você pode trocar o conjunto atual de dádivas oferecidas ao subir de nível.",
+    "Máximo: 10 níveis e 10 rerrolagens por expedição. Desbloqueia a partir da Corrupção 1."
+  ]},
+  oracle: { title: "Oráculo das Relíquias", category: "Controle das escolhas", summary: "Libera Relíquias de Campo e chance de uma 4ª carta.", details: [
+    "No nível 1, libera as quatro Relíquias de Campo básicas nas escolhas de subida de nível: Vórtice Coletor, Afinidade de XP, Alcance Arcano e Coroa de Estilhaços.",
+    "Também concede uma chance de surgir uma quarta carta independente. A chance por nível é: 1 = 6%, 2 = 12%, 3 = 18%, 4 = 24%, 5 = 30%, 6 = 36%, 7 = 42%, 8 = 48%, 9 = 50% e 10 = 50%.",
+    "A quarta carta pode ser uma Relíquia de Campo elegível ou uma Dádiva Exclusiva da arma equipada. As dádivas de arma respeitam os banimentos e o limite de 3 níveis.",
+    "O Oráculo aumenta a quantidade de opções, não a raridade: Relíquias de Campo e Dádivas Exclusivas continuam sendo Incomuns."
+  ]},
+  banish: { title: "Selo do Exílio", category: "Controle das escolhas", summary: "Permite banir dádivas indesejadas da expedição.", details: [
+    "Cada nível concede um exílio para a expedição.",
+    "Ao banir uma opção apresentada, ela é removida da seleção e não volta a aparecer naquela partida.",
+    "Máximo: 5 exílios por expedição."
+  ]},
+  fortune: { title: "Fortuna Fractal", category: "Recompensas", summary: "Aumenta a chance de espólios especiais.", details: [
+    "Cada nível aumenta em 10% a chance relativa de encontrar recompensas especiais, até +50% no nível 5.",
+    "Afeta as chances de recompensas especiais de urnas e de espólios associados a Brutos e Elites, incluindo Relíquias de Campo elegíveis.",
+    "O bônus é relativo e respeita os limites máximos de chance definidos pelo jogo; não significa um acréscimo direto de 10 pontos percentuais."
+  ]},
+  transmutation: { title: "Transmutação Rúnica", category: "Raridade", summary: "Pode promover uma Dádiva Rara para Épica.", details: [
+    "Quando uma dádiva elegível é sorteada como Rara, existe uma chance adicional de promovê-la para Épica.",
+    "Nível 1: 3% por resultado Raro. Nível 2: 6%. Nível 3: 10%.",
+    "Não aumenta a chance de encontrar resultados Raros; essa parte pertence à Ressonância Rara.",
+    "Relíquias de Campo e Dádivas Exclusivas de Arma são Incomuns fixas e não recebem essa promoção."
+  ]},
+  anchor_soul: { title: "Âncora da Alma", category: "Sobrevivência", summary: "Concede até duas ressurreições por expedição.", details: [
+    "Você só pode manter uma Âncora disponível por vez, mas pode obter até duas ressurreições na mesma expedição.",
+    "Nível 1: retorna com 40% da vida máxima e 3 segundos de invulnerabilidade.",
+    "Nível 2: melhora o retorno para 60% da vida máxima e 6 segundos de invulnerabilidade.",
+    "Nível 3: na segunda morte, além da ressurreição, libera uma explosão ao redor do personagem que atinge inimigos próximos."
+  ]},
+  omen_archive: { title: "Arquivo dos Presságios", category: "Modificadores de expedição", summary: "Desbloqueia cinco Presságios; escolha apenas um por partida.", details: [
+    "Abre a categoria Presságios do Arsenal e permite selecionar um modificador antes da expedição.",
+    "Existem cinco opções, cada uma com bônus e ônus próprios. Apenas um Presságio pode ser escolhido por expedição.",
+    "Requer Corrupção 4. Depois de adquirido, não há custo adicional para selecionar um Presságio."
+  ]},
+  archive_sealed: { title: "Arquivo dos Presságios", category: "Modificadores de expedição", summary: "Desbloqueia cinco Presságios; escolha apenas um por partida.", details: [
+    "Esta categoria permanece selada até a compra do Arquivo dos Presságios na aba Permanentes.",
+    "O desbloqueio exige Corrupção 4.",
+    "Após abrir o arquivo, você poderá selecionar um dos cinco Presságios para cada expedição, sem custo adicional."
+  ]},
+  area: { title: "Vórtice Coletor", category: "Relíquia de Campo", summary: "Cada coleta amplia o raio de coleta em 10%.", details: [
+    "Ao encontrar e coletar esta Relíquia de Campo durante a expedição, o raio de coleta aumenta em 10%.",
+    "O efeito acumula até 10 vezes, chegando a +100% de raio de coleta.",
+    "A compra do nível 1 libera a relíquia. Os níveis 2, 3 e 4 elevam a chance geral de queda de Relíquias de Campo para 1%, 3% e 5%, conforme o maior nível comprado entre as relíquias de campo."
+  ]},
+  experience: { title: "Afinidade de XP", category: "Relíquia de Campo", summary: "Cada coleta aumenta a experiência recebida em 5%.", details: [
+    "Cada coleta da relíquia concede +5% de experiência recebida.",
+    "O efeito acumula até 10 vezes, chegando a +50% de experiência.",
+    "O nível 1 libera a relíquia. Os níveis 2 a 4 também contribuem para a chance geral de queda de Relíquias de Campo: 1%, 3% e 5% no maior nível comprado."
+  ]},
+  projectile_range: { title: "Alcance Arcano", category: "Relíquia de Campo", summary: "Cada coleta aumenta em 10% o alcance útil da arma.", details: [
+    "Cada coleta aumenta em 10% o alcance útil da arma equipada.",
+    "O efeito acumula até 5 vezes, chegando a +50%. Afeta projéteis, órbitas, áreas e feixes compatíveis.",
+    "O nível 1 libera a relíquia. Os níveis 2 a 4 também contribuem para a chance geral de queda de Relíquias de Campo: 1%, 3% e 5% no maior nível comprado."
+  ]},
+  projectiles: { title: "Coroa de Estilhaços", category: "Relíquia de Campo", summary: "Adapta o bônus à arma equipada; até 2 coletas.", details: [
+    "O efeito depende da arma equipada: Revólver e Núcleo recebem projéteis adicionais; Espadas Orbitais recebem lâminas adicionais; Sentinelas recebem totens adicionais.",
+    "Com a Foice Espectral, cada coleta concede +12% de dano. Com o Grilhão Gravitacional, cada coleta aumenta o raio da aura em 6%.",
+    "O efeito acumula até 2 coletas.",
+    "O nível 1 da compra libera a relíquia. Os níveis 2 a 4 aumentam a chance geral de queda de Relíquias de Campo para 1%, 3% e 5%, conforme o maior nível comprado."
+  ]},
+  ricochet: { title: "Ricochete Arcano", category: "Relíquia de Campo", summary: "Projéteis do Revólver e do Núcleo ricocheteiam em mais alvos.", details: [
+    "Disponível apenas para o Revólver do Vazio e o Núcleo Instável.",
+    "Cada coleta concede +1 ricochete adicional, até 3 acúmulos.",
+    "A compra do nível 1 libera a relíquia. Os níveis 2 e 3 aumentam a chance geral de queda de Relíquias de Campo, compartilhada com as demais relíquias."
+  ]},
+  piercing: { title: "Perfuração Espectral", category: "Relíquia de Campo", summary: "Projéteis atravessam inimigos adicionais sem perder dano.", details: [
+    "Disponível apenas para o Revólver do Vazio e o Núcleo Instável.",
+    "Cada coleta concede +1 inimigo atravessado, até 3 acúmulos. Os projéteis mantêm o dano ao atravessar os alvos.",
+    "A compra do nível 1 libera a relíquia. Os níveis 2 e 3 aumentam a chance geral de queda de Relíquias de Campo, compartilhada com as demais relíquias."
+  ]},
+  chain_lightning: { title: "Descarga em Cadeia", category: "Relíquia de Campo", summary: "Impactos saltam para alvos adicionais próximos.", details: [
+    "Disponível apenas para o Revólver do Vazio e o Núcleo Instável.",
+    "Nível de coleta 1: salta para 1 alvo com 55% do dano; nível 2: 2 alvos com 65%; nível 3: 3 alvos com 75%.",
+    "A compra do nível 1 libera a relíquia. Os níveis 2 e 3 aumentam a chance geral de queda de Relíquias de Campo, compartilhada com as demais relíquias."
+  ]},
+  weapon_void_revolver: { title: "Revólver do Vazio", category: "Arma", summary: "Rajadas precisas; a cada 6 disparos, uma bala dourada reforçada.", details: [
+    "Arma inicial e gratuita. Dispara em linha na direção do alvo e prepara um disparo dourado reforçado a cada seis tiros.",
+    "A maestria é concluída ao vencer uma expedição usando esta arma.",
+    "Depois da maestria, o Projeto de Evolução custa 5.000 FR. Com a arma no nível 10, a evolução Seis Ecos pode aparecer nas escolhas."
+  ]},
+  weapon_unstable_core: { title: "Núcleo Instável", category: "Arma", summary: "Orbe de plasma cria uma poça corrosiva que atrai inimigos.", details: [
+    "Dispara um orbe de plasma lento que deixa uma poça corrosiva. Os pulsos da poça causam dano e atraem inimigos para o centro.",
+    "Desbloqueio permanente: 8.000 FR.",
+    "Vença uma expedição com a arma para concluir a maestria. Depois, compre o Projeto de Evolução por 5.000 FR; no nível 10 da arma, a evolução Singularidade pode aparecer."
+  ]},
+  weapon_spectral_scythe: { title: "Foice Espectral", category: "Arma", summary: "Corte amplo que evolui para um golpe circular.", details: [
+    "Executa um corte em arco de quase 200° ao redor do personagem.",
+    "Desbloqueio permanente: 9.000 FR.",
+    "Vença uma expedição com a arma para concluir a maestria. Depois, compre o Projeto de Evolução por 5.000 FR; no nível 10 da arma, a evolução Ceifador de Almas pode aparecer."
+  ]},
+  weapon_orbital_swords: { title: "Espadas Orbitais", category: "Arma", summary: "Lâminas orbitais causam dano por contato.", details: [
+    "Lâminas físicas permanecem em órbita ao redor do personagem e ferem inimigos ao tocá-los.",
+    "Desbloqueio permanente: 10.000 FR.",
+    "Vença uma expedição com a arma para concluir a maestria. Depois, compre o Projeto de Evolução por 5.000 FR; no nível 10 da arma, a evolução Dança das Lâminas pode aparecer."
+  ]},
+  weapon_gravity_shackle: { title: "Grilhão Gravitacional", category: "Arma", summary: "Aura rúnica desacelera inimigos; evoluída, fica ativa.", details: [
+    "Projeta uma aura rúnica intermitente ao redor do herói para desacelerar inimigos.",
+    "Desbloqueio permanente: 11.000 FR.",
+    "Vença uma expedição com a arma para concluir a maestria. Depois, compre o Projeto de Evolução por 5.000 FR; no nível 10 da arma, a evolução Prisão do Abismo pode aparecer."
+  ]},
+  weapon_rune_sentinels: { title: "Sentinelas Rúnicas", category: "Arma", summary: "Totens orbitais disparam feixes contra alvos resistentes.", details: [
+    "Invoca sentinelas orbitais que disparam feixes rúnicos rápidos contra inimigos mais resistentes.",
+    "Desbloqueio permanente: 12.000 FR.",
+    "Vença uma expedição com a arma para concluir a maestria. Depois, compre o Projeto de Evolução por 5.000 FR; no nível 10 da arma, a evolução Arsenal Ancestral pode aparecer."
+  ]},
+  omen_famine: { title: "Fome Insaciável", category: "Presságio", summary: "+20% de XP e surgimento de inimigos mais frequente.", details: [
+    "Bônus: +20% de experiência recebida.",
+    "Ônus: +20% na frequência de surgimento de inimigos."
+  ]},
+  omen_rupture: { title: "Ruptura", category: "Presságio", summary: "+20% de dano; ataques têm intervalo 15% maior.", details: [
+    "Bônus: +20% de dano das armas.",
+    "Ônus: +15% no intervalo entre ataques, reduzindo a frequência de disparo."
+  ]},
+  omen_spectral_veil: { title: "Véu Espectral", category: "Presságio", summary: "+15% de velocidade; -15% de vida máxima.", details: [
+    "Bônus: +15% de velocidade de movimento.",
+    "Ônus: -15% de vida máxima."
+  ]},
+  omen_abundance: { title: "Abundância", category: "Presságio", summary: "+25% de chance relativa de espólios; inimigos com +15% de vida.", details: [
+    "Bônus: +25% de chance relativa de recompensas especiais.",
+    "Ônus: inimigos recebem +15% de vida."
+  ]},
+  omen_revenge: { title: "Vingança", category: "Presságio", summary: "Sofrer dano dispara uma onda ofensiva; -10% de vida.", details: [
+    "Efeito: ao sofrer dano, libera uma onda ofensiva contra inimigos próximos; a ativação tem intervalo interno de 4 segundos.",
+    "Ônus: -10% de vida máxima."
+  ]}
+};
+
+function ShopInfoButton({ info, onOpen }: { info: ShopItemInfo; onOpen: (info: ShopItemInfo) => void }) {
+  return (
+    <button type="button" className="fractals-shop-info-trigger" title="Informações"
+      aria-label={`Informações sobre ${info.title}`} aria-haspopup="dialog"
+      onClick={(event) => { event.stopPropagation(); onOpen(info); }}>
+      <span className="fractals-shop-info-diamond" aria-hidden="true">
+        <Diamond className="fractals-shop-info-diamond__shape" />
+        <span className="fractals-shop-info-diamond__letter">i</span>
+      </span>
+    </button>
+  );
+}
+
 const OMEN_CONFIG: Record<OmenId, { name: string; description: string }> = {
   famine: { name: "Fome Insaciável", description: "+20% de experiência e +20% de frequência de surgimento de inimigos." },
   rupture: { name: "Ruptura", description: "+20% de dano das armas, mas +15% no intervalo entre ataques." },
@@ -282,13 +461,15 @@ function buildLevelChoices(game: GameState, purchases: PurchaseState): Upgrade[]
     };
   });
 
-  // Oráculo: nível 1 abre as quatro Relíquias de Campo; o bônus cria uma quarta carta independente.
+  // Oráculo: a quarta carta pode ser uma Relíquia de Campo ou uma Dádiva Exclusiva elegível da arma equipada.
   const oracleBonusChance = ORACLE_FOURTH_CHOICE_CHANCE[clamp(purchases.oracle, 0, 10)];
   if (purchases.oracle > 0 && Math.random() * 100 < oracleBonusChance) {
-    const fourthOptions = getEligibleFieldRelics(game, purchases).filter((item) => !withRarity.some((choice) => choice.id === item.id));
+    const fourthOptions = [...getEligibleFieldRelics(game, purchases), ...getEligibleWeaponGifts(game)]
+      .filter((item, index, items) => items.findIndex((candidate) => candidate.id === item.id) === index)
+      .filter((item) => !withRarity.some((choice) => choice.id === item.id));
     if (fourthOptions.length) {
       const selected = fourthOptions[Math.floor(Math.random() * fourthOptions.length)];
-      withRarity.push({ ...selected, rarity: "uncommon" });
+      withRarity.push({ ...selected, rarity: selected.rarity ?? "uncommon" });
     }
   }
   return withRarity;
@@ -1470,6 +1651,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
   const [showPlayerHp, setShowPlayerHp] = useState(true);
   const [showDamageNumbers, setShowDamageNumbers] = useState(true);
   const [shopSection, setShopSection] = useState<"permanent" | "relics" | "weapons" | "omens">("permanent");
+  const [shopInfo, setShopInfo] = useState<ShopItemInfo | null>(null);
   const [selectedWeapon, setSelectedWeapon] = useState<WeaponId>("void_revolver");
   const [masterWeaponSelection, setMasterWeaponSelection] = useState<WeaponId | null>(null);
   const [selectedOmen, setSelectedOmen] = useState<OmenId | null>(null);
@@ -3144,8 +3326,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                       <article className="fractals-shop-item">
                         <div className="fractals-shop-item__slot"><Heart className="h-5 w-5 text-rose-300" /></div>
                         <div className="min-w-0">
-                          <p className="fractals-shop-item__name">Vida Reforçada</p>
-                          <p className="fractals-shop-item__description">+10 de vida máxima permanente por nível, até +150 no nível 15.</p>
+                          <div className="fractals-shop-item__heading"><p className="fractals-shop-item__name">Vida Reforçada</p><ShopInfoButton info={SHOP_ITEM_INFO.health} onOpen={setShopInfo} /></div>
+                          <p className="fractals-shop-item__description">{SHOP_ITEM_INFO.health.summary}</p>
                           <div className="fractals-shop-pips" aria-label={"Nível " + purchases.health + " de 15"}>{Array.from({ length: 15 }).map((_, i) => <i key={i} className={i < purchases.health ? "fractals-shop-pip is-filled" : "fractals-shop-pip"} />)}<span>{purchases.health}/15</span></div>
                         </div>
                         <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || purchases.health >= 15 || (!isMaster && fractalBalance < FRACTAL_SHOP.health[purchases.health]?.cost)} onClick={() => void purchaseUpgrade("health")}>{purchases.health >= 15 ? "MAX" : isMaster ? "GRÁTIS" : FRACTAL_SHOP.health[purchases.health]?.cost.toLocaleString("pt-BR") + " FR"}</button>
@@ -3154,8 +3336,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                       <article className="fractals-shop-item">
                         <div className="fractals-shop-item__slot"><Timer className="h-5 w-5 text-sky-300" /></div>
                         <div className="min-w-0">
-                          <p className="fractals-shop-item__name">Duração de Projéteis</p>
-                          <p className="fractals-shop-item__description">Disparos permanecem ativos por mais tempo.</p>
+                          <div className="fractals-shop-item__heading"><p className="fractals-shop-item__name">Duração de Projéteis</p><ShopInfoButton info={SHOP_ITEM_INFO.projectile_duration} onOpen={setShopInfo} /></div>
+                          <p className="fractals-shop-item__description">{SHOP_ITEM_INFO.projectile_duration.summary}</p>
                           <div className="fractals-shop-pips" aria-label={"Nível " + purchases.projectile_duration + " de 3"}>{Array.from({ length: 3 }).map((_, i) => <i key={i} className={i < purchases.projectile_duration ? "fractals-shop-pip is-filled" : "fractals-shop-pip"} />)}<span>{purchases.projectile_duration}/3</span></div>
                         </div>
                         <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || purchases.projectile_duration >= 3 || (!isMaster && fractalBalance < FRACTAL_SHOP.projectile_duration[purchases.projectile_duration]?.cost)} onClick={() => void purchaseUpgrade("projectile_duration")}>{purchases.projectile_duration >= 3 ? "MAX" : isMaster ? "GRÁTIS" : FRACTAL_SHOP.projectile_duration[purchases.projectile_duration]?.cost.toLocaleString("pt-BR") + " FR"}</button>
@@ -3164,8 +3346,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                       <article className="fractals-shop-item">
                         <div className="fractals-shop-item__slot"><GemIcon className="h-5 w-5 text-fuchsia-300" /></div>
                         <div className="min-w-0">
-                          <p className="fractals-shop-item__name">Ressonância Rara</p>
-                          <p className="fractals-shop-item__description">Aumenta o peso de dádivas Normais para Raras. A promoção para Épica pertence à Transmutação.</p>
+                          <div className="fractals-shop-item__heading"><p className="fractals-shop-item__name">Ressonância Rara</p><ShopInfoButton info={SHOP_ITEM_INFO.rarity} onOpen={setShopInfo} /></div>
+                          <p className="fractals-shop-item__description">{SHOP_ITEM_INFO.rarity.summary}</p>
                           <div className="fractals-shop-pips" aria-label={"Nível " + purchases.rarity + " de 3"}>{Array.from({ length: 3 }).map((_, i) => <i key={i} className={i < purchases.rarity ? "fractals-shop-pip is-filled" : "fractals-shop-pip"} />)}<span>{purchases.rarity}/3</span></div>
                         </div>
                         <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || purchases.rarity >= 3 || (!isMaster && fractalBalance < FRACTAL_SHOP.rarity[purchases.rarity]?.cost)} onClick={() => void purchaseUpgrade("rarity")}>{purchases.rarity >= 3 ? "MAX" : isMaster ? "GRÁTIS" : FRACTAL_SHOP.rarity[purchases.rarity]?.cost.toLocaleString("pt-BR") + " FR"}</button>
@@ -3174,8 +3356,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                       <article className="fractals-shop-item">
                         <div className="fractals-shop-item__slot"><Gauge className="h-5 w-5 text-emerald-300" /></div>
                         <div className="min-w-0">
-                          <p className="fractals-shop-item__name">Aceleração 2x</p>
-                          <p className="fractals-shop-item__description">Habilita velocidade 2x nas expedições.</p>
+                          <div className="fractals-shop-item__heading"><p className="fractals-shop-item__name">Aceleração 2x</p><ShopInfoButton info={SHOP_ITEM_INFO.speed_2x} onOpen={setShopInfo} /></div>
+                          <p className="fractals-shop-item__description">{SHOP_ITEM_INFO.speed_2x.summary}</p>
                           <span className="fractals-shop-item__status">{purchases.speed_2x ? "Desbloqueado" : "Nível 0/1 · 1.000 FR"}</span>
                         </div>
                         <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || purchases.speed_2x || (!isMaster && fractalBalance < FRACTAL_SHOP.speed.double.cost)} onClick={() => void purchaseUpgrade("speed_2x")}>{purchases.speed_2x ? "ADQUIRIDO" : isMaster ? "GRÁTIS" : "1.000 FR"}</button>
@@ -3184,8 +3366,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                       <article className="fractals-shop-item">
                         <div className="fractals-shop-item__slot"><Flame className="h-5 w-5 text-amber-300" /></div>
                         <div className="min-w-0">
-                          <p className="fractals-shop-item__name">Aceleração 3x</p>
-                          <p className="fractals-shop-item__description">Habilita velocidade 3x. Requer 2x.</p>
+                          <div className="fractals-shop-item__heading"><p className="fractals-shop-item__name">Aceleração 3x</p><ShopInfoButton info={SHOP_ITEM_INFO.speed_3x} onOpen={setShopInfo} /></div>
+                          <p className="fractals-shop-item__description">{SHOP_ITEM_INFO.speed_3x.summary}</p>
                           <span className="fractals-shop-item__status">{purchases.speed_3x ? "Desbloqueado" : purchases.speed_2x ? "Nível 0/1 · 2.000 FR" : "Bloqueado · requer 2x"}</span>
                         </div>
                         <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || purchases.speed_3x || (!isMaster && (!purchases.speed_2x || fractalBalance < FRACTAL_SHOP.speed.triple.cost))} onClick={() => void purchaseUpgrade("speed_3x")}>{purchases.speed_3x ? "ADQUIRIDO" : isMaster ? "GRÁTIS" : "2.000 FR"}</button>
@@ -3193,37 +3375,37 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
 
                       <article className="fractals-shop-item">
                         <div className="fractals-shop-item__slot"><RotateCcw className="h-5 w-5 text-sky-300" /></div>
-                        <div className="min-w-0"><p className="fractals-shop-item__name">Rerrolagem de Dádivas</p><p className="fractals-shop-item__description">Cada nível concede 1 rerrolagem por partida, até 10.</p><div className="fractals-shop-pips" aria-label={"Nível " + purchases.reroll + " de 10"}>{Array.from({length:10}).map((_,i)=><i key={i} className={i<purchases.reroll?"fractals-shop-pip is-filled":"fractals-shop-pip"}/>)}<span>{purchases.reroll}/10</span></div><span className="fractals-shop-item__status">{unlockedCorruption>=1?"Disponível":"Requer Corrupção 1"}</span></div>
+                        <div className="min-w-0"><div className="fractals-shop-item__heading"><p className="fractals-shop-item__name">Rerrolagem de Dádivas</p><ShopInfoButton info={SHOP_ITEM_INFO.reroll} onOpen={setShopInfo} /></div><p className="fractals-shop-item__description">{SHOP_ITEM_INFO.reroll.summary}</p><div className="fractals-shop-pips" aria-label={"Nível " + purchases.reroll + " de 10"}>{Array.from({length:10}).map((_,i)=><i key={i} className={i<purchases.reroll?"fractals-shop-pip is-filled":"fractals-shop-pip"}/>)}<span>{purchases.reroll}/10</span></div><span className="fractals-shop-item__status">{unlockedCorruption>=1?"Disponível":"Requer Corrupção 1"}</span></div>
                         <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || unlockedCorruption<1 && !isMaster || purchases.reroll>=10 || (!isMaster && fractalBalance<FRACTAL_SHOP.reroll[purchases.reroll])} onClick={()=>void purchaseUpgrade("reroll")}>{purchases.reroll>=10?"MAX":isMaster?"GRÁTIS":FRACTAL_SHOP.reroll[purchases.reroll].toLocaleString("pt-BR")+" FR"}</button>
                       </article>
                       <article className="fractals-shop-item">
                         <div className="fractals-shop-item__slot"><Sparkles className="h-5 w-5 text-amber-300" /></div>
-                        <div className="min-w-0"><p className="fractals-shop-item__name">Oráculo das Relíquias</p><p className="fractals-shop-item__description">Nível 1 libera as quatro Relíquias de Campo nas escolhas de nível. O bônus da quarta carta cresce de 6% por nível até o limite de 50%.</p><div className="fractals-shop-pips" aria-label={"Nível " + purchases.oracle + " de 10"}>{Array.from({length:10}).map((_,i)=><i key={i} className={i<purchases.oracle?"fractals-shop-pip is-filled":"fractals-shop-pip"}/>)}<span>{purchases.oracle}/10 · {ORACLE_FOURTH_CHOICE_CHANCE[clamp(purchases.oracle,0,10)]}%</span></div><span className="fractals-shop-item__status">{purchases.oracle>=1?"Relíquias de Campo liberadas":unlockedCorruption>=1?"Disponível":"Requer Corrupção 1"}</span></div>
+                        <div className="min-w-0"><div className="fractals-shop-item__heading"><p className="fractals-shop-item__name">Oráculo das Relíquias</p><ShopInfoButton info={SHOP_ITEM_INFO.oracle} onOpen={setShopInfo} /></div><p className="fractals-shop-item__description">{SHOP_ITEM_INFO.oracle.summary}</p><div className="fractals-shop-pips" aria-label={"Nível " + purchases.oracle + " de 10"}>{Array.from({length:10}).map((_,i)=><i key={i} className={i<purchases.oracle?"fractals-shop-pip is-filled":"fractals-shop-pip"}/>)}<span>{purchases.oracle}/10 · {ORACLE_FOURTH_CHOICE_CHANCE[clamp(purchases.oracle,0,10)]}%</span></div><span className="fractals-shop-item__status">{purchases.oracle>=1?"Relíquias de Campo liberadas":unlockedCorruption>=1?"Disponível":"Requer Corrupção 1"}</span></div>
                         <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || unlockedCorruption<1 && !isMaster || purchases.oracle>=10 || (!isMaster && fractalBalance<FRACTAL_SHOP.oracle[purchases.oracle])} onClick={()=>void purchaseUpgrade("oracle")}>{purchases.oracle>=10?"MAX":isMaster?"GRÁTIS":FRACTAL_SHOP.oracle[purchases.oracle].toLocaleString("pt-BR")+" FR"}</button>
                       </article>
                       <article className="fractals-shop-item">
                         <div className="fractals-shop-item__slot"><Ban className="h-5 w-5 text-rose-300" /></div>
-                        <div className="min-w-0"><p className="fractals-shop-item__name">Selo do Exílio</p><p className="fractals-shop-item__description">Permite banir uma dádiva por nível, impedindo seu retorno na partida.</p><div className="fractals-shop-pips" aria-label={"Nível " + purchases.banish + " de 5"}>{Array.from({length:5}).map((_,i)=><i key={i} className={i<purchases.banish?"fractals-shop-pip is-filled":"fractals-shop-pip"}/>)}<span>{purchases.banish}/5</span></div></div>
+                        <div className="min-w-0"><div className="fractals-shop-item__heading"><p className="fractals-shop-item__name">Selo do Exílio</p><ShopInfoButton info={SHOP_ITEM_INFO.banish} onOpen={setShopInfo} /></div><p className="fractals-shop-item__description">{SHOP_ITEM_INFO.banish.summary}</p><div className="fractals-shop-pips" aria-label={"Nível " + purchases.banish + " de 5"}>{Array.from({length:5}).map((_,i)=><i key={i} className={i<purchases.banish?"fractals-shop-pip is-filled":"fractals-shop-pip"}/>)}<span>{purchases.banish}/5</span></div></div>
                         <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || purchases.banish>=5 || (!isMaster && fractalBalance<FRACTAL_SHOP.banish[purchases.banish])} onClick={()=>void purchaseUpgrade("banish")}>{purchases.banish>=5?"MAX":isMaster?"GRÁTIS":FRACTAL_SHOP.banish[purchases.banish].toLocaleString("pt-BR")+" FR"}</button>
                       </article>
                       <article className="fractals-shop-item">
                         <div className="fractals-shop-item__slot"><Clover className="h-5 w-5 text-emerald-300" /></div>
-                        <div className="min-w-0"><p className="fractals-shop-item__name">Fortuna Fractal</p><p className="fractals-shop-item__description">Aumenta em até 50% a chance relativa de espólios especiais de urnas e Relíquias de Campo em Brutos e Elites.</p><div className="fractals-shop-pips" aria-label={"Nível " + purchases.fortune + " de 5"}>{Array.from({length:5}).map((_,i)=><i key={i} className={i<purchases.fortune?"fractals-shop-pip is-filled":"fractals-shop-pip"}/>)}<span>{purchases.fortune}/5 · +{purchases.fortune*10}%</span></div><span className="fractals-shop-item__status">{unlockedCorruption>=2?"Disponível":"Requer Corrupção 2"}</span></div>
+                        <div className="min-w-0"><div className="fractals-shop-item__heading"><p className="fractals-shop-item__name">Fortuna Fractal</p><ShopInfoButton info={SHOP_ITEM_INFO.fortune} onOpen={setShopInfo} /></div><p className="fractals-shop-item__description">{SHOP_ITEM_INFO.fortune.summary}</p><div className="fractals-shop-pips" aria-label={"Nível " + purchases.fortune + " de 5"}>{Array.from({length:5}).map((_,i)=><i key={i} className={i<purchases.fortune?"fractals-shop-pip is-filled":"fractals-shop-pip"}/>)}<span>{purchases.fortune}/5 · +{purchases.fortune*10}%</span></div><span className="fractals-shop-item__status">{unlockedCorruption>=2?"Disponível":"Requer Corrupção 2"}</span></div>
                         <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || unlockedCorruption<2 && !isMaster || purchases.fortune>=5 || (!isMaster && fractalBalance<FRACTAL_SHOP.fortune[purchases.fortune])} onClick={()=>void purchaseUpgrade("fortune")}>{purchases.fortune>=5?"MAX":isMaster?"GRÁTIS":FRACTAL_SHOP.fortune[purchases.fortune].toLocaleString("pt-BR")+" FR"}</button>
                       </article>
                       <article className="fractals-shop-item">
                         <div className="fractals-shop-item__slot"><Dna className="h-5 w-5 text-fuchsia-300" /></div>
-                        <div className="min-w-0"><p className="fractals-shop-item__name">Transmutação Rúnica</p><p className="fractals-shop-item__description">Promove dádivas Raras para Épicas: 3%, 6% ou 10% por resultado Raro.</p><div className="fractals-shop-pips" aria-label={"Nível " + purchases.transmutation + " de 3"}>{Array.from({length:3}).map((_,i)=><i key={i} className={i<purchases.transmutation?"fractals-shop-pip is-filled":"fractals-shop-pip"}/>)}<span>{[0,3,6,10][purchases.transmutation]}%</span></div><span className="fractals-shop-item__status">{unlockedCorruption>=3?"Disponível":"Requer Corrupção 3"}</span></div>
+                        <div className="min-w-0"><div className="fractals-shop-item__heading"><p className="fractals-shop-item__name">Transmutação Rúnica</p><ShopInfoButton info={SHOP_ITEM_INFO.transmutation} onOpen={setShopInfo} /></div><p className="fractals-shop-item__description">{SHOP_ITEM_INFO.transmutation.summary}</p><div className="fractals-shop-pips" aria-label={"Nível " + purchases.transmutation + " de 3"}>{Array.from({length:3}).map((_,i)=><i key={i} className={i<purchases.transmutation?"fractals-shop-pip is-filled":"fractals-shop-pip"}/>)}<span>{[0,3,6,10][purchases.transmutation]}%</span></div><span className="fractals-shop-item__status">{unlockedCorruption>=3?"Disponível":"Requer Corrupção 3"}</span></div>
                         <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || unlockedCorruption<3 && !isMaster || purchases.transmutation>=3 || (!isMaster && fractalBalance<FRACTAL_SHOP.transmutation[purchases.transmutation])} onClick={()=>void purchaseUpgrade("transmutation")}>{purchases.transmutation>=3?"MAX":isMaster?"GRÁTIS":FRACTAL_SHOP.transmutation[purchases.transmutation].toLocaleString("pt-BR")+" FR"}</button>
                       </article>
                       <article className="fractals-shop-item">
                         <div className="fractals-shop-item__slot"><Heart className="h-5 w-5 text-rose-300" /></div>
-                        <div className="min-w-0"><p className="fractals-shop-item__name">Âncora da Alma</p><p className="fractals-shop-item__description">Até duas ressurreições por expedição, uma Âncora equipada por vez. N1: 40% de vida/3s; N2: 60%/6s; N3: explosão na segunda morte.</p><div className="fractals-shop-pips" aria-label={"Nível " + purchases.anchor_soul + " de 3"}>{Array.from({length:3}).map((_,i)=><i key={i} className={i<purchases.anchor_soul?"fractals-shop-pip is-filled":"fractals-shop-pip"}/>)}<span>{purchases.anchor_soul}/3</span></div><span className="fractals-shop-item__status">{purchases.anchor_soul>=3?"Explosão da segunda Âncora liberada":purchases.anchor_soul>=2?"Recuperação reforçada liberada":purchases.anchor_soul>=1?"Ressurreição liberada":unlockedCorruption>=2?"Disponível":"Requer Corrupção 2"}</span></div>
+                        <div className="min-w-0"><div className="fractals-shop-item__heading"><p className="fractals-shop-item__name">Âncora da Alma</p><ShopInfoButton info={SHOP_ITEM_INFO.anchor_soul} onOpen={setShopInfo} /></div><p className="fractals-shop-item__description">{SHOP_ITEM_INFO.anchor_soul.summary}</p><div className="fractals-shop-pips" aria-label={"Nível " + purchases.anchor_soul + " de 3"}>{Array.from({length:3}).map((_,i)=><i key={i} className={i<purchases.anchor_soul?"fractals-shop-pip is-filled":"fractals-shop-pip"}/>)}<span>{purchases.anchor_soul}/3</span></div><span className="fractals-shop-item__status">{purchases.anchor_soul>=3?"Explosão da segunda Âncora liberada":purchases.anchor_soul>=2?"Recuperação reforçada liberada":purchases.anchor_soul>=1?"Ressurreição liberada":unlockedCorruption>=2?"Disponível":"Requer Corrupção 2"}</span></div>
                         <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || purchases.anchor_soul>=3 || unlockedCorruption<2 && !isMaster || (!isMaster && fractalBalance<Number(FRACTAL_SHOP.anchor_soul[purchases.anchor_soul] ?? 0))} onClick={()=>void purchaseUpgrade("anchor_soul")}>{purchases.anchor_soul>=3?"MAX":isMaster?"GRÁTIS":Number(FRACTAL_SHOP.anchor_soul[purchases.anchor_soul] ?? 0).toLocaleString("pt-BR")+" FR"}</button>
                       </article>
                       <article className="fractals-shop-item">
                         <div className="fractals-shop-item__slot"><BookOpen className="h-5 w-5 text-fuchsia-300" /></div>
-                        <div className="min-w-0"><p className="fractals-shop-item__name">Arquivo dos Presságios</p><p className="fractals-shop-item__description">Libera cinco modificadores de partida. Apenas um pode ser escolhido por expedição.</p><span className="fractals-shop-item__status">{purchases.omen_archive?"Arquivo desbloqueado":unlockedCorruption>=4?"Requer Corrupção 4":"Requer Corrupção 4"}</span></div>
+                        <div className="min-w-0"><div className="fractals-shop-item__heading"><p className="fractals-shop-item__name">Arquivo dos Presságios</p><ShopInfoButton info={SHOP_ITEM_INFO.omen_archive} onOpen={setShopInfo} /></div><p className="fractals-shop-item__description">{SHOP_ITEM_INFO.omen_archive.summary}</p><span className="fractals-shop-item__status">{purchases.omen_archive?"Arquivo desbloqueado":unlockedCorruption>=4?"Requer Corrupção 4":"Requer Corrupção 4"}</span></div>
                         <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || purchases.omen_archive || unlockedCorruption<4 && !isMaster || (!isMaster && fractalBalance<FRACTAL_SHOP.omen_archive)} onClick={()=>void purchaseUpgrade("omen_archive")}>{purchases.omen_archive?"ADQUIRIDO":isMaster?"GRÁTIS":FRACTAL_SHOP.omen_archive.toLocaleString("pt-BR")+" FR"}</button>
                       </article>
 
@@ -3234,8 +3416,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
 
                   {shopSection === "omens" && (
                     <div className="fractals-shop-grid">
-                      {!purchases.omen_archive ? <article className="fractals-shop-item"><div className="fractals-shop-item__slot"><Lock className="h-5 w-5 text-fuchsia-300"/></div><div className="min-w-0"><p className="fractals-shop-item__name">Arquivo selado</p><p className="fractals-shop-item__description">Compre o Arquivo dos Presságios na Forja Permanente. Requer Corrupção 4.</p></div></article> :
-                        (Object.keys(OMEN_CONFIG) as OmenId[]).map((omen) => <article key={omen} className="fractals-shop-item"><div className="fractals-shop-item__slot"><BookOpen className="h-5 w-5 text-fuchsia-300"/></div><div className="min-w-0"><p className="fractals-shop-item__name">{OMEN_CONFIG[omen].name}</p><p className="fractals-shop-item__description">{OMEN_CONFIG[omen].description}</p><span className="fractals-shop-item__status">{selectedOmen===omen?"Selecionado para a próxima partida":"Disponível · sem custo adicional"}</span></div><button type="button" className="fractals-shop-buy-btn" disabled={corruption<4 || selectedOmen===omen} onClick={()=>setSelectedOmen(omen)}>{selectedOmen===omen?"ATIVO":"SELECIONAR"}</button></article>)
+                      {!purchases.omen_archive ? <article className="fractals-shop-item"><div className="fractals-shop-item__slot"><Lock className="h-5 w-5 text-fuchsia-300"/></div><div className="min-w-0"><div className="fractals-shop-item__heading"><p className="fractals-shop-item__name">Arquivo selado</p><ShopInfoButton info={SHOP_ITEM_INFO.archive_sealed} onOpen={setShopInfo} /></div><p className="fractals-shop-item__description">{SHOP_ITEM_INFO.archive_sealed.summary}</p></div></article> :
+                        (Object.keys(OMEN_CONFIG) as OmenId[]).map((omen) => <article key={omen} className="fractals-shop-item"><div className="fractals-shop-item__slot"><BookOpen className="h-5 w-5 text-fuchsia-300"/></div><div className="min-w-0"><div className="fractals-shop-item__heading"><p className="fractals-shop-item__name">{OMEN_CONFIG[omen].name}</p><ShopInfoButton info={SHOP_ITEM_INFO[`omen_${omen}`]} onOpen={setShopInfo} /></div><p className="fractals-shop-item__description">{SHOP_ITEM_INFO[`omen_${omen}`].summary}</p><span className="fractals-shop-item__status">{selectedOmen===omen?"Selecionado para a próxima partida":"Disponível · sem custo adicional"}</span></div><button type="button" className="fractals-shop-buy-btn" disabled={corruption<4 || selectedOmen===omen} onClick={()=>setSelectedOmen(omen)}>{selectedOmen===omen?"ATIVO":"SELECIONAR"}</button></article>)
                       }
                     </div>
                   )}
@@ -3249,8 +3431,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                         return <article key={weapon} className="fractals-shop-item">
                           <div className="fractals-shop-item__slot"><Swords className="h-5 w-5 text-violet-300"/></div>
                           <div className="min-w-0">
-                            <p className="fractals-shop-item__name">{config.name}</p>
-                            <p className="fractals-shop-item__description">{config.description}</p>
+                            <div className="fractals-shop-item__heading"><p className="fractals-shop-item__name">{config.name}</p><ShopInfoButton info={SHOP_ITEM_INFO[`weapon_${weapon}`]} onOpen={setShopInfo} /></div>
+                            <p className="fractals-shop-item__description">{SHOP_ITEM_INFO[`weapon_${weapon}`].summary}</p>
                             {weapon === "void_revolver" ? <span className="fractals-shop-item__status">Arma inicial · gratuita</span> :
                               <span className="fractals-shop-item__status">{unlocked ? "Arma desbloqueada" : "Desbloqueio permanente"}</span>}
                             {unlocked && <span className="fractals-shop-item__status">{mastered ? "Maestria concluída" : "Maestria: vença uma expedição com esta arma"}</span>}
@@ -3268,8 +3450,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                       <article className="fractals-shop-item">
                         <div className="fractals-shop-item__slot"><Orbit className="h-5 w-5 text-violet-300" /></div>
                         <div className="min-w-0">
-                          <p className="fractals-shop-item__name">Vórtice Coletor</p>
-                          <p className="fractals-shop-item__description">Cada coleta dá +10% de raio, até +100% (10 coletas). N1 libera a escolha; N2/N3/N4: 1%/3%/5% de queda em Brutos e Elites.</p>
+                          <div className="fractals-shop-item__heading"><p className="fractals-shop-item__name">Vórtice Coletor</p><ShopInfoButton info={SHOP_ITEM_INFO.area} onOpen={setShopInfo} /></div>
+                          <p className="fractals-shop-item__description">{SHOP_ITEM_INFO.area.summary}</p>
                           <div className="fractals-shop-pips" aria-label={"Nível " + purchases.area + " de 4"}>{Array.from({ length: 4 }).map((_, i) => <i key={i} className={i < purchases.area ? "fractals-shop-pip is-filled" : "fractals-shop-pip"} />)}<span>{purchases.area}/4</span></div>
                         </div>
                         <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || purchases.area >= 4 || (!isMaster && fractalBalance < FRACTAL_SHOP.area[purchases.area]?.cost)} onClick={() => void purchaseUpgrade("area")}>{purchases.area >= 4 ? "MAX" : isMaster ? "GRÁTIS" : FRACTAL_SHOP.area[purchases.area]?.cost.toLocaleString("pt-BR") + " FR"}</button>
@@ -3278,8 +3460,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                       <article className="fractals-shop-item">
                         <div className="fractals-shop-item__slot"><Sparkles className="h-5 w-5 text-amber-300" /></div>
                         <div className="min-w-0">
-                          <p className="fractals-shop-item__name">Afinidade de XP</p>
-                          <p className="fractals-shop-item__description">Cada coleta dá +5% de XP, até +50% (10 coletas). N1 libera a escolha; N2/N3/N4: 1%/3%/5% de queda em Brutos e Elites.</p>
+                          <div className="fractals-shop-item__heading"><p className="fractals-shop-item__name">Afinidade de XP</p><ShopInfoButton info={SHOP_ITEM_INFO.experience} onOpen={setShopInfo} /></div>
+                          <p className="fractals-shop-item__description">{SHOP_ITEM_INFO.experience.summary}</p>
                           <div className="fractals-shop-pips" aria-label={"Nível " + purchases.experience + " de 4"}>{Array.from({ length: 4 }).map((_, i) => <i key={i} className={i < purchases.experience ? "fractals-shop-pip is-filled" : "fractals-shop-pip"} />)}<span>{purchases.experience}/4</span></div>
                         </div>
                         <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || purchases.experience >= 4 || (!isMaster && fractalBalance < FRACTAL_SHOP.experience[purchases.experience]?.cost)} onClick={() => void purchaseUpgrade("experience")}>{purchases.experience >= 4 ? "MAX" : isMaster ? "GRÁTIS" : FRACTAL_SHOP.experience[purchases.experience]?.cost.toLocaleString("pt-BR") + " FR"}</button>
@@ -3288,8 +3470,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                       <article className="fractals-shop-item">
                         <div className="fractals-shop-item__slot"><Target className="h-5 w-5 text-teal-300" /></div>
                         <div className="min-w-0">
-                          <p className="fractals-shop-item__name">Alcance Arcano</p>
-                          <p className="fractals-shop-item__description">+10% de alcance útil da arma por coleta, até +50% (projéteis, órbita, áreas e feixes). N1 libera a escolha; N2/N3/N4: 1%/3%/5% de queda em Brutos e Elites.</p>
+                          <div className="fractals-shop-item__heading"><p className="fractals-shop-item__name">Alcance Arcano</p><ShopInfoButton info={SHOP_ITEM_INFO.projectile_range} onOpen={setShopInfo} /></div>
+                          <p className="fractals-shop-item__description">{SHOP_ITEM_INFO.projectile_range.summary}</p>
                           <div className="fractals-shop-pips" aria-label={"Nível " + purchases.projectile_range + " de 4"}>{Array.from({ length: 4 }).map((_, i) => <i key={i} className={i < purchases.projectile_range ? "fractals-shop-pip is-filled" : "fractals-shop-pip"} />)}<span>{purchases.projectile_range}/4</span></div>
                         </div>
                         <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || purchases.projectile_range >= 4 || (!isMaster && fractalBalance < FRACTAL_SHOP.projectile_range[purchases.projectile_range]?.cost)} onClick={() => void purchaseUpgrade("projectile_range")}>{purchases.projectile_range >= 4 ? "MAX" : isMaster ? "GRÁTIS" : FRACTAL_SHOP.projectile_range[purchases.projectile_range]?.cost.toLocaleString("pt-BR") + " FR"}</button>
@@ -3298,8 +3480,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                       <article className="fractals-shop-item">
                         <div className="fractals-shop-item__slot"><Swords className="h-5 w-5 text-indigo-300" /></div>
                         <div className="min-w-0">
-                          <p className="fractals-shop-item__name">Coroa de Estilhaços</p>
-                          <p className="fractals-shop-item__description">Adapta-se à arma: balas/orbes/lâminas/totens extras, +12% de dano da Foice ou +6% de raio do Grilhão por coleta (máx. 2). N1 libera a escolha; N2/N3/N4: 1%/3%/5% de queda em Brutos e Elites.</p>
+                          <div className="fractals-shop-item__heading"><p className="fractals-shop-item__name">Coroa de Estilhaços</p><ShopInfoButton info={SHOP_ITEM_INFO.projectiles} onOpen={setShopInfo} /></div>
+                          <p className="fractals-shop-item__description">{SHOP_ITEM_INFO.projectiles.summary}</p>
                           <div className="fractals-shop-pips" aria-label={"Nível " + purchases.projectiles + " de 4"}>{Array.from({ length: 4 }).map((_, i) => <i key={i} className={i < purchases.projectiles ? "fractals-shop-pip is-filled" : "fractals-shop-pip"} />)}<span>{purchases.projectiles}/4</span></div>
                         </div>
                         <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || purchases.projectiles >= 4 || (!isMaster && fractalBalance < FRACTAL_SHOP.projectiles[purchases.projectiles]?.cost)} onClick={() => void purchaseUpgrade("projectiles")}>{purchases.projectiles >= 4 ? "MAX" : isMaster ? "GRÁTIS" : FRACTAL_SHOP.projectiles[purchases.projectiles]?.cost.toLocaleString("pt-BR") + " FR"}</button>
@@ -3307,8 +3489,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                       <article className="fractals-shop-item">
                         <div className="fractals-shop-item__slot"><RotateCw className="h-5 w-5 text-cyan-300" /></div>
                         <div className="min-w-0">
-                          <p className="fractals-shop-item__name">Ricochete Arcano</p>
-                          <p className="fractals-shop-item__description">I: +1 alvo · II: +2 · III: +3 alvos por ricochete.</p>
+                          <div className="fractals-shop-item__heading"><p className="fractals-shop-item__name">Ricochete Arcano</p><ShopInfoButton info={SHOP_ITEM_INFO.ricochet} onOpen={setShopInfo} /></div>
+                          <p className="fractals-shop-item__description">{SHOP_ITEM_INFO.ricochet.summary}</p>
                           <div className="fractals-shop-pips" aria-label={"Nível " + purchases.ricochet + " de 3"}>{Array.from({ length: 3 }).map((_, i) => <i key={i} className={i < purchases.ricochet ? "fractals-shop-pip is-filled" : "fractals-shop-pip"} />)}<span>{purchases.ricochet}/3</span></div>
                         </div>
                         <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || purchases.ricochet >= 3 || (!isMaster && fractalBalance < FRACTAL_SHOP.ricochet[purchases.ricochet]?.cost)} onClick={() => void purchaseUpgrade("ricochet")}>{purchases.ricochet >= 3 ? "MAX" : isMaster ? "GRÁTIS" : FRACTAL_SHOP.ricochet[purchases.ricochet]?.cost.toLocaleString("pt-BR") + " FR"}</button>
@@ -3316,8 +3498,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                       <article className="fractals-shop-item">
                         <div className="fractals-shop-item__slot"><Target className="h-5 w-5 text-violet-300" /></div>
                         <div className="min-w-0">
-                          <p className="fractals-shop-item__name">Perfuração Espectral</p>
-                          <p className="fractals-shop-item__description">I: atravessa +1 alvo · II: +2 · III: +3, mantendo o dano.</p>
+                          <div className="fractals-shop-item__heading"><p className="fractals-shop-item__name">Perfuração Espectral</p><ShopInfoButton info={SHOP_ITEM_INFO.piercing} onOpen={setShopInfo} /></div>
+                          <p className="fractals-shop-item__description">{SHOP_ITEM_INFO.piercing.summary}</p>
                           <div className="fractals-shop-pips" aria-label={"Nível " + purchases.piercing + " de 3"}>{Array.from({ length: 3 }).map((_, i) => <i key={i} className={i < purchases.piercing ? "fractals-shop-pip is-filled" : "fractals-shop-pip"} />)}<span>{purchases.piercing}/3</span></div>
                         </div>
                         <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || purchases.piercing >= 3 || (!isMaster && fractalBalance < FRACTAL_SHOP.piercing[purchases.piercing]?.cost)} onClick={() => void purchaseUpgrade("piercing")}>{purchases.piercing >= 3 ? "MAX" : isMaster ? "GRÁTIS" : FRACTAL_SHOP.piercing[purchases.piercing]?.cost.toLocaleString("pt-BR") + " FR"}</button>
@@ -3325,8 +3507,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                       <article className="fractals-shop-item">
                         <div className="fractals-shop-item__slot"><Zap className="h-5 w-5 text-sky-300" /></div>
                         <div className="min-w-0">
-                          <p className="fractals-shop-item__name">Descarga em Cadeia</p>
-                          <p className="fractals-shop-item__description">I: 1 alvo/55% · II: 2/65% · III: 3/75% de dano.</p>
+                          <div className="fractals-shop-item__heading"><p className="fractals-shop-item__name">Descarga em Cadeia</p><ShopInfoButton info={SHOP_ITEM_INFO.chain_lightning} onOpen={setShopInfo} /></div>
+                          <p className="fractals-shop-item__description">{SHOP_ITEM_INFO.chain_lightning.summary}</p>
                           <div className="fractals-shop-pips" aria-label={"Nível " + purchases.chain_lightning + " de 3"}>{Array.from({ length: 3 }).map((_, i) => <i key={i} className={i < purchases.chain_lightning ? "fractals-shop-pip is-filled" : "fractals-shop-pip"} />)}<span>{purchases.chain_lightning}/3</span></div>
                         </div>
                         <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || purchases.chain_lightning >= 3 || (!isMaster && fractalBalance < FRACTAL_SHOP.chain_lightning[purchases.chain_lightning]?.cost)} onClick={() => void purchaseUpgrade("chain_lightning")}>{purchases.chain_lightning >= 3 ? "MAX" : isMaster ? "GRÁTIS" : FRACTAL_SHOP.chain_lightning[purchases.chain_lightning]?.cost.toLocaleString("pt-BR") + " FR"}</button>
@@ -3335,6 +3517,21 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                   )}
                 </div>
               )}
+              <Dialog open={Boolean(shopInfo)} onOpenChange={(open) => { if (!open) setShopInfo(null); }}>
+                <DialogContent className="fractals-shop-info-dialog max-h-[82vh] overflow-y-auto sm:max-w-[520px]">
+                  {shopInfo && <>
+                    <DialogHeader className="fractals-shop-info-header">
+                      <span className="fractals-shop-info-category"><Diamond className="h-3 w-3" />{shopInfo.category}</span>
+                      <DialogTitle className="fractals-shop-info-title">{shopInfo.title}</DialogTitle>
+                      <DialogDescription className="fractals-shop-info-summary">{shopInfo.summary}</DialogDescription>
+                    </DialogHeader>
+                    <div className="fractals-shop-info-details">
+                      <p className="fractals-shop-info-eyebrow">COMO FUNCIONA</p>
+                      {shopInfo.details.map((detail, index) => <p key={index} className="fractals-shop-info-detail">{detail}</p>)}
+                    </div>
+                  </>}
+                </DialogContent>
+              </Dialog>
             </section>
           </div>
         </Card>
@@ -3526,8 +3723,11 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                       const rarity = upgrade.rarity ?? "normal";
                       const isSelected = selectedUpgrade?.id === upgrade.id;
                       const isFlipped = flippedCardId === upgrade.id;
+                      const isWeaponGift = upgrade.id.startsWith("gift_");
 
-                      const rarityBorder = rarity === "evolution"
+                      const rarityBorder = isWeaponGift
+                        ? "border-emerald-300/75 bg-gradient-to-br from-emerald-500/25 via-lime-400/10 to-[#071a16] shadow-[0_0_20px_rgba(16,185,129,.24)] ring-1 ring-lime-300/25"
+                        : rarity === "evolution"
                         ? "border-amber-200/80 bg-gradient-to-br from-fuchsia-500/25 via-cyan-400/10 to-amber-400/25 shadow-[0_0_26px_rgba(251,191,36,.25)] ring-1 ring-fuchsia-300/30"
                         : rarity === "maestria"
                         ? "border-cyan-300/60 bg-gradient-to-b from-cyan-400/20 to-[#10202a] shadow-[0_0_20px_rgba(34,211,238,.18)]"
@@ -3541,7 +3741,9 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                         ? "border-sky-300/40 bg-gradient-to-b from-sky-500/10 to-[#101724]"
                         : "border-amber-200/20 bg-gradient-to-b from-white/[0.05] to-[#181420]";
 
-                      const rarityTag = rarity === "evolution"
+                      const rarityTag = isWeaponGift
+                        ? "text-emerald-100 border-emerald-300/50 bg-gradient-to-r from-emerald-500/20 to-lime-400/15"
+                        : rarity === "evolution"
                         ? "text-amber-100 border-fuchsia-300/50 bg-gradient-to-r from-fuchsia-500/20 via-cyan-400/15 to-amber-400/20"
                         : rarity === "maestria"
                         ? "text-cyan-100 border-cyan-300/40 bg-cyan-400/10"
@@ -3555,7 +3757,9 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                         ? "text-sky-200 border-sky-300/30 bg-sky-400/10"
                         : "text-amber-100/70 border-white/10 bg-white/5";
 
-                      const iconStyle = rarity === "evolution"
+                      const iconStyle = isWeaponGift
+                        ? "border-emerald-300/70 bg-gradient-to-br from-emerald-500/30 via-emerald-400/15 to-lime-300/20 text-lime-100 shadow-[0_0_18px_rgba(16,185,129,.28)]"
+                        : rarity === "evolution"
                         ? "border-amber-200/70 bg-gradient-to-br from-fuchsia-400/25 via-cyan-300/20 to-amber-300/30 text-amber-50 shadow-[0_0_18px_rgba(251,191,36,.25)]"
                         : rarity === "maestria"
                         ? "border-cyan-300/50 bg-cyan-400/20 text-cyan-100"
@@ -3584,7 +3788,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                           }}
                           className={`group relative flex min-h-[140px] cursor-pointer select-none flex-col justify-between rounded-xl border p-2 text-left transition-all duration-200 sm:min-h-[160px] ${rarityBorder} ${
                             isSelected
-                              ? "ring-2 ring-amber-300 scale-[1.02] shadow-[0_0_20px_rgba(252,211,77,0.35)] -translate-y-1 brightness-110"
+                              ? (isWeaponGift ? "ring-2 ring-lime-300 scale-[1.02] shadow-[0_0_24px_rgba(163,230,53,.35)] -translate-y-1 brightness-110" : "ring-2 ring-amber-300 scale-[1.02] shadow-[0_0_20px_rgba(252,211,77,0.35)] -translate-y-1 brightness-110")
                               : "hover:border-white/30 hover:-translate-y-0.5"
                           }`}
                         >
@@ -3624,7 +3828,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                                 {upgrade.name}
                               </p>
                               <span className={`mt-2 rounded-full border px-1.5 py-0.5 text-[7px] font-black uppercase tracking-wider sm:text-[8px] ${rarityTag}`}>
-                                {rarity === "evolution" ? "Evolução" : rarity === "maestria" ? "Maestria" : rarity === "legendary" ? "Lendária" : rarity === "uncommon" ? "Incomum" : rarity === "epic" ? "Épica" : rarity === "rare" ? "Rara" : "Normal"}
+                                {isWeaponGift ? "Exclusiva · Incomum" : rarity === "evolution" ? "Evolução" : rarity === "maestria" ? "Maestria" : rarity === "legendary" ? "Lendária" : rarity === "uncommon" ? "Incomum" : rarity === "epic" ? "Épica" : rarity === "rare" ? "Rara" : "Normal"}
                               </span>
                             </div>
                           ) : (
