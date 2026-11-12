@@ -45,7 +45,7 @@ type Shot = {
 type Gem = { x: number; y: number; value: number; radius: number; previousX?: number; previousY?: number; runeCrystal?: boolean };
 type SpecialDrop = { x: number; y: number; kind: "area" | "experience" | "projectile_range" | "projectiles" | "ricochet" | "piercing" | "chain_lightning" | "food" | "void"; radius: number };
 type SentinelTotem = { id: number; x: number; y: number; hp: number; maxHp: number; attackTimer: number; radius: number };
-type BreakableUrn = { id: number; x: number; y: number; hp: number; maxHp: number; radius: number; broken: boolean };
+type BreakableUrn = { id: number; x: number; y: number; hp: number; maxHp: number; radius: number; broken: boolean; contactCooldown?: number };
 type CemeteryObstacle = { x: number; y: number; radius: number; kind: "gravestone" | "cross" | "mausoleum" | "torch" };
 type Particle = { x: number; y: number; vx: number; vy: number; life: number; color: string };
 type DamageNumber = { x: number; y: number; value: number; life: number; maxLife: number; drift: number };
@@ -160,8 +160,10 @@ function weaponProjectKey(weapon: WeaponId) {
 }
 function getEligibleFieldRelics(game: GameState, purchases: PurchaseState): Upgrade[] {
   const oracleUnlocksFieldRelics = purchases.oracle >= 1;
+  const excludesBallisticRelics = game.weaponId === "spectral_scythe" || game.weaponId === "orbital_swords" || game.weaponId === "gravity_shackle";
   return SPECIAL_UPGRADES.filter((item) => {
     if (game.bannedUpgradeIds.includes(item.id)) return false;
+    if (excludesBallisticRelics && (item.id === "special_ricochet" || item.id === "special_piercing")) return false;
     if (item.id === "special_area") return (oracleUnlocksFieldRelics || purchases.area >= 1) && game.player.specialAreaStacks < MAX_AREA_RELIC_STACKS;
     if (item.id === "special_experience") return (oracleUnlocksFieldRelics || purchases.experience >= 1) && game.player.specialExperienceStacks < MAX_EXPERIENCE_RELIC_STACKS;
     if (item.id === "special_projectile_range") return (oracleUnlocksFieldRelics || purchases.projectile_range >= 1) && game.player.projectileRangeStacks < MAX_PROJECTILE_RANGE_STACKS;
@@ -488,7 +490,7 @@ function makeGame(width: number, height: number, purchases: PurchaseState, weapo
 }
 
 function spawnPlasmaPuddle(game: GameState, x: number, y: number, coreDamage: number) {
-  const radius = (game.evolved ? 170 : 90) * (1 + game.player.specialAreaStacks * 0.1);
+  const radius = (game.evolved ? 132 : 88) * (1 + game.player.specialAreaStacks * 0.1);
   const life = game.evolved ? 2.5 : 1.5;
   game.shots.push({
     x, y, vx: 0, vy: 0,
@@ -525,8 +527,9 @@ function spawnEnemy(game: GameState, missionId: number, elapsed: number, corrupt
   const eliteChance = Math.min(0.22, pressure.eliteSpawnScale * 0.075);
   const type: Enemy["type"] = boss ? "boss" : elapsed > 210 && roll < eliteChance ? "elite" : elapsed > 150 && roll > 0.76 ? "brute" : elapsed > 70 && roll > 0.56 ? "charger" : "wraith";
   const scale = 1 + elapsed / 650 + (missionId - 1) * 0.18;
+  const bossBaseHp = 1700;
   const stats = type === "boss"
-    ? { hp: 1700, speed: 40, radius: 38, damage: 24, color: "#b9a0ff", xp: 0 }
+    ? { hp: bossBaseHp * 3, speed: 40, radius: 38, damage: 24, color: "#b9a0ff", xp: 0 }
     : type === "elite"
       ? { hp: 245 * scale, speed: 31, radius: 21, damage: 17, color: "#c7a7d9", xp: 9 }
       : type === "brute"
@@ -765,18 +768,28 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
       ctx.lineDashOffset = -game.elapsed * 24;
       ctx.beginPath(); ctx.arc(0, 0, radius * 0.92, 0, Math.PI * 2); ctx.stroke();
       ctx.setLineDash([]);
-      ctx.rotate(game.elapsed * (game.evolved ? -1.25 : 1.1));
-      ctx.strokeStyle = game.evolved ? "#d8b4fe" : "#38bdf8";
-      ctx.lineWidth = 2.5;
-      ctx.beginPath();
-      for (let point = 0; point < 5; point++) {
-        const angle = (point * 4 * Math.PI) / 5 - Math.PI / 2;
-        const px = Math.cos(angle) * (radius * 0.85);
-        const py = Math.sin(angle) * (radius * 0.85);
-        if (point === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      const rot = game.elapsed * (game.evolved ? -1.25 : 1.1);
+      ctx.rotate(rot);
+      if (game.evolved) {
+        ctx.strokeStyle = "#e879f9"; ctx.lineWidth = 3;
+        ctx.shadowColor = "#c084fc"; ctx.shadowBlur = 14;
+        const r = (shot.radius ?? 160) * 0.72;
+        ctx.beginPath(); ctx.moveTo(0, -r);
+        ctx.lineTo(r * 0.82, r * 0.45);
+        ctx.lineTo(-r * 0.82, -r * 0.22);
+        ctx.lineTo(0, r);
+        ctx.lineTo(-r * 0.82, r * 0.45);
+        ctx.lineTo(r * 0.82, -r * 0.22);
+        ctx.closePath(); ctx.stroke();
+      } else {
+        ctx.strokeStyle = "#38bdf8"; ctx.lineWidth = 2.5; ctx.beginPath();
+        for (let point = 0; point < 5; point++) {
+          const angle = (point * 4 * Math.PI) / 5 - Math.PI / 2;
+          const px = Math.cos(angle) * (radius * 0.85), py = Math.sin(angle) * (radius * 0.85);
+          if (point === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+        }
+        ctx.closePath(); ctx.stroke();
       }
-      ctx.closePath();
-      ctx.stroke();
       const coreGlow = game.evolved ? "#c084fc" : "#38bdf8";
       ctx.fillStyle = coreGlow;
       ctx.shadowColor = coreGlow; ctx.shadowBlur = 18;
@@ -839,14 +852,14 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
       const endAngle = centerAngle + span / 2;
       const progress = 1 - lifeRatio;
       ctx.lineCap = "round";
-      ctx.shadowColor = game.evolved ? "#6ee7b7" : "#10b981";
+      ctx.shadowColor = game.evolved ? "#d946ef" : "#a855f7";
       ctx.shadowBlur = 28;
-      ctx.strokeStyle = game.evolved ? "#a7f3d0" : "#34d399";
-      ctx.lineWidth = 26 * (1 - progress * 0.42);
+      ctx.strokeStyle = game.evolved ? "#e879f9" : "#c084fc";
+      ctx.lineWidth = (game.evolved ? 82 : 72) * (1 - progress * 0.18);
       ctx.beginPath(); ctx.arc(0, 0, radius, startAngle, endAngle); ctx.stroke();
-      ctx.shadowBlur = 10;
-      ctx.strokeStyle = "#f0fdf4";
-      ctx.lineWidth = 8;
+      ctx.shadowBlur = 18;
+      ctx.strokeStyle = "#f5d0fe";
+      ctx.lineWidth = game.evolved ? 26 : 22;
       ctx.beginPath(); ctx.arc(0, 0, radius + 5, startAngle, endAngle); ctx.stroke();
       ctx.restore();
       return;
@@ -1442,7 +1455,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
     if (upgrade.id === "special_area" && game.player.specialAreaStacks < MAX_AREA_RELIC_STACKS) { game.player.specialAreaStacks += 1; game.player.pickupRadius = 85 * (1 + game.player.specialAreaStacks * 0.10); }
     if (upgrade.id === "special_experience" && game.player.specialExperienceStacks < MAX_EXPERIENCE_RELIC_STACKS) { game.player.specialExperienceStacks += 1; game.player.xpMultiplier = 1 + game.player.specialExperienceStacks * 0.05; }
     if (upgrade.id === "special_projectile_range" && game.player.projectileRangeStacks < MAX_PROJECTILE_RANGE_STACKS) { game.player.projectileRangeStacks += 1; game.player.projectileRangeMultiplier = 1 + game.player.projectileRangeStacks * 0.10; }
-    if (upgrade.id === "special_projectiles" && game.player.projectileStacks < MAX_EXTRA_PROJECTILES) game.player.projectileStacks += 1;
+    if (upgrade.id === "special_projectiles" && game.player.projectileStacks < MAX_EXTRA_PROJECTILES) { game.player.projectileStacks += 1; if (game.weaponId === "spectral_scythe") game.player.damage *= 1.25; }
     if (upgrade.id === "special_ricochet" && game.player.relicRicochet < 3) game.player.relicRicochet += 1;
     if (upgrade.id === "special_piercing" && game.player.relicPiercing < 3) game.player.relicPiercing += 1;
     if (upgrade.id === "special_chain_lightning" && game.player.relicChainLightning < 3) game.player.relicChainLightning += 1;
@@ -1672,7 +1685,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         }
         // O Guardião só desperta ao fim dos 12 minutos completos.
         game.shotTimer -= dt;
-        if (game.shotTimer <= 0 && game.enemies.some((enemy) => enemy.hp > 0)) {
+        if (game.shotTimer <= 0 && game.enemies.some((enemy) => enemy.hp > 0) && (game.weaponId !== "void_revolver" || game.enemies.some((enemy) => enemy.hp > 0 && distance(game.player.x, game.player.y, enemy.x, enemy.y) <= 280 * game.player.projectileRangeMultiplier))) {
           const targets = [...game.enemies].filter((enemy) => enemy.hp > 0).sort((a, b) => {
             const da = distance(game.player.x, game.player.y, a.x, a.y);
             const db = distance(game.player.x, game.player.y, b.x, b.y);
@@ -1710,18 +1723,20 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             game.player.castTimer = 0.24;
             game.shotTimer = game.player.fireRate * 0.95;
           } else if (game.weaponId === "unstable_core") {
-            const speed = 165 * game.player.projectileRangeMultiplier;
-            const life = game.player.projectileLife * 1.3;
-            game.shots.push({
-              x: game.player.x, y: game.player.y,
-              vx: Math.cos(baseAngle) * speed, vy: Math.sin(baseAngle) * speed,
-              damage: weaponDamage * 1.275, life, maxLife: life,
-              hitTargets: [], bouncesRemaining: 0, piercesRemaining: 0,
-              kind: "plasma_core", radius: game.evolved ? 18 : 13,
-            });
+            const speed = 100 * game.player.projectileRangeMultiplier;
+            const life = game.player.projectileLife * 0.65;
+            const coreAngles = game.player.projectileStacks > 0 ? [baseAngle - 0.18, baseAngle, baseAngle + 0.18] : [baseAngle];
+            for (const angle of coreAngles) {
+              game.shots.push({
+                x: game.player.x, y: game.player.y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
+                damage: weaponDamage * 1.275, life, maxLife: life,
+                hitTargets: [], bouncesRemaining: 0, piercesRemaining: 0,
+                kind: "plasma_core", radius: game.evolved ? 18 : 13,
+              });
+            }
             game.player.castFacing = directionFromVector(target.x - game.player.x, target.y - game.player.y);
             game.player.castTimer = 0.24;
-            game.shotTimer = game.player.fireRate * 0.55;
+            game.shotTimer = game.player.fireRate * 1.65;
           } else if (game.weaponId === "spectral_scythe") {
             const arcSpan = game.evolved ? Math.PI * 1.15 : Math.PI * 0.55;
             const slashRadius = (game.evolved ? 135 : 95) * (1 + game.player.specialAreaStacks * 0.1);
@@ -1734,6 +1749,15 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               bouncesRemaining: 0, piercesRemaining: 999,
               kind: "scythe_slash", angle: slashAngle, arcSpan, radius: slashRadius,
             });
+            for (let p = 0; p < 8; p++) {
+              const pAngle = slashAngle + (Math.random() - 0.5) * arcSpan;
+              const pDist = slashRadius * (0.85 + Math.random() * 0.3);
+              game.particles.push({
+                x: game.player.x + Math.cos(pAngle) * pDist, y: game.player.y + Math.sin(pAngle) * pDist,
+                vx: Math.cos(pAngle) * (40 + Math.random() * 80), vy: Math.sin(pAngle) * (40 + Math.random() * 80),
+                life: 0.35 + Math.random() * 0.25, color: Math.random() > 0.4 ? "#c084fc" : "#e879f9",
+              });
+            }
             game.player.castFacing = game.player.facing;
             game.player.castTimer = 0.24;
             game.shotTimer = game.player.fireRate * 1.05;
@@ -1763,17 +1787,18 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             const maxActiveWells = (game.weaponLevel >= 10 ? 3 : game.weaponLevel >= 5 ? 2 : 1) + game.player.projectileStacks;
             const activeWells = game.shots.filter((shot) => shot.kind === "gravity_well" && shot.life > 0).length;
             if (activeWells < maxActiveWells) {
+              const spawnAngle = Math.random() * Math.PI * 2, spawnDist = 75 + Math.random() * 145;
+              const targetX = game.player.x + Math.cos(spawnAngle) * spawnDist, targetY = game.player.y + Math.sin(spawnAngle) * spawnDist;
               game.shots.push({
-                x: target.x, y: target.y, vx: 0, vy: 0,
+                x: targetX, y: targetY, vx: 0, vy: 0,
                 damage: weaponDamage * (game.evolved ? 0.75 : 0.5625),
-                life: 2.2, maxLife: 2.2, hitTargets: [],
-                bouncesRemaining: 0, piercesRemaining: 999,
+                life: 2.2, maxLife: 2.2, hitTargets: [], bouncesRemaining: 0, piercesRemaining: 999,
                 kind: "gravity_well", radius: wellRadius, pulseTimer: 0.38,
               });
-              game.player.castFacing = directionFromVector(target.x - game.player.x, target.y - game.player.y);
+              game.player.castFacing = directionFromVector(targetX - game.player.x, targetY - game.player.y);
               game.player.castTimer = 0.24;
             }
-            game.shotTimer = game.player.fireRate * 1.35;
+            game.shotTimer = game.player.fireRate * 2.2;
           } else if (game.weaponId === "rune_sentinels") {
             // Os totens estacionários disparam por conta própria; este timer apenas evita
             // que o loop genérico de armas execute repetidamente enquanto há alvos.
@@ -1798,9 +1823,10 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             const bladeCount = Math.max(1, shot.totalBlades ?? 3);
             const bladeIndex = shot.bladeIndex ?? 0;
             const isOuterBlade = game.evolved && bladeIndex >= 8;
-            const orbitSpeed = isOuterBlade ? -3.2 : 2.8;
             const orbitDistance = isOuterBlade ? 98 : 65;
-            const angle = game.elapsed * orbitSpeed + (bladeIndex * Math.PI * 2) / bladeCount;
+            const attackSpeedFactor = 0.72 / Math.max(0.18, game.player.fireRate);
+            const rot = game.elapsed * (3.2 * attackSpeedFactor) * (isOuterBlade ? -1 : 1);
+            const angle = rot + (bladeIndex * Math.PI * 2) / bladeCount;
             shot.x = game.player.x + Math.cos(angle) * orbitDistance;
             shot.y = game.player.y + Math.sin(angle) * orbitDistance;
             shot.angle = angle;
@@ -1887,10 +1913,12 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             }
           }
           for (const totem of game.sentinelTotems) {
+            totem.hp = Math.max(0, totem.hp - 1.0 * dt);
             totem.attackTimer -= dt;
             if (totem.attackTimer > 0 || totem.hp <= 0) continue;
+            const attackRange = game.evolved ? 420 : 210;
             const target = game.enemies
-              .filter((enemy) => enemy.hp > 0 && distance(totem.x, totem.y, enemy.x, enemy.y) <= 420)
+              .filter((enemy) => enemy.hp > 0 && distance(totem.x, totem.y, enemy.x, enemy.y) <= attackRange)
               .sort((a, b) => distance(totem.x, totem.y, a.x, a.y) - distance(totem.x, totem.y, b.x, b.y))[0];
             if (!target) continue;
             const dx = target.x - totem.x, dy = target.y - totem.y;
@@ -2178,8 +2206,9 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                     if (purchases.experience >= 1 && game.player.specialExperienceStacks < MAX_EXPERIENCE_RELIC_STACKS) eligible.push("experience");
                     if (purchases.projectile_range >= 1 && game.player.projectileRangeStacks < MAX_PROJECTILE_RANGE_STACKS) eligible.push("projectile_range");
                     if (purchases.projectiles >= 1 && game.player.projectileStacks < MAX_EXTRA_PROJECTILES) eligible.push("projectiles");
-                    if (purchases.ricochet >= 1 && game.player.relicRicochet < 3) eligible.push("ricochet");
-                    if (purchases.piercing >= 1 && game.player.relicPiercing < 3) eligible.push("piercing");
+                    const excludesBallisticRelics = game.weaponId === "spectral_scythe" || game.weaponId === "orbital_swords" || game.weaponId === "gravity_shackle";
+                    if (!excludesBallisticRelics && purchases.ricochet >= 1 && game.player.relicRicochet < 3) eligible.push("ricochet");
+                    if (!excludesBallisticRelics && purchases.piercing >= 1 && game.player.relicPiercing < 3) eligible.push("piercing");
                     if (purchases.chain_lightning >= 1 && game.player.relicChainLightning < 3) eligible.push("chain_lightning");
                     eligible.push("food", "void");
                     if (eligible.length) game.specialDrops.push({ x: enemy.x, y: enemy.y, kind: eligible[Math.floor(Math.random() * eligible.length)], radius: 13 });
@@ -2245,42 +2274,41 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             }
           }
         }
-        for (const shot of game.shots) {
-          if (shot.life <= 0 || shot.kind === "orbital_blade" || shot.kind === "scythe_slash" || shot.kind === "gravity_well" || shot.kind === "plasma_puddle" || shot.kind === "sentinel_explosion") continue;
-          for (const urn of game.urns) {
-            if (urn.broken) continue;
-            const dx = shot.x - urn.x, dy = shot.y - urn.y;
-            if (dx*dx + dy*dy <= (urn.radius + 6) * (urn.radius + 6)) {
-              shot.life = 0; urn.hp -= shot.damage >= 45 ? 2 : 1;
-              if (shot.kind === "plasma_core" && !shot.hasDetonated) {
-                shot.hasDetonated = true;
-                spawnPlasmaPuddle(game, shot.x, shot.y, shot.damage);
+        // Urnas/gatinhos só recebem dano pelo contato físico do personagem.
+        for (const urn of game.urns) {
+          if (urn.broken) continue;
+          urn.contactCooldown = Math.max(0, (urn.contactCooldown ?? 0) - dt);
+          if (distance(game.player.x, game.player.y, urn.x, urn.y) <= 14 + urn.radius && urn.contactCooldown <= 0) {
+            urn.hp -= 1; urn.contactCooldown = 0.35;
+            for (let p = 0; p < 4; p++) {
+              const angle = Math.random() * Math.PI * 2, speed = 25 + Math.random() * 85;
+              game.particles.push({ x: urn.x, y: urn.y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 0.25 + Math.random() * 0.25, color: "#b7a4b9" });
+            }
+            if (urn.hp <= 0) {
+              urn.broken = true;
+              for (let p = 0; p < 18; p++) {
+                const angle = Math.random() * Math.PI * 2, speed = 45 + Math.random() * 170;
+                game.particles.push({ x: urn.x, y: urn.y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 0.35 + Math.random() * 0.45, color: p % 2 ? "#c4b5c5" : "#8f7b99" });
               }
-              for(let p=0;p<4;p++){const a=Math.random()*Math.PI*2,sp=25+Math.random()*85;game.particles.push({x:urn.x,y:urn.y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:.25+Math.random()*.25,color:"#b7a4b9"});}
-              if(urn.hp<=0){urn.broken=true;for(let p=0;p<18;p++){const a=Math.random()*Math.PI*2,sp=45+Math.random()*170;game.particles.push({x:urn.x,y:urn.y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:.35+Math.random()*.45,color:p%2?"#c4b5c5":"#8f7b99"});}
-                const roll = Math.random();
-                const fortuneBonus = [0, 0.10, 0.20, 0.30, 0.40, 0.50][Math.max(0, Math.min(5, purchases.fortune))];
-                const specialMultiplier = (1 + fortuneBonus) * game.omenRewardMultiplier;
-                const foodChance = Math.min(0.18, 0.09 * specialMultiplier);
-                const voidChance = Math.min(0.04, 0.01 * specialMultiplier);
-                const highestFieldRelicLevel = Math.max(purchases.area, purchases.experience, purchases.projectile_range, purchases.projectiles, purchases.ricochet, purchases.piercing, purchases.chain_lightning);
-                const baseRelicDropChance = [0, 0, 0.01, 0.03, 0.05][Math.max(0, Math.min(4, highestFieldRelicLevel))];
-                const relicChance = Math.min(0.12, baseRelicDropChance * specialMultiplier);
-                const eligibleRelics: SpecialDrop["kind"][] = [];
-                if (purchases.area >= 1 && game.player.specialAreaStacks < MAX_AREA_RELIC_STACKS) eligibleRelics.push("area");
-                if (purchases.experience >= 1 && game.player.specialExperienceStacks < MAX_EXPERIENCE_RELIC_STACKS) eligibleRelics.push("experience");
-                if (purchases.projectile_range >= 1 && game.player.projectileRangeStacks < MAX_PROJECTILE_RANGE_STACKS) eligibleRelics.push("projectile_range");
-                if (purchases.projectiles >= 1 && game.player.projectileStacks < MAX_EXTRA_PROJECTILES) eligibleRelics.push("projectiles");
-                if (purchases.ricochet >= 1 && game.player.relicRicochet < 3) eligibleRelics.push("ricochet");
-                if (purchases.piercing >= 1 && game.player.relicPiercing < 3) eligibleRelics.push("piercing");
-                if (purchases.chain_lightning >= 1 && game.player.relicChainLightning < 3) eligibleRelics.push("chain_lightning");
-                if (roll < 0.20) game.gems.push({ x: urn.x, y: urn.y, value: 15, radius: 8, runeCrystal: true });
-                else if (eligibleRelics.length && roll < 0.20 + relicChance) game.specialDrops.push({ x: urn.x, y: urn.y, kind: eligibleRelics[Math.floor(Math.random() * eligibleRelics.length)], radius: 13 });
-                else if (roll < 0.20 + relicChance + foodChance) game.specialDrops.push({ x: urn.x, y: urn.y, kind: "food", radius: 14 });
-                else if (roll < 0.20 + relicChance + foodChance + voidChance) game.specialDrops.push({ x: urn.x, y: urn.y, kind: "void", radius: 14 });
-                // A Fortuna aumenta apenas o peso dos espólios especiais; cristais de XP mantêm 20%.
-              }
-              break;
+              const roll = Math.random(), fortuneBonus = [0, 0.10, 0.20, 0.30, 0.40, 0.50][Math.max(0, Math.min(5, purchases.fortune))];
+              const specialMultiplier = (1 + fortuneBonus) * game.omenRewardMultiplier;
+              const foodChance = Math.min(0.18, 0.09 * specialMultiplier), voidChance = Math.min(0.04, 0.01 * specialMultiplier);
+              const highestFieldRelicLevel = Math.max(purchases.area, purchases.experience, purchases.projectile_range, purchases.projectiles, purchases.ricochet, purchases.piercing, purchases.chain_lightning);
+              const baseRelicDropChance = [0, 0, 0.01, 0.03, 0.05][Math.max(0, Math.min(4, highestFieldRelicLevel))];
+              const relicChance = Math.min(0.12, baseRelicDropChance * specialMultiplier);
+              const eligibleRelics: SpecialDrop["kind"][] = [];
+              if (purchases.area >= 1 && game.player.specialAreaStacks < MAX_AREA_RELIC_STACKS) eligibleRelics.push("area");
+              if (purchases.experience >= 1 && game.player.specialExperienceStacks < MAX_EXPERIENCE_RELIC_STACKS) eligibleRelics.push("experience");
+              if (purchases.projectile_range >= 1 && game.player.projectileRangeStacks < MAX_PROJECTILE_RANGE_STACKS) eligibleRelics.push("projectile_range");
+              if (purchases.projectiles >= 1 && game.player.projectileStacks < MAX_EXTRA_PROJECTILES) eligibleRelics.push("projectiles");
+              const excludesBallisticRelics = game.weaponId === "spectral_scythe" || game.weaponId === "orbital_swords" || game.weaponId === "gravity_shackle";
+              if (!excludesBallisticRelics && purchases.ricochet >= 1 && game.player.relicRicochet < 3) eligibleRelics.push("ricochet");
+              if (!excludesBallisticRelics && purchases.piercing >= 1 && game.player.relicPiercing < 3) eligibleRelics.push("piercing");
+              if (purchases.chain_lightning >= 1 && game.player.relicChainLightning < 3) eligibleRelics.push("chain_lightning");
+              if (roll < 0.20) game.gems.push({ x: urn.x, y: urn.y, value: 15, radius: 8, runeCrystal: true });
+              else if (eligibleRelics.length && roll < 0.20 + relicChance) game.specialDrops.push({ x: urn.x, y: urn.y, kind: eligibleRelics[Math.floor(Math.random() * eligibleRelics.length)], radius: 13 });
+              else if (roll < 0.20 + relicChance + foodChance) game.specialDrops.push({ x: urn.x, y: urn.y, kind: "food", radius: 14 });
+              else if (roll < 0.20 + relicChance + foodChance + voidChance) game.specialDrops.push({ x: urn.x, y: urn.y, kind: "void", radius: 14 });
             }
           }
         }
@@ -2331,7 +2359,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             if (drop.kind === "area" && game.player.specialAreaStacks < MAX_AREA_RELIC_STACKS) { game.player.specialAreaStacks += 1; game.player.pickupRadius = 85 * (1 + game.player.specialAreaStacks * 0.10); }
             if (drop.kind === "experience" && game.player.specialExperienceStacks < MAX_EXPERIENCE_RELIC_STACKS) { game.player.specialExperienceStacks += 1; game.player.xpMultiplier = 1 + game.player.specialExperienceStacks * 0.05; }
             if (drop.kind === "projectile_range" && game.player.projectileRangeStacks < MAX_PROJECTILE_RANGE_STACKS) { game.player.projectileRangeStacks += 1; game.player.projectileRangeMultiplier = 1 + game.player.projectileRangeStacks * 0.10; }
-            if (drop.kind === "projectiles" && game.player.projectileStacks < MAX_EXTRA_PROJECTILES) game.player.projectileStacks += 1;
+            if (drop.kind === "projectiles" && game.player.projectileStacks < MAX_EXTRA_PROJECTILES) { game.player.projectileStacks += 1; if (game.weaponId === "spectral_scythe") game.player.damage *= 1.25; }
             if (drop.kind === "ricochet" && game.player.relicRicochet < 3) game.player.relicRicochet += 1;
             if (drop.kind === "piercing" && game.player.relicPiercing < 3) game.player.relicPiercing += 1;
             if (drop.kind === "chain_lightning" && game.player.relicChainLightning < 3) game.player.relicChainLightning += 1;
