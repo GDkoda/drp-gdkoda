@@ -482,7 +482,9 @@ function spawnCemeteryUrns(game: GameState, count: number) {
 function resolveCemeteryCollision(x:number,y:number,radius:number,obstacles:CemeteryObstacle[]) {
   let nx=clamp(x,-WORLD_LIMIT+radius,WORLD_LIMIT-radius), ny=clamp(y,-WORLD_LIMIT+radius,WORLD_LIMIT-radius);
   for (const obstacle of obstacles) {
-    const dx=nx-obstacle.x, dy=ny-obstacle.y, d=Math.hypot(dx,dy), min=radius+obstacle.radius;
+    const min=radius+obstacle.radius, dx=nx-obstacle.x, dy=ny-obstacle.y;
+    if (dx>min || dx<-min || dy>min || dy<-min) continue;
+    const d=Math.hypot(dx,dy);
     if (d>0 && d<min) { const push=min-d; nx+=dx/d*push; ny+=dy/d*push; }
     else if (d===0) nx+=min;
   }
@@ -871,23 +873,21 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
       const progress = 1 - lifeRatio;
       ctx.lineCap = "round";
       const sweepEnd = startAngle + span * Math.min(1, 0.35 + progress * 1.6);
-      ctx.globalAlpha = lifeRatio * 0.28;
-      ctx.strokeStyle = "#14b8a6"; ctx.lineWidth = game.evolved ? 40 : 32;
-      ctx.beginPath(); ctx.arc(0, 0, radius - 6, startAngle, sweepEnd); ctx.stroke();
-      ctx.globalAlpha = lifeRatio * 0.55;
-      ctx.strokeStyle = "#5eead4"; ctx.lineWidth = game.evolved ? 18 : 14;
-      ctx.beginPath(); ctx.arc(0, 0, radius, startAngle, sweepEnd); ctx.stroke();
-      if (game.evolved) {
-        ctx.globalAlpha = lifeRatio * 0.85;
-        ctx.strokeStyle = "#05080f"; ctx.lineWidth = 5;
-        ctx.beginPath(); ctx.arc(0, 0, radius - 3, startAngle, sweepEnd); ctx.stroke();
-        ctx.strokeStyle = "#2dd4bf"; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.arc(0, 0, radius - 16, startAngle, sweepEnd); ctx.stroke();
-      }
-      ctx.globalAlpha = lifeRatio * 0.9;
-      ctx.strokeStyle = "#ccfbf1";
-      ctx.lineWidth = game.evolved ? 3 : 2.5;
-      ctx.beginPath(); ctx.arc(0, 0, radius + 5, startAngle, sweepEnd); ctx.stroke();
+      const sweep = sweepEnd - startAngle;
+      const thick = radius * (game.evolved ? 0.42 : 0.36);
+      // Lâmina em crescente: borda externa no raio, interna afunila nas pontas.
+      const crescent = (outer: number, depth: number) => {
+        const steps = 18;
+        ctx.beginPath();
+        for (let i = 0; i <= steps; i++) { const a = startAngle + sweep * (i / steps); ctx.lineTo(Math.cos(a) * outer, Math.sin(a) * outer); }
+        for (let i = steps; i >= 0; i--) { const t = i / steps; const a = startAngle + sweep * t; const r = outer - depth * Math.sin(Math.PI * Math.min(1, t * 1.1)); ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r); }
+        ctx.closePath();
+      };
+      ctx.globalAlpha = lifeRatio * 0.3; ctx.fillStyle = "#14b8a6"; crescent(radius + 6, thick * 1.15); ctx.fill();
+      ctx.globalAlpha = lifeRatio * 0.5; ctx.fillStyle = "#5eead4"; crescent(radius, thick * 0.8); ctx.fill();
+      if (game.evolved) { ctx.globalAlpha = lifeRatio * 0.8; ctx.fillStyle = "#05080f"; crescent(radius - thick * 0.25, thick * 0.3); ctx.fill(); }
+      ctx.globalAlpha = lifeRatio * 0.95; ctx.strokeStyle = "#ccfbf1"; ctx.lineWidth = game.evolved ? 4 : 3;
+      ctx.beginPath(); ctx.arc(0, 0, radius + 4, startAngle, sweepEnd); ctx.stroke();
       ctx.restore();
       return;
     }
@@ -1073,10 +1073,11 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
       };
       const [spriteWidth, spriteHeight, anchor] = dimensions[enemy.type];
       ctx.globalAlpha = hurt ? 0.78 : 1;
-      ctx.filter = hurt ? "brightness(2.35) saturate(.35)" : bossInFury ? "brightness(1.15) sepia(1) saturate(4) hue-rotate(315deg)" : "none";
+      ctx.filter = bossInFury ? "brightness(1.15) sepia(1) saturate(4) hue-rotate(315deg)" : "none";
       ctx.shadowColor = bossInFury ? "#d41438" : enemy.type === "brute" ? "#9b7bce" : enemy.type === "charger" ? "#b58cff" : "#8b68ff";
       ctx.shadowBlur = 0;
       ctx.drawImage(enemySprite, -spriteWidth / 2, -spriteHeight * anchor, spriteWidth, spriteHeight);
+      if (hurt) { ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = 0.6; ctx.drawImage(enemySprite, -spriteWidth / 2, -spriteHeight * anchor, spriteWidth, spriteHeight); }
       ctx.restore();
     } else if (enemy.type === "wraith") {
       ctx.shadowColor = enemy.color; ctx.shadowBlur = 0; ctx.fillStyle = hurt ? "#fff" : "#827394";
@@ -1768,8 +1769,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             game.player.castTimer = 0.24;
             game.shotTimer = game.player.fireRate * 3.3;
           } else if (game.weaponId === "spectral_scythe") {
-            const arcSpan = game.evolved ? Math.PI * 1.15 : Math.PI * 0.55;
-            const slashRadius = (game.evolved ? 135 : 95) * (1 + game.player.specialAreaStacks * 0.1);
+            const arcSpan = game.evolved ? Math.PI * 1.33 : Math.PI * 0.92;
+            const slashRadius = (game.evolved ? 205 : 150) * (1 + game.player.specialAreaStacks * 0.1);
             const facingVector = PLAYER_DIRECTION_VECTORS[game.player.facing] ?? PLAYER_DIRECTION_VECTORS[0];
             const slashAngle = Math.atan2(facingVector.y, facingVector.x);
             game.shots.push({
@@ -2546,7 +2547,6 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           const visibleEnemies = game.enemies.reduce((count, enemy) =>
             count + Number(enemy.x >= game.player.x - halfViewWidth && enemy.x <= game.player.x + halfViewWidth && enemy.y >= game.player.y - halfViewHeight && enemy.y <= game.player.y + halfViewHeight), 0);
           setHud({ hp: game.player.hp, maxHp: game.player.maxHp, xp: game.player.xp, nextXp: game.player.nextXp, level: game.player.level, kills: game.kills, elapsed: game.elapsed, moveSpeed: Math.round(game.player.speed), fps: measuredFps, visibleEnemies, phase: snapshot.phaseLabel, pressure: snapshot.totalPressure + (game.challengeEvent ? 2 : 0), event: game.challengeEvent ? { id: game.challengeEvent.id, remaining: game.challengeEvent.remaining, progress: game.challengeEvent.progress, inside: distance(game.player.x, game.player.y, game.challengeEvent.x, game.challengeEvent.y) <= game.challengeEvent.radius } : null, runes: Object.entries(game.upgradeCounts).map(([id, rune]) => ({ id, name: rune.name, count: rune.count, rarity: rune.rarity })) });
-          setStats({ totalDamageDealt: Math.round(game.totalDamageDealt), crystalsCollected: game.crystalsCollected, highestLevel: game.highestLevel });
         }
       }
       if (!paused && levelChoices.length === 0 && !game.ended) {
