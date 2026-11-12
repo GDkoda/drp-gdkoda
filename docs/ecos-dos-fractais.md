@@ -198,16 +198,48 @@ A loja atualizada também exige executar `supabase/migrations/20261111020000_fra
 - Nível 3: na segunda ressurreição, uma explosão atinge os inimigos num raio de 260 unidades, causando dano equivalente ao golpe atual da arma equipada.
 - Custos: 3.500 / 7.000 / 20.000 fractais.
 
-### Compatibilidade das Relíquias por arma
-Estado da implementação nesta revisão:
-- Revólver do Vazio (Pistola): Ricochete, Perfuração e Descarga em Cadeia só atuam nos projéteis quando seus níveis estão comprados. Ressonância de Alcance também funciona. Coroa de Estilhaços adiciona projéteis; depois da evolução, os seis disparos-base continuam somando os extras coletados.
-- Núcleo Instável: os projéteis principais aceitam Ricochete, Perfuração, Descarga em Cadeia e Ressonância de Alcance. Os estilhaços da explosão secundária não recebem novos ricochetes/perfurações/cadeias. Coroa de Estilhaços ainda não aumenta a quantidade de orbes do Núcleo.
-- Foice Espectral: os cortes são disparos auxiliares direcionados; não aceitam atualmente Ricochete, Perfuração, Descarga em Cadeia, Ressonância de Alcance ou Coroa de Estilhaços.
-- Espadas Orbitais: os impactos das lâminas são direcionados individualmente; não aceitam atualmente as três relíquias de comportamento, Ressonância de Alcance ou Coroa de Estilhaços.
-- Grilhão Gravitacional: o pulso de atração escolhe vários inimigos e gera impactos direcionados; não aceita atualmente as três relíquias de comportamento, Ressonância de Alcance ou Coroa de Estilhaços.
-- Sentinelas Rúnicas: os disparos são direcionados e estão marcados como auxiliares; apesar de serem projéteis visuais, não aceitam atualmente Ricochete, Perfuração, Descarga em Cadeia, Ressonância de Alcance ou Coroa de Estilhaços.
+### Compatibilidade das Relíquias por arma — revisão de 12/11/2026
 
-Área e Experiência são efeitos globais e funcionam com qualquer arma. A compatibilidade descrita acima é específica das relíquias que alteram projéteis. Não anunciar efeitos não conectados até uma adaptação específica de cada arma.
+Área e Experiência são efeitos globais e funcionam com qualquer arma.
+
+- **Ressonância de Alcance:** aumenta em 10% por nível (máximo +50%) o alcance útil de todas as armas: distância dos disparos do Revólver, velocidade/alcance do Núcleo, alcance da Foice, órbita das Espadas, raio da aura do Grilhão e alcance de ataque das Sentinelas.
+- **Coroa de Estilhaços:** adapta o bônus à arma equipada: Revólver recebe projéteis adicionais; Núcleo dispara até três orbes; Foice recebe +12% de dano por coleta; Espadas recebem uma lâmina orbital por coleta; Grilhão aumenta o raio da aura em 6% por coleta; Sentinelas recebem um totem adicional. Limite de duas coletas.
+- **Ricochete Instável, Perfuração Espectral e Descarga em Cadeia:** disponíveis somente para Revólver do Vazio e Núcleo Instável. No Núcleo, os orbes podem atravessar inimigos e ricochetear antes de detonarem; a Descarga em Cadeia também é ativada nos impactos do orbe.
+- **Ímã de Fragmentos:** continua aumentando o raio de coleta em 10% por coleta e também amplia as áreas de ataque compatíveis: poça do Núcleo, corte da Foice, órbita das Espadas, aura do Grilhão e alcance de ataque das Sentinelas.
+
+### Dádivas alternativas por arma
+
+As dádivas alternativas são exclusivas da arma equipada, têm três níveis e aparecem com 24% de chance de substituir uma dádiva básica quando há um espaço básico elegível na seleção.
+
+| Arma | Dádiva | Efeito por nível |
+|---|---|---|
+| Revólver do Vazio | Marca do Predador | +12% de dano contra Elites e Chefes |
+| Revólver do Vazio | Sexto Eco | +1 ricochete no disparo dourado a cada seis tiros |
+| Núcleo Instável | Campo Devorador | +12% de raio da poça |
+| Núcleo Instável | Implosão Concentrada | +3 unidades na força de atração de cada pulso |
+| Foice Espectral | Sede de Almas | Abates com a Foice curam 1,5% da vida máxima; recarga de 1,8s |
+| Foice Espectral | Arco do Ceifador | +12% de alcance do corte |
+| Espadas Orbitais | Órbita Distante | +12% de distância orbital |
+| Espadas Orbitais | Fio Astral | +12% de dano das lâminas |
+| Grilhão Gravitacional | Peso Abissal | +4 pontos percentuais de lentidão; até 42% de redução da velocidade |
+| Grilhão Gravitacional | Ressonância do Abismo | +15% de dano dos pulsos da aura |
+| Sentinelas Rúnicas | Mirada do Vigia | +12% de dano dos feixes |
+| Sentinelas Rúnicas | Sobrecarga Final | +15% de dano e +12% de raio da explosão dos totens destruídos |
+
+### Grilhão, desempenho e Núcleo
+
+- O Grilhão mantém apenas uma aura vinculada ao jogador. A versão normal alterna entre 3,2s ativa e 2s inativa; a evolução permanece ativa.
+- A aura aplica lentidão e dano no pulso de colisão, em intervalos de 0,4s. Não executa mais uma varredura de todos os inimigos a cada quadro.
+- As áreas amplas consultam as células da grade espacial próximas ao campo, evitando criar um array filtrado a partir da lista inteira de inimigos a cada pulso.
+- O Núcleo mantém seu dano e sua poça; o raio-base da poça passou a 118 na forma normal e 180 na evoluída. Ricochete e Perfuração ocorrem antes da detonação final.
+- A arte existente do Grilhão e do Núcleo foi preservada.
+
+### Controles e compatibilidade de dispositivo
+
+- Movimento: WASD ou setas.
+- Dash: Espaço. Duração de 0,18s, velocidade de 650 unidades/s, recarga de 1,25s e invulnerabilidade breve durante a arrancada. Não exige compra ou desbloqueio.
+- A arena é exclusiva para computador: requer viewport de pelo menos 1024px e ponteiro preciso. Em dispositivos que não atendem ao requisito, a arena é substituída por um aviso de acesso pelo PC.
+- Os controles de arrastar/toque e o joystick virtual foram removidos.
 
 ### Resposta visual e desempenho
 - O tremor de câmera por dano de contato comum foi removido; o flash vermelho de dano permanece.
