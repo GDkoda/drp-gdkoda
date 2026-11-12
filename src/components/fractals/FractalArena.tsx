@@ -3388,7 +3388,13 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           {masterGiftListOpen ? "Ocultar Lista de Dádivas" : "Mostrar Lista de Dádivas"} <ChevronDown className={`h-4 w-4 transition-transform ${masterGiftListOpen ? "rotate-180" : ""}`}/>
         </Button>
         {masterGiftListOpen && <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
-          {MASTER_GIFT_OPTIONS.filter((gift) => gift.id !== "weapon_mastery" && gift.id !== "weapon_evolution" && gift.id !== "anchor_soul" && (!gift.id.startsWith("gift_") || WEAPON_GIFTS[gameRef.current?.weaponId ?? selectedWeapon].some((weaponGift) => weaponGift.id === gift.id))).map((gift) => {
+          {MASTER_GIFT_OPTIONS.filter((gift) => {
+            const activeWeapon = gameRef.current?.weaponId ?? selectedWeapon;
+            if (gift.id === "weapon_mastery" || gift.id === "weapon_evolution" || gift.id === "anchor_soul") return false;
+            if (gift.id.startsWith("gift_") && !WEAPON_GIFTS[activeWeapon].some((weaponGift) => weaponGift.id === gift.id)) return false;
+            if (["special_ricochet", "special_piercing", "special_chain_lightning"].includes(gift.id) && !supportsProjectileRelics(activeWeapon)) return false;
+            return true;
+          }).map((gift) => {
             const game = gameRef.current;
             const currentLevel = game?.upgradeCounts[gift.id]?.count ?? 0;
             const capped = gift.id.startsWith("gift_") ? currentLevel >= 3
