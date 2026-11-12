@@ -2283,9 +2283,6 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               });
             }
             game.shotTimer = 0.5;
-          } else if (game.weaponId === "gravity_shackle") {
-            // A aura é atualizada independentemente de haver inimigos selecionáveis.
-            game.shotTimer = game.player.fireRate * 2.2;
           } else if (game.weaponId === "rune_sentinels") {
             // Os totens estacionários disparam por conta própria; este timer apenas evita
             // que o loop genérico de armas execute repetidamente enquanto há alvos.
