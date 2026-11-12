@@ -143,7 +143,7 @@ const SPECIAL_UPGRADES: Upgrade[] = [
   { id: "special_area", name: "Ímã de Fragmentos", description: "+10% de alcance de coleta por coleta (máx. +100%, 10 coletas); também amplia áreas de ataque compatíveis.", icon: Move },
   { id: "special_experience", name: "Eco do Conhecimento", description: "+5% de experiência por coleta (máx. +50%, 10 coletas).", icon: Sparkles },
   { id: "special_projectile_range", name: "Ressonância de Alcance", description: "+10% de alcance útil da arma por coleta (máx. +50%).", icon: Zap },
-  { id: "special_projectiles", name: "Coroa de Estilhaços", description: "Adapta-se à arma: +1 orbe, lâmina, sentinela ou potência de corte/aura por coleta (máx. 2).", icon: Swords },
+  { id: "special_projectiles", name: "Coroa de Estilhaços", description: "Adapta-se à arma: +1 bala/orbe/lâmina/totem ou +12% de dano da Foice por coleta; o Grilhão recebe +6% de raio (máx. 2).", icon: Swords },
   { id: "special_ricochet", name: "Ricochete Instável", description: "Revólver e Núcleo ganham +1 ricochete por nível (máx. 3).", icon: Orbit },
   { id: "special_piercing", name: "Perfuração Espectral", description: "Revólver e Núcleo atravessam +1 inimigo por nível (máx. 3).", icon: Target },
   { id: "special_chain_lightning", name: "Descarga em Cadeia", description: "Impactos do Revólver e do Núcleo saltam para +1 alvo por nível (máx. 3).", icon: Zap },
@@ -3247,7 +3247,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                         <div className="fractals-shop-item__slot"><Swords className="h-5 w-5 text-indigo-300" /></div>
                         <div className="min-w-0">
                           <p className="fractals-shop-item__name">Coroa de Estilhaços</p>
-                          <p className="fractals-shop-item__description">Adapta-se à arma: projéteis/orbes/lâminas/totens extras, +12% de dano da Foice ou +6% de raio do Grilhão por coleta (máx. 2). N1 libera a escolha; N2/N3/N4: 1%/3%/5% de queda em Brutos e Elites.</p>
+                          <p className="fractals-shop-item__description">Adapta-se à arma: balas/orbes/lâminas/totens extras, +12% de dano da Foice ou +6% de raio do Grilhão por coleta (máx. 2). N1 libera a escolha; N2/N3/N4: 1%/3%/5% de queda em Brutos e Elites.</p>
                           <div className="fractals-shop-pips" aria-label={"Nível " + purchases.projectiles + " de 4"}>{Array.from({ length: 4 }).map((_, i) => <i key={i} className={i < purchases.projectiles ? "fractals-shop-pip is-filled" : "fractals-shop-pip"} />)}<span>{purchases.projectiles}/4</span></div>
                         </div>
                         <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || purchases.projectiles >= 4 || (!isMaster && fractalBalance < FRACTAL_SHOP.projectiles[purchases.projectiles]?.cost)} onClick={() => void purchaseUpgrade("projectiles")}>{purchases.projectiles >= 4 ? "MAX" : isMaster ? "GRÁTIS" : FRACTAL_SHOP.projectiles[purchases.projectiles]?.cost.toLocaleString("pt-BR") + " FR"}</button>
