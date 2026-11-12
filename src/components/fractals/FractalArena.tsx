@@ -167,7 +167,7 @@ const WEAPON_GIFTS: Record<WeaponId, Upgrade[]> = {
     { id: "gift_orbital_edge", name: "Fio Astral", description: "Dano de contato das lâminas +12% por nível.", icon: Swords, rarity: "uncommon" },
   ],
   gravity_shackle: [
-    { id: "gift_gravity_pressure", name: "Peso Abissal", description: "A lentidão da aura fica 4 pontos percentuais mais forte por nível, até 36% de redução de velocidade.", icon: Move, rarity: "uncommon" },
+    { id: "gift_gravity_pressure", name: "Peso Abissal", description: "A lentidão da aura fica 4 pontos percentuais mais forte por nível, até 42% de redução de velocidade.", icon: Move, rarity: "uncommon" },
     { id: "gift_gravity_resonance", name: "Ressonância do Abismo", description: "Dano dos pulsos da aura +15% por nível.", icon: Sparkles, rarity: "uncommon" },
   ],
   rune_sentinels: [
@@ -2564,6 +2564,46 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                 }
               }
               if (shot.kind === "plasma_core") {
+                const projectileSpeed = Math.max(1, Math.hypot(shot.vx, shot.vy));
+                const dirX = shot.vx / projectileSpeed, dirY = shot.vy / projectileSpeed;
+
+                // O Núcleo continua sendo detonado no último impacto, mas pode atravessar
+                // alvos ou ricochetear antes disso quando essas relíquias estiverem equipadas.
+                if (shot.piercesRemaining > 0) {
+                  shot.piercesRemaining -= 1;
+                  shot.targetEnemy = undefined;
+                  shot.x = enemy.x + dirX * (enemy.radius + (shot.radius ?? 13) + 5);
+                  shot.y = enemy.y + dirY * (enemy.radius + (shot.radius ?? 13) + 5);
+                  shot.life = Math.max(shot.life, 0.18);
+                  continue;
+                }
+
+                if (shot.bouncesRemaining > 0) {
+                  let bestTarget: Enemy | null = null;
+                  let bestDistanceSquared = 280 * 280;
+                  for (const candidate of game.enemies) {
+                    if (candidate.hp <= 0 || shot.hitTargets.includes(candidate)) continue;
+                    const nextX = candidate.x - enemy.x;
+                    const nextY = candidate.y - enemy.y;
+                    const nextDistanceSquared = nextX * nextX + nextY * nextY;
+                    if (nextDistanceSquared < bestDistanceSquared) {
+                      bestDistanceSquared = nextDistanceSquared;
+                      bestTarget = candidate;
+                    }
+                  }
+                  if (bestTarget) {
+                    const nextDistance = Math.max(1, Math.sqrt(bestDistanceSquared));
+                    shot.x = enemy.x;
+                    shot.y = enemy.y;
+                    shot.vx = ((bestTarget.x - enemy.x) / nextDistance) * projectileSpeed;
+                    shot.vy = ((bestTarget.y - enemy.y) / nextDistance) * projectileSpeed;
+                    shot.targetEnemy = bestTarget;
+                    shot.bouncesRemaining -= 1;
+                    shot.life = Math.max(shot.life, nextDistance / projectileSpeed + 0.15);
+                    continue;
+                  }
+                }
+
                 if (!shot.hasDetonated) {
                   shot.hasDetonated = true;
                   spawnPlasmaPuddle(game, shot.x, shot.y, shot.damage);
