@@ -127,7 +127,7 @@ type GameState = {
   enemies: Enemy[]; shots: Shot[]; gems: Gem[]; specialDrops: SpecialDrop[]; sentinelTotems: SentinelTotem[]; sentinelRespawnTimer: number; nextSentinelTotemId: number; urns: BreakableUrn[]; obstacles: CemeteryObstacle[]; nextUrnMinute: number; nextUrnId: number; particles: Particle[]; damageNumbers: DamageNumber[]; pickupLabels: PickupLabel[]; challengeEvent: ChallengeEvent | null; nextChallengeEvent: number; kills: number; ended: boolean; upgradeCounts: UpgradeCounts; totalDamageDealt: number; crystalsCollected: number; highestLevel: number;
   weaponId: WeaponId; weaponLevel: number; evolved: boolean; rerollsRemaining: number; banishesRemaining: number; bannedUpgradeIds: string[];
   revolverShotCount?: number; orbitalPulseTimer?: number;
-  gravityAuraTimer?: number; gravityAuraActive?: boolean; scytheSiphonCooldown?: number;
+  gravityAuraTimer?: number; gravityAuraActive?: boolean; gravityAuraShot?: Shot; scytheSiphonCooldown?: number;
   anchorReviveAvailable: boolean; anchorRevivesUsed: number; omenId: OmenId | null; omenSpawnMultiplier: number; omenEnemyHpMultiplier: number; omenRewardMultiplier: number; omenRevengeCooldown: number; lastObservedHp: number;
   shake?: number; rings?: { x: number; y: number; r: number; max: number; life: number; color: string }[];
 };
@@ -607,7 +607,7 @@ function makeGame(width: number, height: number, purchases: PurchaseState, weapo
     player: { x: 0, y: 0, hp: maxHp, maxHp, speed: 205 * (omenId === "spectral_veil" ? 1.15 : 1), damage: 22 * omenDamage, fireRate: 0.72 * (omenId === "rupture" ? 1.15 : 1), invuln: 0, hitFlash: 0, xp: 0, nextXp: 12, level: 1, pickupRadius: 85, xpMultiplier: omenId === "famine" ? 1.2 : 1, specialAreaStacks: 0, specialExperienceStacks: 0, projectileRangeStacks: 0, projectileRangeMultiplier: 1, projectileStacks: 0, relicRicochet: 0, relicPiercing: 0, relicChainLightning: 0, projectileLife, facing: 0, castFacing: 0, castTimer: 0, moving: false, dashTimer: 0, dashCooldown: 0, dashX: 1, dashY: 0, spriteAction: "idle", spriteDirection: 0, previousSpriteAction: "idle", previousSpriteDirection: 0, spriteBlend: 1 },
     enemies: [], shots: [], gems: [], specialDrops: [], sentinelTotems: [], sentinelRespawnTimer: 0, nextSentinelTotemId: 1, urns: [], obstacles: createCemeteryObstacles(), nextUrnMinute: 1, nextUrnId: 1, particles: [], damageNumbers: [], pickupLabels: [], challengeEvent: null, nextChallengeEvent: 0, kills: 0, ended: false, upgradeCounts: {}, totalDamageDealt: 0, crystalsCollected: 0, highestLevel: 1,
     weaponId, weaponLevel: 1, evolved: false, rerollsRemaining: purchases.reroll, banishesRemaining: purchases.banish, bannedUpgradeIds: [],
-    revolverShotCount: 0, orbitalPulseTimer: 0, gravityAuraTimer: 0, gravityAuraActive: true, scytheSiphonCooldown: 0,
+    revolverShotCount: 0, orbitalPulseTimer: 0, gravityAuraTimer: 0, gravityAuraActive: true, gravityAuraShot: undefined, scytheSiphonCooldown: 0,
     anchorReviveAvailable: false, anchorRevivesUsed: 0, omenId, omenSpawnMultiplier: omenId === "famine" ? 1.2 : 1,
     omenEnemyHpMultiplier: omenId === "abundance" ? 1.15 : 1, omenRewardMultiplier: omenId === "abundance" ? 1.25 : 1,
     omenRevengeCooldown: 0, lastObservedHp: maxHp,
@@ -2062,7 +2062,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             * (1 + game.player.specialAreaStacks * 0.1)
             * game.player.projectileRangeMultiplier
             * (1 + game.player.projectileStacks * 0.06);
-          let aura = game.shots.find((shot) => shot.kind === "gravity_well" && shot.isAura);
+          let aura = game.gravityAuraShot;
           if (!aura) {
             aura = {
               x: game.player.x, y: game.player.y, vx: 0, vy: 0,
@@ -2070,6 +2070,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               life: 9999, maxLife: 9999, hitTargets: [], bouncesRemaining: 0, piercesRemaining: 999,
               kind: "gravity_well", radius: auraRadius, pulseTimer: 0, isAura: true, active: true,
             };
+            game.gravityAuraShot = aura;
             game.shots.push(aura);
           }
           aura.x = game.player.x;
@@ -2093,7 +2094,12 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             aura.active = game.gravityAuraActive ?? true;
           }
         } else {
-          game.shots = game.shots.filter((shot) => !(shot.kind === "gravity_well" && shot.isAura));
+          // A aura só é removida quando há uma referência ativa; evita alocar um array por frame.
+          if (game.gravityAuraShot) {
+            const auraIndex = game.shots.indexOf(game.gravityAuraShot);
+            if (auraIndex >= 0) game.shots.splice(auraIndex, 1);
+            game.gravityAuraShot = undefined;
+          }
           game.gravityAuraTimer = 0;
           game.gravityAuraActive = true;
         }
@@ -3417,6 +3423,9 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               setMasterWeaponSelection(weaponId);
               game.weaponId = weaponId;
               game.shots = [];
+              game.gravityAuraShot = undefined;
+              game.gravityAuraTimer = 0;
+              game.gravityAuraActive = true;
               game.sentinelTotems = [];
               game.sentinelRespawnTimer = 0;
               game.shotTimer = 0.25;
