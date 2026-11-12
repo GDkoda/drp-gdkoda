@@ -746,6 +746,8 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     }
     ctx.restore();
   });
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
   game.shots.forEach((shot) => {
     if (shot.x < cameraX - 280 || shot.x > cameraX + viewWidth + 280 || shot.y < cameraY - 280 || shot.y > cameraY + viewHeight + 280) return;
     const lifeRatio = clamp(shot.life / Math.max(0.01, shot.maxLife ?? game.player.projectileLife), 0.08, 1);
@@ -962,6 +964,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     }
     ctx.restore();
   });
+  ctx.restore();
   ctx.save();
   game.rings?.forEach((ring) => {
     ctx.globalAlpha = clamp(ring.life * 2.4, 0, 1);
@@ -1084,6 +1087,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     ctx.restore();
   });
   ctx.save();
+  ctx.globalCompositeOperation = "lighter";
   const particleGroups = new Map<string, Particle[]>();
   for (const particle of game.particles) {
     if (particle.x < cameraX - 16 || particle.x > cameraX + viewWidth + 16 || particle.y < cameraY - 16 || particle.y > cameraY + viewHeight + 16) continue;
@@ -2132,7 +2136,14 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             shot.hitTargets = [];
           }
           const wideAttack = shot.kind === "scythe_slash" || shot.kind === "sentinel_explosion" || isPulsingField;
-          const nearbyTargets = wideAttack ? game.enemies : getNearbyEnemies(shot.x, shot.y, collisionGrid);
+          // Pré-filtro AABB: evita trigonometria e testes completos fora da área.
+          const nearbyTargets = wideAttack
+            ? game.enemies.filter((enemy) => {
+                if (enemy.hp <= 0) return false;
+                const maxRange = (shot.radius ?? 180) + enemy.radius + 10;
+                return Math.abs(enemy.x - shot.x) <= maxRange && Math.abs(enemy.y - shot.y) <= maxRange;
+              })
+            : getNearbyEnemies(shot.x, shot.y, collisionGrid);
           for (const enemy of nearbyTargets) {
             if (enemy.hp <= 0 || shot.hitTargets.includes(enemy)) continue;
             if (shot.targetEnemy && shot.targetEnemy !== enemy) continue;
@@ -2154,9 +2165,28 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             }
             if (hit) {
               const appliedDamage = Math.min(enemy.hp, shot.damage);
-              enemy.hp -= shot.damage; game.totalDamageDealt += appliedDamage; enemy.flash = 0.09; for (let k = 0; k < 2; k++) game.particles.push({ x: shot.x, y: shot.y, vx: (Math.random() - 0.5) * 160, vy: (Math.random() - 0.5) * 160, life: 0.22, color: shot.isAnchorBurst ? "#fbbf24" : shot.isChainLightning ? "#67e8f9" : "#f3dcff" });
-              game.damageNumbers.push({ x: enemy.x + (Math.random() - 0.5) * 10, y: enemy.y - enemy.radius - 8, value: shot.damage, life: 0.82, maxLife: 0.82, drift: (Math.random() - 0.5) * 14 });
-              if (game.damageNumbers.length > 20) game.damageNumbers.shift();
+              enemy.hp -= shot.damage;
+              game.totalDamageDealt += appliedDamage;
+              enemy.flash = 0.09;
+              if (game.particles.length < 75) {
+                game.particles.push({
+                  x: shot.x,
+                  y: shot.y,
+                  vx: (Math.random() - 0.5) * 140,
+                  vy: (Math.random() - 0.5) * 140,
+                  life: 0.18,
+                  color: shot.isAnchorBurst ? "#fbbf24" : shot.isChainLightning ? "#67e8f9" : "#f3dcff",
+                });
+              }
+              game.damageNumbers.push({
+                x: enemy.x + (Math.random() - 0.5) * 8,
+                y: enemy.y - enemy.radius - 8,
+                value: shot.damage,
+                life: 0.72,
+                maxLife: 0.72,
+                drift: (Math.random() - 0.5) * 10,
+              });
+              if (game.damageNumbers.length > 12) game.damageNumbers.shift();
               shot.hitTargets.push(enemy);
               if (shot.kind === "plasma_puddle") enemy.slowTimer = Math.max(enemy.slowTimer ?? 0, 0.5);
 
@@ -2168,24 +2198,31 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                 const chainDamage = [0, 0.55, 0.65, 0.75][chainLevel];
                 const chainRange = [0, 180, 215, 250][chainLevel];
                 const chainSpeed = 720;
-                const chainTargets = game.enemies
-                  .filter((candidate) => candidate !== enemy && candidate.hp > 0 && !shot.hitTargets.includes(candidate) && distance(enemy.x, enemy.y, candidate.x, candidate.y) <= chainRange)
-                  .sort((a, b) => distance(enemy.x, enemy.y, a.x, a.y) - distance(enemy.x, enemy.y, b.x, b.y))
-                  .slice(0, chainCount);
-                for (const chainTarget of chainTargets) {
-                  const chainDistance = Math.max(1, distance(enemy.x, enemy.y, chainTarget.x, chainTarget.y));
-                  game.shots.push({
-                    x: enemy.x, y: enemy.y,
-                    vx: ((chainTarget.x - enemy.x) / chainDistance) * chainSpeed,
-                    vy: ((chainTarget.y - enemy.y) / chainDistance) * chainSpeed,
-                    damage: Math.max(1, Math.round(shot.damage * chainDamage)),
-                    life: chainDistance / chainSpeed + 0.2,
-                    hitTargets: [...shot.hitTargets],
-                    bouncesRemaining: 0,
-                    piercesRemaining: 0,
-                    isChainLightning: true,
-                    targetEnemy: chainTarget,
-                  });
+                const chainRangeSq = chainRange * chainRange;
+                let foundCount = 0;
+                for (const candidate of game.enemies) {
+                  if (foundCount >= chainCount) break;
+                  if (candidate === enemy || candidate.hp <= 0 || shot.hitTargets.includes(candidate)) continue;
+                  const cdx = candidate.x - enemy.x;
+                  const cdy = candidate.y - enemy.y;
+                  const distSq = cdx * cdx + cdy * cdy;
+                  if (distSq <= chainRangeSq) {
+                    const chainDistance = Math.max(1, Math.sqrt(distSq));
+                    game.shots.push({
+                      x: enemy.x,
+                      y: enemy.y,
+                      vx: (cdx / chainDistance) * chainSpeed,
+                      vy: (cdy / chainDistance) * chainSpeed,
+                      damage: Math.max(1, Math.round(shot.damage * chainDamage)),
+                      life: chainDistance / chainSpeed + 0.15,
+                      hitTargets: [...shot.hitTargets],
+                      bouncesRemaining: 0,
+                      piercesRemaining: 0,
+                      isChainLightning: true,
+                      targetEnemy: candidate,
+                    });
+                    foundCount++;
+                  }
                 }
               }
 
@@ -2220,10 +2257,28 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                     toast.success("Algoz Espectral derrotado! O cemitério reverbera com dádivas!");
                   }
                 } else { game.ended = true; setStats({ totalDamageDealt: Math.round(game.totalDamageDealt), crystalsCollected: game.crystalsCollected, highestLevel: game.highestLevel }); setResult("victory"); fractalAudio.victory(); finishRun(true); }
-                { const big = enemy.type === "boss" || enemy.type === "elite"; const count = big ? 30 : 12;
-                  for (let i = 0; i < count; i++) { const a = Math.random() * Math.PI * 2; const sp = 60 + Math.random() * (big ? 260 : 170); game.particles.push({ x: enemy.x, y: enemy.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 0.35 + Math.random() * 0.4, color: i % 3 === 0 ? "#fff1ff" : i % 3 === 1 ? "#b98cff" : enemy.color }); }
-                  (game.rings ??= []).push({ x: enemy.x, y: enemy.y, r: 6, max: big ? 140 : 46, life: big ? 0.6 : 0.32, color: big ? "#e9c46a" : "#c9a2ff" });
-                  if (big) game.shake = Math.max(game.shake ?? 0, enemy.type === "boss" ? 16 : 9); }
+                {
+                  const big = enemy.type === "boss" || enemy.type === "elite";
+                  const count = big ? 20 : 6;
+                  for (let i = 0; i < count && game.particles.length < 80; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = 50 + Math.random() * (big ? 200 : 120);
+                    game.particles.push({
+                      x: enemy.x, y: enemy.y,
+                      vx: Math.cos(angle) * speed,
+                      vy: Math.sin(angle) * speed,
+                      life: 0.28 + Math.random() * 0.25,
+                      color: i % 3 === 0 ? "#fff1ff" : i % 3 === 1 ? "#b98cff" : enemy.color,
+                    });
+                  }
+                  (game.rings ??= []).push({
+                    x: enemy.x, y: enemy.y, r: 6,
+                    max: big ? 140 : 42,
+                    life: big ? 0.5 : 0.26,
+                    color: big ? "#e9c46a" : "#c9a2ff",
+                  });
+                  if (big) game.shake = Math.max(game.shake ?? 0, enemy.type === "boss" ? 16 : 8);
+                }
               }
               if (shot.kind === "plasma_core") {
                 if (!shot.hasDetonated) {
@@ -2253,18 +2308,27 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               }
 
               if (!continued && !shot.isChainLightning && shot.bouncesRemaining > 0) {
-                const nextTarget = game.enemies
-                  .filter((candidate) => candidate !== enemy && candidate.hp > 0 && !shot.hitTargets.includes(candidate) && distance(enemy.x, enemy.y, candidate.x, candidate.y) <= 280)
-                  .sort((a, b) => distance(enemy.x, enemy.y, a.x, a.y) - distance(enemy.x, enemy.y, b.x, b.y))[0];
-                if (nextTarget) {
-                  const nextDistance = Math.max(1, distance(enemy.x, enemy.y, nextTarget.x, nextTarget.y));
+                let bestTarget: Enemy | null = null;
+                let bestDistSq = 280 * 280;
+                for (const candidate of game.enemies) {
+                  if (candidate === enemy || candidate.hp <= 0 || shot.hitTargets.includes(candidate)) continue;
+                  const rdx = candidate.x - enemy.x;
+                  const rdy = candidate.y - enemy.y;
+                  const distSq = rdx * rdx + rdy * rdy;
+                  if (distSq < bestDistSq) {
+                    bestDistSq = distSq;
+                    bestTarget = candidate;
+                  }
+                }
+                if (bestTarget) {
+                  const nextDistance = Math.max(1, Math.sqrt(bestDistSq));
                   shot.x = enemy.x;
                   shot.y = enemy.y;
-                  shot.vx = ((nextTarget.x - enemy.x) / nextDistance) * projectileSpeed;
-                  shot.vy = ((nextTarget.y - enemy.y) / nextDistance) * projectileSpeed;
-                  shot.targetEnemy = nextTarget;
+                  shot.vx = ((bestTarget.x - enemy.x) / nextDistance) * projectileSpeed;
+                  shot.vy = ((bestTarget.y - enemy.y) / nextDistance) * projectileSpeed;
+                  shot.targetEnemy = bestTarget;
                   shot.bouncesRemaining -= 1;
-                  shot.life = Math.max(shot.life, nextDistance / projectileSpeed + 0.18);
+                  shot.life = Math.max(shot.life, nextDistance / projectileSpeed + 0.15);
                   continued = true;
                 }
               }
