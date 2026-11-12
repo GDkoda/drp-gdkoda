@@ -292,14 +292,18 @@ const PLAYER_DIRECTION_VECTORS = [
 ];
 
 const ENEMY_GRID_CELL_SIZE = 96;
-type EnemySpatialGrid = Map<string, Enemy[]>;
+function getGridKey(cellX: number, cellY: number): number {
+  return ((cellX + 32768) << 16) | (cellY + 32768);
+}
+type EnemySpatialGrid = Map<number, Enemy[]>;
 
 function buildEnemySpatialGrid(enemies: Enemy[]): EnemySpatialGrid {
   const grid: EnemySpatialGrid = new Map();
   for (const enemy of enemies) {
+    if (enemy.hp <= 0) continue;
     const cellX = Math.floor(enemy.x / ENEMY_GRID_CELL_SIZE);
     const cellY = Math.floor(enemy.y / ENEMY_GRID_CELL_SIZE);
-    const key = cellX + ":" + cellY;
+    const key = getGridKey(cellX, cellY);
     const bucket = grid.get(key);
     if (bucket) bucket.push(enemy);
     else grid.set(key, [enemy]);
@@ -313,8 +317,8 @@ function getNearbyEnemies(x: number, y: number, grid: EnemySpatialGrid): Enemy[]
   const cellY = Math.floor(y / ENEMY_GRID_CELL_SIZE);
   for (let offsetY = -1; offsetY <= 1; offsetY++) {
     for (let offsetX = -1; offsetX <= 1; offsetX++) {
-      const bucket = grid.get((cellX + offsetX) + ":" + (cellY + offsetY));
-      if (bucket) nearby.push(...bucket);
+      const bucket = grid.get(getGridKey(cellX + offsetX, cellY + offsetY));
+      if (bucket) for (let i = 0; i < bucket.length; i++) nearby.push(bucket[i]);
     }
   }
   return nearby;
@@ -326,24 +330,23 @@ function getEnemySeparation(enemy: Enemy, grid: EnemySpatialGrid) {
   const cellY = Math.floor(enemy.y / ENEMY_GRID_CELL_SIZE);
   for (let offsetY = -1; offsetY <= 1; offsetY++) {
     for (let offsetX = -1; offsetX <= 1; offsetX++) {
-      const bucket = grid.get((cellX + offsetX) + ":" + (cellY + offsetY));
+      const bucket = grid.get(getGridKey(cellX + offsetX, cellY + offsetY));
       if (!bucket) continue;
       for (const other of bucket) {
-        if (other === enemy) continue;
+        if (other === enemy || other.hp <= 0) continue;
         const dx = enemy.x - other.x, dy = enemy.y - other.y;
-        const distanceSquared = dx * dx + dy * dy;
-        const range = enemy.radius + other.radius + 12;
-        if (distanceSquared > 0.000001 && distanceSquared < range * range) {
-          const d = Math.sqrt(distanceSquared);
-          const weight = (range - d) / range;
-          sx += (dx / d) * weight;
-          sy += (dy / d) * weight;
+        const minDist = enemy.radius + other.radius + 2;
+        const d2 = dx * dx + dy * dy;
+        if (d2 > 0 && d2 < minDist * minDist) {
+          const d = Math.sqrt(d2);
+          const push = (minDist - d) / minDist;
+          sx += (dx / d) * push;
+          sy += (dy / d) * push;
         }
       }
     }
   }
-  const magnitude = Math.hypot(sx, sy);
-  return magnitude > 0 ? { x: sx / magnitude, y: sy / magnitude } : { x: 0, y: 0 };
+  return { x: sx, y: sy };
 }
 
 
@@ -1196,17 +1199,21 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
   const previousReady = isPlayerSheetReady(previousSheet);
   if (currentReady) {
     const baseAlpha = player.invuln > 0 && Math.floor(game.elapsed * 14) % 2 === 0 ? 0.62 : 1;
-    ctx.filter = hitIntensity > 0.02 ? "brightness(1.75) sepia(.8) saturate(4) hue-rotate(300deg)" : player.invuln > 0 ? "brightness(1.25) saturate(1.2)" : "none";
-    ctx.shadowColor = hitIntensity > 0.02 ? "#ff2448" : player.invuln > 0 ? "#ff7182" : "#a75cff";
-    ctx.shadowBlur = 0;
     const blend = previousReady ? clamp(player.spriteBlend, 0, 1) : 1;
+    ctx.globalAlpha = baseAlpha * (previousReady ? 1 - blend : 1);
     if (previousReady && blend < 1) {
-      ctx.globalAlpha = baseAlpha * (1 - blend);
       ctx.drawImage(previousSheet!, player.previousSpriteDirection * 48, 0, 48, 64, -25, -34, 50, 68);
     }
     ctx.globalAlpha = baseAlpha * (previousReady ? blend : 1);
     ctx.drawImage(currentSheet!, player.spriteDirection * 48, 0, 48, 64, -25, -34, 50, 68);
-    ctx.filter = "none"; ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+    if (hitIntensity > 0.02) {
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
+      ctx.globalAlpha = hitIntensity * 0.75;
+      ctx.drawImage(currentSheet!, player.spriteDirection * 48, 0, 48, 64, -25, -34, 50, 68);
+      ctx.restore();
+    }
+    ctx.globalAlpha = 1;
     if (player.spriteAction === "cast" && player.castTimer > 0) {
       const aim = PLAYER_DIRECTION_VECTORS[player.spriteDirection] ?? PLAYER_DIRECTION_VECTORS[0];
       ctx.save(); ctx.translate(aim.x * 19, aim.y * 16 - 2);
@@ -1718,15 +1725,22 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         }
         // O Guardião só desperta ao fim dos 12 minutos completos.
         game.shotTimer -= dt;
-        if (game.shotTimer <= 0 && game.enemies.some((enemy) => enemy.hp > 0) && (game.weaponId !== "void_revolver" || game.enemies.some((enemy) => enemy.hp > 0 && distance(game.player.x, game.player.y, enemy.x, enemy.y) <= 280 * game.player.projectileRangeMultiplier))) {
-          const targets = [...game.enemies].filter((enemy) => enemy.hp > 0 && (game.weaponId !== "void_revolver" || distance(game.player.x, game.player.y, enemy.x, enemy.y) <= 280 * game.player.projectileRangeMultiplier)).sort((a, b) => {
-            const da = distance(game.player.x, game.player.y, a.x, a.y);
-            const db = distance(game.player.x, game.player.y, b.x, b.y);
-            const pa = a.type === "boss" ? 95 : a.type === "elite" ? 28 : a.type === "charger" ? 12 : 0;
-            const pb = b.type === "boss" ? 95 : b.type === "elite" ? 28 : b.type === "charger" ? 12 : 0;
-            return da - pa - (db - pb);
-          });
-          const target = targets[0];
+        if (game.shotTimer <= 0) {
+          const maxRange = 280 * game.player.projectileRangeMultiplier;
+          const maxRangeSq = maxRange * maxRange;
+          let target: Enemy | null = null;
+          let bestScore = Infinity;
+          for (const enemy of game.enemies) {
+            if (enemy.hp <= 0) continue;
+            const dx = enemy.x - game.player.x;
+            const dy = enemy.y - game.player.y;
+            const distSq = dx * dx + dy * dy;
+            if (game.weaponId === "void_revolver" && distSq > maxRangeSq) continue;
+            const priority = enemy.type === "boss" ? 120 : enemy.type === "elite" ? 45 : enemy.type === "charger" ? 20 : 0;
+            const score = Math.sqrt(distSq) - priority;
+            if (score < bestScore) { bestScore = score; target = enemy; }
+          }
+          if (target) {
           const baseAngle = Math.atan2(target.y - game.player.y, target.x - game.player.x);
           const weaponPower = (1 + (game.weaponLevel - 1) * 0.055) * (game.evolved ? 1.15 : 1);
           const weaponDamage = game.player.damage * weaponPower;
@@ -1839,6 +1853,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           }
 
           if (game.weaponId !== "orbital_swords" && game.weaponId !== "rune_sentinels") fractalAudio.shoot();
+          }
         }
         const desiredAction: PlayerVisualAction = game.player.castTimer > 0 ? "cast" : game.player.moving ? "move" : "idle";
         const desiredDirection = desiredAction === "cast" ? game.player.castFacing : game.player.facing;
