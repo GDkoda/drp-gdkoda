@@ -1,0 +1,40 @@
+name: FractalGame build validation
+
+on:
+  push:
+    branches:
+      - FractalGame
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: TypeScript validation
+        run: bunx tsc --noEmit
+        env:
+          VITE_SUPABASE_URL: https://build-validation.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_build_validation_placeholder
+          SUPABASE_URL: https://build-validation.supabase.co
+          SUPABASE_PUBLISHABLE_KEY: sb_publishable_build_validation_placeholder
+
+      - name: Production build
+        run: bun run build
+        env:
+          VITE_SUPABASE_URL: https://build-validation.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_build_validation_placeholder
+          SUPABASE_URL: https://build-validation.supabase.co
+          SUPABASE_PUBLISHABLE_KEY: sb_publishable_build_validation_placeholder
