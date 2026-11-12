@@ -677,7 +677,7 @@ function getWellSprite(radius: number, evolved: boolean) {
     g.closePath(); g.stroke(); g.lineWidth = 1.2; g.beginPath(); g.arc(0, 0, r * 0.85, 0, Math.PI * 2); g.stroke();
   }
   let ring: HTMLCanvasElement | undefined;
-  if (evolved) { const rc = document.createElement("canvas"); const rg = rc.getContext("2d")!; const rs = Math.ceil(r * 0.8 * 2 + 40); rc.width = rs; rc.height = rs; rg.translate(rs / 2, rs / 2); drawRuneRing(rg, r * 0.8); base.getContext("2d")!.drawImage(rc, (size - rs) / 2, (size - rs) / 2); }
+  if (evolved) { const rc = document.createElement("canvas"); const rg = rc.getContext("2d")!; const rs = Math.ceil(r * 0.8 * 2 + 40); rc.width = rs; rc.height = rs; rg.translate(rs / 2, rs / 2); drawRuneRing(rg, r * 0.8); base.getContext("2d")!.drawImage(rc, -rs / 2, -rs / 2); }
   const out = { base, sigil, ring }; wellSpriteCache.set(key, out); return out;
 }
 function drawRuneRing(ctx: CanvasRenderingContext2D, radius: number) {
