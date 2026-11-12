@@ -3073,3 +3073,129 @@
   .fractals-corruption-node { min-height:40px; }
 }
 @media(prefers-reduced-motion:reduce) { .fractals-corruption-node { transition:none; } }
+
+
+/* Ecos dos Fractais: bloqueio de acesso em dispositivos sem teclado/tela ampla. */
+.fractals-desktop-required {
+  position: relative;
+  display: grid;
+  min-height: min(78vh, 760px);
+  place-items: center;
+  overflow: hidden;
+  padding: clamp(1.25rem, 5vw, 3.5rem);
+  border: 1px solid rgba(196, 181, 253, .18);
+  border-radius: 1.5rem;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(139, 92, 246, .20), transparent 52%),
+    radial-gradient(ellipse at 100% 100%, rgba(217, 119, 6, .08), transparent 44%),
+    linear-gradient(145deg, #100d19 0%, #090811 62%, #17101c 100%);
+  color: #f5f0ff;
+  text-align: center;
+}
+.fractals-desktop-required::before,
+.fractals-desktop-required::after {
+  position: absolute;
+  width: min(46vw, 28rem);
+  aspect-ratio: 1;
+  border: 1px solid rgba(196, 181, 253, .09);
+  border-radius: 50%;
+  content: "";
+  pointer-events: none;
+}
+.fractals-desktop-required::before { transform: scale(1.28); }
+.fractals-desktop-required::after { transform: scale(1.58); border-style: dashed; opacity: .55; }
+.fractals-desktop-required__panel {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 42rem);
+  padding: clamp(1.25rem, 4vw, 2.75rem);
+  border: 1px solid rgba(196, 181, 253, .2);
+  border-radius: 1.35rem;
+  background: linear-gradient(160deg, rgba(30, 23, 43, .94), rgba(12, 10, 20, .94));
+  box-shadow: 0 28px 90px rgba(0, 0, 0, .48), inset 0 1px rgba(255, 255, 255, .045);
+  backdrop-filter: blur(16px);
+}
+.fractals-desktop-required__emblem {
+  display: grid;
+  width: 4.5rem;
+  height: 4.5rem;
+  margin: 0 auto 1.35rem;
+  place-items: center;
+  border: 1px solid rgba(196, 181, 253, .35);
+  border-radius: 1.25rem;
+  background: radial-gradient(circle at 35% 25%, rgba(216, 180, 254, .26), rgba(109, 40, 217, .12) 70%);
+  color: #e9d5ff;
+  box-shadow: 0 0 42px rgba(168, 85, 247, .19);
+}
+.fractals-desktop-required__emblem svg { width: 2rem; height: 2rem; }
+.fractals-desktop-required__eyebrow {
+  margin: 0 0 .55rem;
+  color: #d8b4fe;
+  font-size: .68rem;
+  font-weight: 900;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+}
+.fractals-desktop-required__panel h2 {
+  margin: 0;
+  color: #fff7ed;
+  font-family: var(--font-display, inherit);
+  font-size: clamp(1.8rem, 5vw, 3rem);
+  font-weight: 900;
+  letter-spacing: .015em;
+  line-height: 1.08;
+}
+.fractals-desktop-required__panel > p:not(.fractals-desktop-required__eyebrow) {
+  max-width: 34rem;
+  margin: 1rem auto 0;
+  color: rgba(237, 233, 254, .72);
+  font-size: .93rem;
+  line-height: 1.7;
+}
+.fractals-desktop-required__controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: .7rem;
+  margin-top: 1.5rem;
+}
+.fractals-desktop-required__controls span {
+  display: flex;
+  min-width: 11rem;
+  align-items: center;
+  justify-content: center;
+  gap: .6rem;
+  padding: .8rem 1rem;
+  border: 1px solid rgba(196, 181, 253, .18);
+  border-radius: .85rem;
+  background: rgba(255, 255, 255, .045);
+  color: #f5eaff;
+  font-size: .78rem;
+  font-weight: 800;
+}
+.fractals-desktop-required__controls svg { width: 1.1rem; height: 1.1rem; color: #d8b4fe; }
+.fractals-desktop-required__controls span > b {
+  padding: .25rem .4rem;
+  border: 1px solid rgba(251, 191, 36, .3);
+  border-radius: .35rem;
+  background: rgba(245, 158, 11, .1);
+  color: #fde68a;
+  font-size: .68rem;
+  letter-spacing: .08em;
+}
+.fractals-desktop-required__controls small {
+  display: block;
+  color: rgba(237, 233, 254, .48);
+  font-size: .64rem;
+  font-weight: 600;
+}
+.fractals-desktop-required__panel .fractals-desktop-required__footnote {
+  margin-top: 1.35rem;
+  color: rgba(237, 233, 254, .42);
+  font-size: .72rem;
+}
+@media (max-width: 640px) {
+  .fractals-desktop-required { min-height: 70vh; padding: 1rem; }
+  .fractals-desktop-required__panel { padding: 1.4rem 1rem; }
+  .fractals-desktop-required__controls { flex-direction: column; align-items: stretch; }
+}
