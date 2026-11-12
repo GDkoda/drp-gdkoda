@@ -3297,7 +3297,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                     const isDanger = level.level >= 4;
                     return (
                       <button key={level.level} type="button" role="radio" aria-checked={active} disabled={locked}
-                        onClick={() => setCorruption(level.level)
+                        onClick={() => setCorruption(level.level)}
                         title={locked ? "Nível " + level.level + " bloqueado (vença a dificuldade anterior)" : "Selecionar " + level.level + ": " + level.name}
                         className={`fractals-corruption-node ${active ? "is-active" : ""} ${isDanger ? "is-danger" : ""} ${locked ? "is-locked" : ""}`}>
                         <span className="fractals-corruption-pip" />
