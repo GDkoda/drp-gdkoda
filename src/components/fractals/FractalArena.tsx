@@ -387,6 +387,37 @@ function preloadCemeteryImages(): Promise<void> {
 const groundPatternCache = new WeakMap<CanvasRenderingContext2D, CanvasPattern>();
 const RUNE_PHRASE = "ᚷᚱᛁᛚᚺᚨᛟ ᚷᚱᚨᚹᛁᛏᚨᚲᛁᛟᚾᚨᛚ · ";
 const runeRingCache = new Map<number, HTMLCanvasElement>();
+const wellSpriteCache = new Map<string, { base: HTMLCanvasElement; sigil: HTMLCanvasElement; ring?: HTMLCanvasElement }>();
+function getWellSprite(radius: number, evolved: boolean) {
+  const r = Math.round(radius / 8) * 8; const key = r + (evolved ? "e" : "n");
+  const hit = wellSpriteCache.get(key); if (hit) return hit;
+  const size = Math.ceil(r * 2 * 1.06 + 8);
+  const mk = () => { const c = document.createElement("canvas"); c.width = size; c.height = size; const g = c.getContext("2d")!; g.translate(size / 2, size / 2); return [c, g] as const; };
+  const [base, b] = mk();
+  const halo = b.createRadialGradient(0, 0, 5, 0, 0, r);
+  halo.addColorStop(0, evolved ? "rgba(35,12,58,.82)" : "rgba(8,35,62,.76)");
+  halo.addColorStop(0.48, evolved ? "rgba(147,51,234,.20)" : "rgba(14,165,233,.18)");
+  halo.addColorStop(1, "rgba(14,165,233,0)");
+  b.fillStyle = halo; b.beginPath(); b.arc(0, 0, r, 0, Math.PI * 2); b.fill();
+  b.strokeStyle = evolved ? "rgba(192,132,252,.9)" : "rgba(56,189,248,.85)"; b.lineWidth = 2.5; b.setLineDash([10, 8]);
+  b.beginPath(); b.arc(0, 0, r * 0.92, 0, Math.PI * 2); b.stroke(); b.setLineDash([]);
+  const core = evolved ? "#c084fc" : "#38bdf8";
+  const cg = b.createRadialGradient(0, 0, 0, 0, 0, 22); cg.addColorStop(0, "#ffffff"); cg.addColorStop(0.35, core); cg.addColorStop(1, "rgba(0,0,0,0)");
+  b.fillStyle = cg; b.beginPath(); b.arc(0, 0, 22, 0, Math.PI * 2); b.fill();
+  const [sigil, g] = mk();
+  if (evolved) {
+    g.strokeStyle = "#e879f9"; g.lineWidth = 3; const hr = r * 0.66; const hx = hr * Math.cos(Math.PI / 6), hy = hr * 0.5;
+    g.beginPath(); g.moveTo(0, -hr); g.lineTo(hx, hy); g.lineTo(-hx, -hy); g.lineTo(0, hr); g.lineTo(hx, -hy); g.lineTo(-hx, hy); g.closePath(); g.stroke();
+    g.lineWidth = 1.5; g.beginPath(); g.arc(0, 0, hr, 0, Math.PI * 2); g.stroke();
+  } else {
+    g.strokeStyle = "#38bdf8"; g.lineWidth = 2.5; g.beginPath();
+    for (let p = 0; p < 5; p++) { const a = (p * 4 * Math.PI) / 5 - Math.PI / 2; const px = Math.cos(a) * r * 0.85, py = Math.sin(a) * r * 0.85; if (p === 0) g.moveTo(px, py); else g.lineTo(px, py); }
+    g.closePath(); g.stroke(); g.lineWidth = 1.2; g.beginPath(); g.arc(0, 0, r * 0.85, 0, Math.PI * 2); g.stroke();
+  }
+  let ring: HTMLCanvasElement | undefined;
+  if (evolved) { const rc = document.createElement("canvas"); const rg = rc.getContext("2d")!; const rs = Math.ceil(r * 0.8 * 2 + 40); rc.width = rs; rc.height = rs; rg.translate(rs / 2, rs / 2); drawRuneRing(rg, r * 0.8); ring = rc; }
+  const out = { base, sigil, ring }; wellSpriteCache.set(key, out); return out;
+}
 function drawRuneRing(ctx: CanvasRenderingContext2D, radius: number) {
   const key = Math.round(radius / 4) * 4;
   let c = runeRingCache.get(key);
@@ -773,47 +804,18 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     const lifeRatio = clamp(shot.life / Math.max(0.01, shot.maxLife ?? game.player.projectileLife), 0.08, 1);
 
     if (shot.kind === "gravity_well") {
+      const radius = shot.radius ?? 160;
+      const layers = getWellSprite(radius, game.evolved);
+      const half = layers.base.width / 2;
       ctx.save();
       ctx.translate(shot.x, shot.y);
       ctx.globalAlpha = Math.min(1, lifeRatio * 1.25);
-      const radius = shot.radius ?? 160;
       const pulse = 1 + Math.sin(game.elapsed * 7) * 0.035;
-      const halo = ctx.createRadialGradient(0, 0, 5, 0, 0, radius);
-      halo.addColorStop(0, game.evolved ? "rgba(35,12,58,.82)" : "rgba(8,35,62,.76)");
-      halo.addColorStop(0.48, game.evolved ? "rgba(147,51,234,.20)" : "rgba(14,165,233,.18)");
-      halo.addColorStop(1, "rgba(14,165,233,0)");
-      ctx.fillStyle = halo;
-      ctx.beginPath(); ctx.arc(0, 0, radius * pulse, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = game.evolved ? "rgba(192,132,252,.9)" : "rgba(56,189,248,.85)";
-      ctx.lineWidth = 2.5;
-      ctx.setLineDash([10, 8]);
-      ctx.lineDashOffset = -game.elapsed * 24;
-      ctx.beginPath(); ctx.arc(0, 0, radius * 0.92, 0, Math.PI * 2); ctx.stroke();
-      ctx.setLineDash([]);
+      ctx.drawImage(layers.base, -half * pulse, -half * pulse, half * 2 * pulse, half * 2 * pulse);
       const rot = game.elapsed * (game.evolved ? -1.25 : 1.1);
       ctx.rotate(rot);
-      if (game.evolved) {
-        ctx.strokeStyle = "#e879f9"; ctx.lineWidth = 3;
-        const r = (shot.radius ?? 160) * 0.66;
-        // Hexagrama unicursal (traço contínuo): topo → base dir. → sup. esq. → base → sup. dir. → base esq.
-        const hx = r * Math.cos(Math.PI / 6), hy = r * 0.5;
-        ctx.beginPath(); ctx.moveTo(0, -r); ctx.lineTo(hx, hy); ctx.lineTo(-hx, -hy); ctx.lineTo(0, r); ctx.lineTo(hx, -hy); ctx.lineTo(-hx, hy); ctx.closePath(); ctx.stroke();
-        ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.stroke();
-        ctx.rotate(-rot * 2);
-        drawRuneRing(ctx, (shot.radius ?? 160) * 0.8);
-      } else {
-        ctx.strokeStyle = "#38bdf8"; ctx.lineWidth = 2.5; ctx.beginPath();
-        for (let point = 0; point < 5; point++) {
-          const angle = (point * 4 * Math.PI) / 5 - Math.PI / 2;
-          const px = Math.cos(angle) * (radius * 0.85), py = Math.sin(angle) * (radius * 0.85);
-          if (point === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
-        }
-        ctx.closePath(); ctx.stroke();
-      }
-      const coreGlow = game.evolved ? "#c084fc" : "#38bdf8";
-      ctx.fillStyle = coreGlow;
-      ctx.shadowColor = coreGlow; ctx.shadowBlur = 0;
-      ctx.beginPath(); ctx.arc(0, 0, 9 + Math.sin(game.elapsed * 8) * 2, 0, Math.PI * 2); ctx.fill();
+      ctx.drawImage(layers.sigil, -half, -half);
+      if (layers.ring) { ctx.rotate(-rot * 2); ctx.drawImage(layers.ring, -layers.ring.width / 2, -layers.ring.height / 2); }
       ctx.restore();
       return;
     }
@@ -1870,8 +1872,10 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             for (const enemy of game.enemies) {
               if (enemy.hp <= 0) continue;
               const dx = shot.x - enemy.x, dy = shot.y - enemy.y;
-              const d = Math.max(1, Math.hypot(dx, dy));
-              if (d <= radius) {
+              if (dx > radius || dx < -radius || dy > radius || dy < -radius) continue;
+              const d2 = dx * dx + dy * dy;
+              if (d2 <= radius * radius) {
+                const d = Math.max(1, Math.sqrt(d2));
                 const pull = Math.min(pullForce * dt, Math.max(0, d - 8));
                 enemy.x += (dx / d) * pull;
                 enemy.y += (dy / d) * pull;
