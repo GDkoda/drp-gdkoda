@@ -4,9 +4,9 @@ import gravestoneImg from "@/assets/fractals/gravestone.png";
 import crossImg from "@/assets/fractals/cross.png";
 import candlesImg from "@/assets/fractals/candles.png";
 import catUrnImg from "@/assets/fractals/cat-urn.png";
-import { useCallback, useEffect, useRef, useState, type PointerEvent } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, Heart, Move, Pause, Play, RotateCcw, RotateCw, Check, Shield, Skull, Sparkles, Swords, Zap, Maximize, UserRound, Gauge, ArrowLeft, ShoppingBag, Crown, Gem as GemIcon, MapPin, Flame, Leaf, Snowflake, Orbit, Lock, Link2, ChevronDown, Coins, Timer, Target, ZoomIn, ZoomOut, Volume2, VolumeX, Ban, Clover, Dna, BookOpen } from "lucide-react";
+import { AlertTriangle, Heart, Move, Pause, Play, RotateCcw, RotateCw, Check, Shield, Skull, Sparkles, Swords, Zap, Maximize, UserRound, Gauge, ArrowLeft, ShoppingBag, Crown, Gem as GemIcon, MapPin, Flame, Leaf, Snowflake, Orbit, Lock, Link2, ChevronDown, Coins, Timer, Target, ZoomIn, ZoomOut, Volume2, VolumeX, Ban, Clover, Dna, BookOpen, Monitor, Keyboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { getDifficultySnapshot } from "@/lib/fractals/difficulty";
@@ -1412,10 +1412,18 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
   const queryClient = useQueryClient();
   const gameRef = useRef<GameState | null>(null);
   const keysRef = useRef(new Set<string>());
-  const joystickRef = useRef<{ x: number; y: number } | null>(null);
+  const dashRequestRef = useRef(false);
   const eventRewardRemainingRef = useRef(0);
+  const [desktopSupported, setDesktopSupported] = useState(() => typeof window === "undefined" || window.matchMedia("(min-width: 1024px) and (pointer: fine)").matches);
   const [missionId, setMissionId] = useState(1);
   const [missionPickerOpen, setMissionPickerOpen] = useState(false);
+  useEffect(() => {
+    const media = window.matchMedia("(min-width: 1024px) and (pointer: fine)");
+    const syncSupport = () => setDesktopSupported(media.matches);
+    syncSupport();
+    media.addEventListener("change", syncSupport);
+    return () => media.removeEventListener("change", syncSupport);
+  }, []);
   const [exchangeAmount, setExchangeAmount] = useState("10");
   const [coinBalance, setCoinBalance] = useState(0);
   const [corruption, setCorruption] = useState(0);
@@ -1541,7 +1549,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
   };
 
   const start = useCallback(async () => {
-    if (preparingArenaRef.current) return;
+    if (!desktopSupported || preparingArenaRef.current) return;
     preparingArenaRef.current = true;
     setPreparingArena(true);
     fractalAudio.unlock();
@@ -1553,6 +1561,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
       const { data: newRunId, error: runError } = await (supabase.rpc as any)("start_fractal_run", { _corruption: corruption, _weapon: selectedWeapon, _omen: selectedOmen });
       if (runError) { toast.error(runError.message); return; }
       setRunId(newRunId);
+      dashRequestRef.current = false;
+      keysRef.current.clear();
       const rect = canvasRef.current?.getBoundingClientRect();
       const width = Math.max(320, rect?.width ?? 760);
       const height = Math.max(380, rect?.height ?? 520);
@@ -1571,7 +1581,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
       preparingArenaRef.current = false;
       setPreparingArena(false);
     }
-  }, [corruption, purchases, selectedWeapon, selectedOmen]);
+  }, [corruption, purchases, selectedWeapon, selectedOmen, desktopSupported]);
 
   const finishRun = useCallback((victory: boolean) => {
     if (!runId) {
@@ -1750,7 +1760,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
   };
 
   useEffect(() => {
-    if (!running) return;
+    if (!running || !desktopSupported) return;
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext("2d");
     if (!canvas || !ctx) return;
@@ -1774,9 +1784,22 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
     };
     resize();
     window.addEventListener("resize", resize);
-    const onKeyDown = (event: KeyboardEvent) => { if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", " "].includes(event.key)) event.preventDefault(); keysRef.current.add(event.key.toLowerCase()); if (event.key.toLowerCase() === "p" || event.key === "Escape") setPaused((v) => !v); };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.target instanceof HTMLElement && event.target.closest("input, textarea, select, button, a, [contenteditable='true'], [role='button']")) return;
+      if (event.code === "Space") {
+        event.preventDefault();
+        if (!event.repeat && !paused && levelChoices.length === 0 && gameRef.current && !gameRef.current.ended) dashRequestRef.current = true;
+        return;
+      }
+      if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.key)) event.preventDefault();
+      keysRef.current.add(event.key.toLowerCase());
+      if (event.key.toLowerCase() === "p" || event.key === "Escape") setPaused((v) => !v);
+    };
     const onKeyUp = (event: KeyboardEvent) => keysRef.current.delete(event.key.toLowerCase());
-    window.addEventListener("keydown", onKeyDown); window.addEventListener("keyup", onKeyUp);
+    const onBlur = () => { keysRef.current.clear(); dashRequestRef.current = false; };
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
+    window.addEventListener("blur", onBlur);
 
     const tick = (now: number) => {
       const game = gameRef.current;
@@ -1795,14 +1818,36 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         game.pickupLabels.forEach((label) => { label.life -= dt; label.y -= 18 * dt; });
         game.pickupLabels = game.pickupLabels.filter((label) => label.life > 0);
         game.player.castTimer = Math.max(0, game.player.castTimer - dt);
+        game.player.dashCooldown = Math.max(0, game.player.dashCooldown - dt);
         const keys = keysRef.current;
         let dx = (keys.has("d") || keys.has("arrowright") ? 1 : 0) - (keys.has("a") || keys.has("arrowleft") ? 1 : 0);
         let dy = (keys.has("s") || keys.has("arrowdown") ? 1 : 0) - (keys.has("w") || keys.has("arrowup") ? 1 : 0);
-        if (joystickRef.current) { dx = joystickRef.current.x; dy = joystickRef.current.y; }
-        game.player.moving = Math.hypot(dx, dy) > 0.05;
+        if (dashRequestRef.current) {
+          dashRequestRef.current = false;
+          if (game.player.dashCooldown <= 0 && game.player.dashTimer <= 0) {
+            let dashX = dx, dashY = dy;
+            if (Math.hypot(dashX, dashY) < 0.05) {
+              const facing = PLAYER_DIRECTION_VECTORS[game.player.facing] ?? PLAYER_DIRECTION_VECTORS[0];
+              dashX = facing.x; dashY = facing.y;
+            }
+            const dashLength = Math.max(1, Math.hypot(dashX, dashY));
+            game.player.dashX = dashX / dashLength;
+            game.player.dashY = dashY / dashLength;
+            game.player.dashTimer = 0.18;
+            game.player.dashCooldown = 1.25;
+            game.player.invuln = Math.max(game.player.invuln, 0.18);
+          }
+        }
+        const isDashing = game.player.dashTimer > 0;
+        if (isDashing) {
+          dx = game.player.dashX; dy = game.player.dashY;
+          game.player.dashTimer = Math.max(0, game.player.dashTimer - dt);
+        }
+        game.player.moving = isDashing || Math.hypot(dx, dy) > 0.05;
         if (game.player.moving) game.player.facing = directionFromVector(dx, dy);
         const mag = Math.hypot(dx, dy) || 1;
-        const movedPlayer = resolveCemeteryCollision(game.player.x + (dx / mag) * game.player.speed * dt, game.player.y + (dy / mag) * game.player.speed * dt, 14, game.obstacles);
+        const movementSpeed = isDashing ? 650 : game.player.speed;
+        const movedPlayer = resolveCemeteryCollision(game.player.x + (dx / mag) * movementSpeed * dt, game.player.y + (dy / mag) * movementSpeed * dt, 14, game.obstacles);
         game.player.x = movedPlayer.x;
         game.player.y = movedPlayer.y;
 
@@ -2773,20 +2818,15 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
       frame = requestAnimationFrame(tick);
     };
     frame = requestAnimationFrame(tick);
-    return () => { cancelAnimationFrame(frame); window.removeEventListener("resize", resize); window.removeEventListener("keydown", onKeyDown); window.removeEventListener("keyup", onKeyUp); };
-  }, [running, paused, levelChoices.length, missionId, corruption, speedMultiplier, finishRun, purchases, showPlayerHp, showDamageNumbers]);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("resize", resize);
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
+      window.removeEventListener("blur", onBlur);
+    };
+  }, [running, desktopSupported, paused, levelChoices.length, missionId, corruption, speedMultiplier, finishRun, purchases, showPlayerHp, showDamageNumbers]);
 
-  const pointerStart = (event: PointerEvent<HTMLCanvasElement>) => {
-    const rect = event.currentTarget.getBoundingClientRect();
-    joystickRef.current = { x: clamp((event.clientX - rect.left - rect.width / 2) / 55, -1, 1), y: clamp((event.clientY - rect.top - rect.height / 2) / 55, -1, 1) };
-    event.currentTarget.setPointerCapture(event.pointerId);
-  };
-  const pointerMove = (event: PointerEvent<HTMLCanvasElement>) => {
-    if (!joystickRef.current) return;
-    const rect = event.currentTarget.getBoundingClientRect();
-    joystickRef.current = { x: clamp((event.clientX - rect.left - rect.width / 2) / 55, -1, 1), y: clamp((event.clientY - rect.top - rect.height / 2) / 55, -1, 1) };
-  };
-  const pointerEnd = () => { joystickRef.current = null; };
   const formatTime = (seconds: number) => `${Math.floor(seconds / 60).toString().padStart(2, "0")}:${Math.floor(seconds % 60).toString().padStart(2, "0")}`;
   const mission = FRACTAL_MISSIONS.find((item) => item.id === missionId)!;
   const exchangeValue = Number(exchangeAmount);
@@ -2799,6 +2839,24 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
     const target = canvasRef.current?.closest("[data-fractal-arena]") as HTMLElement | null;
     try { if (!document.fullscreenElement) await target?.requestFullscreen(); else await document.exitFullscreen(); } catch { /* Fullscreen may be unavailable in embedded browsers. */ }
   };
+
+  if (!desktopSupported) {
+    return (
+      <section className="fractals-desktop-required" role="status" aria-live="polite">
+        <div className="fractals-desktop-required__panel">
+          <div className="fractals-desktop-required__emblem"><Monitor aria-hidden="true" /></div>
+          <p className="fractals-desktop-required__eyebrow">Experiência exclusiva para computador</p>
+          <h2>Ecos dos Fractais</h2>
+          <p>Este jogo foi desenvolvido para PC. A arena exige uma tela ampla, teclado físico e controles precisos para oferecer a experiência planejada.</p>
+          <div className="fractals-desktop-required__controls">
+            <span><Keyboard aria-hidden="true" /> WASD / Setas <small>Movimentar</small></span>
+            <span><b>ESPAÇO</b> <small>Dash</small></span>
+          </div>
+          <p className="fractals-desktop-required__footnote">Abra esta página em um computador com teclado e mouse para jogar.</p>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <div className="fractals-hub" data-fractal-arena>
@@ -3192,7 +3250,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
       {(running || result) && (
         <Card className="fractals-game-shell overflow-hidden border-border/70 bg-[#11111a] text-white">
           <div className="fractals-arena-frame relative">
-            <canvas ref={canvasRef} className="block h-[min(78vh,720px)] min-h-[430px] w-full touch-none" onPointerDown={pointerStart} onPointerMove={pointerMove} onPointerUp={pointerEnd} onPointerCancel={pointerEnd} aria-label="Arena de sobrevivência. Use WASD, setas ou arraste o dedo para mover." />
+            <canvas ref={canvasRef} className="block h-[min(78vh,720px)] min-h-[430px] w-full select-none" aria-label="Arena de sobrevivência para PC. Use WASD ou setas para mover e Espaço para dash." />
             <section className="fractals-hud-bar absolute inset-x-0 top-0" aria-label="Status da expedição">
               <div className="fractals-hud-zone fractals-hud-zone--left">
                 <div className="fractals-hud-meter">
@@ -3230,7 +3288,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               </div>
             </section>
 
-            <div className="fractals-arena-hint pointer-events-none absolute bottom-3 left-3"><b>NECRÓPOLE DOS ESQUECIDOS</b> · WASD / setas / toque para mover</div>
+            <div className="fractals-arena-hint pointer-events-none absolute bottom-3 left-3"><b>NECRÓPOLE DOS ESQUECIDOS</b> · WASD / SETAS: MOVER · ESPAÇO: DASH</div>
             {bossMessage && !result && <div className="fractals-boss-alert pointer-events-none absolute inset-x-0 top-1/2 z-30 -translate-y-1/2 px-3 text-center"><span>⚠ ALERTA DE FENDA: O GUARDIÃO DESPERTOU ⚠</span></div>}
             {paused && !result && levelChoices.length === 0 && <div className="fractals-pause-overlay absolute inset-0 grid place-items-center overflow-y-auto p-3 sm:p-5">
  <div className={`fractals-pause-panel relative w-full ${pausePanel === "master" ? "max-w-3xl" : "max-w-md"} overflow-hidden p-4 sm:p-5`}>
@@ -3292,7 +3350,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           {MASTER_GIFT_OPTIONS.filter((gift) => gift.id !== "weapon_mastery" && gift.id !== "weapon_evolution" && gift.id !== "anchor_soul").map((gift) => {
             const game = gameRef.current;
             const currentLevel = game?.upgradeCounts[gift.id]?.count ?? 0;
-            const capped = gift.id === "special_area" ? (game?.player.specialAreaStacks ?? 0) >= MAX_AREA_RELIC_STACKS
+            const capped = gift.id.startsWith("gift_") ? currentLevel >= 3
+               : gift.id === "special_area" ? (game?.player.specialAreaStacks ?? 0) >= MAX_AREA_RELIC_STACKS
               : gift.id === "special_experience" ? (game?.player.specialExperienceStacks ?? 0) >= MAX_EXPERIENCE_RELIC_STACKS
               : gift.id === "special_projectile_range" ? (game?.player.projectileRangeStacks ?? 0) >= MAX_PROJECTILE_RANGE_STACKS
               : gift.id === "special_projectiles" ? (game?.player.projectileStacks ?? 0) >= MAX_EXTRA_PROJECTILES
