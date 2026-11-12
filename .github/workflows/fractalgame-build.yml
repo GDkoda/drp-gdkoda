@@ -31,6 +31,14 @@ jobs:
           SUPABASE_URL: https://build-validation.supabase.co
           SUPABASE_PUBLISHABLE_KEY: sb_publishable_build_validation_placeholder
 
+      - name: Unit tests
+        run: bun run test
+        env:
+          VITE_SUPABASE_URL: https://build-validation.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_build_validation_placeholder
+          SUPABASE_URL: https://build-validation.supabase.co
+          SUPABASE_PUBLISHABLE_KEY: sb_publishable_build_validation_placeholder
+
       - name: Production build
         run: bun run build
         env:
