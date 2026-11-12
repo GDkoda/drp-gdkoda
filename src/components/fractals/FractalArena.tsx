@@ -19,7 +19,7 @@ import "./fractal-arena.css";
 
 type WeaponId = "void_revolver" | "unstable_core" | "spectral_scythe" | "orbital_swords" | "gravity_shackle" | "rune_sentinels";
 type OmenId = "famine" | "rupture" | "spectral_veil" | "abundance" | "revenge";
-type UpgradeId = "power" | "haste" | "vitality" | "swift" | "special_area" | "special_experience" | "special_projectile_range" | "special_projectiles" | "special_ricochet" | "special_piercing" | "special_chain_lightning" | "gift_revolver_mark" | "gift_revolver_echo" | "gift_core_expansion" | "gift_core_implosion" | "gift_scythe_siphon" | "gift_scythe_arc" | "gift_orbital_orbit" | "gift_orbital_edge" | "gift_gravity_pressure" | "gift_gravity_resonance" | "gift_sentinel_focus" | "gift_sentinel_overload" | "weapon_mastery" | "weapon_evolution" | "anchor_soul";
+type UpgradeId = "power" | "haste" | "vitality" | "swift" | "special_area" | "special_experience" | "special_projectile_range" | "special_projectiles" | "special_ricochet" | "special_piercing" | "special_chain_lightning" | "gift_revolver_mark" | "gift_revolver_echo" | "gift_revolver_weakpoint" | "gift_core_expansion" | "gift_core_implosion" | "gift_core_residue" | "gift_scythe_siphon" | "gift_scythe_arc" | "gift_scythe_cripple" | "gift_orbital_orbit" | "gift_orbital_edge" | "gift_orbital_velocity" | "gift_gravity_pressure" | "gift_gravity_resonance" | "gift_gravity_guard" | "gift_sentinel_focus" | "gift_sentinel_overload" | "gift_sentinel_relay" | "weapon_mastery" | "weapon_evolution" | "anchor_soul";
 type Upgrade = { id: UpgradeId; name: string; description: string; icon: typeof Zap; rarity?: "normal" | "uncommon" | "rare" | "epic" | "legendary" | "maestria" | "evolution" };
 type UpgradeCounts = Record<string, { name: string; count: number; rarity: string }>;
 
@@ -153,26 +153,32 @@ const WEAPON_GIFTS: Record<WeaponId, Upgrade[]> = {
   void_revolver: [
     { id: "gift_revolver_mark", name: "Marca do Predador", description: "Dano contra Elites e Chefes +12% por nível.", icon: Target, rarity: "uncommon" },
     { id: "gift_revolver_echo", name: "Sexto Eco", description: "O disparo dourado do Revólver recebe +1 ricochete por nível.", icon: Orbit, rarity: "uncommon" },
+    { id: "gift_revolver_weakpoint", name: "Ponto de Ruptura", description: "Causa +12% de dano por nível contra inimigos acima de 70% da vida.", icon: Target, rarity: "uncommon" },
   ],
   unstable_core: [
     { id: "gift_core_expansion", name: "Campo Devorador", description: "A poça do Núcleo aumenta seu raio em 12% por nível.", icon: Orbit, rarity: "uncommon" },
     { id: "gift_core_implosion", name: "Implosão Concentrada", description: "A atração de cada pulso da poça fica mais forte em 3 unidades por nível.", icon: Move, rarity: "uncommon" },
+    { id: "gift_core_residue", name: "Rastro Persistente", description: "A poça corrosiva permanece ativa por +0,3s por nível.", icon: Timer, rarity: "uncommon" },
   ],
   spectral_scythe: [
     { id: "gift_scythe_siphon", name: "Sede de Almas", description: "Abates com a Foice recuperam 1,5% da vida máxima por nível. Recarga: 1,8s.", icon: Heart, rarity: "uncommon" },
     { id: "gift_scythe_arc", name: "Arco do Ceifador", description: "O alcance do corte aumenta em 12% por nível.", icon: Swords, rarity: "uncommon" },
+    { id: "gift_scythe_cripple", name: "Corte Entorpecente", description: "Os cortes reduzem a velocidade dos atingidos em 20%, 25% ou 30% por 0,7s conforme o nível.", icon: Snowflake, rarity: "uncommon" },
   ],
   orbital_swords: [
     { id: "gift_orbital_orbit", name: "Órbita Distante", description: "As lâminas orbitam 12% mais longe por nível.", icon: Orbit, rarity: "uncommon" },
     { id: "gift_orbital_edge", name: "Fio Astral", description: "Dano de contato das lâminas +12% por nível.", icon: Swords, rarity: "uncommon" },
+    { id: "gift_orbital_velocity", name: "Dança Acelerada", description: "A velocidade de rotação das lâminas aumenta em 12% por nível.", icon: RotateCw, rarity: "uncommon" },
   ],
   gravity_shackle: [
     { id: "gift_gravity_pressure", name: "Peso Abissal", description: "A lentidão da aura fica 4 pontos percentuais mais forte por nível, até 42% de redução de velocidade.", icon: Move, rarity: "uncommon" },
     { id: "gift_gravity_resonance", name: "Ressonância do Abismo", description: "Dano dos pulsos da aura +15% por nível.", icon: Sparkles, rarity: "uncommon" },
+    { id: "gift_gravity_guard", name: "Manto Inabalável", description: "Enquanto a aura está ativa, dano recebido -5% por nível (máx. -15%).", icon: Shield, rarity: "uncommon" },
   ],
   rune_sentinels: [
     { id: "gift_sentinel_focus", name: "Mirada do Vigia", description: "Dano dos feixes das Sentinelas +12% por nível.", icon: Target, rarity: "uncommon" },
     { id: "gift_sentinel_overload", name: "Sobrecarga Final", description: "Explosão de uma Sentinela: dano +15% e raio +12% por nível.", icon: Zap, rarity: "uncommon" },
+    { id: "gift_sentinel_relay", name: "Rede de Vigília", description: "As Sentinelas disparam 10% mais rápido por nível.", icon: Timer, rarity: "uncommon" },
   ],
 };
 
@@ -613,7 +619,8 @@ function spawnPlasmaPuddle(game: GameState, x: number, y: number, coreDamage: nu
   const radius = (game.evolved ? 180 : 118)
     * (1 + game.player.specialAreaStacks * 0.1)
     * (1 + (game.upgradeCounts.gift_core_expansion?.count ?? 0) * 0.12);
-  const life = game.evolved ? 2.5 : 1.5;
+  const residueLevel = game.upgradeCounts.gift_core_residue?.count ?? 0;
+  const life = (game.evolved ? 2.5 : 1.5) + residueLevel * 0.3;
   game.shots.push({
     x, y, vx: 0, vy: 0,
     damage: coreDamage * (game.evolved ? 0.45 : 0.30),
@@ -636,6 +643,12 @@ function getEquippedWeaponStrikeDamage(game: GameState): number {
     : game.weaponId === "void_revolver" && game.evolved ? 0.85
     : 1;
   return Math.max(1, Math.round(game.player.damage * weaponPower * weaponMultiplier));
+}
+
+function getPlayerDamageTaken(game: GameState, damage: number): number {
+  if (game.weaponId !== "gravity_shackle" || !(game.gravityAuraActive ?? false)) return damage;
+  const guardLevel = game.upgradeCounts.gift_gravity_guard?.count ?? 0;
+  return damage * (1 - Math.min(0.15, guardLevel * 0.05));
 }
 
 function spawnEnemy(game: GameState, missionId: number, elapsed: number, corruption: number, boss = false) {
@@ -876,9 +889,11 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
 
     if (shot.kind === "gravity_well") {
       if (shot.isAura && !shot.active) return;
-      const radius = shot.radius ?? 160;
-      const layers = getWellSprite(radius, game.evolved);
-      const half = layers.base.width / 2;
+      const radius = shot.radius ?? (game.evolved ? 230 : 175);
+      const spriteRadius = game.evolved ? 230 : 175;
+      const visualScale = radius / spriteRadius;
+      const layers = getWellSprite(spriteRadius, game.evolved);
+      const half = (layers.base.width / 2) * visualScale;
       ctx.save();
       ctx.translate(shot.x, shot.y);
       ctx.globalAlpha = Math.min(1, lifeRatio * 1.25);
@@ -886,8 +901,12 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
       ctx.drawImage(layers.base, -half * pulse, -half * pulse, half * 2 * pulse, half * 2 * pulse);
       const rot = game.elapsed * (game.evolved ? -1.25 : 1.1);
       ctx.rotate(rot);
-      ctx.drawImage(layers.sigil, -half, -half);
-      if (layers.ring) { ctx.rotate(-rot * 2); ctx.drawImage(layers.ring, -layers.ring.width / 2, -layers.ring.height / 2); }
+      ctx.drawImage(layers.sigil, -half, -half, half * 2, half * 2);
+      if (layers.ring) {
+        const ringHalf = (layers.ring.width / 2) * visualScale;
+        ctx.rotate(-rot * 2);
+        ctx.drawImage(layers.ring, -ringHalf, -ringHalf, ringHalf * 2, ringHalf * 2);
+      }
       ctx.restore();
       return;
     }
@@ -1558,6 +1577,12 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
     try {
       // A partida só começa quando as imagens do cenário estão prontas (ou falharam e usarão o fallback vetorial).
       await preloadCemeteryImages();
+      // Pré-aquece os dois sprites fixos do Grilhão durante a tela de preparação.
+      // O tamanho da aura será escalado na renderização, sem criar canvases por upgrade.
+      if (selectedWeapon === "gravity_shackle") {
+        getWellSprite(175, false);
+        getWellSprite(230, true);
+      }
       const { data: newRunId, error: runError } = await (supabase.rpc as any)("start_fractal_run", { _corruption: corruption, _weapon: selectedWeapon, _omen: selectedOmen });
       if (runError) { toast.error(runError.message); return; }
       setRunId(newRunId);
@@ -2063,7 +2088,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               game.gravityAuraTimer -= auraPhaseDuration;
               game.gravityAuraActive = !(game.gravityAuraActive ?? true);
               aura.pulseTimer = 0;
-              aura.hitTargets = [];
+              aura.hitTargets.length = 0;
             }
             aura.active = game.gravityAuraActive ?? true;
           }
@@ -2094,7 +2119,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               * game.player.projectileRangeMultiplier
               * (1 + (game.upgradeCounts.gift_orbital_orbit?.count ?? 0) * 0.12);
             const attackSpeedFactor = 0.72 / Math.max(0.18, game.player.fireRate);
-            const rot = game.elapsed * (3.2 * attackSpeedFactor) * (isOuterBlade ? -1 : 1);
+            const rotationGiftLevel = game.upgradeCounts.gift_orbital_velocity?.count ?? 0;
+            const rot = game.elapsed * (3.2 * attackSpeedFactor) * (1 + rotationGiftLevel * 0.12) * (isOuterBlade ? -1 : 1);
             const angle = rot + (bladeIndex * Math.PI * 2) / bladeCount;
             shot.x = game.player.x + Math.cos(angle) * orbitDistance;
             shot.y = game.player.y + Math.sin(angle) * orbitDistance;
@@ -2192,7 +2218,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               life, maxLife: life, hitTargets: [], bouncesRemaining: 0,
               piercesRemaining: 1, kind: "sentinel_beam", targetEnemy: target,
             });
-            totem.attackTimer = Math.max(0.28, game.player.fireRate * 0.8);
+            const relayLevel = game.upgradeCounts.gift_sentinel_relay?.count ?? 0;
+            totem.attackTimer = Math.max(0.24, game.player.fireRate * 0.8 / (1 + relayLevel * 0.10));
           }
         } else {
           game.sentinelTotems = [];
@@ -2260,7 +2287,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             if (enemy.windup > 0) {
               enemy.windup -= dt;
               if (enemy.windup <= 0 && distance(game.player.x, game.player.y, enemy.targetX, enemy.targetY) < 101 && game.player.invuln <= 0) {
-                game.player.hp = Math.max(0, game.player.hp - 28); game.player.invuln = 0.85; game.player.hitFlash = 0.3; 
+                game.player.hp = Math.max(0, game.player.hp - getPlayerDamageTaken(game, 28)); game.player.invuln = 0.85; game.player.hitFlash = 0.3; 
               }
             } else if (enemy.attack <= 0) {
               const phaseTwo = enemy.hp <= enemy.maxHp * 0.5;
@@ -2285,7 +2312,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               enemy.dashTime = Math.max(0, enemy.dashTime - dt);
               enemy.x += enemy.targetX * 390 * movementFactor * dt; enemy.y += enemy.targetY * 390 * movementFactor * dt;
               const dashDistance = distance(game.player.x, game.player.y, enemy.x, enemy.y);
-              if (dashDistance < enemy.radius + 20 && game.player.invuln <= 0) { game.player.hp = Math.max(0, game.player.hp - enemy.damage); game.player.invuln = .65; game.player.hitFlash = 0.3;  enemy.dashTime = 0; }
+              if (dashDistance < enemy.radius + 20 && game.player.invuln <= 0) { game.player.hp = Math.max(0, game.player.hp - getPlayerDamageTaken(game, enemy.damage)); game.player.invuln = .65; game.player.hitFlash = 0.3;  enemy.dashTime = 0; }
             } else if (enemy.windup > 0) {
               enemy.windup = Math.max(0, enemy.windup - dt);
               if (enemy.windup === 0) { enemy.dashTime = .34; enemy.attack = 2.25; }
@@ -2302,13 +2329,13 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               const steerLength = Math.max(1, Math.hypot(steerX, steerY));
               enemy.x += (steerX / steerLength) * enemy.speed * movementFactor * dt;
               enemy.y += (steerY / steerLength) * enemy.speed * movementFactor * dt;
-              if (d < enemy.radius + 15 && enemy.attack <= 0 && game.player.invuln <= 0) { game.player.hp = Math.max(0, game.player.hp - enemy.damage); game.player.invuln = .65; game.player.hitFlash = 0.3;  enemy.attack = 1.1; }
+              if (d < enemy.radius + 15 && enemy.attack <= 0 && game.player.invuln <= 0) { game.player.hp = Math.max(0, game.player.hp - getPlayerDamageTaken(game, enemy.damage)); game.player.invuln = .65; game.player.hitFlash = 0.3;  enemy.attack = 1.1; }
             }
           } else if (enemy.type === "brute") {
             if (enemy.windup > 0) {
               enemy.windup = Math.max(0, enemy.windup - dt);
               if (enemy.windup === 0) {
-                if (distance(game.player.x, game.player.y, enemy.x, enemy.y) < 78 + 12 && game.player.invuln <= 0) { game.player.hp = Math.max(0, game.player.hp - enemy.damage * 1.35); game.player.invuln = .8; game.player.hitFlash = 0.3;  }
+                if (distance(game.player.x, game.player.y, enemy.x, enemy.y) < 78 + 12 && game.player.invuln <= 0) { game.player.hp = Math.max(0, game.player.hp - getPlayerDamageTaken(game, enemy.damage * 1.35)); game.player.invuln = .8; game.player.hitFlash = 0.3;  }
                 for (let i=0;i<5;i++) { const a=i*Math.PI*2/5; game.particles.push({x:enemy.x,y:enemy.y,vx:Math.cos(a)*105,vy:Math.sin(a)*105,life:.35,color:"#e7a56d"}); }
                 enemy.attack = 2.7;
               }
@@ -2323,7 +2350,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                 enemy.x += (steerX / steerLength) * enemy.speed * movementFactor * dt;
                 enemy.y += (steerY / steerLength) * enemy.speed * movementFactor * dt;
               }
-              if (d < enemy.radius + 15 && enemy.attack <= 0 && game.player.invuln <= 0) { game.player.hp = Math.max(0, game.player.hp - enemy.damage); game.player.invuln = .72; game.player.hitFlash = 0.3;  enemy.attack = 1.2; }
+              if (d < enemy.radius + 15 && enemy.attack <= 0 && game.player.invuln <= 0) { game.player.hp = Math.max(0, game.player.hp - getPlayerDamageTaken(game, enemy.damage)); game.player.invuln = .72; game.player.hitFlash = 0.3;  enemy.attack = 1.2; }
             }
           } else {
             const separation = movementGrid ? getEnemySeparation(enemy, movementGrid) : NO_ENEMY_SEPARATION;
@@ -2348,11 +2375,11 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               enemy.y += (steerY / steerLength) * enemy.speed * movementFactor * dt;
             }
             if (enemy.type === "elite" && enemy.attack <= 0) {
-              if (d < 105 && game.player.invuln <= 0) { game.player.hp = Math.max(0, game.player.hp - 7); game.player.invuln = 0.35; game.player.hitFlash = 0.3;  }
+              if (d < 105 && game.player.invuln <= 0) { game.player.hp = Math.max(0, game.player.hp - getPlayerDamageTaken(game, 7)); game.player.invuln = 0.35; game.player.hitFlash = 0.3;  }
               enemy.attack = 1.7;
             }
             if (enemy.type === "wraith" && d < enemy.radius + 15 && enemy.attack <= 0 && game.player.invuln <= 0) {
-              game.player.hp = Math.max(0, game.player.hp - enemy.damage); game.player.invuln = 0.72; game.player.hitFlash = 0.3;  enemy.attack = 0.8;
+              game.player.hp = Math.max(0, game.player.hp - getPlayerDamageTaken(game, enemy.damage)); game.player.invuln = 0.72; game.player.hitFlash = 0.3;  enemy.attack = 0.8;
             }
           }
         }
@@ -2391,8 +2418,11 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           if (shot.kind === "gravity_well" && shot.isAura && !shot.active) continue;
           if (isPulsingField) {
             if ((shot.pulseTimer ?? 0) > 0) continue;
-            shot.pulseTimer = 0.4;
-            shot.hitTargets = [];
+            const isGravityAura = shot.kind === "gravity_well" && shot.isAura;
+            const baseFireRate = game.omenId === "rupture" ? 0.828 : 0.72;
+            const gravityPulseInterval = clamp(0.4 * (game.player.fireRate / baseFireRate), 0.25, 0.4);
+            shot.pulseTimer = isGravityAura ? gravityPulseInterval : 0.4;
+            shot.hitTargets.length = 0;
           }
           const wideAttack = shot.kind === "scythe_slash" || shot.kind === "sentinel_explosion" || isPulsingField;
           // Consultamos somente as células espaciais que intersectam a área do golpe.
@@ -2425,30 +2455,40 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                 && (enemy.type === "elite" || enemy.type === "boss")
                 ? 1 + (game.upgradeCounts.gift_revolver_mark?.count ?? 0) * 0.12
                 : 1;
-              const hitDamage = shot.damage * markedBossBonus;
+              const weakpointBonus = game.weaponId === "void_revolver"
+                && (shot.kind === "bullet" || shot.kind === "revolver_empowered")
+                && enemy.hp > enemy.maxHp * 0.70
+                ? 1 + (game.upgradeCounts.gift_revolver_weakpoint?.count ?? 0) * 0.12
+                : 1;
+              const hitDamage = shot.damage * markedBossBonus * weakpointBonus;
               const appliedDamage = Math.min(enemy.hp, hitDamage);
               enemy.hp -= hitDamage;
               game.totalDamageDealt += appliedDamage;
               enemy.flash = 0.09;
-              if (game.particles.length < 75) {
-                game.particles.push({
-                  x: shot.x,
-                  y: shot.y,
-                  vx: (Math.random() - 0.5) * 140,
-                  vy: (Math.random() - 0.5) * 140,
-                  life: 0.18,
-                  color: shot.isAnchorBurst ? "#fbbf24" : shot.isChainLightning ? "#67e8f9" : "#f3dcff",
+              const isGravityAuraHit = shot.kind === "gravity_well" && shot.isAura;
+              // A aura já tem feedback visual contínuo; evitar objetos por inimigo/pulso
+              // reduz pressão de GC sem alterar dano, lentidão ou estatísticas.
+              if (!isGravityAuraHit) {
+                if (game.particles.length < 75) {
+                  game.particles.push({
+                    x: shot.x,
+                    y: shot.y,
+                    vx: (Math.random() - 0.5) * 140,
+                    vy: (Math.random() - 0.5) * 140,
+                    life: 0.18,
+                    color: shot.isAnchorBurst ? "#fbbf24" : shot.isChainLightning ? "#67e8f9" : "#f3dcff",
+                  });
+                }
+                game.damageNumbers.push({
+                  x: enemy.x + (Math.random() - 0.5) * 8,
+                  y: enemy.y - enemy.radius - 8,
+                  value: hitDamage,
+                  life: 0.72,
+                  maxLife: 0.72,
+                  drift: (Math.random() - 0.5) * 10,
                 });
+                if (game.damageNumbers.length > 12) game.damageNumbers.shift();
               }
-              game.damageNumbers.push({
-                x: enemy.x + (Math.random() - 0.5) * 8,
-                y: enemy.y - enemy.radius - 8,
-                value: hitDamage,
-                life: 0.72,
-                maxLife: 0.72,
-                drift: (Math.random() - 0.5) * 10,
-              });
-              if (game.damageNumbers.length > 12) game.damageNumbers.shift();
               shot.hitTargets.push(enemy);
               if (shot.kind === "plasma_puddle") {
                 enemy.slowTimer = Math.max(enemy.slowTimer ?? 0, 0.5);
@@ -2467,6 +2507,12 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                 const slowFactor = clamp(0.70 - pressureLevel * 0.04, 0.58, 0.70);
                 enemy.slowTimer = Math.max(enemy.slowTimer ?? 0, game.evolved ? 0.65 : 0.48);
                 enemy.slowFactor = Math.min(enemy.slowFactor ?? 0.70, slowFactor);
+              } else if (shot.kind === "scythe_slash" && game.weaponId === "spectral_scythe") {
+                const crippleLevel = game.upgradeCounts.gift_scythe_cripple?.count ?? 0;
+                if (crippleLevel > 0) {
+                  enemy.slowTimer = Math.max(enemy.slowTimer ?? 0, 0.7);
+                  enemy.slowFactor = Math.min(enemy.slowFactor ?? 1, clamp(0.85 - crippleLevel * 0.05, 0.70, 0.85));
+                }
               }
 
               // Descarga em cadeia: cada impacto do projétil original pode chamar alvos extras.
@@ -2888,12 +2934,12 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           <div className="fractals-desktop-required__emblem"><Monitor aria-hidden="true" /></div>
           <p className="fractals-desktop-required__eyebrow">Experiência exclusiva para computador</p>
           <h2>Ecos dos Fractais</h2>
-          <p>Este jogo foi desenvolvido para PC. A arena exige uma tela ampla, teclado físico e controles precisos para oferecer a experiência planejada.</p>
+          <p>Celulares e tablets não são suportados. Para jogar, abra Ecos dos Fractais em um computador com tela ampla, teclado e mouse.</p>
           <div className="fractals-desktop-required__controls">
             <span><Keyboard aria-hidden="true" /> WASD / Setas <small>Movimentar</small></span>
             <span><b>ESPAÇO</b> <small>Dash</small></span>
           </div>
-          <p className="fractals-desktop-required__footnote">Abra esta página em um computador com teclado e mouse para jogar.</p>
+          <p className="fractals-desktop-required__footnote">O jogo só pode ser iniciado em PC/Desktop. No computador: WASD ou setas para mover e Espaço para dash.</p>
         </div>
       </section>
     );
@@ -3329,7 +3375,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               </div>
             </section>
 
-            <div className="fractals-arena-hint pointer-events-none absolute bottom-3 left-3"><b>NECRÓPOLE DOS ESQUECIDOS</b> · WASD / SETAS: MOVER · ESPAÇO: DASH</div>
+            <div className="fractals-arena-hint pointer-events-none absolute bottom-3 left-3"><b>NECRÓPOLE DOS ESQUECIDOS</b> · WASD / SETAS: MOVER · ESPAÇO: DASH (RECARGA 1,25s)</div>
             {bossMessage && !result && <div className="fractals-boss-alert pointer-events-none absolute inset-x-0 top-1/2 z-30 -translate-y-1/2 px-3 text-center"><span>⚠ ALERTA DE FENDA: O GUARDIÃO DESPERTOU ⚠</span></div>}
             {paused && !result && levelChoices.length === 0 && <div className="fractals-pause-overlay absolute inset-0 grid place-items-center overflow-y-auto p-3 sm:p-5">
  <div className={`fractals-pause-panel relative w-full ${pausePanel === "master" ? "max-w-3xl" : "max-w-md"} overflow-hidden p-4 sm:p-5`}>
