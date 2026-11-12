@@ -10,7 +10,7 @@
 - A busca por PR com `FractalGame` como head não retornou PR aberto ou fechado.
 - Não há arquivos de workflow em `.github/workflows/`; o status de commit consultado não apresentou checks publicados.
 
-**Antes de publicar:** revisar o diff completo entre `main` e `FractalGame`, decidir quais mudanças do branch fazem parte desta entrega e integrar por PR revisado. Não mesclar o branch inteiro sem revisar as 464 commits de diferença.
+**Antes de publicar:** revisar o diff completo entre `main` e `FractalGame`, decidir quais mudanças do branch fazem parte desta entrega e integrar por PR revisado. Não mesclar o branch inteiro sem revisar as 469 commits de diferença (reconfirmar o número imediatamente antes do PR).
 
 ## Qualidade e testes
 
@@ -20,13 +20,13 @@ O `package.json` disponibiliza os scripts:
 - `bun run test`
 - `bun run build`
 
-O repositório tem testes de roteamento, combate por turnos, Farkle, arte de monstros e Twenty-One, mas não há testes dedicados a `FractalArena`, às armas, ao dash ou às dádivas novas.
+O repositório tem testes de roteamento, combate por turnos, Farkle, arte de monstros e Twenty-One, mas não há testes dedicados a `FractalArena`, às seis armas, ao dash ou às dádivas exclusivas (agora três opções por arma).
 
 **Pendências obrigatórias antes do lançamento:**
 
 1. Instalar dependências a partir do `bun.lock` e executar lint, testes e build.
 2. Corrigir todos os erros encontrados; guardar os logs do resultado.
-3. Criar testes focados para as regras de armas e dádivas, especialmente Núcleo com ricochete/perfuração, ciclos do Grilhão, dash/cooldown e limites das dádivas.
+3. Criar testes focados para as regras das seis armas e de suas três dádivas exclusivas, especialmente Núcleo com ricochete/perfuração, ciclos e dano do Grilhão, Manto Inabalável, dash/cooldown e limites por nível das dádivas.
 4. Adicionar CI para executar lint, testes e build em cada PR. Atualmente não há workflow configurado.
 
 Esses comandos não foram executados durante esta auditoria.
@@ -67,7 +67,7 @@ As alterações de gameplay desta entrega são no frontend; elas não acrescenta
 - O jogo agora exige viewport de pelo menos 1024px e ponteiro preciso. Validar em desktop real e confirmar que celulares/tablets recebem apenas o aviso de PC.
 - O dash é acionado por Espaço, tem duração de 0,18s, cooldown de 1,25s e invulnerabilidade curta. Testar colisão contra obstáculos, direção quando parado, uso repetido e interação com pausa/telas de dádiva.
 - Testar cada uma das seis armas nos níveis iniciais, no nível 10 e na evolução; verificar que só aparecem as dádivas exclusivas da arma equipada e que os efeitos respeitam o limite de três níveis.
-- Fazer teste de estresse com o painel do Mestre (50 inimigos), comparando FPS com Grilhão normal/evoluído e Núcleo normal/evoluído. A otimização foi verificada estaticamente, não por perfil de execução.
+- Fazer teste de estresse com o painel do Mestre (50 inimigos), comparando FPS com Grilhão normal/evoluído e Núcleo normal/evoluído. A otimização recente reutiliza uma referência direta para a aura do Grilhão, remove um `filter()` de disparos por frame nas armas que não usam Grilhão e pré-aquece os dois sprites de raio fixo. Isso foi verificado estaticamente, não por perfil de execução.
 
 ## Configuração e publicação
 
