@@ -2399,6 +2399,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           const nearbyTargets = wideAttack
             ? getEnemiesInRadius(shot.x, shot.y, (shot.radius ?? 180) + 42, collisionGrid)
             : getNearbyEnemies(shot.x, shot.y, collisionGrid);
+          if (!wideAttack && shot.targetEnemy && !nearbyTargets.includes(shot.targetEnemy)) nearbyTargets.push(shot.targetEnemy);
           for (const enemy of nearbyTargets) {
             if (enemy.hp <= 0 || shot.hitTargets.includes(enemy)) continue;
             if (shot.targetEnemy && shot.targetEnemy !== enemy) continue;
@@ -3236,7 +3237,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                         <div className="fractals-shop-item__slot"><Target className="h-5 w-5 text-teal-300" /></div>
                         <div className="min-w-0">
                           <p className="fractals-shop-item__name">Alcance Arcano</p>
-                          <p className="fractals-shop-item__description">+10% de distância por coleta, até +50%. N1 libera a escolha; N2/N3/N4: 1%/3%/5% de queda em Brutos e Elites.</p>
+                          <p className="fractals-shop-item__description">+10% de alcance útil da arma por coleta, até +50% (projéteis, órbita, áreas e feixes). N1 libera a escolha; N2/N3/N4: 1%/3%/5% de queda em Brutos e Elites.</p>
                           <div className="fractals-shop-pips" aria-label={"Nível " + purchases.projectile_range + " de 4"}>{Array.from({ length: 4 }).map((_, i) => <i key={i} className={i < purchases.projectile_range ? "fractals-shop-pip is-filled" : "fractals-shop-pip"} />)}<span>{purchases.projectile_range}/4</span></div>
                         </div>
                         <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || purchases.projectile_range >= 4 || (!isMaster && fractalBalance < FRACTAL_SHOP.projectile_range[purchases.projectile_range]?.cost)} onClick={() => void purchaseUpgrade("projectile_range")}>{purchases.projectile_range >= 4 ? "MAX" : isMaster ? "GRÁTIS" : FRACTAL_SHOP.projectile_range[purchases.projectile_range]?.cost.toLocaleString("pt-BR") + " FR"}</button>
@@ -3246,7 +3247,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                         <div className="fractals-shop-item__slot"><Swords className="h-5 w-5 text-indigo-300" /></div>
                         <div className="min-w-0">
                           <p className="fractals-shop-item__name">Coroa de Estilhaços</p>
-                          <p className="fractals-shop-item__description">Cada coleta adiciona um projétil, até +2. N1 libera a escolha; N2/N3/N4: 1%/3%/5% de queda em Brutos e Elites.</p>
+                          <p className="fractals-shop-item__description">Adapta-se à arma: projéteis/orbes/lâminas/totens extras, +12% de dano da Foice ou +6% de raio do Grilhão por coleta (máx. 2). N1 libera a escolha; N2/N3/N4: 1%/3%/5% de queda em Brutos e Elites.</p>
                           <div className="fractals-shop-pips" aria-label={"Nível " + purchases.projectiles + " de 4"}>{Array.from({ length: 4 }).map((_, i) => <i key={i} className={i < purchases.projectiles ? "fractals-shop-pip is-filled" : "fractals-shop-pip"} />)}<span>{purchases.projectiles}/4</span></div>
                         </div>
                         <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || purchases.projectiles >= 4 || (!isMaster && fractalBalance < FRACTAL_SHOP.projectiles[purchases.projectiles]?.cost)} onClick={() => void purchaseUpgrade("projectiles")}>{purchases.projectiles >= 4 ? "MAX" : isMaster ? "GRÁTIS" : FRACTAL_SHOP.projectiles[purchases.projectiles]?.cost.toLocaleString("pt-BR") + " FR"}</button>
@@ -3387,7 +3388,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           {masterGiftListOpen ? "Ocultar Lista de Dádivas" : "Mostrar Lista de Dádivas"} <ChevronDown className={`h-4 w-4 transition-transform ${masterGiftListOpen ? "rotate-180" : ""}`}/>
         </Button>
         {masterGiftListOpen && <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
-          {MASTER_GIFT_OPTIONS.filter((gift) => gift.id !== "weapon_mastery" && gift.id !== "weapon_evolution" && gift.id !== "anchor_soul").map((gift) => {
+          {MASTER_GIFT_OPTIONS.filter((gift) => gift.id !== "weapon_mastery" && gift.id !== "weapon_evolution" && gift.id !== "anchor_soul" && (!gift.id.startsWith("gift_") || WEAPON_GIFTS[gameRef.current?.weaponId ?? selectedWeapon].some((weaponGift) => weaponGift.id === gift.id))).map((gift) => {
             const game = gameRef.current;
             const currentLevel = game?.upgradeCounts[gift.id]?.count ?? 0;
             const capped = gift.id.startsWith("gift_") ? currentLevel >= 3
