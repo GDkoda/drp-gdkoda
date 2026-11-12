@@ -855,7 +855,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
       ctx.shadowColor = game.evolved ? "#d946ef" : "#a855f7";
       ctx.shadowBlur = 28;
       ctx.strokeStyle = game.evolved ? "#e879f9" : "#c084fc";
-      ctx.lineWidth = (game.evolved ? 82 : 72) * (1 - progress * 0.18);
+      ctx.lineWidth = game.evolved ? 82 : 72;
       ctx.beginPath(); ctx.arc(0, 0, radius, startAngle, endAngle); ctx.stroke();
       ctx.shadowBlur = 18;
       ctx.strokeStyle = "#f5d0fe";
@@ -1686,7 +1686,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         // O Guardião só desperta ao fim dos 12 minutos completos.
         game.shotTimer -= dt;
         if (game.shotTimer <= 0 && game.enemies.some((enemy) => enemy.hp > 0) && (game.weaponId !== "void_revolver" || game.enemies.some((enemy) => enemy.hp > 0 && distance(game.player.x, game.player.y, enemy.x, enemy.y) <= 280 * game.player.projectileRangeMultiplier))) {
-          const targets = [...game.enemies].filter((enemy) => enemy.hp > 0).sort((a, b) => {
+          const targets = [...game.enemies].filter((enemy) => enemy.hp > 0 && (game.weaponId !== "void_revolver" || distance(game.player.x, game.player.y, enemy.x, enemy.y) <= 280 * game.player.projectileRangeMultiplier)).sort((a, b) => {
             const da = distance(game.player.x, game.player.y, a.x, a.y);
             const db = distance(game.player.x, game.player.y, b.x, b.y);
             const pa = a.type === "boss" ? 95 : a.type === "elite" ? 28 : a.type === "charger" ? 12 : 0;
@@ -3035,6 +3035,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
       <Button variant="outline" className="h-10 border-white/15 text-white hover:bg-white/10" onClick={() => setPausePanel("main")}><ArrowLeft className="mr-2 h-4 w-4"/>Voltar ao menu</Button>
       <Button className="fractals-pause-resume h-10 font-bold" onClick={() => { setPausePanel("main"); setPaused(false); }}><Play className="mr-2 h-4 w-4"/>Retomar</Button>
     </div>
+   </>}
  </div>
 </div>}
             {levelChoices.length > 0 && (
