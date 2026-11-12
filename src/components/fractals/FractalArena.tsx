@@ -19,11 +19,11 @@ import "./fractal-arena.css";
 
 type WeaponId = "void_revolver" | "unstable_core" | "spectral_scythe" | "orbital_swords" | "gravity_shackle" | "rune_sentinels";
 type OmenId = "famine" | "rupture" | "spectral_veil" | "abundance" | "revenge";
-type UpgradeId = "power" | "haste" | "vitality" | "swift" | "special_area" | "special_experience" | "special_projectile_range" | "special_projectiles" | "special_ricochet" | "special_piercing" | "special_chain_lightning" | "weapon_mastery" | "weapon_evolution" | "anchor_soul";
+type UpgradeId = "power" | "haste" | "vitality" | "swift" | "special_area" | "special_experience" | "special_projectile_range" | "special_projectiles" | "special_ricochet" | "special_piercing" | "special_chain_lightning" | "gift_revolver_mark" | "gift_revolver_echo" | "gift_core_expansion" | "gift_core_implosion" | "gift_scythe_siphon" | "gift_scythe_arc" | "gift_orbital_orbit" | "gift_orbital_edge" | "gift_gravity_pressure" | "gift_gravity_resonance" | "gift_sentinel_focus" | "gift_sentinel_overload" | "weapon_mastery" | "weapon_evolution" | "anchor_soul";
 type Upgrade = { id: UpgradeId; name: string; description: string; icon: typeof Zap; rarity?: "normal" | "uncommon" | "rare" | "epic" | "legendary" | "maestria" | "evolution" };
 type UpgradeCounts = Record<string, { name: string; count: number; rarity: string }>;
 
-type Enemy = { x: number; y: number; hp: number; maxHp: number; speed: number; radius: number; damage: number; color: string; xp: number; type: "wraith" | "brute" | "charger" | "elite" | "boss"; attack: number; flash: number; windup: number; targetX: number; targetY: number; dashTime: number; summonedAtHalf: boolean; furyTriggered: boolean; isExecutioner?: boolean; slowTimer?: number };
+type Enemy = { x: number; y: number; hp: number; maxHp: number; speed: number; radius: number; damage: number; color: string; xp: number; type: "wraith" | "brute" | "charger" | "elite" | "boss"; attack: number; flash: number; windup: number; targetX: number; targetY: number; dashTime: number; summonedAtHalf: boolean; furyTriggered: boolean; isExecutioner?: boolean; slowTimer?: number; slowFactor?: number };
 type ShotKind =
   | "bullet"
   | "revolver_empowered"
@@ -123,11 +123,11 @@ function parsePurchaseState(raw: any): PurchaseState {
 
 type GameState = {
   width: number; height: number; last: number; elapsed: number; spawnTimer: number; shotTimer: number; bossSpawned: boolean;
-  player: { x: number; y: number; hp: number; maxHp: number; speed: number; damage: number; fireRate: number; invuln: number; hitFlash: number; xp: number; nextXp: number; level: number; pickupRadius: number; xpMultiplier: number; specialAreaStacks: number; specialExperienceStacks: number; projectileRangeStacks: number; projectileRangeMultiplier: number; projectileStacks: number; relicRicochet: number; relicPiercing: number; relicChainLightning: number; projectileLife: number; facing: number; castFacing: number; castTimer: number; moving: boolean; spriteAction: PlayerVisualAction; spriteDirection: number; previousSpriteAction: PlayerVisualAction; previousSpriteDirection: number; spriteBlend: number };
+  player: { x: number; y: number; hp: number; maxHp: number; speed: number; damage: number; fireRate: number; invuln: number; hitFlash: number; xp: number; nextXp: number; level: number; pickupRadius: number; xpMultiplier: number; specialAreaStacks: number; specialExperienceStacks: number; projectileRangeStacks: number; projectileRangeMultiplier: number; projectileStacks: number; relicRicochet: number; relicPiercing: number; relicChainLightning: number; projectileLife: number; facing: number; castFacing: number; castTimer: number; moving: boolean; dashTimer: number; dashCooldown: number; dashX: number; dashY: number; spriteAction: PlayerVisualAction; spriteDirection: number; previousSpriteAction: PlayerVisualAction; previousSpriteDirection: number; spriteBlend: number };
   enemies: Enemy[]; shots: Shot[]; gems: Gem[]; specialDrops: SpecialDrop[]; sentinelTotems: SentinelTotem[]; sentinelRespawnTimer: number; nextSentinelTotemId: number; urns: BreakableUrn[]; obstacles: CemeteryObstacle[]; nextUrnMinute: number; nextUrnId: number; particles: Particle[]; damageNumbers: DamageNumber[]; pickupLabels: PickupLabel[]; challengeEvent: ChallengeEvent | null; nextChallengeEvent: number; kills: number; ended: boolean; upgradeCounts: UpgradeCounts; totalDamageDealt: number; crystalsCollected: number; highestLevel: number;
   weaponId: WeaponId; weaponLevel: number; evolved: boolean; rerollsRemaining: number; banishesRemaining: number; bannedUpgradeIds: string[];
   revolverShotCount?: number; orbitalPulseTimer?: number;
-  gravityAuraTimer?: number; gravityAuraActive?: boolean;
+  gravityAuraTimer?: number; gravityAuraActive?: boolean; scytheSiphonCooldown?: number;
   anchorReviveAvailable: boolean; anchorRevivesUsed: number; omenId: OmenId | null; omenSpawnMultiplier: number; omenEnemyHpMultiplier: number; omenRewardMultiplier: number; omenRevengeCooldown: number; lastObservedHp: number;
   shake?: number; rings?: { x: number; y: number; r: number; max: number; life: number; color: string }[];
 };
@@ -140,18 +140,56 @@ const UPGRADES: Upgrade[] = [
 ];
 
 const SPECIAL_UPGRADES: Upgrade[] = [
-  { id: "special_area", name: "Ímã de Fragmentos", description: "+10% de alcance de coleta por coleta (máx. +100%, 10 coletas).", icon: Move },
+  { id: "special_area", name: "Ímã de Fragmentos", description: "+10% de alcance de coleta por coleta (máx. +100%, 10 coletas); também amplia áreas de ataque compatíveis.", icon: Move },
   { id: "special_experience", name: "Eco do Conhecimento", description: "+5% de experiência por coleta (máx. +50%, 10 coletas).", icon: Sparkles },
-  { id: "special_projectile_range", name: "Ressonância de Alcance", description: "+10% de distância dos projéteis por coleta (máx. +50%).", icon: Zap },
-  { id: "special_projectiles", name: "Coroa de Estilhaços", description: "+1 projétil por coleta. Até 2 extras por expedição.", icon: Swords },
-  { id: "special_ricochet", name: "Ricochete Instável", description: "Projéteis do Revólver ricocheteiam em até +1 inimigo por nível (máx. 3).", icon: Orbit },
-  { id: "special_piercing", name: "Perfuração Espectral", description: "Projéteis do Revólver atravessam +1 inimigo por nível (máx. 3).", icon: Target },
-  { id: "special_chain_lightning", name: "Descarga em Cadeia", description: "Impactos do projétil saltam para +1 alvo por nível (máx. 3).", icon: Zap },
+  { id: "special_projectile_range", name: "Ressonância de Alcance", description: "+10% de alcance útil da arma por coleta (máx. +50%).", icon: Zap },
+  { id: "special_projectiles", name: "Coroa de Estilhaços", description: "Adapta-se à arma: +1 orbe, lâmina, sentinela ou potência de corte/aura por coleta (máx. 2).", icon: Swords },
+  { id: "special_ricochet", name: "Ricochete Instável", description: "Revólver e Núcleo ganham +1 ricochete por nível (máx. 3).", icon: Orbit },
+  { id: "special_piercing", name: "Perfuração Espectral", description: "Revólver e Núcleo atravessam +1 inimigo por nível (máx. 3).", icon: Target },
+  { id: "special_chain_lightning", name: "Descarga em Cadeia", description: "Impactos do Revólver e do Núcleo saltam para +1 alvo por nível (máx. 3).", icon: Zap },
 ];
+
+const WEAPON_GIFTS: Record<WeaponId, Upgrade[]> = {
+  void_revolver: [
+    { id: "gift_revolver_mark", name: "Marca do Predador", description: "Dano contra Elites e Chefes +12% por nível.", icon: Target, rarity: "uncommon" },
+    { id: "gift_revolver_echo", name: "Sexto Eco", description: "O disparo dourado do Revólver recebe +1 ricochete por nível.", icon: Orbit, rarity: "uncommon" },
+  ],
+  unstable_core: [
+    { id: "gift_core_expansion", name: "Campo Devorador", description: "A poça do Núcleo aumenta seu raio em 12% por nível.", icon: Orbit, rarity: "uncommon" },
+    { id: "gift_core_implosion", name: "Implosão Concentrada", description: "A atração de cada pulso da poça fica mais forte em 3 unidades por nível.", icon: Move, rarity: "uncommon" },
+  ],
+  spectral_scythe: [
+    { id: "gift_scythe_siphon", name: "Sede de Almas", description: "Abates com a Foice recuperam 1,5% da vida máxima por nível. Recarga: 1,8s.", icon: Heart, rarity: "uncommon" },
+    { id: "gift_scythe_arc", name: "Arco do Ceifador", description: "O alcance do corte aumenta em 12% por nível.", icon: Swords, rarity: "uncommon" },
+  ],
+  orbital_swords: [
+    { id: "gift_orbital_orbit", name: "Órbita Distante", description: "As lâminas orbitam 12% mais longe por nível.", icon: Orbit, rarity: "uncommon" },
+    { id: "gift_orbital_edge", name: "Fio Astral", description: "Dano de contato das lâminas +12% por nível.", icon: Swords, rarity: "uncommon" },
+  ],
+  gravity_shackle: [
+    { id: "gift_gravity_pressure", name: "Peso Abissal", description: "A lentidão da aura fica 4 pontos percentuais mais forte por nível, até 36% de redução de velocidade.", icon: Move, rarity: "uncommon" },
+    { id: "gift_gravity_resonance", name: "Ressonância do Abismo", description: "Dano dos pulsos da aura +15% por nível.", icon: Sparkles, rarity: "uncommon" },
+  ],
+  rune_sentinels: [
+    { id: "gift_sentinel_focus", name: "Mirada do Vigia", description: "Dano dos feixes das Sentinelas +12% por nível.", icon: Target, rarity: "uncommon" },
+    { id: "gift_sentinel_overload", name: "Sobrecarga Final", description: "Explosão de uma Sentinela: dano +15% e raio +12% por nível.", icon: Zap, rarity: "uncommon" },
+  ],
+};
+
+function supportsProjectileRelics(weapon: WeaponId): boolean {
+  return weapon === "void_revolver" || weapon === "unstable_core";
+}
+
+function getEligibleWeaponGifts(game: GameState): Upgrade[] {
+  return WEAPON_GIFTS[game.weaponId].filter((gift) =>
+    !game.bannedUpgradeIds.includes(gift.id) && (game.upgradeCounts[gift.id]?.count ?? 0) < 3
+  );
+}
 
 const MASTER_GIFT_OPTIONS: Upgrade[] = [
   ...UPGRADES,
   ...SPECIAL_UPGRADES,
+  ...Object.values(WEAPON_GIFTS).flat(),
   { id: "anchor_soul", name: "Âncora da Alma", description: "Concede uma ressurreição adicional.", icon: Heart },
   { id: "weapon_mastery", name: "Ressonância da Arma", description: "Aumenta em um nível a arma equipada.", icon: Swords, rarity: "maestria" },
   { id: "weapon_evolution", name: "Evolução da Arma", description: "Desperta a forma evoluída da arma equipada.", icon: Crown, rarity: "evolution" },
@@ -162,17 +200,16 @@ function weaponProjectKey(weapon: WeaponId) {
 }
 function getEligibleFieldRelics(game: GameState, purchases: PurchaseState): Upgrade[] {
   const oracleUnlocksFieldRelics = purchases.oracle >= 1;
-  const excludesBallisticRelics = game.weaponId === "spectral_scythe" || game.weaponId === "orbital_swords" || game.weaponId === "gravity_shackle";
+  const projectileRelicsSupported = supportsProjectileRelics(game.weaponId);
   return SPECIAL_UPGRADES.filter((item) => {
     if (game.bannedUpgradeIds.includes(item.id)) return false;
-    if (excludesBallisticRelics && (item.id === "special_ricochet" || item.id === "special_piercing")) return false;
     if (item.id === "special_area") return (oracleUnlocksFieldRelics || purchases.area >= 1) && game.player.specialAreaStacks < MAX_AREA_RELIC_STACKS;
     if (item.id === "special_experience") return (oracleUnlocksFieldRelics || purchases.experience >= 1) && game.player.specialExperienceStacks < MAX_EXPERIENCE_RELIC_STACKS;
     if (item.id === "special_projectile_range") return (oracleUnlocksFieldRelics || purchases.projectile_range >= 1) && game.player.projectileRangeStacks < MAX_PROJECTILE_RANGE_STACKS;
     if (item.id === "special_projectiles") return (oracleUnlocksFieldRelics || purchases.projectiles >= 1) && game.player.projectileStacks < MAX_EXTRA_PROJECTILES;
-    if (item.id === "special_ricochet") return purchases.ricochet >= 1 && game.player.relicRicochet < 3;
-    if (item.id === "special_piercing") return purchases.piercing >= 1 && game.player.relicPiercing < 3;
-    if (item.id === "special_chain_lightning") return purchases.chain_lightning >= 1 && game.player.relicChainLightning < 3;
+    if (item.id === "special_ricochet") return projectileRelicsSupported && purchases.ricochet >= 1 && game.player.relicRicochet < 3;
+    if (item.id === "special_piercing") return projectileRelicsSupported && purchases.piercing >= 1 && game.player.relicPiercing < 3;
+    if (item.id === "special_chain_lightning") return projectileRelicsSupported && purchases.chain_lightning >= 1 && game.player.relicChainLightning < 3;
     return false;
   });
 }
@@ -218,9 +255,20 @@ function buildLevelChoices(game: GameState, purchases: PurchaseState): Upgrade[]
     if (choices.length > 0) choices[evolutionIndex] = evolutionGift; else choices.push(evolutionGift);
   }
 
+  const availableWeaponGifts = getEligibleWeaponGifts(game);
+  const basicChoiceSlots = choices
+    .map((choice, index) => ({ choice, index }))
+    .filter(({ choice }) => ["power", "haste", "vitality", "swift"].includes(choice.id))
+    .map(({ index }) => index);
+  if (availableWeaponGifts.length && basicChoiceSlots.length && Math.random() < 0.24) {
+    const slot = basicChoiceSlots[Math.floor(Math.random() * basicChoiceSlots.length)];
+    const weaponGift = availableWeaponGifts[Math.floor(Math.random() * availableWeaponGifts.length)];
+    choices[slot] = weaponGift;
+  }
+
   const transmutationChance = [0, 3, 6, 10][Math.max(0, Math.min(3, purchases.transmutation))];
   const withRarity = choices.map((upgrade) => {
-    const isUncommonRelic = upgrade.id.startsWith("special_") || upgrade.id === "anchor_soul";
+    const isUncommonRelic = upgrade.id.startsWith("special_") || upgrade.id.startsWith("gift_") || upgrade.id === "anchor_soul";
     return {
       ...upgrade,
       // Relíquias são Incomuns fixas: não entram no sorteio nem recebem bônus de raridade.
@@ -320,6 +368,21 @@ function getNearbyEnemies(x: number, y: number, grid: EnemySpatialGrid): Enemy[]
   for (let offsetY = -1; offsetY <= 1; offsetY++) {
     for (let offsetX = -1; offsetX <= 1; offsetX++) {
       const bucket = grid.get(getGridKey(cellX + offsetX, cellY + offsetY));
+      if (bucket) for (let i = 0; i < bucket.length; i++) nearby.push(bucket[i]);
+    }
+  }
+  return nearby;
+}
+
+function getEnemiesInRadius(x: number, y: number, radius: number, grid: EnemySpatialGrid): Enemy[] {
+  const nearby: Enemy[] = [];
+  const minCellX = Math.floor((x - radius) / ENEMY_GRID_CELL_SIZE);
+  const maxCellX = Math.floor((x + radius) / ENEMY_GRID_CELL_SIZE);
+  const minCellY = Math.floor((y - radius) / ENEMY_GRID_CELL_SIZE);
+  const maxCellY = Math.floor((y + radius) / ENEMY_GRID_CELL_SIZE);
+  for (let cellY = minCellY; cellY <= maxCellY; cellY++) {
+    for (let cellX = minCellX; cellX <= maxCellX; cellX++) {
+      const bucket = grid.get(getGridKey(cellX, cellY));
       if (bucket) for (let i = 0; i < bucket.length; i++) nearby.push(bucket[i]);
     }
   }
@@ -535,10 +598,10 @@ function makeGame(width: number, height: number, purchases: PurchaseState, weapo
   const omenDamage = omenId === "rupture" ? 1.2 : 1;
   return {
     width, height, last: 0, elapsed: 0, spawnTimer: 0.4, shotTimer: 0.25, bossSpawned: false,
-    player: { x: 0, y: 0, hp: maxHp, maxHp, speed: 205 * (omenId === "spectral_veil" ? 1.15 : 1), damage: 22 * omenDamage, fireRate: 0.72 * (omenId === "rupture" ? 1.15 : 1), invuln: 0, hitFlash: 0, xp: 0, nextXp: 12, level: 1, pickupRadius: 85, xpMultiplier: omenId === "famine" ? 1.2 : 1, specialAreaStacks: 0, specialExperienceStacks: 0, projectileRangeStacks: 0, projectileRangeMultiplier: 1, projectileStacks: 0, relicRicochet: 0, relicPiercing: 0, relicChainLightning: 0, projectileLife, facing: 0, castFacing: 0, castTimer: 0, moving: false, spriteAction: "idle", spriteDirection: 0, previousSpriteAction: "idle", previousSpriteDirection: 0, spriteBlend: 1 },
+    player: { x: 0, y: 0, hp: maxHp, maxHp, speed: 205 * (omenId === "spectral_veil" ? 1.15 : 1), damage: 22 * omenDamage, fireRate: 0.72 * (omenId === "rupture" ? 1.15 : 1), invuln: 0, hitFlash: 0, xp: 0, nextXp: 12, level: 1, pickupRadius: 85, xpMultiplier: omenId === "famine" ? 1.2 : 1, specialAreaStacks: 0, specialExperienceStacks: 0, projectileRangeStacks: 0, projectileRangeMultiplier: 1, projectileStacks: 0, relicRicochet: 0, relicPiercing: 0, relicChainLightning: 0, projectileLife, facing: 0, castFacing: 0, castTimer: 0, moving: false, dashTimer: 0, dashCooldown: 0, dashX: 1, dashY: 0, spriteAction: "idle", spriteDirection: 0, previousSpriteAction: "idle", previousSpriteDirection: 0, spriteBlend: 1 },
     enemies: [], shots: [], gems: [], specialDrops: [], sentinelTotems: [], sentinelRespawnTimer: 0, nextSentinelTotemId: 1, urns: [], obstacles: createCemeteryObstacles(), nextUrnMinute: 1, nextUrnId: 1, particles: [], damageNumbers: [], pickupLabels: [], challengeEvent: null, nextChallengeEvent: 0, kills: 0, ended: false, upgradeCounts: {}, totalDamageDealt: 0, crystalsCollected: 0, highestLevel: 1,
     weaponId, weaponLevel: 1, evolved: false, rerollsRemaining: purchases.reroll, banishesRemaining: purchases.banish, bannedUpgradeIds: [],
-    revolverShotCount: 0, orbitalPulseTimer: 0, gravityAuraTimer: 0, gravityAuraActive: true,
+    revolverShotCount: 0, orbitalPulseTimer: 0, gravityAuraTimer: 0, gravityAuraActive: true, scytheSiphonCooldown: 0,
     anchorReviveAvailable: false, anchorRevivesUsed: 0, omenId, omenSpawnMultiplier: omenId === "famine" ? 1.2 : 1,
     omenEnemyHpMultiplier: omenId === "abundance" ? 1.15 : 1, omenRewardMultiplier: omenId === "abundance" ? 1.25 : 1,
     omenRevengeCooldown: 0, lastObservedHp: maxHp,
@@ -547,7 +610,9 @@ function makeGame(width: number, height: number, purchases: PurchaseState, weapo
 
 function spawnPlasmaPuddle(game: GameState, x: number, y: number, coreDamage: number) {
   // A Singularidade passa a dominar uma região maior sem aumentar a frequência dos pulsos.
-  const radius = (game.evolved ? 180 : 118) * (1 + game.player.specialAreaStacks * 0.1);
+  const radius = (game.evolved ? 180 : 118)
+    * (1 + game.player.specialAreaStacks * 0.1)
+    * (1 + (game.upgradeCounts.gift_core_expansion?.count ?? 0) * 0.12);
   const life = game.evolved ? 2.5 : 1.5;
   game.shots.push({
     x, y, vx: 0, vy: 0,
@@ -1567,7 +1632,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
     if (upgrade.id === "special_area" && game.player.specialAreaStacks < MAX_AREA_RELIC_STACKS) { game.player.specialAreaStacks += 1; game.player.pickupRadius = 85 * (1 + game.player.specialAreaStacks * 0.10); }
     if (upgrade.id === "special_experience" && game.player.specialExperienceStacks < MAX_EXPERIENCE_RELIC_STACKS) { game.player.specialExperienceStacks += 1; game.player.xpMultiplier = 1 + game.player.specialExperienceStacks * 0.05; }
     if (upgrade.id === "special_projectile_range" && game.player.projectileRangeStacks < MAX_PROJECTILE_RANGE_STACKS) { game.player.projectileRangeStacks += 1; game.player.projectileRangeMultiplier = 1 + game.player.projectileRangeStacks * 0.10; }
-    if (upgrade.id === "special_projectiles" && game.player.projectileStacks < MAX_EXTRA_PROJECTILES) { game.player.projectileStacks += 1; if (game.weaponId === "spectral_scythe") game.player.damage *= 1.25; }
+    if (upgrade.id === "special_projectiles" && game.player.projectileStacks < MAX_EXTRA_PROJECTILES) { game.player.projectileStacks += 1; }
     if (upgrade.id === "special_ricochet" && game.player.relicRicochet < 3) game.player.relicRicochet += 1;
     if (upgrade.id === "special_piercing" && game.player.relicPiercing < 3) game.player.relicPiercing += 1;
     if (upgrade.id === "special_chain_lightning" && game.player.relicChainLightning < 3) game.player.relicChainLightning += 1;
@@ -1722,6 +1787,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
       game.last = now;
       if (!game.ended && !paused && levelChoices.length === 0) {
         game.elapsed += dt;
+        game.scytheSiphonCooldown = Math.max(0, (game.scytheSiphonCooldown ?? 0) - dt);
         game.player.invuln = Math.max(0, game.player.invuln - dt);
         game.player.hitFlash = Math.max(0, game.player.hitFlash - dt);
         game.damageNumbers.forEach((number) => { number.life -= dt; number.y -= 24 * dt; number.x += number.drift * dt; });
@@ -1834,7 +1900,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                 x: game.player.x, y: game.player.y,
                 vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
                 damage: weaponDamage * damageMultiplier, life, maxLife: life,
-                hitTargets: [], bouncesRemaining: game.player.relicRicochet + (game.evolved ? 1 : 0),
+                hitTargets: [], bouncesRemaining: game.player.relicRicochet + (game.evolved ? 1 : 0) + (isEmpowered ? (game.upgradeCounts.gift_revolver_echo?.count ?? 0) : 0),
                 piercesRemaining: game.player.relicPiercing + (isEmpowered ? 3 : 0),
                 kind: isEmpowered ? "revolver_empowered" : "bullet",
               });
@@ -1845,12 +1911,14 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           } else if (game.weaponId === "unstable_core") {
             const speed = 100 * game.player.projectileRangeMultiplier;
             const life = game.player.projectileLife * 0.65;
-            const coreAngles = game.player.projectileStacks > 0 ? [baseAngle - 0.18, baseAngle, baseAngle + 0.18] : [baseAngle];
-            for (const angle of coreAngles) {
+            const coreCount = 1 + Math.min(MAX_EXTRA_PROJECTILES, game.player.projectileStacks);
+            for (let index = 0; index < coreCount; index++) {
+              const angleOffset = (index - (coreCount - 1) / 2) * 0.18;
+              const angle = baseAngle + angleOffset;
               game.shots.push({
                 x: game.player.x, y: game.player.y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
                 damage: weaponDamage * 1.275, life, maxLife: life,
-                hitTargets: [], bouncesRemaining: 0, piercesRemaining: 0,
+                hitTargets: [], bouncesRemaining: game.player.relicRicochet, piercesRemaining: game.player.relicPiercing,
                 kind: "plasma_core", radius: game.evolved ? 18 : 13,
               });
             }
@@ -1859,12 +1927,15 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             game.shotTimer = game.player.fireRate * 3.3;
           } else if (game.weaponId === "spectral_scythe") {
             const arcSpan = game.evolved ? Math.PI * 1.33 : Math.PI * 0.92;
-            const slashRadius = (game.evolved ? 205 : 150) * (1 + game.player.specialAreaStacks * 0.1);
+            const slashRadius = (game.evolved ? 205 : 150)
+              * (1 + game.player.specialAreaStacks * 0.1)
+              * game.player.projectileRangeMultiplier
+              * (1 + (game.upgradeCounts.gift_scythe_arc?.count ?? 0) * 0.12);
             const facingVector = PLAYER_DIRECTION_VECTORS[game.player.facing] ?? PLAYER_DIRECTION_VECTORS[0];
             const slashAngle = Math.atan2(facingVector.y, facingVector.x);
             game.shots.push({
               x: game.player.x, y: game.player.y, vx: 0, vy: 0,
-              damage: weaponDamage * (game.evolved ? 1.68 : 1.32),
+              damage: weaponDamage * (game.evolved ? 1.68 : 1.32) * (1 + game.player.projectileStacks * 0.12),
               life: 0.28, maxLife: 0.28, hitTargets: [],
               bouncesRemaining: 0, piercesRemaining: 999,
               kind: "scythe_slash", angle: slashAngle, arcSpan, radius: slashRadius,
@@ -1891,12 +1962,12 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               const existing = game.shots.find((shot) => shot.kind === "orbital_blade" && shot.bladeIndex === index);
               if (existing) {
                 existing.totalBlades = bladeCount;
-                existing.damage = weaponDamage * 0.75;
+                existing.damage = weaponDamage * 0.75 * (1 + (game.upgradeCounts.gift_orbital_edge?.count ?? 0) * 0.12);
                 continue;
               }
               game.shots.push({
                 x: game.player.x, y: game.player.y, vx: 0, vy: 0,
-                damage: weaponDamage * 0.75, life: 9999, maxLife: 9999,
+                damage: weaponDamage * 0.75 * (1 + (game.upgradeCounts.gift_orbital_edge?.count ?? 0) * 0.12), life: 9999, maxLife: 9999,
                 hitTargets: [], bouncesRemaining: 0, piercesRemaining: 999,
                 kind: "orbital_blade", bladeIndex: index, totalBlades: bladeCount, radius: 20,
               });
@@ -1917,12 +1988,15 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         // Grilhão: uma única aura acompanha o herói. A forma normal pulsa em ciclos;
         // a evolução mantém o selo permanentemente ativo. Reutilizamos o sprite já existente.
         if (game.weaponId === "gravity_shackle") {
-          const auraRadius = (game.evolved ? 230 : 175) * (1 + game.player.specialAreaStacks * 0.1);
+          const auraRadius = (game.evolved ? 230 : 175)
+            * (1 + game.player.specialAreaStacks * 0.1)
+            * game.player.projectileRangeMultiplier
+            * (1 + game.player.projectileStacks * 0.06);
           let aura = game.shots.find((shot) => shot.kind === "gravity_well" && shot.isAura);
           if (!aura) {
             aura = {
               x: game.player.x, y: game.player.y, vx: 0, vy: 0,
-              damage: getEquippedWeaponStrikeDamage(game) * (game.evolved ? 0.75 : 0.5625),
+              damage: getEquippedWeaponStrikeDamage(game) * (game.evolved ? 0.75 : 0.5625) * (1 + (game.upgradeCounts.gift_gravity_resonance?.count ?? 0) * 0.15),
               life: 9999, maxLife: 9999, hitTargets: [], bouncesRemaining: 0, piercesRemaining: 999,
               kind: "gravity_well", radius: auraRadius, pulseTimer: 0, isAura: true, active: true,
             };
@@ -1931,7 +2005,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           aura.x = game.player.x;
           aura.y = game.player.y;
           aura.radius = auraRadius;
-          aura.damage = getEquippedWeaponStrikeDamage(game) * (game.evolved ? 0.75 : 0.5625);
+          aura.damage = getEquippedWeaponStrikeDamage(game) * (game.evolved ? 0.75 : 0.5625) * (1 + (game.upgradeCounts.gift_gravity_resonance?.count ?? 0) * 0.15);
           aura.life = 9999;
           aura.maxLife = 9999;
           if (game.evolved) {
@@ -1947,16 +2021,6 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               aura.hitTargets = [];
             }
             aura.active = game.gravityAuraActive ?? true;
-          }
-          if (aura.active) {
-            const radiusSq = auraRadius * auraRadius;
-            for (const enemy of game.enemies) {
-              if (enemy.hp <= 0) continue;
-              const dx = enemy.x - game.player.x, dy = enemy.y - game.player.y;
-              if (dx * dx + dy * dy <= radiusSq) {
-                enemy.slowTimer = Math.max(enemy.slowTimer ?? 0, game.evolved ? 0.65 : 0.48);
-              }
-            }
           }
         } else {
           game.shots = game.shots.filter((shot) => !(shot.kind === "gravity_well" && shot.isAura));
@@ -1980,7 +2044,10 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             const bladeCount = Math.max(1, shot.totalBlades ?? 3);
             const bladeIndex = shot.bladeIndex ?? 0;
             const isOuterBlade = game.evolved && bladeIndex >= 8;
-            const orbitDistance = isOuterBlade ? 98 : 65;
+            const orbitDistance = (isOuterBlade ? 98 : 65)
+              * (1 + game.player.specialAreaStacks * 0.1)
+              * game.player.projectileRangeMultiplier
+              * (1 + (game.upgradeCounts.gift_orbital_orbit?.count ?? 0) * 0.12);
             const attackSpeedFactor = 0.72 / Math.max(0.18, game.player.fireRate);
             const rot = game.elapsed * (3.2 * attackSpeedFactor) * (isOuterBlade ? -1 : 1);
             const angle = rot + (bladeIndex * Math.PI * 2) / bladeCount;
@@ -2064,7 +2131,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             totem.hp = Math.max(0, totem.hp - 1.0 * dt);
             totem.attackTimer -= dt;
             if (totem.attackTimer > 0 || totem.hp <= 0) continue;
-            const attackRange = game.evolved ? 420 : 210;
+            const attackRange = (game.evolved ? 420 : 210) * (1 + game.player.specialAreaStacks * 0.1) * game.player.projectileRangeMultiplier;
             const target = game.enemies
               .filter((enemy) => enemy.hp > 0 && distance(totem.x, totem.y, enemy.x, enemy.y) <= attackRange)
               .sort((a, b) => distance(totem.x, totem.y, a.x, a.y) - distance(totem.x, totem.y, b.x, b.y))[0];
@@ -2076,7 +2143,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             game.shots.push({
               x: totem.x, y: totem.y,
               vx: (dx / length) * beamSpeed, vy: (dy / length) * beamSpeed,
-              damage: getEquippedWeaponStrikeDamage(game),
+              damage: getEquippedWeaponStrikeDamage(game) * (1 + (game.upgradeCounts.gift_sentinel_focus?.count ?? 0) * 0.12),
               life, maxLife: life, hitTargets: [], bouncesRemaining: 0,
               piercesRemaining: 1, kind: "sentinel_beam", targetEnemy: target,
             });
@@ -2092,8 +2159,9 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           const d = Math.max(1, distance(game.player.x, game.player.y, enemy.x, enemy.y));
           enemy.flash = Math.max(0, enemy.flash - dt);
           enemy.attack = Math.max(0, enemy.attack - dt);
-          const movementFactor = (enemy.slowTimer ?? 0) > 0 ? 0.7 : 1;
+          const movementFactor = (enemy.slowTimer ?? 0) > 0 ? (enemy.slowFactor ?? 0.7) : 1;
           enemy.slowTimer = Math.max(0, (enemy.slowTimer ?? 0) - dt);
+          if (enemy.slowTimer <= 0) enemy.slowFactor = undefined;
           const aggroTotem = game.weaponId === "rune_sentinels"
             ? game.sentinelTotems
                 .filter((totem) => totem.hp > 0 && distance(enemy.x, enemy.y, totem.x, totem.y) <= 280)
@@ -2246,9 +2314,10 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         const destroyedTotems = game.sentinelTotems.filter((totem) => totem.hp <= 0);
         if (destroyedTotems.length > 0) {
           for (const totem of destroyedTotems) {
-            const burstRadius = 140;
+            const overloadLevel = game.upgradeCounts.gift_sentinel_overload?.count ?? 0;
+            const burstRadius = 140 * (1 + overloadLevel * 0.12);
             const weaponPower = (1 + (game.weaponLevel - 1) * 0.055) * (game.evolved ? 1.15 : 1);
-            const burstDamage = game.player.damage * weaponPower * 2.5;
+            const burstDamage = game.player.damage * weaponPower * 2.5 * (1 + overloadLevel * 0.15);
             game.shots.push({
               x: totem.x, y: totem.y, vx: 0, vy: 0,
               damage: burstDamage, life: 0.18, maxLife: 0.18,
@@ -2281,13 +2350,9 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             shot.hitTargets = [];
           }
           const wideAttack = shot.kind === "scythe_slash" || shot.kind === "sentinel_explosion" || isPulsingField;
-          // Pré-filtro AABB: evita trigonometria e testes completos fora da área.
+          // Consultamos somente as células espaciais que intersectam a área do golpe.
           const nearbyTargets = wideAttack
-            ? game.enemies.filter((enemy) => {
-                if (enemy.hp <= 0) return false;
-                const maxRange = (shot.radius ?? 180) + enemy.radius + 10;
-                return Math.abs(enemy.x - shot.x) <= maxRange && Math.abs(enemy.y - shot.y) <= maxRange;
-              })
+            ? getEnemiesInRadius(shot.x, shot.y, (shot.radius ?? 180) + 42, collisionGrid)
             : getNearbyEnemies(shot.x, shot.y, collisionGrid);
           for (const enemy of nearbyTargets) {
             if (enemy.hp <= 0 || shot.hitTargets.includes(enemy)) continue;
@@ -2309,8 +2374,14 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               hit = hitDistanceSquared < hitRadius * hitRadius;
             }
             if (hit) {
-              const appliedDamage = Math.min(enemy.hp, shot.damage);
-              enemy.hp -= shot.damage;
+              const markedBossBonus = game.weaponId === "void_revolver"
+                && (shot.kind === "bullet" || shot.kind === "revolver_empowered")
+                && (enemy.type === "elite" || enemy.type === "boss")
+                ? 1 + (game.upgradeCounts.gift_revolver_mark?.count ?? 0) * 0.12
+                : 1;
+              const hitDamage = shot.damage * markedBossBonus;
+              const appliedDamage = Math.min(enemy.hp, hitDamage);
+              enemy.hp -= hitDamage;
               game.totalDamageDealt += appliedDamage;
               enemy.flash = 0.09;
               if (game.particles.length < 75) {
@@ -2335,17 +2406,21 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               shot.hitTargets.push(enemy);
               if (shot.kind === "plasma_puddle") {
                 enemy.slowTimer = Math.max(enemy.slowTimer ?? 0, 0.5);
-                // O Núcleo atrai apenas no pulso: movimento curto e discreto, sem manter
-                // os inimigos presos nem executar força gravitacional a cada frame.
                 const pullRadius = shot.radius ?? 118;
                 const pullX = shot.x - enemy.x, pullY = shot.y - enemy.y;
                 const pullDistanceSq = pullX * pullX + pullY * pullY;
                 if (pullDistanceSq > 1 && pullDistanceSq <= pullRadius * pullRadius) {
                   const pullDistance = Math.sqrt(pullDistanceSq);
-                  const pullStep = Math.min(game.evolved ? 16 : 10, Math.max(0, pullDistance - enemy.radius - 6));
+                  const implosionLevel = game.upgradeCounts.gift_core_implosion?.count ?? 0;
+                  const pullStep = Math.min((game.evolved ? 16 : 10) + implosionLevel * 3, Math.max(0, pullDistance - enemy.radius - 6));
                   enemy.x += (pullX / pullDistance) * pullStep;
                   enemy.y += (pullY / pullDistance) * pullStep;
                 }
+              } else if (shot.kind === "gravity_well" && shot.isAura) {
+                const pressureLevel = game.upgradeCounts.gift_gravity_pressure?.count ?? 0;
+                const slowFactor = clamp(0.70 - pressureLevel * 0.04, 0.58, 0.70);
+                enemy.slowTimer = Math.max(enemy.slowTimer ?? 0, game.evolved ? 0.65 : 0.48);
+                enemy.slowFactor = Math.min(enemy.slowFactor ?? 0.70, slowFactor);
               }
 
               // Descarga em cadeia: cada impacto do projétil original pode chamar alvos extras.
@@ -2371,7 +2446,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                       y: enemy.y,
                       vx: (cdx / chainDistance) * chainSpeed,
                       vy: (cdy / chainDistance) * chainSpeed,
-                      damage: Math.max(1, Math.round(shot.damage * chainDamage)),
+                      damage: Math.max(1, Math.round(hitDamage * chainDamage)),
                       life: chainDistance / chainSpeed + 0.15,
                       hitTargets: [...shot.hitTargets],
                       bouncesRemaining: 0,
@@ -2385,6 +2460,11 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               }
 
               if (enemy.hp <= 0) {
+                if (shot.kind === "scythe_slash" && game.weaponId === "spectral_scythe" && (game.upgradeCounts.gift_scythe_siphon?.count ?? 0) > 0 && (game.scytheSiphonCooldown ?? 0) <= 0) {
+                  const siphonLevel = game.upgradeCounts.gift_scythe_siphon?.count ?? 0;
+                  game.player.hp = Math.min(game.player.maxHp, game.player.hp + game.player.maxHp * 0.015 * siphonLevel);
+                  game.scytheSiphonCooldown = 1.8;
+                }
                 game.kills += 1;
                 fractalAudio.kill(enemy.type === "boss" || enemy.type === "elite");
                 if (enemy.type !== "boss") {
@@ -2401,10 +2481,10 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                     if (purchases.experience >= 1 && game.player.specialExperienceStacks < MAX_EXPERIENCE_RELIC_STACKS) eligible.push("experience");
                     if (purchases.projectile_range >= 1 && game.player.projectileRangeStacks < MAX_PROJECTILE_RANGE_STACKS) eligible.push("projectile_range");
                     if (purchases.projectiles >= 1 && game.player.projectileStacks < MAX_EXTRA_PROJECTILES) eligible.push("projectiles");
-                    const excludesBallisticRelics = game.weaponId === "spectral_scythe" || game.weaponId === "orbital_swords" || game.weaponId === "gravity_shackle";
-                    if (!excludesBallisticRelics && purchases.ricochet >= 1 && game.player.relicRicochet < 3) eligible.push("ricochet");
-                    if (!excludesBallisticRelics && purchases.piercing >= 1 && game.player.relicPiercing < 3) eligible.push("piercing");
-                    if (purchases.chain_lightning >= 1 && game.player.relicChainLightning < 3) eligible.push("chain_lightning");
+                    const projectileRelicsSupported = supportsProjectileRelics(game.weaponId);
+                    if (projectileRelicsSupported && purchases.ricochet >= 1 && game.player.relicRicochet < 3) eligible.push("ricochet");
+                    if (projectileRelicsSupported && purchases.piercing >= 1 && game.player.relicPiercing < 3) eligible.push("piercing");
+                    if (projectileRelicsSupported && purchases.chain_lightning >= 1 && game.player.relicChainLightning < 3) eligible.push("chain_lightning");
                     eligible.push("food", "void");
                     if (eligible.length) game.specialDrops.push({ x: enemy.x, y: enemy.y, kind: eligible[Math.floor(Math.random() * eligible.length)], radius: 13 });
                   }
@@ -2523,10 +2603,10 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               if (purchases.experience >= 1 && game.player.specialExperienceStacks < MAX_EXPERIENCE_RELIC_STACKS) eligibleRelics.push("experience");
               if (purchases.projectile_range >= 1 && game.player.projectileRangeStacks < MAX_PROJECTILE_RANGE_STACKS) eligibleRelics.push("projectile_range");
               if (purchases.projectiles >= 1 && game.player.projectileStacks < MAX_EXTRA_PROJECTILES) eligibleRelics.push("projectiles");
-              const excludesBallisticRelics = game.weaponId === "spectral_scythe" || game.weaponId === "orbital_swords" || game.weaponId === "gravity_shackle";
-              if (!excludesBallisticRelics && purchases.ricochet >= 1 && game.player.relicRicochet < 3) eligibleRelics.push("ricochet");
-              if (!excludesBallisticRelics && purchases.piercing >= 1 && game.player.relicPiercing < 3) eligibleRelics.push("piercing");
-              if (purchases.chain_lightning >= 1 && game.player.relicChainLightning < 3) eligibleRelics.push("chain_lightning");
+              const projectileRelicsSupported = supportsProjectileRelics(game.weaponId);
+              if (projectileRelicsSupported && purchases.ricochet >= 1 && game.player.relicRicochet < 3) eligibleRelics.push("ricochet");
+              if (projectileRelicsSupported && purchases.piercing >= 1 && game.player.relicPiercing < 3) eligibleRelics.push("piercing");
+              if (projectileRelicsSupported && purchases.chain_lightning >= 1 && game.player.relicChainLightning < 3) eligibleRelics.push("chain_lightning");
               if (roll < 0.20) game.gems.push({ x: urn.x, y: urn.y, value: 15, radius: 8, runeCrystal: true });
               else if (eligibleRelics.length && roll < 0.20 + relicChance) game.specialDrops.push({ x: urn.x, y: urn.y, kind: eligibleRelics[Math.floor(Math.random() * eligibleRelics.length)], radius: 13 });
               else if (roll < 0.20 + relicChance + foodChance) game.specialDrops.push({ x: urn.x, y: urn.y, kind: "food", radius: 14 });
@@ -2581,7 +2661,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             if (drop.kind === "area" && game.player.specialAreaStacks < MAX_AREA_RELIC_STACKS) { game.player.specialAreaStacks += 1; game.player.pickupRadius = 85 * (1 + game.player.specialAreaStacks * 0.10); }
             if (drop.kind === "experience" && game.player.specialExperienceStacks < MAX_EXPERIENCE_RELIC_STACKS) { game.player.specialExperienceStacks += 1; game.player.xpMultiplier = 1 + game.player.specialExperienceStacks * 0.05; }
             if (drop.kind === "projectile_range" && game.player.projectileRangeStacks < MAX_PROJECTILE_RANGE_STACKS) { game.player.projectileRangeStacks += 1; game.player.projectileRangeMultiplier = 1 + game.player.projectileRangeStacks * 0.10; }
-            if (drop.kind === "projectiles" && game.player.projectileStacks < MAX_EXTRA_PROJECTILES) { game.player.projectileStacks += 1; if (game.weaponId === "spectral_scythe") game.player.damage *= 1.25; }
+            if (drop.kind === "projectiles" && game.player.projectileStacks < MAX_EXTRA_PROJECTILES) { game.player.projectileStacks += 1; }
             if (drop.kind === "ricochet" && game.player.relicRicochet < 3) game.player.relicRicochet += 1;
             if (drop.kind === "piercing" && game.player.relicPiercing < 3) game.player.relicPiercing += 1;
             if (drop.kind === "chain_lightning" && game.player.relicChainLightning < 3) game.player.relicChainLightning += 1;
