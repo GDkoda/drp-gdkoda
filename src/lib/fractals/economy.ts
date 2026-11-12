@@ -85,6 +85,7 @@ export const FRACTAL_SHOP = {
   fortune: [800, 1400, 2300, 3500, 5000],
   transmutation: [1500, 2700, 4500],
   anchor_soul: [3500, 7000, 20000],
+  dash: [3000, 8500, 22000],
   omen_archive: 6000,
   weapons: {
     nucleus: 8000,
