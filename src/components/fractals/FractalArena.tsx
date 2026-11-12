@@ -846,22 +846,33 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
       ctx.translate(shot.x, shot.y);
       ctx.globalAlpha = Math.min(1, lifeRatio * 1.35);
       const radius = (shot.radius ?? 90) * (0.92 + Math.sin(game.elapsed * 8) * 0.08);
-      const gradient = ctx.createRadialGradient(0, 0, 3, 0, 0, radius);
       if (game.evolved) {
-        gradient.addColorStop(0, "rgba(30,8,48,.94)");
-        gradient.addColorStop(0.42, "rgba(147,51,234,.58)");
-        gradient.addColorStop(0.78, "rgba(126,34,206,.20)");
-        gradient.addColorStop(1, "rgba(88,28,135,0)");
+        const rot = game.elapsed * 3;
+        const grad = ctx.createRadialGradient(0, 0, radius * 0.2, 0, 0, radius);
+        grad.addColorStop(0, "rgba(5,2,10,0.98)");
+        grad.addColorStop(0.35, "rgba(112,26,117,0.72)");
+        grad.addColorStop(0.70, "rgba(192,38,211,0.28)");
+        grad.addColorStop(1, "rgba(147,51,234,0)");
+        ctx.fillStyle = grad;
+        ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = "rgba(244,114,182,0.65)"; ctx.lineWidth = 2.5;
+        ctx.beginPath(); ctx.arc(0, 0, radius * 0.75, rot, rot + Math.PI * 1.3); ctx.stroke();
+        ctx.strokeStyle = "rgba(192,132,252,0.5)"; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.arc(0, 0, radius * 0.45, -rot * 1.4, -rot * 1.4 + Math.PI * 1.1); ctx.stroke();
+        ctx.fillStyle = "#030006";
+        ctx.beginPath(); ctx.arc(0, 0, radius * 0.28, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = "#e879f9"; ctx.lineWidth = 1.8; ctx.stroke();
       } else {
-        gradient.addColorStop(0, "rgba(239,68,68,.82)");
-        gradient.addColorStop(0.52, "rgba(249,115,22,.43)");
-        gradient.addColorStop(1, "rgba(239,68,68,0)");
+        const grad = ctx.createRadialGradient(0, 0, 3, 0, 0, radius);
+        grad.addColorStop(0, "rgba(254,240,138,0.95)");
+        grad.addColorStop(0.28, "rgba(249,115,22,0.85)");
+        grad.addColorStop(0.65, "rgba(220,38,38,0.42)");
+        grad.addColorStop(1, "rgba(185,28,28,0)");
+        ctx.fillStyle = grad;
+        ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = "rgba(253,224,71,0.7)"; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(0, 0, radius * 0.68, game.elapsed * 0.5, game.elapsed * 0.5 + Math.PI * 1.4); ctx.stroke();
       }
-      ctx.fillStyle = gradient;
-      ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = game.evolved ? "rgba(216,180,254,.65)" : "rgba(254,202,202,.65)";
-      ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(0, 0, radius * 0.72, game.elapsed * 0.4, game.elapsed * 0.4 + Math.PI * 1.5); ctx.stroke();
       ctx.restore();
       return;
     }
@@ -901,17 +912,30 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
       ctx.save();
       ctx.translate(shot.x, shot.y);
       ctx.rotate((shot.angle ?? 0) + Math.PI / 2);
-      ctx.shadowColor = "#fbbf24";
-      ctx.shadowBlur = 0;
-      ctx.fillStyle = "#fef08a";
+      const isOuter = game.evolved && (shot.bladeIndex ?? 0) >= 8;
+      const bladeScale = isOuter ? 0.9 : 1.1;
+      ctx.scale(bladeScale, bladeScale);
+      ctx.fillStyle = game.evolved ? "rgba(236,72,153,0.35)" : "rgba(250,204,21,0.25)";
       ctx.beginPath();
-      ctx.moveTo(0, -22); ctx.lineTo(5, -2); ctx.lineTo(3, 13);
-      ctx.lineTo(0, 19); ctx.lineTo(-3, 13); ctx.lineTo(-5, -2);
+      ctx.moveTo(0, -28); ctx.lineTo(9, -2); ctx.lineTo(5, 16);
+      ctx.lineTo(0, 24); ctx.lineTo(-5, 16); ctx.lineTo(-9, -2);
       ctx.closePath(); ctx.fill();
-      ctx.fillStyle = "#a855f7"; ctx.fillRect(-7, 3, 14, 4);
-      ctx.fillStyle = "#fbbf24"; ctx.fillRect(-2, 7, 4, 10);
-      ctx.strokeStyle = "#fff7d6"; ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.moveTo(0, -17); ctx.lineTo(0, 11); ctx.stroke();
+      ctx.fillStyle = game.evolved ? "#fdf2f8" : "#fefce8";
+      ctx.beginPath();
+      ctx.moveTo(0, -25); ctx.lineTo(6, -2); ctx.lineTo(3.5, 14);
+      ctx.lineTo(0, 20); ctx.lineTo(-3.5, 14); ctx.lineTo(-6, -2);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = game.evolved ? "#ec4899" : "#c084fc";
+      ctx.fillRect(-1.5, -12, 3, 10);
+      ctx.fillStyle = game.evolved ? "#f43f5e" : "#fbbf24";
+      ctx.beginPath(); ctx.arc(0, 2, 2.5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = game.evolved ? "#831843" : "#6b21a8";
+      ctx.fillRect(-9, 4, 18, 4.5);
+      ctx.fillStyle = "#facc15";
+      ctx.fillRect(-2.5, 8.5, 5, 8);
+      ctx.beginPath(); ctx.arc(0, 18.5, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.moveTo(0, -24); ctx.lineTo(0, 4); ctx.stroke();
       ctx.restore();
       return;
     }
@@ -963,24 +987,68 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
       ctx.shadowColor = "#67e8f9"; ctx.shadowBlur = 0; ctx.fillStyle = "#a5f3fc";
       ctx.beginPath(); ctx.moveTo(9, 0); ctx.lineTo(2, -2); ctx.lineTo(4, -7); ctx.lineTo(-7, 1); ctx.lineTo(-1, 2); ctx.lineTo(-4, 7); ctx.closePath(); ctx.fill();
     } else if (shot.kind === "revolver_empowered") {
-      ctx.shadowColor = "#fbbf24"; ctx.shadowBlur = 0; ctx.fillStyle = "#fef08a";
-      ctx.beginPath(); ctx.moveTo(16, 0); ctx.lineTo(-8, -5); ctx.lineTo(-4, 0); ctx.lineTo(-8, 5); ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = "#c084fc"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(9, 0); ctx.lineTo(-5, 0); ctx.stroke();
+      ctx.fillStyle = "#fef08a";
+      ctx.beginPath();
+      ctx.moveTo(18, 0); ctx.lineTo(-10, -6); ctx.lineTo(-5, 0); ctx.lineTo(-10, 6);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = "#ffffff";
+      ctx.beginPath();
+      ctx.moveTo(14, 0); ctx.lineTo(-2, -2.5); ctx.lineTo(-2, 2.5);
+      ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = "#c084fc"; ctx.lineWidth = 2.2;
+      ctx.beginPath(); ctx.moveTo(12, 0); ctx.lineTo(-8, 0); ctx.stroke();
     } else if (shot.kind === "plasma_core") {
-      const coreRadius = shot.radius ?? 13;
-      ctx.shadowColor = game.evolved ? "#a855f7" : "#ef4444"; ctx.shadowBlur = 0;
-      ctx.fillStyle = game.evolved ? "#d8b4fe" : "#fca5a5";
-      ctx.beginPath(); ctx.arc(0, 0, coreRadius, 0, Math.PI * 2); ctx.fill();
-      ctx.shadowBlur = 0; ctx.strokeStyle = "#fff1f2"; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(0, 0, coreRadius * 0.56, 0, Math.PI * 2); ctx.stroke();
+      const coreRadius = shot.radius ?? 14;
+      const pulse = 1 + Math.sin(game.elapsed * 18) * 0.12;
+      const r = coreRadius * pulse;
+      if (game.evolved) {
+        const halo = ctx.createRadialGradient(0, 0, r * 0.3, 0, 0, r * 1.8);
+        halo.addColorStop(0, "rgba(232,121,249,0.9)");
+        halo.addColorStop(0.5, "rgba(147,51,234,0.4)");
+        halo.addColorStop(1, "rgba(88,28,135,0)");
+        ctx.fillStyle = halo;
+        ctx.beginPath(); ctx.arc(0, 0, r * 1.8, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "#05000a";
+        ctx.beginPath(); ctx.arc(0, 0, r * 0.85, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = "#f0abfc"; ctx.lineWidth = 2.2; ctx.stroke();
+        ctx.rotate(game.elapsed * 8);
+        ctx.strokeStyle = "rgba(250,232,255,0.8)"; ctx.lineWidth = 1.4;
+        ctx.strokeRect(-r * 0.6, -r * 0.6, r * 1.2, r * 1.2);
+      } else {
+        const grad = ctx.createRadialGradient(0, 0, 2, 0, 0, r);
+        grad.addColorStop(0, "#ffffff");
+        grad.addColorStop(0.35, "#fde047");
+        grad.addColorStop(0.75, "#ea580c");
+        grad.addColorStop(1, "#b91c1c");
+        ctx.fillStyle = grad;
+        ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = "#fef08a"; ctx.lineWidth = 1.8;
+        ctx.beginPath(); ctx.arc(0, 0, r * 0.52, 0, Math.PI * 2); ctx.stroke();
+      }
     } else if (shot.kind === "sentinel_beam") {
-      ctx.fillStyle = game.evolved ? "#dc2626" : "#ccfbf1";
-      ctx.fillRect(-12, -2.5, 24, 5);
-      ctx.fillStyle = game.evolved ? "#fecaca" : "#fef3c7"; ctx.beginPath(); ctx.moveTo(11, 0); ctx.lineTo(3, -5); ctx.lineTo(-2, 0); ctx.lineTo(3, 5); ctx.closePath(); ctx.fill();
+      const ev = game.evolved;
+      ctx.fillStyle = ev ? "rgba(239,68,68,0.38)" : "rgba(34,211,238,0.35)";
+      ctx.beginPath();
+      ctx.moveTo(18, 0); ctx.lineTo(-16, -5); ctx.lineTo(-16, 5);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = ev ? "#dc2626" : "#06b6d4";
+      ctx.beginPath();
+      ctx.moveTo(16, 0); ctx.lineTo(-14, -2.8); ctx.lineTo(-14, 2.8);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = "#ffffff";
+      ctx.beginPath();
+      ctx.moveTo(13, 0); ctx.lineTo(-10, -1.2); ctx.lineTo(-10, 1.2);
+      ctx.closePath(); ctx.fill();
     } else if (shot.kind === "bullet") {
-      ctx.shadowColor = "#c084fc"; ctx.shadowBlur = 0; ctx.fillStyle = "#e9d5ff";
-      ctx.beginPath(); ctx.moveTo(11, 0); ctx.lineTo(-5, -3); ctx.lineTo(-5, 3); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = "#fff1ce"; ctx.beginPath(); ctx.moveTo(6, 0); ctx.lineTo(0, -1.2); ctx.lineTo(-4, 0); ctx.closePath(); ctx.fill();
+      const ev = game.evolved;
+      ctx.fillStyle = ev ? "#f0abfc" : "#e9d5ff";
+      ctx.beginPath();
+      ctx.moveTo(14, 0); ctx.lineTo(-7, -4); ctx.lineTo(-3, 0); ctx.lineTo(-7, 4);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = ev ? "#fdf4ff" : "#fffbeb";
+      ctx.beginPath();
+      ctx.moveTo(9, 0); ctx.lineTo(1, -1.8); ctx.lineTo(-3, 0); ctx.lineTo(1, 1.8);
+      ctx.closePath(); ctx.fill();
     } else {
       const projectile = sprites.projectile;
       if (projectile?.complete && projectile.naturalWidth > 0) {
