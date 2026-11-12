@@ -935,8 +935,8 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
       trail.addColorStop(1, game.evolved ? "rgba(216,180,254,.95)" : "rgba(252,165,165,.95)");
       ctx.strokeStyle = trail; ctx.lineWidth = 6;
     } else if (shot.kind === "sentinel_beam") {
-      trail.addColorStop(0, "rgba(45,212,191,0)");
-      trail.addColorStop(1, "rgba(204,251,241,.98)");
+      trail.addColorStop(0, game.evolved ? "rgba(127,29,29,0)" : "rgba(45,212,191,0)");
+      trail.addColorStop(1, game.evolved ? "rgba(248,113,113,.98)" : "rgba(204,251,241,.98)");
       ctx.strokeStyle = trail; ctx.lineWidth = 3.2;
     } else {
       trail.addColorStop(0, "rgba(183,122,255,0)");
@@ -969,9 +969,9 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
       ctx.shadowBlur = 0; ctx.strokeStyle = "#fff1f2"; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(0, 0, coreRadius * 0.56, 0, Math.PI * 2); ctx.stroke();
     } else if (shot.kind === "sentinel_beam") {
-      ctx.shadowColor = "#2dd4bf"; ctx.shadowBlur = 0; ctx.fillStyle = "#ccfbf1";
+      ctx.fillStyle = game.evolved ? "#dc2626" : "#ccfbf1";
       ctx.fillRect(-12, -2.5, 24, 5);
-      ctx.fillStyle = "#fef3c7"; ctx.beginPath(); ctx.moveTo(11, 0); ctx.lineTo(3, -5); ctx.lineTo(-2, 0); ctx.lineTo(3, 5); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = game.evolved ? "#fecaca" : "#fef3c7"; ctx.beginPath(); ctx.moveTo(11, 0); ctx.lineTo(3, -5); ctx.lineTo(-2, 0); ctx.lineTo(3, 5); ctx.closePath(); ctx.fill();
     } else if (shot.kind === "bullet") {
       ctx.shadowColor = "#c084fc"; ctx.shadowBlur = 0; ctx.fillStyle = "#e9d5ff";
       ctx.beginPath(); ctx.moveTo(11, 0); ctx.lineTo(-5, -3); ctx.lineTo(-5, 3); ctx.closePath(); ctx.fill();
@@ -2857,7 +2857,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                       <article className="fractals-shop-item">
                         <div className="fractals-shop-item__slot"><Heart className="h-5 w-5 text-rose-300" /></div>
                         <div className="min-w-0"><p className="fractals-shop-item__name">Âncora da Alma</p><p className="fractals-shop-item__description">Até duas ressurreições por expedição, uma Âncora equipada por vez. N1: 40% de vida/3s; N2: 60%/6s; N3: explosão na segunda morte.</p><div className="fractals-shop-pips" aria-label={"Nível " + purchases.anchor_soul + " de 3"}>{Array.from({length:3}).map((_,i)=><i key={i} className={i<purchases.anchor_soul?"fractals-shop-pip is-filled":"fractals-shop-pip"}/>)}<span>{purchases.anchor_soul}/3</span></div><span className="fractals-shop-item__status">{purchases.anchor_soul>=3?"Explosão da segunda Âncora liberada":purchases.anchor_soul>=2?"Recuperação reforçada liberada":purchases.anchor_soul>=1?"Ressurreição liberada":unlockedCorruption>=2?"Disponível":"Requer Corrupção 2"}</span></div>
-                        <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || purchases.anchor_soul>=3 || unlockedCorruption<2 && !isMaster || (!isMaster && fractalBalance<FRACTAL_SHOP.anchor_soul[purchases.anchor_soul]?.cost)} onClick={()=>void purchaseUpgrade("anchor_soul")}>{purchases.anchor_soul>=3?"MAX":isMaster?"GRÁTIS":FRACTAL_SHOP.anchor_soul[purchases.anchor_soul]?.cost.toLocaleString("pt-BR")+" FR"}</button>
+                        <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || purchases.anchor_soul>=3 || unlockedCorruption<2 && !isMaster || (!isMaster && fractalBalance<Number(FRACTAL_SHOP.anchor_soul[purchases.anchor_soul] ?? 0))} onClick={()=>void purchaseUpgrade("anchor_soul")}>{purchases.anchor_soul>=3?"MAX":isMaster?"GRÁTIS":Number(FRACTAL_SHOP.anchor_soul[purchases.anchor_soul] ?? 0).toLocaleString("pt-BR")+" FR"}</button>
                       </article>
                       <article className="fractals-shop-item">
                         <div className="fractals-shop-item__slot"><BookOpen className="h-5 w-5 text-fuchsia-300" /></div>
