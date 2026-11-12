@@ -34,7 +34,8 @@ type ShotKind =
   | "orbital_blade"
   | "gravity_well"
   | "sentinel_beam"
-  | "sentinel_explosion";
+  | "sentinel_explosion"
+  | "dash_strike";
 
 type Shot = {
   x: number; y: number; vx: number; vy: number; damage: number; life: number;
@@ -261,7 +262,7 @@ type PurchaseState = {
   health: number; projectile_duration: number; projectile_range: number; projectiles: number;
   ricochet: number; piercing: number; chain_lightning: number;
   reroll: number; oracle: number; banish: number; fortune: number; transmutation: number;
-  anchor_soul: number; omen_archive: boolean;
+  anchor_soul: number; dash: number; omen_archive: boolean;
   weapon_nucleus: boolean; weapon_scythe: boolean; weapon_orbitals: boolean; weapon_gravity: boolean; weapon_sentinels: boolean;
   mastery_void_revolver: boolean; mastery_nucleus: boolean; mastery_scythe: boolean; mastery_orbitals: boolean; mastery_gravity: boolean; mastery_sentinels: boolean;
   evolution_void_revolver: boolean; evolution_nucleus: boolean; evolution_scythe: boolean; evolution_orbitals: boolean; evolution_gravity: boolean; evolution_sentinels: boolean;
@@ -271,7 +272,7 @@ const DEFAULT_PURCHASES: PurchaseState = {
   health: 0, projectile_duration: 0, projectile_range: 0, projectiles: 0,
   ricochet: 0, piercing: 0, chain_lightning: 0,
   reroll: 0, oracle: 0, banish: 0, fortune: 0, transmutation: 0,
-  anchor_soul: 0, omen_archive: false,
+  anchor_soul: 0, dash: 0, omen_archive: false,
   weapon_nucleus: false, weapon_scythe: false, weapon_orbitals: false, weapon_gravity: false, weapon_sentinels: false,
   mastery_void_revolver: false, mastery_nucleus: false, mastery_scythe: false, mastery_orbitals: false, mastery_gravity: false, mastery_sentinels: false,
   evolution_void_revolver: false, evolution_nucleus: false, evolution_scythe: false, evolution_orbitals: false, evolution_gravity: false, evolution_sentinels: false,
@@ -290,7 +291,7 @@ const RITUAL_WINDOW = 50;
 const EXECUTIONER_WINDOW = 60;
 function parsePurchaseState(raw: any): PurchaseState {
   const defaults = DEFAULT_PURCHASES;
-  const numericKeys = ["area","experience","rarity","health","projectile_duration","projectile_range","projectiles","ricochet","piercing","chain_lightning","reroll","oracle","banish","fortune","transmutation","anchor_soul"] as const;
+  const numericKeys = ["area","experience","rarity","health","projectile_duration","projectile_range","projectiles","ricochet","piercing","chain_lightning","reroll","oracle","banish","fortune","transmutation","anchor_soul","dash"] as const;
   const booleanKeys = Object.keys(defaults).filter((key) => !numericKeys.includes(key as typeof numericKeys[number])) as Array<keyof PurchaseState>;
   const parsed = { ...defaults, ...raw } as PurchaseState;
   for (const key of numericKeys) {
@@ -312,7 +313,7 @@ type GameState = {
   enemies: Enemy[]; shots: Shot[]; gems: Gem[]; specialDrops: SpecialDrop[]; sentinelTotems: SentinelTotem[]; sentinelRespawnTimer: number; nextSentinelTotemId: number; urns: BreakableUrn[]; obstacles: CemeteryObstacle[]; nextUrnMinute: number; nextUrnId: number; particles: Particle[]; damageNumbers: DamageNumber[]; pickupLabels: PickupLabel[]; challengeEvent: ChallengeEvent | null; nextChallengeEvent: number; kills: number; ended: boolean; upgradeCounts: UpgradeCounts; totalDamageDealt: number; crystalsCollected: number; highestLevel: number;
   weaponId: WeaponId; weaponLevel: number; evolved: boolean; rerollsRemaining: number; banishesRemaining: number; bannedUpgradeIds: string[];
   revolverShotCount?: number; orbitalPulseTimer?: number;
-  gravityAuraTimer?: number; gravityAuraActive?: boolean; gravityAuraShot?: Shot; scytheSiphonCooldown?: number;
+  gravityAuraTimer?: number; gravityAuraActive?: boolean; gravityAuraShot?: Shot; scytheSiphonCooldown?: number; dashChainRemaining: number; dashChainWindow: number; dashHitTargets: Set<Enemy>;
   anchorReviveAvailable: boolean; anchorRevivesUsed: number; omenId: OmenId | null; omenSpawnMultiplier: number; omenEnemyHpMultiplier: number; omenRewardMultiplier: number; omenRevengeCooldown: number; lastObservedHp: number;
   shake?: number; rings?: { x: number; y: number; r: number; max: number; life: number; color: string }[];
 };
@@ -676,7 +677,7 @@ function getWellSprite(radius: number, evolved: boolean) {
     g.closePath(); g.stroke(); g.lineWidth = 1.2; g.beginPath(); g.arc(0, 0, r * 0.85, 0, Math.PI * 2); g.stroke();
   }
   let ring: HTMLCanvasElement | undefined;
-  if (evolved) { const rc = document.createElement("canvas"); const rg = rc.getContext("2d")!; const rs = Math.ceil(r * 0.8 * 2 + 40); rc.width = rs; rc.height = rs; rg.translate(rs / 2, rs / 2); drawRuneRing(rg, r * 0.8); ring = rc; }
+  if (evolved) { const rc = document.createElement("canvas"); const rg = rc.getContext("2d")!; const rs = Math.ceil(r * 0.8 * 2 + 40); rc.width = rs; rc.height = rs; rg.translate(rs / 2, rs / 2); drawRuneRing(rg, r * 0.8); base.getContext("2d")!.drawImage(rc, (size - rs) / 2, (size - rs) / 2); }
   const out = { base, sigil, ring }; wellSpriteCache.set(key, out); return out;
 }
 function drawRuneRing(ctx: CanvasRenderingContext2D, radius: number) {
@@ -795,7 +796,7 @@ function makeGame(width: number, height: number, purchases: PurchaseState, weapo
     enemies: [], shots: [], gems: [], specialDrops: [], sentinelTotems: [], sentinelRespawnTimer: 0, nextSentinelTotemId: 1, urns: [], obstacles: createCemeteryObstacles(), nextUrnMinute: 1, nextUrnId: 1, particles: [], damageNumbers: [], pickupLabels: [], challengeEvent: null, nextChallengeEvent: 0, kills: 0, ended: false, upgradeCounts: {}, totalDamageDealt: 0, crystalsCollected: 0, highestLevel: 1,
     weaponId, weaponLevel: 1, evolved: false, rerollsRemaining: purchases.reroll, banishesRemaining: purchases.banish, bannedUpgradeIds: [],
     revolverShotCount: 0, orbitalPulseTimer: 0, gravityAuraTimer: 0, gravityAuraActive: true, gravityAuraShot: undefined, scytheSiphonCooldown: 0,
-    anchorReviveAvailable: false, anchorRevivesUsed: 0, omenId, omenSpawnMultiplier: omenId === "famine" ? 1.2 : 1,
+    anchorReviveAvailable: false, anchorRevivesUsed: 0, dashChainRemaining: 0, dashChainWindow: 0, dashHitTargets: new Set<Enemy>(), omenId, omenSpawnMultiplier: omenId === "famine" ? 1.2 : 1,
     omenEnemyHpMultiplier: omenId === "abundance" ? 1.15 : 1, omenRewardMultiplier: omenId === "abundance" ? 1.25 : 1,
     omenRevengeCooldown: 0, lastObservedHp: maxHp,
   };
@@ -1085,16 +1086,13 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
       ctx.save();
       ctx.translate(shot.x, shot.y);
       ctx.globalAlpha = Math.min(1, lifeRatio * 1.25);
-      const pulse = 1 + Math.sin(game.elapsed * 7) * 0.035;
-      ctx.drawImage(layers.base, -half * pulse, -half * pulse, half * 2 * pulse, half * 2 * pulse);
-      const rot = game.elapsed * (game.evolved ? -1.25 : 1.1);
+      // Halo e anel evoluído ficam pré-compostos no sprite estático.
+      // Só o selo central gira, reduzindo mistura e draw calls em cada frame.
+      ctx.globalCompositeOperation = "source-over";
+      ctx.drawImage(layers.base, -half, -half, half * 2, half * 2);
+      const rot = game.elapsed * (game.evolved ? -0.72 : 0.62);
       ctx.rotate(rot);
       ctx.drawImage(layers.sigil, -half, -half, half * 2, half * 2);
-      if (layers.ring) {
-        const ringHalf = (layers.ring.width / 2) * visualScale;
-        ctx.rotate(-rot * 2);
-        ctx.drawImage(layers.ring, -ringHalf, -ringHalf, ringHalf * 2, ringHalf * 2);
-      }
       ctx.restore();
       return;
     }
