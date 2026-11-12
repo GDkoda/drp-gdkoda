@@ -41,6 +41,7 @@ type Shot = {
   isChainLightning?: boolean; isSplash?: boolean; isAnchorBurst?: boolean; targetEnemy?: Enemy;
   kind?: ShotKind; radius?: number; maxLife?: number; angle?: number; arcSpan?: number;
   bladeIndex?: number; totalBlades?: number; pulseTimer?: number; hasDetonated?: boolean;
+  isAura?: boolean; active?: boolean;
 };
 type Gem = { x: number; y: number; value: number; radius: number; previousX?: number; previousY?: number; runeCrystal?: boolean };
 type SpecialDrop = { x: number; y: number; kind: "area" | "experience" | "projectile_range" | "projectiles" | "ricochet" | "piercing" | "chain_lightning" | "food" | "void"; radius: number };
@@ -56,10 +57,10 @@ type SpriteMap = Partial<Record<SpriteKey, HTMLImageElement>>;
 type PlayerVisualAction = "idle" | "move" | "cast";
 const WEAPON_CONFIG: Record<WeaponId, { name: string; description: string; price: number; purchaseKey: keyof PurchaseState | null; masteryKey: keyof PurchaseState; projectKey: keyof PurchaseState; evolutionName: string }> = {
   void_revolver: { name: "Revólver do Vazio", description: "Rajadas lineares de precisão; a cada seis disparos, uma bala dourada reforçada.", price: 0, purchaseKey: null, masteryKey: "mastery_void_revolver", projectKey: "evolution_void_revolver", evolutionName: "Seis Ecos" },
-  unstable_core: { name: "Núcleo Instável", description: "Orbe lento de plasma que deixa uma poça corrosiva ao atingir um alvo ou esgotar seu alcance.", price: 8000, purchaseKey: "weapon_nucleus", masteryKey: "mastery_nucleus", projectKey: "evolution_nucleus", evolutionName: "Singularidade" },
+  unstable_core: { name: "Núcleo Instável", description: "Orbe lento de plasma que deixa uma poça corrosiva ampliada; seus pulsos atraem inimigos para o centro.", price: 8000, purchaseKey: "weapon_nucleus", masteryKey: "mastery_nucleus", projectKey: "evolution_nucleus", evolutionName: "Singularidade" },
   spectral_scythe: { name: "Foice Espectral", description: "Um arco cortante de quase 200° que se torna um golpe circular completo ao evoluir.", price: 9000, purchaseKey: "weapon_scythe", masteryKey: "mastery_scythe", projectKey: "evolution_scythe", evolutionName: "Ceifador de Almas" },
   orbital_swords: { name: "Espadas Orbitais", description: "Lâminas físicas permanecem em órbita e ferem ameaças por contato.", price: 10000, purchaseKey: "weapon_orbitals", masteryKey: "mastery_orbitals", projectKey: "evolution_orbitals", evolutionName: "Dança das Lâminas" },
-  gravity_shackle: { name: "Grilhão Gravitacional", description: "Cria um selo rúnico que puxa monstros para o centro e os fere em pulsos.", price: 11000, purchaseKey: "weapon_gravity", masteryKey: "mastery_gravity", projectKey: "evolution_gravity", evolutionName: "Prisão do Abismo" },
+  gravity_shackle: { name: "Grilhão Gravitacional", description: "Projeta uma aura rúnica intermitente ao redor do herói que desacelera inimigos; sua evolução mantém a aura ativa.", price: 11000, purchaseKey: "weapon_gravity", masteryKey: "mastery_gravity", projectKey: "evolution_gravity", evolutionName: "Prisão do Abismo" },
   rune_sentinels: { name: "Sentinelas Rúnicas", description: "Sentinelas orbitais disparam feixes rúnicos rápidos contra os alvos mais resistentes.", price: 12000, purchaseKey: "weapon_sentinels", masteryKey: "mastery_sentinels", projectKey: "evolution_sentinels", evolutionName: "Arsenal Ancestral" },
 };
 const OMEN_CONFIG: Record<OmenId, { name: string; description: string }> = {
@@ -126,6 +127,7 @@ type GameState = {
   enemies: Enemy[]; shots: Shot[]; gems: Gem[]; specialDrops: SpecialDrop[]; sentinelTotems: SentinelTotem[]; sentinelRespawnTimer: number; nextSentinelTotemId: number; urns: BreakableUrn[]; obstacles: CemeteryObstacle[]; nextUrnMinute: number; nextUrnId: number; particles: Particle[]; damageNumbers: DamageNumber[]; pickupLabels: PickupLabel[]; challengeEvent: ChallengeEvent | null; nextChallengeEvent: number; kills: number; ended: boolean; upgradeCounts: UpgradeCounts; totalDamageDealt: number; crystalsCollected: number; highestLevel: number;
   weaponId: WeaponId; weaponLevel: number; evolved: boolean; rerollsRemaining: number; banishesRemaining: number; bannedUpgradeIds: string[];
   revolverShotCount?: number; orbitalPulseTimer?: number;
+  gravityAuraTimer?: number; gravityAuraActive?: boolean;
   anchorReviveAvailable: boolean; anchorRevivesUsed: number; omenId: OmenId | null; omenSpawnMultiplier: number; omenEnemyHpMultiplier: number; omenRewardMultiplier: number; omenRevengeCooldown: number; lastObservedHp: number;
   shake?: number; rings?: { x: number; y: number; r: number; max: number; life: number; color: string }[];
 };
@@ -536,7 +538,7 @@ function makeGame(width: number, height: number, purchases: PurchaseState, weapo
     player: { x: 0, y: 0, hp: maxHp, maxHp, speed: 205 * (omenId === "spectral_veil" ? 1.15 : 1), damage: 22 * omenDamage, fireRate: 0.72 * (omenId === "rupture" ? 1.15 : 1), invuln: 0, hitFlash: 0, xp: 0, nextXp: 12, level: 1, pickupRadius: 85, xpMultiplier: omenId === "famine" ? 1.2 : 1, specialAreaStacks: 0, specialExperienceStacks: 0, projectileRangeStacks: 0, projectileRangeMultiplier: 1, projectileStacks: 0, relicRicochet: 0, relicPiercing: 0, relicChainLightning: 0, projectileLife, facing: 0, castFacing: 0, castTimer: 0, moving: false, spriteAction: "idle", spriteDirection: 0, previousSpriteAction: "idle", previousSpriteDirection: 0, spriteBlend: 1 },
     enemies: [], shots: [], gems: [], specialDrops: [], sentinelTotems: [], sentinelRespawnTimer: 0, nextSentinelTotemId: 1, urns: [], obstacles: createCemeteryObstacles(), nextUrnMinute: 1, nextUrnId: 1, particles: [], damageNumbers: [], pickupLabels: [], challengeEvent: null, nextChallengeEvent: 0, kills: 0, ended: false, upgradeCounts: {}, totalDamageDealt: 0, crystalsCollected: 0, highestLevel: 1,
     weaponId, weaponLevel: 1, evolved: false, rerollsRemaining: purchases.reroll, banishesRemaining: purchases.banish, bannedUpgradeIds: [],
-    revolverShotCount: 0, orbitalPulseTimer: 0,
+    revolverShotCount: 0, orbitalPulseTimer: 0, gravityAuraTimer: 0, gravityAuraActive: true,
     anchorReviveAvailable: false, anchorRevivesUsed: 0, omenId, omenSpawnMultiplier: omenId === "famine" ? 1.2 : 1,
     omenEnemyHpMultiplier: omenId === "abundance" ? 1.15 : 1, omenRewardMultiplier: omenId === "abundance" ? 1.25 : 1,
     omenRevengeCooldown: 0, lastObservedHp: maxHp,
@@ -544,7 +546,8 @@ function makeGame(width: number, height: number, purchases: PurchaseState, weapo
 }
 
 function spawnPlasmaPuddle(game: GameState, x: number, y: number, coreDamage: number) {
-  const radius = (game.evolved ? 132 : 88) * (1 + game.player.specialAreaStacks * 0.1);
+  // A Singularidade passa a dominar uma região maior sem aumentar a frequência dos pulsos.
+  const radius = (game.evolved ? 180 : 118) * (1 + game.player.specialAreaStacks * 0.1);
   const life = game.evolved ? 2.5 : 1.5;
   game.shots.push({
     x, y, vx: 0, vy: 0,
@@ -807,6 +810,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     const lifeRatio = clamp(shot.life / Math.max(0.01, shot.maxLife ?? game.player.projectileLife), 0.08, 1);
 
     if (shot.kind === "gravity_well") {
+      if (shot.isAura && !shot.active) return;
       const radius = shot.radius ?? 160;
       const layers = getWellSprite(radius, game.evolved);
       const half = layers.base.width / 2;
@@ -1898,21 +1902,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             }
             game.shotTimer = 0.5;
           } else if (game.weaponId === "gravity_shackle") {
-            const wellRadius = (game.evolved ? 230 : 160) * (1 + game.player.specialAreaStacks * 0.1);
-            const maxActiveWells = (game.weaponLevel >= 10 ? 3 : game.weaponLevel >= 5 ? 2 : 1) + game.player.projectileStacks;
-            const activeWells = game.shots.filter((shot) => shot.kind === "gravity_well" && shot.life > 0).length;
-            if (activeWells < maxActiveWells) {
-              const spawnAngle = Math.random() * Math.PI * 2, spawnDist = 75 + Math.random() * 145;
-              const targetX = game.player.x + Math.cos(spawnAngle) * spawnDist, targetY = game.player.y + Math.sin(spawnAngle) * spawnDist;
-              game.shots.push({
-                x: targetX, y: targetY, vx: 0, vy: 0,
-                damage: weaponDamage * (game.evolved ? 0.75 : 0.5625),
-                life: 2.2, maxLife: 2.2, hitTargets: [], bouncesRemaining: 0, piercesRemaining: 999,
-                kind: "gravity_well", radius: wellRadius, pulseTimer: 0.38,
-              });
-              game.player.castFacing = directionFromVector(targetX - game.player.x, targetY - game.player.y);
-              game.player.castTimer = 0.24;
-            }
+            // A aura é atualizada independentemente de haver inimigos selecionáveis.
             game.shotTimer = game.player.fireRate * 2.2;
           } else if (game.weaponId === "rune_sentinels") {
             // Os totens estacionários disparam por conta própria; este timer apenas evita
@@ -1923,6 +1913,55 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           if (game.weaponId !== "orbital_swords" && game.weaponId !== "rune_sentinels") fractalAudio.shoot();
           }
         }
+        // Grilhão: uma única aura acompanha o herói. A forma normal pulsa em ciclos;
+        // a evolução mantém o selo permanentemente ativo. Reutilizamos o sprite já existente.
+        if (game.weaponId === "gravity_shackle") {
+          const auraRadius = (game.evolved ? 230 : 175) * (1 + game.player.specialAreaStacks * 0.1);
+          let aura = game.shots.find((shot) => shot.kind === "gravity_well" && shot.isAura);
+          if (!aura) {
+            aura = {
+              x: game.player.x, y: game.player.y, vx: 0, vy: 0,
+              damage: getEquippedWeaponStrikeDamage(game) * (game.evolved ? 0.75 : 0.5625),
+              life: 9999, maxLife: 9999, hitTargets: [], bouncesRemaining: 0, piercesRemaining: 999,
+              kind: "gravity_well", radius: auraRadius, pulseTimer: 0, isAura: true, active: true,
+            };
+            game.shots.push(aura);
+          }
+          aura.x = game.player.x;
+          aura.y = game.player.y;
+          aura.radius = auraRadius;
+          aura.damage = getEquippedWeaponStrikeDamage(game) * (game.evolved ? 0.75 : 0.5625);
+          aura.life = 9999;
+          aura.maxLife = 9999;
+          if (game.evolved) {
+            aura.active = true;
+            game.gravityAuraActive = true;
+          } else {
+            game.gravityAuraTimer = (game.gravityAuraTimer ?? 0) + dt;
+            if (game.gravityAuraTimer >= 4.8) {
+              game.gravityAuraTimer -= 4.8;
+              game.gravityAuraActive = !(game.gravityAuraActive ?? true);
+              aura.pulseTimer = 0;
+              aura.hitTargets = [];
+            }
+            aura.active = game.gravityAuraActive ?? true;
+          }
+          if (aura.active) {
+            const radiusSq = auraRadius * auraRadius;
+            for (const enemy of game.enemies) {
+              if (enemy.hp <= 0) continue;
+              const dx = enemy.x - game.player.x, dy = enemy.y - game.player.y;
+              if (dx * dx + dy * dy <= radiusSq) {
+                enemy.slowTimer = Math.max(enemy.slowTimer ?? 0, game.evolved ? 0.65 : 0.48);
+              }
+            }
+          }
+        } else {
+          game.shots = game.shots.filter((shot) => !(shot.kind === "gravity_well" && shot.isAura));
+          game.gravityAuraTimer = 0;
+          game.gravityAuraActive = true;
+        }
+
         const desiredAction: PlayerVisualAction = game.player.castTimer > 0 ? "cast" : game.player.moving ? "move" : "idle";
         const desiredDirection = desiredAction === "cast" ? game.player.castFacing : game.player.facing;
         if (desiredAction !== game.player.spriteAction || desiredDirection !== game.player.spriteDirection) {
@@ -1949,21 +1988,10 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           } else if (shot.kind === "scythe_slash") {
             shot.x = game.player.x;
             shot.y = game.player.y;
-          } else if (shot.kind === "gravity_well") {
-            const pullForce = game.evolved ? 100 : 60;
-            const radius = shot.radius ?? 160;
-            for (const enemy of game.enemies) {
-              if (enemy.hp <= 0) continue;
-              const dx = shot.x - enemy.x, dy = shot.y - enemy.y;
-              if (dx > radius || dx < -radius || dy > radius || dy < -radius) continue;
-              const d2 = dx * dx + dy * dy;
-              if (d2 <= radius * radius) {
-                const d = Math.max(1, Math.sqrt(d2));
-                const pull = Math.min(pullForce * dt, Math.max(0, d - 8));
-                enemy.x += (dx / d) * pull;
-                enemy.y += (dy / d) * pull;
-              }
-            }
+          } else if (shot.kind === "gravity_well" && shot.isAura) {
+            // A aura apenas acompanha o jogador; não aplica atração.
+            shot.x = game.player.x;
+            shot.y = game.player.y;
           } else if (shot.kind !== "plasma_puddle") {
             if (shot.targetEnemy) {
               if (shot.targetEnemy.hp <= 0) { shot.life = 0; return; }
@@ -2244,6 +2272,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         const collisionGrid = buildEnemySpatialGrid(game.enemies);
         for (const shot of game.shots) {
           const isPulsingField = shot.kind === "plasma_puddle" || shot.kind === "gravity_well";
+          if (shot.kind === "gravity_well" && shot.isAura && !shot.active) continue;
           if (isPulsingField) {
             if ((shot.pulseTimer ?? 0) > 0) continue;
             shot.pulseTimer = 0.4;
@@ -2302,7 +2331,20 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               });
               if (game.damageNumbers.length > 12) game.damageNumbers.shift();
               shot.hitTargets.push(enemy);
-              if (shot.kind === "plasma_puddle") enemy.slowTimer = Math.max(enemy.slowTimer ?? 0, 0.5);
+              if (shot.kind === "plasma_puddle") {
+                enemy.slowTimer = Math.max(enemy.slowTimer ?? 0, 0.5);
+                // O Núcleo atrai apenas no pulso: movimento curto e discreto, sem manter
+                // os inimigos presos nem executar força gravitacional a cada frame.
+                const pullRadius = shot.radius ?? 118;
+                const pullX = shot.x - enemy.x, pullY = shot.y - enemy.y;
+                const pullDistanceSq = pullX * pullX + pullY * pullY;
+                if (pullDistanceSq > 1 && pullDistanceSq <= pullRadius * pullRadius) {
+                  const pullDistance = Math.sqrt(pullDistanceSq);
+                  const pullStep = Math.min(game.evolved ? 16 : 10, Math.max(0, pullDistance - enemy.radius - 6));
+                  enemy.x += (pullX / pullDistance) * pullStep;
+                  enemy.y += (pullY / pullDistance) * pullStep;
+                }
+              }
 
               // Descarga em cadeia: cada impacto do projétil original pode chamar alvos extras.
               const supportsChainRelic = shot.kind === undefined || shot.kind === "bullet" || shot.kind === "revolver_empowered" || shot.kind === "plasma_core";
