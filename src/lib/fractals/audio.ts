@@ -5,6 +5,8 @@ class FractalAudioController {
   private muted = false;
   private consecutiveGems = 0;
   private gemComboTimer: ReturnType<typeof setTimeout> | null = null;
+  private lastKillAudioTime = 0;
+  private lastShootAudioTime = 0;
 
   constructor() {
     if (typeof window !== "undefined") {
@@ -61,6 +63,9 @@ class FractalAudioController {
   // 1. Disparo de projétil.
   public shoot(): void {
     if (this.muted) return;
+    const nowMs = performance.now();
+    if (nowMs - this.lastShootAudioTime < 40) return;
+    this.lastShootAudioTime = nowMs;
     this.initContext();
     if (!this.ctx) return;
 
@@ -143,6 +148,9 @@ class FractalAudioController {
   // 4. Morte de inimigo / impacto.
   public kill(isBig = false): void {
     if (this.muted) return;
+    const nowMs = performance.now();
+    if (!isBig && nowMs - this.lastKillAudioTime < 45) return;
+    this.lastKillAudioTime = nowMs;
     this.initContext();
     if (!this.ctx) return;
 
