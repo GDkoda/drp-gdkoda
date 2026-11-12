@@ -6,7 +6,7 @@
 
 - Branch de trabalho: `FractalGame`.
 - Branch padrão do repositório: `main`.
-- Comparação consultada: `FractalGame` está 464 commits à frente de `main` e 0 atrás. É uma diferença grande: não é apenas o último pacote de alterações de Ecos dos Fractais.
+- Comparação consultada: `FractalGame` está significativamente à frente de `main` e não está atrás. O número exato de commits muda conforme novos commits são adicionados; repetir a comparação imediatamente antes de abrir/mesclar o PR. É uma diferença grande: não é apenas o último pacote de alterações de Ecos dos Fractais.
 - A busca por PR com `FractalGame` como head não retornou PR aberto ou fechado.
 - Não há arquivos de workflow em `.github/workflows/`; o status de commit consultado não apresentou checks publicados.
 
