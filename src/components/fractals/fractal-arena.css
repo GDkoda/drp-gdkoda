@@ -3199,3 +3199,174 @@
   .fractals-desktop-required__panel { padding: 1.4rem 1rem; }
   .fractals-desktop-required__controls { flex-direction: column; align-items: stretch; }
 }
+
+
+/* Small diamond information control used across the Fractal Arsenal. */
+.fractals-shop-item__heading {
+  display: flex;
+  min-width: 0;
+  width: 100%;
+  align-items: center;
+  gap: 5px;
+}
+.fractals-shop-item__heading .fractals-shop-item__name {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.fractals-shop-info-trigger {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  width: 17px;
+  height: 17px;
+  flex: 0 0 17px;
+  place-items: center;
+  padding: 0;
+  border: 1px solid rgba(16,185,129,.24);
+  border-radius: 4px;
+  background: rgba(6,78,59,.18);
+  color: #a3e635;
+  cursor: pointer;
+  opacity: .82;
+  transition: opacity .16s ease, border-color .16s ease, background .16s ease, filter .16s ease, transform .16s ease;
+}
+.fractals-shop-info-trigger:hover,
+.fractals-shop-info-trigger:focus-visible {
+  border-color: rgba(163,230,53,.78);
+  background: rgba(16,185,129,.2);
+  opacity: 1;
+  filter: drop-shadow(0 0 5px rgba(16,185,129,.42));
+  transform: translateY(-1px);
+}
+.fractals-shop-info-trigger:focus-visible {
+  outline: 1px solid #d1fae5;
+  outline-offset: 2px;
+}
+.fractals-shop-info-diamond {
+  position: relative;
+  display: grid;
+  width: 15px;
+  height: 15px;
+  place-items: center;
+  color: #10b981;
+}
+.fractals-shop-info-diamond__shape {
+  position: absolute;
+  inset: 0;
+  width: 15px;
+  height: 15px;
+  stroke-width: 1.8;
+}
+.fractals-shop-info-diamond__letter {
+  position: relative;
+  z-index: 1;
+  margin-top: -1px;
+  color: #d1fae5;
+  font-family: Georgia, serif;
+  font-size: 9px;
+  font-style: italic;
+  font-weight: 900;
+  line-height: 1;
+  text-shadow: 0 0 5px rgba(16,185,129,.85);
+}
+
+/* Modal details: emerald glass, visually separate from the rarity system. */
+.fractals-shop-info-dialog {
+  overflow-x: hidden;
+  border: 1px solid rgba(16,185,129,.42) !important;
+  border-radius: 16px !important;
+  background:
+    radial-gradient(ellipse at 8% 0%, rgba(16,185,129,.16), transparent 42%),
+    radial-gradient(ellipse at 100% 100%, rgba(163,230,53,.07), transparent 36%),
+    linear-gradient(145deg, #0b211b 0%, #071510 58%, #091b16 100%) !important;
+  color: #ecfdf5 !important;
+  box-shadow: 0 24px 90px rgba(0,0,0,.72), 0 0 35px rgba(16,185,129,.12), inset 0 1px rgba(209,250,229,.08) !important;
+}
+.fractals-shop-info-dialog > button {
+  color: rgba(209,250,229,.7) !important;
+}
+.fractals-shop-info-dialog > button:hover {
+  color: #d9f99d !important;
+}
+.fractals-shop-info-header {
+  gap: 8px !important;
+  padding-right: 22px;
+  text-align: left !important;
+}
+.fractals-shop-info-category {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border: 1px solid rgba(16,185,129,.35);
+  border-radius: 999px;
+  background: rgba(16,185,129,.1);
+  color: #a7f3d0;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .16em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+.fractals-shop-info-category svg {
+  color: #a3e635;
+  filter: drop-shadow(0 0 4px rgba(163,230,53,.5));
+}
+.fractals-shop-info-title {
+  margin-top: 3px;
+  color: #ecfdf5 !important;
+  font-size: 20px !important;
+  font-weight: 950 !important;
+  letter-spacing: .02em;
+}
+.fractals-shop-info-summary {
+  color: rgba(209,250,229,.72) !important;
+  font-size: 12px !important;
+  line-height: 1.55 !important;
+}
+.fractals-shop-info-details {
+  display: grid;
+  gap: 10px;
+  margin-top: 4px;
+  padding: 14px;
+  border: 1px solid rgba(16,185,129,.2);
+  border-radius: 10px;
+  background: rgba(0,0,0,.2);
+}
+.fractals-shop-info-eyebrow {
+  margin: 0 0 1px;
+  color: #a3e635;
+  font-size: 9px;
+  font-weight: 950;
+  letter-spacing: .2em;
+}
+.fractals-shop-info-detail {
+  position: relative;
+  margin: 0;
+  padding-left: 13px;
+  color: rgba(236,253,245,.84);
+  font-size: 11px;
+  line-height: 1.6;
+}
+.fractals-shop-info-detail::before {
+  content: "";
+  position: absolute;
+  top: .57em;
+  left: 1px;
+  width: 5px;
+  height: 5px;
+  transform: rotate(45deg);
+  border: 1px solid #a3e635;
+  background: rgba(16,185,129,.35);
+  box-shadow: 0 0 7px rgba(16,185,129,.38);
+}
+@media (max-width: 480px) {
+  .fractals-shop-info-dialog {
+    width: calc(100vw - 24px) !important;
+    padding: 18px !important;
+  }
+  .fractals-shop-info-title { font-size: 18px !important; }
+  .fractals-shop-info-details { padding: 12px; }
+  .fractals-shop-info-detail { font-size: 10px; }
+}
