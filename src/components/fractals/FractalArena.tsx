@@ -1254,7 +1254,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
   const [stats, setStats] = useState({ totalDamageDealt: 0, crystalsCollected: 0, highestLevel: 1 });
   const [result, setResult] = useState<"victory" | "defeat" | null>(null);
   const [bossMessage, setBossMessage] = useState(false);
-  const [pausePanel, setPausePanel] = useState<"main" | "attributes">("main");
+  const [pausePanel, setPausePanel] = useState<"main" | "attributes" | "master">("main");
+  const [masterGiftListOpen, setMasterGiftListOpen] = useState(false);
   const [speedMultiplier, setSpeedMultiplier] = useState<1 | 2 | 3>(1);
   const [zoom, setZoom] = useState(1);
   const zoomRef = useRef(1);
@@ -1267,7 +1268,6 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
   const [shopSection, setShopSection] = useState<"permanent" | "relics" | "weapons" | "omens">("permanent");
   const [selectedWeapon, setSelectedWeapon] = useState<WeaponId>("void_revolver");
   const [masterWeaponSelection, setMasterWeaponSelection] = useState<WeaponId | null>(null);
-  const [masterGiftId, setMasterGiftId] = useState<UpgradeId>("power");
   const [selectedOmen, setSelectedOmen] = useState<OmenId | null>(null);
   const [runId, setRunId] = useState<string | null>(null);
   const [isMuted, setIsMuted] = useState(() => fractalAudio.isMuted());
@@ -2932,60 +2932,15 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             <div className="fractals-arena-hint pointer-events-none absolute bottom-3 left-3"><b>NECRÓPOLE DOS ESQUECIDOS</b> · WASD / setas / toque para mover</div>
             {bossMessage && !result && <div className="fractals-boss-alert pointer-events-none absolute inset-x-0 top-1/2 z-30 -translate-y-1/2 px-3 text-center"><span>⚠ ALERTA DE FENDA: O GUARDIÃO DESPERTOU ⚠</span></div>}
             {paused && !result && levelChoices.length === 0 && <div className="fractals-pause-overlay absolute inset-0 grid place-items-center overflow-y-auto p-3 sm:p-5">
- <div className="fractals-pause-panel relative w-full max-w-md overflow-hidden p-4 sm:p-5">
+ <div className={`fractals-pause-panel relative w-full ${pausePanel === "master" ? "max-w-3xl" : "max-w-md"} overflow-hidden p-4 sm:p-5`}>
   <div className="fractals-pause-header mb-4 flex items-center justify-between pb-3"><div><p className="text-[9px] font-bold uppercase tracking-[.24em] text-violet-200/70">Ecos dos Fractais · Refúgio</p><h3 className="mt-1 font-display text-2xl text-white">Expedição pausada</h3></div><div className="grid h-11 w-11 place-items-center rounded-2xl border border-amber-200/20 bg-amber-200/10 text-amber-100 shadow-[0_0_24px_rgba(251,191,36,0.12)]"><Pause className="h-5 w-5"/></div></div>
   {pausePanel === "main" ? <>
    <div className="fractals-pause-actions grid grid-cols-2 gap-2"><Button variant="outline" className="h-auto justify-start gap-2 rounded-xl border-violet-100/15 bg-white/[0.055] py-3 text-white shadow-inner hover:border-violet-100/35 hover:bg-violet-300/10" onClick={() => setPausePanel("attributes")}><UserRound className="h-4 w-4"/> Atributos</Button><Button variant="outline" className="h-auto justify-start gap-2 rounded-xl border-violet-100/15 bg-white/[0.055] py-3 text-white shadow-inner hover:border-violet-100/35 hover:bg-violet-300/10" onClick={toggleFullscreen}><Maximize className="h-4 w-4"/> Tela cheia</Button><Button variant="outline" className="h-auto justify-start gap-2 rounded-xl border-violet-100/15 bg-white/[0.055] py-3 text-white shadow-inner hover:border-violet-100/35 hover:bg-violet-300/10" onClick={() => setShowPlayerHp((v) => !v)}><Heart className="h-4 w-4 text-rose-300"/> HP: {showPlayerHp ? "visível" : "oculto"}</Button><Button variant="outline" className="h-auto justify-start gap-2 rounded-xl border-violet-100/15 bg-white/[0.055] py-3 text-white shadow-inner hover:border-violet-100/35 hover:bg-violet-300/10" onClick={() => setShowDamageNumbers((v) => !v)}><Swords className="h-4 w-4 text-amber-200"/> Dano: {showDamageNumbers ? "visível" : "oculto"}</Button></div>
    <Button variant="destructive" className="mt-3 h-10 w-full border border-rose-300/25 bg-rose-950/55 font-bold text-rose-100 hover:bg-rose-900/70" onClick={() => { const game = gameRef.current; if (!game || game.ended) return; game.ended = true; setStats({ totalDamageDealt: Math.round(game.totalDamageDealt), crystalsCollected: game.crystalsCollected, highestLevel: game.highestLevel }); setResult("defeat"); setPaused(false); setPausePanel("main"); fractalAudio.defeat(); finishRun(false); }}><Skull className="mr-2 h-4 w-4"/> Desistir da partida</Button>
-    <div className="fractals-pause-speed mt-3 rounded-2xl p-3"><div className="mb-2 flex items-center gap-2 text-xs font-semibold text-white/75"><Gauge className="h-4 w-4"/> Velocidade da expedição</div><div className="grid grid-cols-3 gap-2">{([1,2,3] as const).map((speed) => <Button key={speed} size="sm" variant={speedMultiplier===speed?"default":"outline"} disabled={!isMaster && (speed===2 ? !purchases.speed_2x : speed===3 ? !purchases.speed_3x : false)} className={!isMaster && speed>1?"border-white/10 opacity-45":""} onClick={()=>setSpeedMultiplier(speed)}>{speed}x{!isMaster && (speed===2 ? !purchases.speed_2x : speed===3 ? !purchases.speed_3x : false)?" 🔒":""}</Button>)}</div>{!isMaster && <p className="mt-2 text-[10px] text-white/45">Desbloqueie 2x e 3x na loja de fractais.</p>}{isMaster && <><p className="mt-2 text-[10px] text-emerald-200/70">Acesso de mestre: todas as velocidades liberadas para testes.</p><Button variant="outline" size="sm" className="mt-2 h-8 w-full border-emerald-200/25 bg-emerald-400/[0.07] text-[10px] text-emerald-100 hover:bg-emerald-400/15" onClick={() => { const game = gameRef.current; if (!game) return; game.enemies = Array.from({length:50},(_,index) => { const angle = index / 50 * Math.PI * 2; const ring = 46 + (index % 3) * 29; const x = game.player.x + Math.cos(angle) * ring; const y = game.player.y + Math.sin(angle) * ring; return { x, y, hp: 100000, maxHp: 100000, speed: 22, radius: 10, damage: 0, color: "#9b91b4", xp: 0, type: "wraith" as const, attack: 0, flash: 0, windup: 0, targetX: x, targetY: y, dashTime: 0, summonedAtHalf: false, furyTriggered: false }; }); game.spawnTimer = Number.MAX_SAFE_INTEGER; game.bossSpawned = true; setPaused(false); toast.info("Teste de carga ativo: 50 monstros na arena. Confira o FPS e o contador 50/50 no topo."); }}>TESTE DE CARGA · 50 MONSTROS</Button></>}</div>
-   {isMaster && <section className="mt-3 space-y-3 rounded-2xl border border-emerald-300/25 bg-emerald-950/25 p-3 shadow-[0_0_24px_rgba(16,185,129,.08)]">
-    <div className="flex items-center gap-2"><Shield className="h-4 w-4 text-emerald-200"/><h4 className="text-xs font-black uppercase tracking-[.16em] text-emerald-100">Ferramentas do Mestre</h4></div>
-    <div className="space-y-1.5">
-     <label className="text-[10px] font-bold uppercase tracking-wider text-white/55">Troca rápida de arma</label>
-     <select value={masterWeaponSelection ?? gameRef.current?.weaponId ?? selectedWeapon} onChange={(event) => {
-       const nextWeapon = event.target.value as WeaponId;
-       setMasterWeaponSelection(nextWeapon);
-       const game = gameRef.current;
-       if (!game) return;
-       game.weaponId = nextWeapon;
-       game.shots = [];
-       game.sentinelTotems = [];
-       game.sentinelRespawnTimer = 0;
-       game.shotTimer = 0.25;
-       game.revolverShotCount = 0;
-       game.orbitalPulseTimer = 0;
-       game.player.castTimer = 0;
-       toast.info("Arma alterada para " + WEAPON_CONFIG[nextWeapon].name + ".");
-     }} className="h-10 w-full rounded-lg border border-emerald-200/20 bg-[#111720] px-3 text-xs font-semibold text-white outline-none focus:border-emerald-300/60">
-      {(Object.keys(WEAPON_CONFIG) as WeaponId[]).map((weaponId) => <option key={weaponId} value={weaponId}>{WEAPON_CONFIG[weaponId].name}</option>)}
-     </select>
-    </div>
-    <Button variant="outline" className="h-9 w-full border-amber-300/30 bg-amber-400/10 text-xs font-bold text-amber-100 hover:bg-amber-400/20" onClick={() => {
-      const game = gameRef.current;
-      if (!game) return;
-      if (!game.evolved) {
-        game.evolved = true;
-        game.player.damage *= 1.35;
-        game.player.fireRate /= 1.10;
-        game.rings = [...(game.rings ?? []), { x: game.player.x, y: game.player.y, r: 12, max: 230, life: 1.2, color: "#fbbf24" }];
-      }
-      toast.success(WEAPON_CONFIG[game.weaponId].evolutionName + " forçada pelo Mestre!");
-    }}><Crown className="mr-2 h-4 w-4"/> Forçar Evolução</Button>
-    <div className="space-y-1.5">
-     <label className="text-[10px] font-bold uppercase tracking-wider text-white/55">Conceder dádiva</label>
-     <select value={masterGiftId} onChange={(event) => setMasterGiftId(event.target.value as UpgradeId)} className="h-10 w-full rounded-lg border border-emerald-200/20 bg-[#111720] px-3 text-xs font-semibold text-white outline-none focus:border-emerald-300/60">
-      {MASTER_GIFT_OPTIONS.map((gift, index) => <option key={gift.id + "-" + index} value={gift.id}>{gift.name}{gift.rarity === "maestria" ? " · Maestria" : gift.rarity === "evolution" ? " · Evolução" : ""}</option>)}
-     </select>
-     <Button className="h-9 w-full bg-emerald-500/80 text-xs font-black text-[#05140f] hover:bg-emerald-400" onClick={() => {
-       const gift = MASTER_GIFT_OPTIONS.find((candidate) => candidate.id === masterGiftId);
-       if (!gift || !gameRef.current) return;
-       applyUpgrade(gift);
-       toast.success(gift.name + " adicionada ao personagem.");
-     }}><Sparkles className="mr-2 h-4 w-4"/> Adicionar ao Personagem</Button>
-    </div>
-   </section>}
-   <Button className="fractals-pause-resume mt-3 h-11 w-full font-bold" onClick={() => {setPausePanel("main");setPaused(false)}}><Play className="mr-2 h-4 w-4"/> Retomar expedição</Button>
-  </> : <>
+    <div className="fractals-pause-speed mt-3 rounded-2xl p-3"><div className="mb-2 flex items-center gap-2 text-xs font-semibold text-white/75"><Gauge className="h-4 w-4"/> Velocidade da expedição</div><div className="grid grid-cols-3 gap-2">{([1,2,3] as const).map((speed) => <Button key={speed} size="sm" variant={speedMultiplier===speed?"default":"outline"} disabled={!isMaster && (speed===2 ? !purchases.speed_2x : speed===3 ? !purchases.speed_3x : false)} className={!isMaster && speed>1?"border-white/10 opacity-45":""} onClick={()=>setSpeedMultiplier(speed)}>{speed}x{!isMaster && (speed===2 ? !purchases.speed_2x : speed===3 ? !purchases.speed_3x : false)?" 🔒":""}</Button>)}</div>{!isMaster && <p className="mt-2 text-[10px] text-white/45">Desbloqueie 2x e 3x na loja de fractais.</p>}{isMaster && <p className="mt-2 text-[10px] text-emerald-200/70">Acesso de mestre: todas as velocidades liberadas para testes.</p>}</div>
+    {isMaster && <Button className="mt-3 h-12 w-full border border-amber-200/50 bg-gradient-to-r from-amber-300 via-emerald-300 to-emerald-500 font-black tracking-wide text-[#08130e] shadow-[0_0_28px_rgba(52,211,153,.22)] hover:brightness-110" onClick={() => { setMasterGiftListOpen(false); setPausePanel("master"); }}><Crown className="mr-2 h-5 w-5"/> Painel do Mestre</Button>}
+    <Button className="fractals-pause-resume mt-3 h-11 w-full font-bold" onClick={() => {setPausePanel("main");setPaused(false)}}><Play className="mr-2 h-4 w-4"/> Retomar expedição</Button>
+  </> : pausePanel === "attributes" ? <>
    <div className="mb-3 grid grid-cols-2 gap-2">{[["Vida",`${Math.ceil(gameRef.current?.player.hp ?? hud.hp)} / ${Math.ceil(gameRef.current?.player.maxHp ?? hud.maxHp)}`],["Dano",`${(gameRef.current?.player.damage ?? 0).toFixed(1)}`],["Velocidade",`${(gameRef.current?.player.speed ?? 0).toFixed(0)}`],["Intervalo de ataque",`${(gameRef.current?.player.fireRate ?? 0).toFixed(2)}s`],["Nível",`${gameRef.current?.player.level ?? hud.level}`],["Projéteis",`${1 + (gameRef.current?.player.projectileStacks ?? 0)}`],["Ricochete",`${gameRef.current?.player.relicRicochet ?? 0}/3`],["Perfuração",`${gameRef.current?.player.relicPiercing ?? 0}/3`],["Descarga em Cadeia",`${gameRef.current?.player.relicChainLightning ?? 0}/3`],["Sentinelas ativas",`${gameRef.current?.sentinelTotems.length ?? 0}`],["Alcance",`+${Math.round((gameRef.current?.player.projectileRangeMultiplier ?? 1) * 100 - 100)}%`],["Experiência",`${Math.floor(gameRef.current?.player.xp ?? hud.xp)} / ${Math.floor(gameRef.current?.player.nextXp ?? hud.nextXp)}`],["Abates",`${gameRef.current?.kills ?? hud.kills}`],["Multiplicador",`${speedMultiplier}x`],["Arma",WEAPON_CONFIG[gameRef.current?.weaponId ?? selectedWeapon].name],["Nível da arma",`${gameRef.current?.weaponLevel ?? 1}/10`],["Presságio",gameRef.current?.omenId ? OMEN_CONFIG[gameRef.current.omenId].name : "Nenhum"]].map(([label,value])=><div key={label} className="rounded-lg border border-white/10 bg-white/5 p-2"><p className="text-[10px] text-white/45">{label}</p><p className="text-sm font-semibold tabular-nums text-white">{value}</p></div>)}</div>
    <section className="mt-3 rounded-xl border border-violet-300/20 bg-violet-950/20 p-3">
     <div className="mb-2 flex items-center gap-2"><Sparkles className="h-4 w-4 text-amber-200"/><h4 className="text-xs font-black uppercase tracking-wider text-violet-100">Dádivas &amp; Runas Ativas</h4></div>
@@ -2997,7 +2952,89 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
     </div> : <p className="text-[10px] text-white/45">Nenhuma dádiva acumulada nesta expedição.</p>}
    </section>
    <Button variant="outline" className="w-full border-white/15 text-white hover:bg-white/10" onClick={()=>setPausePanel("main")}><ArrowLeft className="mr-2 h-4 w-4"/> Voltar ao menu</Button>
-  </>}
+  </> : <>
+    {isMaster && <div className="max-h-[72vh] space-y-4 overflow-y-auto pr-1">
+      <div className="flex items-center justify-between gap-3 rounded-xl border border-emerald-300/25 bg-gradient-to-r from-emerald-950/70 via-[#15251f] to-amber-950/30 p-3">
+        <div><p className="text-[9px] font-black uppercase tracking-[.22em] text-emerald-200/70">Acesso privilegiado</p><h4 className="mt-1 text-lg font-black text-white">Painel do Mestre</h4></div>
+        <Shield className="h-7 w-7 text-amber-200"/>
+      </div>
+      <section className="space-y-2 rounded-xl border border-emerald-300/20 bg-emerald-950/20 p-3">
+        <div className="flex items-center gap-2"><Swords className="h-4 w-4 text-emerald-200"/><h4 className="text-xs font-black uppercase tracking-[.16em] text-emerald-100">Troca Rápida de Arma</h4></div>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {(Object.keys(WEAPON_CONFIG) as WeaponId[]).map((weaponId) => {
+            const active = (masterWeaponSelection ?? gameRef.current?.weaponId ?? selectedWeapon) === weaponId;
+            return <Button key={weaponId} variant="outline" className={`h-auto min-h-[54px] justify-start whitespace-normal border px-3 py-2 text-left text-[11px] font-bold leading-tight transition-all ${active ? "border-amber-300/80 bg-gradient-to-br from-amber-300/25 to-emerald-400/20 text-amber-100 shadow-[0_0_18px_rgba(251,191,36,.18)] ring-1 ring-amber-200/30" : "border-white/10 bg-white/[.04] text-white/75 hover:border-emerald-200/40 hover:bg-emerald-400/10"}`} onClick={() => {
+              const game = gameRef.current;
+              if (!game) return;
+              setMasterWeaponSelection(weaponId);
+              game.weaponId = weaponId;
+              game.shots = [];
+              game.sentinelTotems = [];
+              game.sentinelRespawnTimer = 0;
+              game.shotTimer = 0.25;
+              game.revolverShotCount = 0;
+              game.orbitalPulseTimer = 0;
+              game.player.castTimer = 0;
+              toast.info("Arma alterada para " + WEAPON_CONFIG[weaponId].name + ".");
+            }}>{active && <Check className="mr-1.5 h-3.5 w-3.5 shrink-0 text-amber-200"/>}{WEAPON_CONFIG[weaponId].name}</Button>;
+          })}
+        </div>
+      </section>
+      <section className="space-y-2 rounded-xl border border-violet-300/20 bg-violet-950/20 p-3">
+        <div className="flex items-center gap-2"><Sparkles className="h-4 w-4 text-violet-200"/><h4 className="text-xs font-black uppercase tracking-[.16em] text-violet-100">Conceder Dádiva</h4></div>
+        <Button variant="outline" className="h-10 w-full justify-between border-violet-200/25 bg-violet-400/[.08] text-xs font-bold text-violet-100 hover:bg-violet-400/[.16]" onClick={() => setMasterGiftListOpen((open) => !open)}>
+          {masterGiftListOpen ? "Ocultar Lista de Dádivas" : "Mostrar Lista de Dádivas"} <ChevronDown className={`h-4 w-4 transition-transform ${masterGiftListOpen ? "rotate-180" : ""}`}/>
+        </Button>
+        {masterGiftListOpen && <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+          {MASTER_GIFT_OPTIONS.filter((gift) => gift.id !== "weapon_mastery" && gift.id !== "weapon_evolution" && gift.id !== "anchor_soul").map((gift) => {
+            const game = gameRef.current;
+            const currentLevel = game?.upgradeCounts[gift.id]?.count ?? 0;
+            const capped = gift.id === "special_area" ? (game?.player.specialAreaStacks ?? 0) >= MAX_AREA_RELIC_STACKS
+              : gift.id === "special_experience" ? (game?.player.specialExperienceStacks ?? 0) >= MAX_EXPERIENCE_RELIC_STACKS
+              : gift.id === "special_projectile_range" ? (game?.player.projectileRangeStacks ?? 0) >= MAX_PROJECTILE_RANGE_STACKS
+              : gift.id === "special_projectiles" ? (game?.player.projectileStacks ?? 0) >= MAX_EXTRA_PROJECTILES
+              : gift.id === "special_ricochet" ? (game?.player.relicRicochet ?? 0) >= 3
+              : gift.id === "special_piercing" ? (game?.player.relicPiercing ?? 0) >= 3
+              : gift.id === "special_chain_lightning" ? (game?.player.relicChainLightning ?? 0) >= 3 : false;
+            return <Button key={gift.id} variant="outline" disabled={!game || capped} className="h-auto min-h-[46px] justify-between gap-2 border-white/10 bg-black/20 px-3 py-2 text-left text-[10px] text-white hover:border-violet-200/35 hover:bg-violet-400/10 disabled:opacity-35" onClick={() => { if (!gameRef.current) return; applyUpgrade(gift); toast.success(gift.name + " concedida pelo Mestre."); }}>
+              <span className="min-w-0 truncate">{gift.name}</span><span className="shrink-0 rounded-full border border-amber-200/25 bg-amber-300/10 px-2 py-1 text-[9px] font-black tabular-nums text-amber-100">Nvl. {currentLevel}</span>
+            </Button>;
+          })}
+        </div>}
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+          <Button variant="outline" disabled={!gameRef.current || (gameRef.current?.weaponLevel ?? 10) >= 10} className="h-auto min-h-[48px] border-cyan-300/30 bg-cyan-400/10 px-2 py-2 text-[10px] font-black text-cyan-100 hover:bg-cyan-400/20" onClick={() => { const gift = MASTER_GIFT_OPTIONS.find((g) => g.id === "weapon_mastery"); if (gift && gameRef.current) { applyUpgrade(gift); toast.success("Ressonância da Arma: +1 nível."); } }}><Swords className="mr-1.5 h-4 w-4 shrink-0"/>Ressonância da Arma (+1 nível)</Button>
+          <Button variant="outline" disabled={!gameRef.current || Boolean(gameRef.current?.evolved)} className="h-auto min-h-[48px] border-amber-300/35 bg-amber-400/10 px-2 py-2 text-[10px] font-black text-amber-100 hover:bg-amber-400/20" onClick={() => { const gift = MASTER_GIFT_OPTIONS.find((g) => g.id === "weapon_evolution"); if (gift && gameRef.current) { applyUpgrade(gift); toast.success("Despertar forçado pelo Mestre."); } }}><Crown className="mr-1.5 h-4 w-4 shrink-0"/>Forçar Despertar (Evolução)</Button>
+          <Button variant="outline" disabled={!gameRef.current || Boolean(gameRef.current?.anchorReviveAvailable) || (gameRef.current?.anchorRevivesUsed ?? 0) >= 2} className="h-auto min-h-[48px] border-rose-300/30 bg-rose-400/10 px-2 py-2 text-[10px] font-black text-rose-100 hover:bg-rose-400/20" onClick={() => { const gift = MASTER_GIFT_OPTIONS.find((g) => g.id === "anchor_soul"); if (gift && gameRef.current) { applyUpgrade(gift); toast.success("Âncora da Alma concedida."); } }}><Heart className="mr-1.5 h-4 w-4 shrink-0"/>Âncora da Alma</Button>
+        </div>
+      </section>
+      <section className="space-y-2 rounded-xl border border-amber-300/20 bg-amber-950/15 p-3">
+        <div className="flex items-center gap-2"><Gauge className="h-4 w-4 text-amber-200"/><h4 className="text-xs font-black uppercase tracking-[.16em] text-amber-100">Ações de Teste de Estresse</h4></div>
+        <Button className="h-11 w-full border border-emerald-200/25 bg-gradient-to-r from-emerald-500 to-teal-400 text-xs font-black text-[#06140f] hover:brightness-110" onClick={() => {
+          const game = gameRef.current;
+          if (!game) return;
+          game.enemies = Array.from({ length: 50 }, (_, index) => {
+            const angle = index / 50 * Math.PI * 2, ring = 46 + (index % 3) * 29;
+            const x = game.player.x + Math.cos(angle) * ring, y = game.player.y + Math.sin(angle) * ring;
+            return { x, y, hp: 100000, maxHp: 100000, speed: 22, radius: 10, damage: 0, color: "#9b91b4", xp: 0, type: "wraith" as const, attack: 0, flash: 0, windup: 0, targetX: x, targetY: y, dashTime: 0, summonedAtHalf: false, furyTriggered: false };
+          });
+          game.spawnTimer = Number.MAX_SAFE_INTEGER;
+          game.bossSpawned = true;
+          setPausePanel("main"); setPaused(false);
+          toast.info("Teste de carga ativo: 50 monstros na arena. Confira o desempenho.");
+        }}>TESTE DE CARGA (50 MONSTROS)</Button>
+        <Button variant="outline" className="h-10 w-full border-rose-300/30 bg-rose-400/10 text-xs font-black text-rose-100 hover:bg-rose-400/20" onClick={() => {
+          const game = gameRef.current;
+          if (!game) return;
+          game.player.hp = game.player.maxHp; game.player.hitFlash = 0; game.player.invuln = 0;
+          setHud((current) => ({ ...current, hp: game.player.hp, maxHp: game.player.maxHp }));
+          toast.success("HP restaurado ao máximo.");
+        }}><Heart className="mr-2 h-4 w-4"/>Restaurar HP Total</Button>
+      </section>
+    </div>}
+    <div className="mt-3 grid grid-cols-2 gap-2">
+      <Button variant="outline" className="h-10 border-white/15 text-white hover:bg-white/10" onClick={() => setPausePanel("main")}><ArrowLeft className="mr-2 h-4 w-4"/>Voltar ao menu</Button>
+      <Button className="fractals-pause-resume h-10 font-bold" onClick={() => { setPausePanel("main"); setPaused(false); }}><Play className="mr-2 h-4 w-4"/>Retomar</Button>
+    </div>
  </div>
 </div>}
             {levelChoices.length > 0 && (
