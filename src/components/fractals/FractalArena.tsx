@@ -98,6 +98,12 @@ const SHOP_ITEM_INFO: Record<string, ShopItemInfo> = {
     "É necessário possuir a Aceleração 2x antes de comprar este desbloqueio.",
     "O desbloqueio é permanente."
   ]},
+  dash: { title: "Ruptura Cinética", category: "Melhoria permanente", summary: "Aprimora o dash: invulnerabilidade, impacto e uma segunda investida.", details: [
+    "Nível 1: concede invulnerabilidade durante toda a duração do dash. Sem este nível, o dash continua servindo apenas para mobilidade.",
+    "Nível 2: atravessar inimigos durante o dash causa dano equivalente a 10% do dano-base do golpe da arma equipada. Cada inimigo pode ser atingido uma vez por investida.",
+    "Nível 3: permite uma segunda investida em sequência, com uma janela curta para acioná-la. Você pode mudar a direção entre as investidas e também corrigir a direção enquanto estiver avançando. Depois da sequência, o dash entra em recarga.",
+    "Desbloqueio permanente em três níveis. Custos: 3.000, 8.500 e 22.000 FR."
+  ]},
   reroll: { title: "Rerrolagem de Dádivas", category: "Controle das escolhas", summary: "+1 rerrolagem por nível, a cada expedição.", details: [
     "Cada nível comprado concede uma rerrolagem adicional em cada expedição.",
     "Você pode trocar o conjunto atual de dádivas oferecidas ao subir de nível.",
@@ -1766,7 +1772,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         getWellSprite(175, false);
         getWellSprite(230, true);
       }
-      const { data: newRunId, error: runError } = await (supabase.rpc as any)("start_fractal_run", { _corruption: corruption, _weapon: selectedWeapon, _omen: selectedOmen });
+      const { data: newRunId, error: runError } = await (supabase.rpc as any)("start_fractal_run", { _corruption: corruption, _weapon: selectedWeapon, _omen: corruption >= 4 && purchases.omen_archive ? selectedOmen : null });
       if (runError) { toast.error(runError.message); return; }
       setRunId(newRunId);
       dashRequestRef.current = false;
@@ -3293,7 +3299,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                     const isDanger = level.level >= 4;
                     return (
                       <button key={level.level} type="button" role="radio" aria-checked={active} disabled={locked}
-                        onClick={() => { setCorruption(level.level); if (level.level < 4) setSelectedOmen(null); }}
+                        onClick={() => setCorruption(level.level)
                         title={locked ? "Nível " + level.level + " bloqueado (vença a dificuldade anterior)" : "Selecionar " + level.level + ": " + level.name}
                         className={`fractals-corruption-node ${active ? "is-active" : ""} ${isDanger ? "is-danger" : ""} ${locked ? "is-locked" : ""}`}>
                         <span className="fractals-corruption-pip" />
@@ -3325,7 +3331,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                 <p className="mt-2 text-[10px] text-white/40">
                   {unlockedCorruption < 5 ? "Nível " + (unlockedCorruption + 1) + " será desbloqueado ao derrotar o Guardião no Nível " + unlockedCorruption + "." : "✦ Todos os selos de corrupção foram rompidos."}
                 </p>
-              {corruption >= 4 && purchases.omen_archive && (
+              {unlockedCorruption >= 4 && purchases.omen_archive && (
                 <section className="mt-3 rounded-xl border border-fuchsia-300/20 bg-fuchsia-950/20 p-3">
                   <div className="mb-2 flex items-center justify-between gap-2"><div><h3 className="font-display text-sm font-black uppercase tracking-wider text-fuchsia-100">Arquivo dos Presságios</h3><p className="text-[10px] text-white/55">Apenas um presságio pode acompanhar cada expedição.</p></div><span className="text-[9px] font-bold text-fuchsia-200">{selectedOmen ? OMEN_CONFIG[selectedOmen].name : "SEM PRESSÁGIO"}</span></div>
                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -3431,6 +3437,17 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                       </article>
 
                       <article className="fractals-shop-item">
+                        <div className="fractals-shop-item__slot"><Move className="h-5 w-5 text-emerald-300" /></div>
+                        <div className="min-w-0">
+                          <div className="fractals-shop-item__heading"><p className="fractals-shop-item__name">Ruptura Cinética</p><ShopInfoButton info={SHOP_ITEM_INFO.dash} onOpen={setShopInfo} /></div>
+                          <p className="fractals-shop-item__description">{SHOP_ITEM_INFO.dash.summary}</p>
+                          <div className="fractals-shop-pips" aria-label={"Nível " + purchases.dash + " de 3"}>{Array.from({ length: 3 }).map((_, i) => <i key={i} className={i < purchases.dash ? "fractals-shop-pip is-filled" : "fractals-shop-pip"} />)}<span>{purchases.dash}/3</span></div>
+                          <span className="fractals-shop-item__status">{purchases.dash >= 3 ? "Duas investidas liberadas" : purchases.dash >= 2 ? "Impacto durante o dash liberado" : purchases.dash >= 1 ? "Invulnerabilidade durante o dash" : "Disponível"}</span>
+                        </div>
+                        <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || purchases.dash >= 3 || (!isMaster && fractalBalance < FRACTAL_SHOP.dash[purchases.dash])} onClick={() => void purchaseUpgrade("dash")}>{purchases.dash >= 3 ? "MAX" : isMaster ? "GRÁTIS" : FRACTAL_SHOP.dash[purchases.dash].toLocaleString("pt-BR") + " FR"}</button>
+                      </article>
+
+                      <article className="fractals-shop-item">
                         <div className="fractals-shop-item__slot"><RotateCcw className="h-5 w-5 text-sky-300" /></div>
                         <div className="min-w-0"><div className="fractals-shop-item__heading"><p className="fractals-shop-item__name">Rerrolagem de Dádivas</p><ShopInfoButton info={SHOP_ITEM_INFO.reroll} onOpen={setShopInfo} /></div><p className="fractals-shop-item__description">{SHOP_ITEM_INFO.reroll.summary}</p><div className="fractals-shop-pips" aria-label={"Nível " + purchases.reroll + " de 10"}>{Array.from({length:10}).map((_,i)=><i key={i} className={i<purchases.reroll?"fractals-shop-pip is-filled":"fractals-shop-pip"}/>)}<span>{purchases.reroll}/10</span></div><span className="fractals-shop-item__status">{unlockedCorruption>=1?"Disponível":"Requer Corrupção 1"}</span></div>
                         <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || unlockedCorruption<1 && !isMaster || purchases.reroll>=10 || (!isMaster && fractalBalance<FRACTAL_SHOP.reroll[purchases.reroll])} onClick={()=>void purchaseUpgrade("reroll")}>{purchases.reroll>=10?"MAX":isMaster?"GRÁTIS":FRACTAL_SHOP.reroll[purchases.reroll].toLocaleString("pt-BR")+" FR"}</button>
@@ -3474,7 +3491,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                   {shopSection === "omens" && (
                     <div className="fractals-shop-grid">
                       {!purchases.omen_archive ? <article className="fractals-shop-item"><div className="fractals-shop-item__slot"><Lock className="h-5 w-5 text-fuchsia-300"/></div><div className="min-w-0"><div className="fractals-shop-item__heading"><p className="fractals-shop-item__name">Arquivo selado</p><ShopInfoButton info={SHOP_ITEM_INFO.archive_sealed} onOpen={setShopInfo} /></div><p className="fractals-shop-item__description">{SHOP_ITEM_INFO.archive_sealed.summary}</p></div></article> :
-                        (Object.keys(OMEN_CONFIG) as OmenId[]).map((omen) => <article key={omen} className="fractals-shop-item"><div className="fractals-shop-item__slot"><BookOpen className="h-5 w-5 text-fuchsia-300"/></div><div className="min-w-0"><div className="fractals-shop-item__heading"><p className="fractals-shop-item__name">{OMEN_CONFIG[omen].name}</p><ShopInfoButton info={SHOP_ITEM_INFO[`omen_${omen}`]} onOpen={setShopInfo} /></div><p className="fractals-shop-item__description">{SHOP_ITEM_INFO[`omen_${omen}`].summary}</p><span className="fractals-shop-item__status">{selectedOmen===omen?"Selecionado para a próxima partida":"Disponível · sem custo adicional"}</span></div><button type="button" className="fractals-shop-buy-btn" disabled={corruption<4 || selectedOmen===omen} onClick={()=>setSelectedOmen(omen)}>{selectedOmen===omen?"ATIVO":"SELECIONAR"}</button></article>)
+                        (Object.keys(OMEN_CONFIG) as OmenId[]).map((omen) => <article key={omen} className="fractals-shop-item"><div className="fractals-shop-item__slot"><BookOpen className="h-5 w-5 text-fuchsia-300"/></div><div className="min-w-0"><div className="fractals-shop-item__heading"><p className="fractals-shop-item__name">{OMEN_CONFIG[omen].name}</p><ShopInfoButton info={SHOP_ITEM_INFO[`omen_${omen}`]} onOpen={setShopInfo} /></div><p className="fractals-shop-item__description">{SHOP_ITEM_INFO[`omen_${omen}`].summary}</p><span className="fractals-shop-item__status">{selectedOmen===omen?"Selecionado para a próxima partida":"Disponível · sem custo adicional"}</span></div><button type="button" className="fractals-shop-buy-btn" disabled={unlockedCorruption<4 || selectedOmen===omen} onClick={()=>setSelectedOmen(omen)}>{selectedOmen===omen?"ATIVO":"SELECIONAR"}</button></article>)
                       }
                     </div>
                   )}
