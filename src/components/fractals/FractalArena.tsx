@@ -1068,6 +1068,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     if (shot.x < cameraX - 280 || shot.x > cameraX + viewWidth + 280 || shot.y < cameraY - 280 || shot.y > cameraY + viewHeight + 280) return;
     const lifeRatio = clamp(shot.life / Math.max(0.01, shot.maxLife ?? game.player.projectileLife), 0.08, 1);
 
+    if (shot.kind === "dash_strike") return;
     if (shot.kind === "gravity_well") {
       if (shot.isAura && !shot.active) return;
       const radius = shot.radius ?? (game.evolved ? 230 : 175);
@@ -2029,9 +2030,17 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         const keys = keysRef.current;
         let dx = (keys.has("d") || keys.has("arrowright") ? 1 : 0) - (keys.has("a") || keys.has("arrowleft") ? 1 : 0);
         let dy = (keys.has("s") || keys.has("arrowdown") ? 1 : 0) - (keys.has("w") || keys.has("arrowup") ? 1 : 0);
-        if (dashRequestRef.current) {
+        if (game.dashChainRemaining > 0) {
+          game.dashChainWindow = Math.max(0, game.dashChainWindow - dt);
+          if (game.dashChainWindow <= 0) {
+            game.dashChainRemaining = 0;
+            game.player.dashCooldown = Math.max(game.player.dashCooldown, 1.25);
+          }
+        }
+        if (dashRequestRef.current && game.player.dashTimer <= 0) {
           dashRequestRef.current = false;
-          if (game.player.dashCooldown <= 0 && game.player.dashTimer <= 0) {
+          const canUseFollowUp = purchases.dash >= 3 && game.dashChainRemaining > 0 && game.dashChainWindow > 0;
+          if (game.player.dashCooldown <= 0 || canUseFollowUp) {
             let dashX = dx, dashY = dy;
             if (Math.hypot(dashX, dashY) < 0.05) {
               const facing = PLAYER_DIRECTION_VECTORS[game.player.facing] ?? PLAYER_DIRECTION_VECTORS[0];
@@ -2041,22 +2050,67 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             game.player.dashX = dashX / dashLength;
             game.player.dashY = dashY / dashLength;
             game.player.dashTimer = 0.18;
-            game.player.dashCooldown = 1.25;
-            game.player.invuln = Math.max(game.player.invuln, 0.18);
+            game.dashHitTargets.clear();
+            if (canUseFollowUp) {
+              game.dashChainRemaining = 0;
+              game.dashChainWindow = 0;
+              game.player.dashCooldown = 1.25;
+            } else if (purchases.dash >= 3) {
+              game.dashChainRemaining = 1;
+              game.dashChainWindow = 0.55;
+              game.player.dashCooldown = 0;
+            } else {
+              game.dashChainRemaining = 0;
+              game.dashChainWindow = 0;
+              game.player.dashCooldown = 1.25;
+            }
           }
         }
+        const inputDashX = dx, inputDashY = dy;
         const isDashing = game.player.dashTimer > 0;
         if (isDashing) {
+          if (purchases.dash >= 3 && Math.hypot(inputDashX, inputDashY) > 0.05) {
+            const inputLength = Math.hypot(inputDashX, inputDashY);
+            game.player.dashX = inputDashX / inputLength;
+            game.player.dashY = inputDashY / inputLength;
+          }
           dx = game.player.dashX; dy = game.player.dashY;
+          if (purchases.dash >= 1) game.player.invuln = Math.max(game.player.invuln, dt);
           game.player.dashTimer = Math.max(0, game.player.dashTimer - dt);
         }
         game.player.moving = isDashing || Math.hypot(dx, dy) > 0.05;
         if (game.player.moving) game.player.facing = directionFromVector(dx, dy);
         const mag = Math.hypot(dx, dy) || 1;
         const movementSpeed = isDashing ? 650 : game.player.speed;
+        const previousPlayerX = game.player.x, previousPlayerY = game.player.y;
         const movedPlayer = resolveCemeteryCollision(game.player.x + (dx / mag) * movementSpeed * dt, game.player.y + (dy / mag) * movementSpeed * dt, 14, game.obstacles);
         game.player.x = movedPlayer.x;
         game.player.y = movedPlayer.y;
+        if (isDashing && purchases.dash >= 2) {
+          const segmentX = game.player.x - previousPlayerX;
+          const segmentY = game.player.y - previousPlayerY;
+          const segmentLengthSq = segmentX * segmentX + segmentY * segmentY;
+          const dashDamage = getEquippedWeaponStrikeDamage(game) * 0.10;
+          for (const enemy of game.enemies) {
+            if (enemy.hp <= 0 || game.dashHitTargets.has(enemy)) continue;
+            const toEnemyX = enemy.x - previousPlayerX;
+            const toEnemyY = enemy.y - previousPlayerY;
+            const projection = segmentLengthSq > 0
+              ? clamp((toEnemyX * segmentX + toEnemyY * segmentY) / segmentLengthSq, 0, 1)
+              : 0;
+            const closestX = previousPlayerX + segmentX * projection;
+            const closestY = previousPlayerY + segmentY * projection;
+            const hitRadius = enemy.radius + 12;
+            const hitX = enemy.x - closestX, hitY = enemy.y - closestY;
+            if (hitX * hitX + hitY * hitY > hitRadius * hitRadius) continue;
+            game.dashHitTargets.add(enemy);
+            game.shots.push({
+              x: enemy.x, y: enemy.y, vx: 0, vy: 0, damage: dashDamage,
+              life: 0.2, maxLife: 0.2, hitTargets: [], bouncesRemaining: 0,
+              piercesRemaining: 0, kind: "dash_strike", targetEnemy: enemy,
+            });
+          }
+        }
 
         if (!game.challengeEvent && game.nextChallengeEvent < CHALLENGE_EVENT_TIMES.length && game.elapsed >= CHALLENGE_EVENT_TIMES[game.nextChallengeEvent]) {
           const eventId = (game.nextChallengeEvent + 1) as 1 | 2;
@@ -2298,7 +2352,10 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           game.player.spriteBlend = Math.min(1, game.player.spriteBlend + dt / 0.12);
         }
         game.shots.forEach((shot) => {
-          if (shot.kind === "orbital_blade") {
+          if (shot.kind === "dash_strike" && shot.targetEnemy) {
+            shot.x = shot.targetEnemy.x;
+            shot.y = shot.targetEnemy.y;
+          } else if (shot.kind === "orbital_blade") {
             const bladeCount = Math.max(1, shot.totalBlades ?? 3);
             const bladeIndex = shot.bladeIndex ?? 0;
             const isOuterBlade = game.evolved && bladeIndex >= 8;
