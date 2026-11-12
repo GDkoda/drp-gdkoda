@@ -73,131 +73,131 @@ type ShopItemInfo = {
 };
 
 const SHOP_ITEM_INFO: Record<string, ShopItemInfo> = {
-  health: { title: "Vida Reforçada", category: "Melhoria permanente", summary: "+10 de vida máxima por nível.", details: [
+  health: { title: "Vida Reforçada", category: "Melhoria permanente", summary: "+10 de vida máxima por nível (até +150).", details: [
     "Cada nível comprado acrescenta permanentemente 10 pontos à vida máxima do personagem.",
     "São 15 níveis no total, chegando a +150 de vida máxima.",
     "O bônus já é aplicado no início de cada expedição."
   ]},
-  projectile_duration: { title: "Duração de Projéteis", category: "Melhoria permanente", summary: "Aumenta o tempo de vida dos projéteis.", details: [
+  projectile_duration: { title: "Duração de Projéteis", category: "Melhoria permanente", summary: "Projéteis permanecem ativos por mais tempo.", details: [
     "Aumenta a duração-base dos projéteis para que permaneçam ativos por mais tempo.",
     "Multiplicadores: nível 1 = 1,25x; nível 2 = 1,5x; nível 3 = 2x a duração inicial.",
     "O nível máximo dobra a duração-base. Não altera diretamente o dano do impacto."
   ]},
-  rarity: { title: "Ressonância Rara", category: "Melhoria permanente", summary: "Aumenta a chance de Dádivas Raras.", details: [
+  rarity: { title: "Ressonância Rara", category: "Melhoria permanente", summary: "Aumenta a chance de receber Dádivas Raras.", details: [
     "Altera a distribuição das dádivas comuns que entram no sorteio de raridade.",
     "Nível 1: 85% Normal e 15% Rara. Nível 2: 75% Normal e 25% Rara. Nível 3: 65% Normal e 35% Rara.",
     "Não cria dádivas Épicas. A promoção de Rara para Épica é função exclusiva da Transmutação Rúnica.",
     "Relíquias de Campo e Dádivas Exclusivas de Arma têm raridade Incomum fixa e não participam desse sorteio."
   ]},
-  speed_2x: { title: "Aceleração 2x", category: "Melhoria permanente", summary: "Desbloqueia a velocidade 2x nas expedições.", details: [
+  speed_2x: { title: "Aceleração 2x", category: "Melhoria permanente", summary: "Libera a velocidade 2× durante a expedição.", details: [
     "Libera a opção de velocidade 2x no menu de pausa durante uma expedição.",
     "É um desbloqueio permanente e não precisa ser comprado novamente a cada partida."
   ]},
-  speed_3x: { title: "Aceleração 3x", category: "Melhoria permanente", summary: "Desbloqueia 3x; exige a Aceleração 2x.", details: [
+  speed_3x: { title: "Aceleração 3x", category: "Melhoria permanente", summary: "Libera 3× após a Aceleração 2×.", details: [
     "Libera a opção de velocidade 3x no menu de pausa durante uma expedição.",
     "É necessário possuir a Aceleração 2x antes de comprar este desbloqueio.",
     "O desbloqueio é permanente."
   ]},
-  reroll: { title: "Rerrolagem de Dádivas", category: "Controle das escolhas", summary: "+1 rerrolagem por nível, por expedição.", details: [
+  reroll: { title: "Rerrolagem de Dádivas", category: "Controle das escolhas", summary: "+1 rerrolagem por nível, a cada expedição.", details: [
     "Cada nível comprado concede uma rerrolagem adicional em cada expedição.",
     "Você pode trocar o conjunto atual de dádivas oferecidas ao subir de nível.",
     "Máximo: 10 níveis e 10 rerrolagens por expedição. Desbloqueia a partir da Corrupção 1."
   ]},
-  oracle: { title: "Oráculo das Relíquias", category: "Controle das escolhas", summary: "Libera Relíquias de Campo e chance de uma 4ª carta.", details: [
+  oracle: { title: "Oráculo das Relíquias", category: "Controle das escolhas", summary: "Desbloqueia Relíquias de Campo e chance de 4ª carta.", details: [
     "No nível 1, libera as quatro Relíquias de Campo básicas nas escolhas de subida de nível: Vórtice Coletor, Afinidade de XP, Alcance Arcano e Coroa de Estilhaços.",
     "Também concede uma chance de surgir uma quarta carta independente. A chance por nível é: 1 = 6%, 2 = 12%, 3 = 18%, 4 = 24%, 5 = 30%, 6 = 36%, 7 = 42%, 8 = 48%, 9 = 50% e 10 = 50%.",
     "A quarta carta pode ser uma Relíquia de Campo elegível ou uma Dádiva Exclusiva da arma equipada. As dádivas de arma respeitam os banimentos e o limite de 3 níveis.",
     "O Oráculo aumenta a quantidade de opções, não a raridade: Relíquias de Campo e Dádivas Exclusivas continuam sendo Incomuns."
   ]},
-  banish: { title: "Selo do Exílio", category: "Controle das escolhas", summary: "Permite banir dádivas indesejadas da expedição.", details: [
+  banish: { title: "Selo do Exílio", category: "Controle das escolhas", summary: "+1 exílio por nível para banir uma dádiva por partida.", details: [
     "Cada nível concede um exílio para a expedição.",
     "Ao banir uma opção apresentada, ela é removida da seleção e não volta a aparecer naquela partida.",
     "Máximo: 5 exílios por expedição."
   ]},
-  fortune: { title: "Fortuna Fractal", category: "Recompensas", summary: "Aumenta a chance de espólios especiais.", details: [
+  fortune: { title: "Fortuna Fractal", category: "Recompensas", summary: "Aumenta a chance relativa de espólios especiais.", details: [
     "Cada nível aumenta em 10% a chance relativa de encontrar recompensas especiais, até +50% no nível 5.",
     "Afeta as chances de recompensas especiais de urnas e de espólios associados a Brutos e Elites, incluindo Relíquias de Campo elegíveis.",
     "O bônus é relativo e respeita os limites máximos de chance definidos pelo jogo; não significa um acréscimo direto de 10 pontos percentuais."
   ]},
-  transmutation: { title: "Transmutação Rúnica", category: "Raridade", summary: "Pode promover uma Dádiva Rara para Épica.", details: [
+  transmutation: { title: "Transmutação Rúnica", category: "Raridade", summary: "Pode promover Dádivas Raras à categoria Épica.", details: [
     "Quando uma dádiva elegível é sorteada como Rara, existe uma chance adicional de promovê-la para Épica.",
     "Nível 1: 3% por resultado Raro. Nível 2: 6%. Nível 3: 10%.",
     "Não aumenta a chance de encontrar resultados Raros; essa parte pertence à Ressonância Rara.",
     "Relíquias de Campo e Dádivas Exclusivas de Arma são Incomuns fixas e não recebem essa promoção."
   ]},
-  anchor_soul: { title: "Âncora da Alma", category: "Sobrevivência", summary: "Concede até duas ressurreições por expedição.", details: [
+  anchor_soul: { title: "Âncora da Alma", category: "Sobrevivência", summary: "Permite reviver; aprimora a ressurreição por nível.", details: [
     "Você só pode manter uma Âncora disponível por vez, mas pode obter até duas ressurreições na mesma expedição.",
     "Nível 1: retorna com 40% da vida máxima e 3 segundos de invulnerabilidade.",
     "Nível 2: melhora o retorno para 60% da vida máxima e 6 segundos de invulnerabilidade.",
     "Nível 3: na segunda morte, além da ressurreição, libera uma explosão ao redor do personagem que atinge inimigos próximos."
   ]},
-  omen_archive: { title: "Arquivo dos Presságios", category: "Modificadores de expedição", summary: "Desbloqueia cinco Presságios; escolha apenas um por partida.", details: [
+  omen_archive: { title: "Arquivo dos Presságios", category: "Modificadores de expedição", summary: "Abre 5 Presságios; escolha 1 antes da expedição.", details: [
     "Abre a categoria Presságios do Arsenal e permite selecionar um modificador antes da expedição.",
     "Existem cinco opções, cada uma com bônus e ônus próprios. Apenas um Presságio pode ser escolhido por expedição.",
     "Requer Corrupção 4. Depois de adquirido, não há custo adicional para selecionar um Presságio."
   ]},
-  archive_sealed: { title: "Arquivo dos Presságios", category: "Modificadores de expedição", summary: "Desbloqueia cinco Presságios; escolha apenas um por partida.", details: [
+  archive_sealed: { title: "Arquivo dos Presságios", category: "Modificadores de expedição", summary: "Desbloqueie o Arquivo para escolher um Presságio.", details: [
     "Esta categoria permanece selada até a compra do Arquivo dos Presságios na aba Permanentes.",
     "O desbloqueio exige Corrupção 4.",
     "Após abrir o arquivo, você poderá selecionar um dos cinco Presságios para cada expedição, sem custo adicional."
   ]},
-  area: { title: "Vórtice Coletor", category: "Relíquia de Campo", summary: "Cada coleta amplia o raio de coleta em 10%.", details: [
+  area: { title: "Vórtice Coletor", category: "Relíquia de Campo", summary: "Cada coleta aumenta o raio de coleta em 10%.", details: [
     "Ao encontrar e coletar esta Relíquia de Campo durante a expedição, o raio de coleta aumenta em 10%.",
     "O efeito acumula até 10 vezes, chegando a +100% de raio de coleta.",
     "A compra do nível 1 libera a relíquia. Os níveis 2, 3 e 4 elevam a chance geral de queda de Relíquias de Campo para 1%, 3% e 5%, conforme o maior nível comprado entre as relíquias de campo."
   ]},
-  experience: { title: "Afinidade de XP", category: "Relíquia de Campo", summary: "Cada coleta aumenta a experiência recebida em 5%.", details: [
+  experience: { title: "Afinidade de XP", category: "Relíquia de Campo", summary: "Cada coleta concede +5% de experiência.", details: [
     "Cada coleta da relíquia concede +5% de experiência recebida.",
     "O efeito acumula até 10 vezes, chegando a +50% de experiência.",
     "O nível 1 libera a relíquia. Os níveis 2 a 4 também contribuem para a chance geral de queda de Relíquias de Campo: 1%, 3% e 5% no maior nível comprado."
   ]},
-  projectile_range: { title: "Alcance Arcano", category: "Relíquia de Campo", summary: "Cada coleta aumenta em 10% o alcance útil da arma.", details: [
+  projectile_range: { title: "Alcance Arcano", category: "Relíquia de Campo", summary: "Cada coleta amplia em 10% o alcance da arma.", details: [
     "Cada coleta aumenta em 10% o alcance útil da arma equipada.",
     "O efeito acumula até 5 vezes, chegando a +50%. Afeta projéteis, órbitas, áreas e feixes compatíveis.",
     "O nível 1 libera a relíquia. Os níveis 2 a 4 também contribuem para a chance geral de queda de Relíquias de Campo: 1%, 3% e 5% no maior nível comprado."
   ]},
-  projectiles: { title: "Coroa de Estilhaços", category: "Relíquia de Campo", summary: "Adapta o bônus à arma equipada; até 2 coletas.", details: [
+  projectiles: { title: "Coroa de Estilhaços", category: "Relíquia de Campo", summary: "Adapta o bônus à arma; até 2 coletas.", details: [
     "O efeito depende da arma equipada: Revólver e Núcleo recebem projéteis adicionais; Espadas Orbitais recebem lâminas adicionais; Sentinelas recebem totens adicionais.",
     "Com a Foice Espectral, cada coleta concede +12% de dano. Com o Grilhão Gravitacional, cada coleta aumenta o raio da aura em 6%.",
     "O efeito acumula até 2 coletas.",
     "O nível 1 da compra libera a relíquia. Os níveis 2 a 4 aumentam a chance geral de queda de Relíquias de Campo para 1%, 3% e 5%, conforme o maior nível comprado."
   ]},
-  ricochet: { title: "Ricochete Arcano", category: "Relíquia de Campo", summary: "Projéteis do Revólver e do Núcleo ricocheteiam em mais alvos.", details: [
+  ricochet: { title: "Ricochete Arcano", category: "Relíquia de Campo", summary: "Revólver e Núcleo ganham +1 ricochete por coleta.", details: [
     "Disponível apenas para o Revólver do Vazio e o Núcleo Instável.",
     "Cada coleta concede +1 ricochete adicional, até 3 acúmulos.",
     "A compra do nível 1 libera a relíquia. Os níveis 2 e 3 aumentam a chance geral de queda de Relíquias de Campo, compartilhada com as demais relíquias."
   ]},
-  piercing: { title: "Perfuração Espectral", category: "Relíquia de Campo", summary: "Projéteis atravessam inimigos adicionais sem perder dano.", details: [
+  piercing: { title: "Perfuração Espectral", category: "Relíquia de Campo", summary: "Revólver e Núcleo atravessam +1 inimigo por coleta.", details: [
     "Disponível apenas para o Revólver do Vazio e o Núcleo Instável.",
     "Cada coleta concede +1 inimigo atravessado, até 3 acúmulos. Os projéteis mantêm o dano ao atravessar os alvos.",
     "A compra do nível 1 libera a relíquia. Os níveis 2 e 3 aumentam a chance geral de queda de Relíquias de Campo, compartilhada com as demais relíquias."
   ]},
-  chain_lightning: { title: "Descarga em Cadeia", category: "Relíquia de Campo", summary: "Impactos saltam para alvos adicionais próximos.", details: [
+  chain_lightning: { title: "Descarga em Cadeia", category: "Relíquia de Campo", summary: "Impactos saltam para inimigos próximos.", details: [
     "Disponível apenas para o Revólver do Vazio e o Núcleo Instável.",
     "Nível de coleta 1: salta para 1 alvo com 55% do dano; nível 2: 2 alvos com 65%; nível 3: 3 alvos com 75%.",
     "A compra do nível 1 libera a relíquia. Os níveis 2 e 3 aumentam a chance geral de queda de Relíquias de Campo, compartilhada com as demais relíquias."
   ]},
-  weapon_void_revolver: { title: "Revólver do Vazio", category: "Arma", summary: "Rajadas precisas; a cada 6 disparos, uma bala dourada reforçada.", details: [
+  weapon_void_revolver: { title: "Revólver do Vazio", category: "Arma", summary: "Rajadas precisas; a cada 6 tiros, uma bala dourada.", details: [
     "Arma inicial e gratuita. Dispara em linha na direção do alvo e prepara um disparo dourado reforçado a cada seis tiros.",
     "A maestria é concluída ao vencer uma expedição usando esta arma.",
     "Depois da maestria, o Projeto de Evolução custa 5.000 FR. Com a arma no nível 10, a evolução Seis Ecos pode aparecer nas escolhas."
   ]},
-  weapon_unstable_core: { title: "Núcleo Instável", category: "Arma", summary: "Orbe de plasma cria uma poça corrosiva que atrai inimigos.", details: [
+  weapon_unstable_core: { title: "Núcleo Instável", category: "Arma", summary: "Orbe de plasma deixa poça corrosiva que atrai inimigos.", details: [
     "Dispara um orbe de plasma lento que deixa uma poça corrosiva. Os pulsos da poça causam dano e atraem inimigos para o centro.",
     "Desbloqueio permanente: 8.000 FR.",
     "Vença uma expedição com a arma para concluir a maestria. Depois, compre o Projeto de Evolução por 5.000 FR; no nível 10 da arma, a evolução Singularidade pode aparecer."
   ]},
-  weapon_spectral_scythe: { title: "Foice Espectral", category: "Arma", summary: "Corte amplo que evolui para um golpe circular.", details: [
+  weapon_spectral_scythe: { title: "Foice Espectral", category: "Arma", summary: "Corte amplo em arco; evolui para um golpe circular.", details: [
     "Executa um corte em arco de quase 200° ao redor do personagem.",
     "Desbloqueio permanente: 9.000 FR.",
     "Vença uma expedição com a arma para concluir a maestria. Depois, compre o Projeto de Evolução por 5.000 FR; no nível 10 da arma, a evolução Ceifador de Almas pode aparecer."
   ]},
-  weapon_orbital_swords: { title: "Espadas Orbitais", category: "Arma", summary: "Lâminas orbitais causam dano por contato.", details: [
+  weapon_orbital_swords: { title: "Espadas Orbitais", category: "Arma", summary: "Lâminas orbitais ferem inimigos por contato.", details: [
     "Lâminas físicas permanecem em órbita ao redor do personagem e ferem inimigos ao tocá-los.",
     "Desbloqueio permanente: 10.000 FR.",
     "Vença uma expedição com a arma para concluir a maestria. Depois, compre o Projeto de Evolução por 5.000 FR; no nível 10 da arma, a evolução Dança das Lâminas pode aparecer."
   ]},
-  weapon_gravity_shackle: { title: "Grilhão Gravitacional", category: "Arma", summary: "Aura rúnica desacelera inimigos; evoluída, fica ativa.", details: [
+  weapon_gravity_shackle: { title: "Grilhão Gravitacional", category: "Arma", summary: "Aura rúnica desacelera inimigos; evolui para efeito contínuo.", details: [
     "Projeta uma aura rúnica intermitente ao redor do herói para desacelerar inimigos.",
     "Desbloqueio permanente: 11.000 FR.",
     "Vença uma expedição com a arma para concluir a maestria. Depois, compre o Projeto de Evolução por 5.000 FR; no nível 10 da arma, a evolução Prisão do Abismo pode aparecer."
@@ -207,23 +207,23 @@ const SHOP_ITEM_INFO: Record<string, ShopItemInfo> = {
     "Desbloqueio permanente: 12.000 FR.",
     "Vença uma expedição com a arma para concluir a maestria. Depois, compre o Projeto de Evolução por 5.000 FR; no nível 10 da arma, a evolução Arsenal Ancestral pode aparecer."
   ]},
-  omen_famine: { title: "Fome Insaciável", category: "Presságio", summary: "+20% de XP e surgimento de inimigos mais frequente.", details: [
+  omen_famine: { title: "Fome Insaciável", category: "Presságio", summary: "+20% de XP; inimigos surgem 20% mais rápido.", details: [
     "Bônus: +20% de experiência recebida.",
     "Ônus: +20% na frequência de surgimento de inimigos."
   ]},
-  omen_rupture: { title: "Ruptura", category: "Presságio", summary: "+20% de dano; ataques têm intervalo 15% maior.", details: [
+  omen_rupture: { title: "Ruptura", category: "Presságio", summary: "+20% de dano; intervalo entre ataques +15%.", details: [
     "Bônus: +20% de dano das armas.",
     "Ônus: +15% no intervalo entre ataques, reduzindo a frequência de disparo."
   ]},
-  omen_spectral_veil: { title: "Véu Espectral", category: "Presságio", summary: "+15% de velocidade; -15% de vida máxima.", details: [
+  omen_spectral_veil: { title: "Véu Espectral", category: "Presságio", summary: "+15% de movimento; -15% de vida máxima.", details: [
     "Bônus: +15% de velocidade de movimento.",
     "Ônus: -15% de vida máxima."
   ]},
-  omen_abundance: { title: "Abundância", category: "Presságio", summary: "+25% de chance relativa de espólios; inimigos com +15% de vida.", details: [
+  omen_abundance: { title: "Abundância", category: "Presságio", summary: "+25% de chance relativa de espólios; inimigos +15% de vida.", details: [
     "Bônus: +25% de chance relativa de recompensas especiais.",
     "Ônus: inimigos recebem +15% de vida."
   ]},
-  omen_revenge: { title: "Vingança", category: "Presságio", summary: "Sofrer dano dispara uma onda ofensiva; -10% de vida.", details: [
+  omen_revenge: { title: "Vingança", category: "Presságio", summary: "Ao sofrer dano, libera uma onda ofensiva; -10% de vida máxima.", details: [
     "Efeito: ao sofrer dano, libera uma onda ofensiva contra inimigos próximos; a ativação tem intervalo interno de 4 segundos.",
     "Ônus: -10% de vida máxima."
   ]}
