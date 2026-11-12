@@ -1797,7 +1797,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         }
         // O Guardião só desperta ao fim dos 12 minutos completos.
         game.shotTimer -= dt;
-        if (game.shotTimer <= 0) {
+        // Grilhão não procura alvos nem dispara projéteis: sua aura é atualizada abaixo.
+        if (game.weaponId !== "gravity_shackle" && game.shotTimer <= 0) {
           const maxRange = 280 * game.player.projectileRangeMultiplier;
           const maxRangeSq = maxRange * maxRange;
           let target: Enemy | null = null;
@@ -1938,8 +1939,9 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             game.gravityAuraActive = true;
           } else {
             game.gravityAuraTimer = (game.gravityAuraTimer ?? 0) + dt;
-            if (game.gravityAuraTimer >= 4.8) {
-              game.gravityAuraTimer -= 4.8;
+            const auraPhaseDuration = (game.gravityAuraActive ?? true) ? 3.2 : 2.0;
+            if (game.gravityAuraTimer >= auraPhaseDuration) {
+              game.gravityAuraTimer -= auraPhaseDuration;
               game.gravityAuraActive = !(game.gravityAuraActive ?? true);
               aura.pulseTimer = 0;
               aura.hitTargets = [];
