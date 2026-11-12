@@ -95,7 +95,8 @@ begin
     max_level := case
       when _upgrade = 'health' then 15
       when _upgrade in ('area','experience','projectile_range','projectiles') then 4
-      when _upgrade in ('fortune','dash') then case when _upgrade = 'dash' then 3 else 5 end
+      when _upgrade = 'fortune' then 5
+      when _upgrade = 'dash' then 3
       when _upgrade = 'anchor_soul' then 3
       when _upgrade in ('reroll','oracle') then 10
       when _upgrade = 'banish' then 5
