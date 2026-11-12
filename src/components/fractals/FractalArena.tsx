@@ -1414,7 +1414,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
   const keysRef = useRef(new Set<string>());
   const dashRequestRef = useRef(false);
   const eventRewardRemainingRef = useRef(0);
-  const [desktopSupported, setDesktopSupported] = useState(() => typeof window === "undefined" || window.matchMedia("(min-width: 1024px) and (pointer: fine)").matches);
+  const [desktopSupported, setDesktopSupported] = useState(false);
   const [missionId, setMissionId] = useState(1);
   const [missionPickerOpen, setMissionPickerOpen] = useState(false);
   useEffect(() => {
@@ -2443,7 +2443,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               game.damageNumbers.push({
                 x: enemy.x + (Math.random() - 0.5) * 8,
                 y: enemy.y - enemy.radius - 8,
-                value: shot.damage,
+                value: hitDamage,
                 life: 0.72,
                 maxLife: 0.72,
                 drift: (Math.random() - 0.5) * 10,
