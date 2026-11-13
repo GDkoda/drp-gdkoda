@@ -62,7 +62,7 @@ const WEAPON_CONFIG: Record<WeaponId, { name: string; description: string; price
   unstable_core: { name: "Núcleo Instável", description: "Orbe lento de plasma que deixa uma poça corrosiva ampliada; seus pulsos atraem inimigos para o centro.", price: 8000, purchaseKey: "weapon_nucleus", masteryKey: "mastery_nucleus", projectKey: "evolution_nucleus", evolutionName: "Singularidade" },
   spectral_scythe: { name: "Foice Espectral", description: "Um arco cortante de quase 200° que se torna um golpe circular completo ao evoluir.", price: 9000, purchaseKey: "weapon_scythe", masteryKey: "mastery_scythe", projectKey: "evolution_scythe", evolutionName: "Ceifador de Almas" },
   orbital_swords: { name: "Espadas Orbitais", description: "Lâminas físicas permanecem em órbita e ferem ameaças por contato.", price: 10000, purchaseKey: "weapon_orbitals", masteryKey: "mastery_orbitals", projectKey: "evolution_orbitals", evolutionName: "Dança das Lâminas" },
-  gravity_shackle: { name: "Grilhão Gravitacional", description: "Projeta uma aura rúnica intermitente ao redor do herói que desacelera inimigos; sua evolução mantém a aura ativa.", price: 11000, purchaseKey: "weapon_gravity", masteryKey: "mastery_gravity", projectKey: "evolution_gravity", evolutionName: "Prisão do Abismo" },
+  gravity_shackle: { name: "Grilhão Gravitacional", description: "Mantém um selo rúnico permanente; correntes alcançam inimigos a até o dobro do raio visual.", price: 11000, purchaseKey: "weapon_gravity", masteryKey: "mastery_gravity", projectKey: "evolution_gravity", evolutionName: "Prisão do Abismo" },
   rune_sentinels: { name: "Sentinelas Rúnicas", description: "Sentinelas orbitais disparam feixes rúnicos rápidos contra os alvos mais resistentes.", price: 12000, purchaseKey: "weapon_sentinels", masteryKey: "mastery_sentinels", projectKey: "evolution_sentinels", evolutionName: "Arsenal Ancestral" },
 };
 
@@ -204,8 +204,9 @@ const SHOP_ITEM_INFO: Record<string, ShopItemInfo> = {
     "Desbloqueio permanente: 10.000 FR.",
     "Vença uma expedição com a arma para concluir a maestria. Depois, compre o Projeto de Evolução por 5.000 FR; no nível 10 da arma, a evolução Dança das Lâminas pode aparecer."
   ]},
-  weapon_gravity_shackle: { title: "Grilhão Gravitacional", category: "Arma", summary: "Aura rúnica desacelera inimigos; evolui para efeito contínuo.", details: [
-    "Projeta uma aura rúnica intermitente ao redor do herói para desacelerar inimigos.",
+  weapon_gravity_shackle: { title: "Grilhão Gravitacional", category: "Arma", summary: "Selo permanente; correntes alcançam o dobro do raio visual.", details: [
+    "O selo rúnico permanece sempre visível. O raio visual não limita o alcance: as correntes atingem alvos a até 2× essa distância.",
+    "Cada corrente concentra o dano de dois pulsos em um único impacto. Intervalo: 0,9 s na forma base e 0,7 s na evolução.",
     "Desbloqueio permanente: 11.000 FR.",
     "Vença uma expedição com a arma para concluir a maestria. Depois, compre o Projeto de Evolução por 5.000 FR; no nível 10 da arma, a evolução Prisão do Abismo pode aparecer."
   ]},
@@ -313,7 +314,7 @@ type GameState = {
   enemies: Enemy[]; shots: Shot[]; gems: Gem[]; specialDrops: SpecialDrop[]; sentinelTotems: SentinelTotem[]; sentinelRespawnTimer: number; nextSentinelTotemId: number; urns: BreakableUrn[]; obstacles: CemeteryObstacle[]; nextUrnMinute: number; nextUrnId: number; particles: Particle[]; damageNumbers: DamageNumber[]; pickupLabels: PickupLabel[]; challengeEvent: ChallengeEvent | null; nextChallengeEvent: number; kills: number; ended: boolean; upgradeCounts: UpgradeCounts; totalDamageDealt: number; crystalsCollected: number; highestLevel: number;
   weaponId: WeaponId; weaponLevel: number; evolved: boolean; rerollsRemaining: number; banishesRemaining: number; bannedUpgradeIds: string[];
   revolverShotCount?: number; orbitalPulseTimer?: number;
-  gravityAuraTimer?: number; gravityAuraActive?: boolean; gravityAuraShot?: Shot;
+  gravityAuraActive?: boolean; gravityAuraShot?: Shot;
   gravityTethers?: { id: number; enemy: Enemy; duration: number }[]; gravityAuraTimer2?: number;
   scytheSiphonCooldown?: number; dashChainRemaining: number; dashChainWindow: number; dashHitTargets: Set<Enemy>;
   anchorReviveAvailable: boolean; anchorRevivesUsed: number; omenId: OmenId | null; omenSpawnMultiplier: number; omenEnemyHpMultiplier: number; omenRewardMultiplier: number; omenRevengeCooldown: number; lastObservedHp: number;
@@ -360,7 +361,7 @@ const WEAPON_GIFTS: Record<WeaponId, Upgrade[]> = {
   ],
   gravity_shackle: [
     { id: "gift_gravity_pressure", name: "Peso Abissal", description: "A lentidão da aura fica 4 pontos percentuais mais forte por nível, até 42% de redução de velocidade.", icon: Move, rarity: "uncommon" },
-    { id: "gift_gravity_resonance", name: "Ressonância do Abismo", description: "Dano dos pulsos da aura +15% por nível.", icon: Sparkles, rarity: "uncommon" },
+    { id: "gift_gravity_resonance", name: "Ressonância do Abismo", description: "Dano dos impactos das correntes +15% por nível.", icon: Sparkles, rarity: "uncommon" },
     { id: "gift_gravity_guard", name: "Manto Inabalável", description: "Enquanto a aura está ativa, dano recebido -5% por nível (máx. -15%).", icon: Shield, rarity: "uncommon" },
   ],
   rune_sentinels: [
@@ -664,9 +665,6 @@ function preloadCemeteryImages(): Promise<void> {
 }
 const groundPatternCache = new WeakMap<CanvasRenderingContext2D, CanvasPattern>();
 const RUNE_PHRASE = "ᚷᚱᛁᛚᚺᚨᛟ ᚷᚱᚨᚹᛁᛏᚨᚲᛁᛟᚾᚨᛚ · ";
-// A aura base permanece 3,2 s visível e 4 s recolhida entre ciclos.
-const GRAVITY_AURA_ACTIVE_PHASE_SECONDS = 3.2;
-const GRAVITY_AURA_INACTIVE_PHASE_SECONDS = 4.0;
 const gravityBestEnemies: (Enemy | null)[] = new Array(8).fill(null);
 const gravityBestDist: number[] = new Array(8).fill(0);
 const runeRingCache = new Map<string, HTMLCanvasElement>();
@@ -922,7 +920,7 @@ function makeGame(width: number, height: number, purchases: PurchaseState, weapo
     player: { x: 0, y: 0, hp: maxHp, maxHp, speed: 205 * (omenId === "spectral_veil" ? 1.15 : 1), damage: 22 * omenDamage, fireRate: 0.72 * (omenId === "rupture" ? 1.15 : 1), invuln: 0, hitFlash: 0, xp: 0, nextXp: 12, level: 1, pickupRadius: 85, xpMultiplier: omenId === "famine" ? 1.2 : 1, specialAreaStacks: 0, specialExperienceStacks: 0, projectileRangeStacks: 0, projectileRangeMultiplier: 1, projectileStacks: 0, relicRicochet: 0, relicPiercing: 0, relicChainLightning: 0, projectileLife, facing: 0, castFacing: 0, castTimer: 0, moving: false, dashTimer: 0, dashCooldown: 0, dashX: 1, dashY: 0, spriteAction: "idle", spriteDirection: 0, previousSpriteAction: "idle", previousSpriteDirection: 0, spriteBlend: 1 },
     enemies: [], shots: [], gems: [], specialDrops: [], sentinelTotems: [], sentinelRespawnTimer: 0, nextSentinelTotemId: 1, urns: [], obstacles: createCemeteryObstacles(), nextUrnMinute: 1, nextUrnId: 1, particles: [], damageNumbers: [], pickupLabels: [], challengeEvent: null, nextChallengeEvent: 0, kills: 0, ended: false, upgradeCounts: {}, totalDamageDealt: 0, crystalsCollected: 0, highestLevel: 1,
     weaponId, weaponLevel: 1, evolved: false, rerollsRemaining: purchases.reroll, banishesRemaining: purchases.banish, bannedUpgradeIds: [],
-    revolverShotCount: 0, orbitalPulseTimer: 0, gravityAuraTimer: 0, gravityAuraActive: true, gravityAuraShot: undefined, gravityTethers: [], scytheSiphonCooldown: 0,
+    revolverShotCount: 0, orbitalPulseTimer: 0, gravityAuraActive: true, gravityAuraShot: undefined, gravityTethers: [], scytheSiphonCooldown: 0,
     anchorReviveAvailable: false, anchorRevivesUsed: 0, dashChainRemaining: 0, dashChainWindow: 0, dashHitTargets: new Set<Enemy>(), omenId, omenSpawnMultiplier: omenId === "famine" ? 1.2 : 1,
     omenEnemyHpMultiplier: omenId === "abundance" ? 1.15 : 1, omenRewardMultiplier: omenId === "abundance" ? 1.25 : 1,
     omenRevengeCooldown: 0, lastObservedHp: maxHp,
@@ -2552,8 +2550,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           if (game.weaponId !== "orbital_swords" && game.weaponId !== "rune_sentinels") fractalAudio.shoot();
           }
         }
-        // Grilhão: uma única aura acompanha o herói. A forma normal pulsa em ciclos;
-        // a evolução mantém o selo permanentemente ativo. Reutilizamos o sprite já existente.
+        // Grilhão: o selo visual acompanha o herói e permanece ativo nas duas formas.
         if (game.weaponId === "gravity_shackle") {
           const auraRadius = (game.evolved ? 140 : 106)
             * (1 + game.player.specialAreaStacks * 0.1)
@@ -2576,22 +2573,9 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           aura.damage = getEquippedWeaponStrikeDamage(game) * (game.evolved ? 0.75 : 0.5625) * (1 + (game.upgradeCounts.gift_gravity_resonance?.count ?? 0) * 0.15);
           aura.life = 9999;
           aura.maxLife = 9999;
-          if (game.evolved) {
-            aura.active = true;
-            game.gravityAuraActive = true;
-          } else {
-            game.gravityAuraTimer = (game.gravityAuraTimer ?? 0) + dt;
-            const auraPhaseDuration = (game.gravityAuraActive ?? true)
-              ? GRAVITY_AURA_ACTIVE_PHASE_SECONDS
-              : GRAVITY_AURA_INACTIVE_PHASE_SECONDS;
-            if (game.gravityAuraTimer >= auraPhaseDuration) {
-              game.gravityAuraTimer -= auraPhaseDuration;
-              game.gravityAuraActive = !(game.gravityAuraActive ?? true);
-              aura.pulseTimer = 0;
-              aura.hitTargets.length = 0;
-            }
-            aura.active = game.gravityAuraActive ?? true;
-          }
+          // A aura fica visível continuamente; apenas os impactos das correntes têm intervalo.
+          aura.active = true;
+          game.gravityAuraActive = true;
         } else {
           // A aura só é removida quando há uma referência ativa; evita alocar um array por frame.
           if (game.gravityAuraShot) {
@@ -2599,7 +2583,6 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             if (auraIndex >= 0) game.shots.splice(auraIndex, 1);
             game.gravityAuraShot = undefined;
           }
-          game.gravityAuraTimer = 0;
           game.gravityAuraActive = true;
         }
 
@@ -2942,7 +2925,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         if (game.weaponId === "gravity_shackle" && game.gravityAuraActive && gravityAura?.active) {
           const tethers = game.gravityTethers ?? (game.gravityTethers = []);
           const maxTethers = game.evolved ? 8 : 5;
-          const maxRange = gravityAura.radius ?? (game.evolved ? 140 : 106);
+          // Alcance mecânico independente do selo: dobra o raio, sem ampliar o visual.
+          const maxRange = (gravityAura.radius ?? (game.evolved ? 140 : 106)) * 2;
           const maxRangeSquared = maxRange * maxRange;
           let tetherCount = tethers.length;
           game.gravityAuraTimer2 = (game.gravityAuraTimer2 ?? 0) - dt;
@@ -2986,12 +2970,14 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
 
           gravityAura.pulseTimer = (gravityAura.pulseTimer ?? 0) - dt;
           if (gravityAura.pulseTimer <= 0) {
-            gravityAura.pulseTimer = game.evolved ? 0.35 : 0.45;
+            // Um impacto concentra dois pulsos de dano; o intervalo também é 2× maior.
+            gravityAura.pulseTimer = game.evolved ? 0.7 : 0.9;
+            const hitDamage = gravityAura.damage * 2;
             for (let i = 0; i < tetherCount; i++) {
               const enemy = tethers[i].enemy;
               if (enemy.hp <= 0) continue;
-              const appliedDamage = Math.min(enemy.hp, gravityAura.damage);
-              enemy.hp -= gravityAura.damage;
+              const appliedDamage = Math.min(enemy.hp, hitDamage);
+              enemy.hp -= appliedDamage;
               game.totalDamageDealt += appliedDamage;
               enemy.flash = Math.max(enemy.flash, 0.08);
               if (enemy.hp <= 0) handleEnemyDefeat(game, enemy);
@@ -3002,8 +2988,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         }
 
         // A grade só é criada quando algum ataque realmente precisa testar colisões.
-        // Grilhões passa vários frames sem pulsar (e até 4 s com a aura desligada),
-        // então reconstruí-la a cada requestAnimationFrame era custo desnecessário.
+        // Os impactos do Grilhão são espaçados; não é necessário reconstruí-la a cada frame.
         let collisionGrid: EnemySpatialGrid | null = null;
         for (const shot of game.shots) {
           // A aura é processada exclusivamente pelo sistema de Vínculos Rituais acima.
@@ -3975,7 +3960,6 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               game.weaponId = weaponId;
               game.shots = [];
               game.gravityAuraShot = undefined;
-              game.gravityAuraTimer = 0;
               game.gravityAuraActive = true;
               game.sentinelTotems = [];
               game.sentinelRespawnTimer = 0;
