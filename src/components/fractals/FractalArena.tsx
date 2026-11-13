@@ -523,6 +523,20 @@ function hash(x: number, y: number): number {
   return (value >>> 0) / 0x1_0000_0000;
 }
 const distance = (ax: number, ay: number, bx: number, by: number) => Math.hypot(ax - bx, ay - by);
+
+// Remove objetos expirados sem criar um novo array em cada frame.
+// É usado nas listas quentes da simulação (projéteis, partículas e textos).
+function compactAlive<T extends { life: number }>(items: T[]): void {
+  let writeIndex = 0;
+  for (let readIndex = 0; readIndex < items.length; readIndex++) {
+    const item = items[readIndex];
+    if (item.life <= 0) continue;
+    if (writeIndex !== readIndex) items[writeIndex] = item;
+    writeIndex++;
+  }
+  if (writeIndex !== items.length) items.length = writeIndex;
+}
+
 const directionFromVector = (x: number, y: number) => {
   if (Math.hypot(x, y) < 0.001) return 0;
   const step = Math.round((Math.atan2(y, x) - Math.PI / 2) / (Math.PI / 4));
@@ -1519,31 +1533,37 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     }
     ctx.restore();
   });
-  ctx.save();
-  ctx.globalCompositeOperation = "lighter";
-  const particleGroups = new Map<string, Particle[]>();
-  for (const particle of game.particles) {
-    if (particle.x < cameraX - 16 || particle.x > cameraX + viewWidth + 16 || particle.y < cameraY - 16 || particle.y > cameraY + viewHeight + 16) continue;
-    const group = particleGroups.get(particle.color);
-    if (group) group.push(particle);
-    else particleGroups.set(particle.color, [particle]);
-  }
-  for (const [color, group] of particleGroups) {
-    ctx.beginPath();
-    for (const particle of group) {
-      const size = 1.2 + clamp(particle.life * 2, 0, 1) * 2.1;
-      const angle = Math.atan2(particle.vy, particle.vx);
-      const dx = Math.cos(angle) * size, dy = Math.sin(angle) * size;
-      const px = -dy * 0.38, py = dx * 0.38;
-      ctx.moveTo(particle.x - dx, particle.y - dy);
-      ctx.lineTo(particle.x + px, particle.y + py);
-      ctx.lineTo(particle.x + dx, particle.y + dy);
-      ctx.lineTo(particle.x - px, particle.y - py);
-      ctx.closePath();
+  // Sem partículas não há motivo para alocar Map/grupos nem trocar o modo de composição.
+  if (game.particles.length > 0) {
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    const particleGroups = new Map<string, Particle[]>();
+    for (const particle of game.particles) {
+      if (particle.x < cameraX - 16 || particle.x > cameraX + viewWidth + 16 || particle.y < cameraY - 16 || particle.y > cameraY + viewHeight + 16) continue;
+      const group = particleGroups.get(particle.color);
+      if (group) group.push(particle);
+      else particleGroups.set(particle.color, [particle]);
     }
-    ctx.fillStyle = color; ctx.globalAlpha = 0.78; ctx.fill();
+    for (const [color, group] of particleGroups) {
+      ctx.beginPath();
+      for (const particle of group) {
+        const size = 1.2 + clamp(particle.life * 2, 0, 1) * 2.1;
+        const angle = Math.atan2(particle.vy, particle.vx);
+        const dx = Math.cos(angle) * size, dy = Math.sin(angle) * size;
+        const px = -dy * 0.38, py = dx * 0.38;
+        ctx.moveTo(particle.x - dx, particle.y - dy);
+        ctx.lineTo(particle.x + px, particle.y + py);
+        ctx.lineTo(particle.x + dx, particle.y + dy);
+        ctx.lineTo(particle.x - px, particle.y - py);
+        ctx.closePath();
+      }
+      ctx.fillStyle = color;
+      ctx.globalAlpha = 0.78;
+      ctx.fill();
+    }
+    ctx.restore();
   }
-  ctx.restore(); ctx.globalAlpha = 1;
+  ctx.globalAlpha = 1;
 
   if (showDamageNumbers) {
     ctx.save();
@@ -2085,9 +2105,9 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         game.player.invuln = Math.max(0, game.player.invuln - dt);
         game.player.hitFlash = Math.max(0, game.player.hitFlash - dt);
         game.damageNumbers.forEach((number) => { number.life -= dt; number.y -= 24 * dt; number.x += number.drift * dt; });
-        game.damageNumbers = game.damageNumbers.filter((number) => number.life > 0);
+        compactAlive(game.damageNumbers);
         game.pickupLabels.forEach((label) => { label.life -= dt; label.y -= 18 * dt; });
-        game.pickupLabels = game.pickupLabels.filter((label) => label.life > 0);
+        compactAlive(game.pickupLabels);
         game.player.castTimer = Math.max(0, game.player.castTimer - dt);
         game.player.dashCooldown = Math.max(0, game.player.dashCooldown - dt);
         const keys = keysRef.current;
@@ -2470,7 +2490,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         }
         // Projectiles and temporary fields have bounded lifetimes; don't cull attacks just because
         // the camera moved away while they were still travelling or dealing area damage.
-        game.shots = game.shots.filter((shot) => shot.life > 0);
+        compactAlive(game.shots);
         if (game.weaponId === "rune_sentinels") {
           game.sentinelRespawnTimer = Math.max(0, game.sentinelRespawnTimer - dt);
           const baseTotemLimit = game.weaponLevel >= 10 ? 3 : game.weaponLevel >= 5 ? 2 : 1;
@@ -3117,10 +3137,17 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         game.urns = game.urns.filter((urn) => !urn.broken);
         if(Math.floor(game.elapsed/60)>=game.nextUrnMinute){spawnCemeteryUrns(game,8+Math.floor(Math.random()*5));game.nextUrnMinute=Math.floor(game.elapsed/60)+1;}
         game.particles.forEach((p) => { p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; });
-        game.particles = game.particles.filter((p) => p.life > 0);
+        compactAlive(game.particles);
         if (game.particles.length > 140) game.particles.splice(0, game.particles.length - 140);
         game.shake = Math.max(0, (game.shake ?? 0) - dt * 30);
-        if (game.rings) { game.rings.forEach((ring) => { ring.life -= dt; ring.r += (ring.max - ring.r) * Math.min(1, dt * 9); }); game.rings = game.rings.filter((ring) => ring.life > 0).slice(-20); }
+        if (game.rings) {
+          game.rings.forEach((ring) => {
+            ring.life -= dt;
+            ring.r += (ring.max - ring.r) * Math.min(1, dt * 9);
+          });
+          compactAlive(game.rings);
+          if (game.rings.length > 20) game.rings.splice(0, game.rings.length - 20);
+        }
         if (game.gems.length > 70) {
           const nearby: Gem[] = [];
           const clusters = new Map<string, Gem>();
