@@ -2238,64 +2238,64 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
 
     const handleEnemyDefeat = (game: GameState, enemy: Enemy, sourceShot?: Shot) => {
       if (enemy.hp > 0) return;
-    if (sourceShot?.kind === "scythe_slash" && game.weaponId === "spectral_scythe" && (game.upgradeCounts.gift_scythe_siphon?.count ?? 0) > 0 && (game.scytheSiphonCooldown ?? 0) <= 0) {
-      const siphonLevel = game.upgradeCounts.gift_scythe_siphon?.count ?? 0;
-      game.player.hp = Math.min(game.player.maxHp, game.player.hp + game.player.maxHp * 0.015 * siphonLevel);
-      game.scytheSiphonCooldown = 1.8;
-    }
-    game.kills += 1;
-    fractalAudio.kill(enemy.type === "boss" || enemy.type === "elite");
-    if (enemy.type !== "boss") {
-      game.gems.push({ x: enemy.x, y: enemy.y, value: enemy.xp, radius: 5 });
-      const fortuneBonus = [0, 0.10, 0.20, 0.30, 0.40, 0.50][Math.max(0, Math.min(5, purchases.fortune))];
-      const highestFieldRelicLevel = Math.max(purchases.area, purchases.experience, purchases.projectile_range, purchases.projectiles, purchases.ricochet, purchases.piercing, purchases.chain_lightning);
-      const baseRelicDropChance = [0, 0, 0.01, 0.03, 0.05][Math.max(0, Math.min(4, highestFieldRelicLevel))];
-      const specialDropChance = baseRelicDropChance > 0
-        ? Math.min(0.12, baseRelicDropChance * (1 + fortuneBonus) * game.omenRewardMultiplier)
-        : 0;
-      if (!enemy.isExecutioner && (enemy.type === "elite" || enemy.type === "brute") && specialDropChance > 0 && Math.random() < specialDropChance) {
-        const eligible: SpecialDrop["kind"][] = [];
-        if (purchases.area >= 1 && game.player.specialAreaStacks < MAX_AREA_RELIC_STACKS) eligible.push("area");
-        if (purchases.experience >= 1 && game.player.specialExperienceStacks < MAX_EXPERIENCE_RELIC_STACKS) eligible.push("experience");
-        if (purchases.projectile_range >= 1 && game.player.projectileRangeStacks < MAX_PROJECTILE_RANGE_STACKS) eligible.push("projectile_range");
-        if (purchases.projectiles >= 1 && game.player.projectileStacks < MAX_EXTRA_PROJECTILES) eligible.push("projectiles");
-        const projectileRelicsSupported = supportsProjectileRelics(game.weaponId);
-        if (projectileRelicsSupported && purchases.ricochet >= 1 && game.player.relicRicochet < 3) eligible.push("ricochet");
-        if (projectileRelicsSupported && purchases.piercing >= 1 && game.player.relicPiercing < 3) eligible.push("piercing");
-        if (projectileRelicsSupported && purchases.chain_lightning >= 1 && game.player.relicChainLightning < 3) eligible.push("chain_lightning");
-        eligible.push("food", "void");
-        if (eligible.length) game.specialDrops.push({ x: enemy.x, y: enemy.y, kind: eligible[Math.floor(Math.random() * eligible.length)], radius: 13 });
+      if (sourceShot?.kind === "scythe_slash" && game.weaponId === "spectral_scythe" && (game.upgradeCounts.gift_scythe_siphon?.count ?? 0) > 0 && (game.scytheSiphonCooldown ?? 0) <= 0) {
+        const siphonLevel = game.upgradeCounts.gift_scythe_siphon?.count ?? 0;
+        game.player.hp = Math.min(game.player.maxHp, game.player.hp + game.player.maxHp * 0.015 * siphonLevel);
+        game.scytheSiphonCooldown = 1.8;
       }
-      if(enemy.isExecutioner){
-        game.specialDrops.push({x:enemy.x-18,y:enemy.y,kind:"food",radius:15},{x:enemy.x+18,y:enemy.y,kind:"void",radius:15});
-        game.challengeEvent=null;eventRewardRemainingRef.current=2;setEventRewardStep(1);setSelectedUpgrade(null);setFlippedCardId(null);
-        setLevelChoices(buildLevelChoices(game,purchases));
-        toast.success("Algoz Espectral derrotado! O cemitério reverbera com dádivas!");
-      }
-    } else { game.ended = true; setStats({ totalDamageDealt: Math.round(game.totalDamageDealt), crystalsCollected: game.crystalsCollected, highestLevel: game.highestLevel }); setResult("victory"); fractalAudio.victory(); finishRun(true); }
-    {
-      const big = enemy.type === "boss" || enemy.type === "elite";
-      const count = big ? 20 : 6;
-      for (let i = 0; i < count && game.particles.length < 80; i++) {
-        const angle = Math.random() * Math.PI * 2;
-        const speed = 50 + Math.random() * (big ? 200 : 120);
-        game.particles.push({
-          x: enemy.x, y: enemy.y,
-          vx: Math.cos(angle) * speed,
-          vy: Math.sin(angle) * speed,
-          life: 0.28 + Math.random() * 0.25,
-          color: i % 3 === 0 ? "#fff1ff" : i % 3 === 1 ? "#b98cff" : enemy.color,
+      game.kills += 1;
+      fractalAudio.kill(enemy.type === "boss" || enemy.type === "elite");
+      if (enemy.type !== "boss") {
+        game.gems.push({ x: enemy.x, y: enemy.y, value: enemy.xp, radius: 5 });
+        const fortuneBonus = [0, 0.10, 0.20, 0.30, 0.40, 0.50][Math.max(0, Math.min(5, purchases.fortune))];
+        const highestFieldRelicLevel = Math.max(purchases.area, purchases.experience, purchases.projectile_range, purchases.projectiles, purchases.ricochet, purchases.piercing, purchases.chain_lightning);
+        const baseRelicDropChance = [0, 0, 0.01, 0.03, 0.05][Math.max(0, Math.min(4, highestFieldRelicLevel))];
+        const specialDropChance = baseRelicDropChance > 0
+          ? Math.min(0.12, baseRelicDropChance * (1 + fortuneBonus) * game.omenRewardMultiplier)
+          : 0;
+        if (!enemy.isExecutioner && (enemy.type === "elite" || enemy.type === "brute") && specialDropChance > 0 && Math.random() < specialDropChance) {
+          const eligible: SpecialDrop["kind"][] = [];
+          if (purchases.area >= 1 && game.player.specialAreaStacks < MAX_AREA_RELIC_STACKS) eligible.push("area");
+          if (purchases.experience >= 1 && game.player.specialExperienceStacks < MAX_EXPERIENCE_RELIC_STACKS) eligible.push("experience");
+          if (purchases.projectile_range >= 1 && game.player.projectileRangeStacks < MAX_PROJECTILE_RANGE_STACKS) eligible.push("projectile_range");
+          if (purchases.projectiles >= 1 && game.player.projectileStacks < MAX_EXTRA_PROJECTILES) eligible.push("projectiles");
+          const projectileRelicsSupported = supportsProjectileRelics(game.weaponId);
+          if (projectileRelicsSupported && purchases.ricochet >= 1 && game.player.relicRicochet < 3) eligible.push("ricochet");
+          if (projectileRelicsSupported && purchases.piercing >= 1 && game.player.relicPiercing < 3) eligible.push("piercing");
+          if (projectileRelicsSupported && purchases.chain_lightning >= 1 && game.player.relicChainLightning < 3) eligible.push("chain_lightning");
+          eligible.push("food", "void");
+          if (eligible.length) game.specialDrops.push({ x: enemy.x, y: enemy.y, kind: eligible[Math.floor(Math.random() * eligible.length)], radius: 13 });
+        }
+        if(enemy.isExecutioner){
+          game.specialDrops.push({x:enemy.x-18,y:enemy.y,kind:"food",radius:15},{x:enemy.x+18,y:enemy.y,kind:"void",radius:15});
+          game.challengeEvent=null;eventRewardRemainingRef.current=2;setEventRewardStep(1);setSelectedUpgrade(null);setFlippedCardId(null);
+          setLevelChoices(buildLevelChoices(game,purchases));
+          toast.success("Algoz Espectral derrotado! O cemitério reverbera com dádivas!");
+        }
+      } else { game.ended = true; setStats({ totalDamageDealt: Math.round(game.totalDamageDealt), crystalsCollected: game.crystalsCollected, highestLevel: game.highestLevel }); setResult("victory"); fractalAudio.victory(); finishRun(true); }
+      {
+        const big = enemy.type === "boss" || enemy.type === "elite";
+        const count = big ? 20 : 6;
+        for (let i = 0; i < count && game.particles.length < 80; i++) {
+          const angle = Math.random() * Math.PI * 2;
+          const speed = 50 + Math.random() * (big ? 200 : 120);
+          game.particles.push({
+            x: enemy.x, y: enemy.y,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            life: 0.28 + Math.random() * 0.25,
+            color: i % 3 === 0 ? "#fff1ff" : i % 3 === 1 ? "#b98cff" : enemy.color,
+          });
+        }
+        (game.rings ??= []).push({
+          x: enemy.x, y: enemy.y, r: 6,
+          max: big ? 140 : 42,
+          life: big ? 0.5 : 0.26,
+          color: big ? "#e9c46a" : "#c9a2ff",
         });
+        if (big) game.shake = Math.max(game.shake ?? 0, enemy.type === "boss" ? 16 : 8);
       }
-      (game.rings ??= []).push({
-        x: enemy.x, y: enemy.y, r: 6,
-        max: big ? 140 : 42,
-        life: big ? 0.5 : 0.26,
-        color: big ? "#e9c46a" : "#c9a2ff",
-      });
-      if (big) game.shake = Math.max(game.shake ?? 0, enemy.type === "boss" ? 16 : 8);
-    }
-              
+                
     };
 
     const tick = (now: number) => {
@@ -3055,14 +3055,10 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             : getNearbyEnemies(shot.x, shot.y, collisionGrid);
           if (!wideAttack && shot.targetEnemy && !nearbyTargets.includes(shot.targetEnemy)) nearbyTargets.push(shot.targetEnemy);
           for (const enemy of nearbyTargets) {
-            if (enemy.hp <= 0 || (!isGravityAura && shot.hitTargets.includes(enemy))) continue;
+            if (enemy.hp <= 0 || shot.hitTargets.includes(enemy)) continue;
             if (shot.targetEnemy && shot.targetEnemy !== enemy) continue;
             const hitX = shot.x - enemy.x;
             const hitY = shot.y - enemy.y;
-            if (isGravityAura) {
-              const hitLimit = (shot.radius ?? 90) + enemy.radius;
-              if (Math.abs(hitX) > hitLimit || Math.abs(hitY) > hitLimit) continue;
-            }
             const hitDistanceSquared = hitX * hitX + hitY * hitY;
             let hit = false;
             if (shot.kind === "plasma_puddle" || shot.kind === "sentinel_explosion") {
