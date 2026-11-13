@@ -670,129 +670,104 @@ const GRAVITY_AURA_INACTIVE_PHASE_SECONDS = 4.0;
 const gravityBestEnemies: (Enemy | null)[] = new Array(8).fill(null);
 const gravityBestDist: number[] = new Array(8).fill(0);
 const runeRingCache = new Map<string, HTMLCanvasElement>();
-type WellSpriteLayers = { base: HTMLCanvasElement; runes: HTMLCanvasElement; sigil: HTMLCanvasElement };
-const wellSpriteCache = new Map<string, WellSpriteLayers>();
+const wellSpriteCache = new Map<string, HTMLCanvasElement>();
 
-function getWellSprite(radius: number, evolved: boolean): WellSpriteLayers {
+function getWellSprite(radius: number, evolved: boolean): HTMLCanvasElement {
   const r = Math.round(radius / 8) * 8;
   const key = r + (evolved ? "e" : "n");
   const cached = wellSpriteCache.get(key);
   if (cached) return cached;
 
-  const size = Math.ceil(r * 2 * 1.05 + 8);
-  const createLayer = () => {
-    const canvas = document.createElement("canvas");
-    canvas.width = size;
-    canvas.height = size;
-    const ctx = canvas.getContext("2d");
-    if (ctx) ctx.translate(size / 2, size / 2);
-    return { canvas, ctx };
-  };
+  const size = Math.ceil(r * 2 * 1.05 + 16);
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
 
-  const baseLayer = createLayer();
-  const runeLayer = createLayer();
-  const sigilLayer = createLayer();
+  ctx.translate(size / 2, size / 2);
+
+  // 1. Círculos concêntricos do selo
   const ringColor = evolved ? "rgba(225, 29, 72, 0.85)" : "rgba(168, 85, 247, 0.85)";
-  if (runeLayer.ctx) {
-    const ctx = runeLayer.ctx;
-    ctx.strokeStyle = ringColor;
-    ctx.lineWidth = 2;
+  ctx.strokeStyle = ringColor;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(0, 0, r * 0.94, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.arc(0, 0, r * 0.82, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // 2. Anel de Runas Nórdicas (estático)
+  drawRuneRing(ctx, r * 0.88, evolved ? "#fb7185" : "#d8b4fe");
+
+  // 3. Símbolo Central Místico (estático)
+  if (evolved) {
+    // Hexagrama Unicursal Carmesim
+    ctx.strokeStyle = "#f43f5e";
+    ctx.lineWidth = 2.8;
+    const hr = r * 0.65;
+    const hx = hr * Math.cos(Math.PI / 6);
+    const hy = hr * 0.5;
     ctx.beginPath();
-    ctx.arc(0, 0, r * 0.94, 0, Math.PI * 2);
+    ctx.moveTo(0, -hr);
+    ctx.lineTo(hx, hy);
+    ctx.lineTo(-hx, -hy);
+    ctx.lineTo(0, hr);
+    ctx.lineTo(hx, -hy);
+    ctx.lineTo(-hx, hy);
+    ctx.closePath();
     ctx.stroke();
-    ctx.lineWidth = 1.2;
+
+    ctx.fillStyle = "#fda4af";
+    for (let a = 0; a < 6; a++) {
+      const angle = (a * Math.PI) / 3 - Math.PI / 2;
+      ctx.beginPath();
+      ctx.arc(Math.cos(angle) * hr * 0.82, Math.sin(angle) * hr * 0.82, 3.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  } else {
+    // Pentagrama Místico Violeta
+    ctx.strokeStyle = "#c084fc";
+    ctx.lineWidth = 2.4;
     ctx.beginPath();
-    ctx.arc(0, 0, r * 0.82, 0, Math.PI * 2);
+    for (let p = 0; p < 5; p++) {
+      const angle = (p * 4 * Math.PI) / 5 - Math.PI / 2;
+      const px = Math.cos(angle) * r * 0.70;
+      const py = Math.sin(angle) * r * 0.70;
+      if (p === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
     ctx.stroke();
-  }
 
-  if (runeLayer.ctx) {
-    drawRuneRing(runeLayer.ctx, r * 0.88, evolved ? "#fb7185" : "#d8b4fe");
-  }
-
-  if (sigilLayer.ctx) {
-    const ctx = sigilLayer.ctx;
-    if (evolved) {
-      // Hexagrama Unicursal Carmesim: traço único com seis nós rúnicos.
-      ctx.strokeStyle = "#f43f5e";
-      ctx.lineWidth = 2.8;
-      const hr = r * 0.65;
-      const hx = hr * Math.cos(Math.PI / 6);
-      const hy = hr * 0.5;
+    ctx.fillStyle = "#e9d5ff";
+    for (let p = 0; p < 5; p++) {
+      const angle = (p * 2 * Math.PI) / 5 - Math.PI / 2;
       ctx.beginPath();
-      ctx.moveTo(0, -hr);
-      ctx.lineTo(hx, hy);
-      ctx.lineTo(-hx, -hy);
-      ctx.lineTo(0, hr);
-      ctx.lineTo(hx, -hy);
-      ctx.lineTo(-hx, hy);
-      ctx.closePath();
-      ctx.stroke();
-
-      ctx.fillStyle = "#fda4af";
-      for (let a = 0; a < 6; a++) {
-        const angle = (a * Math.PI) / 3 - Math.PI / 2;
-        ctx.beginPath();
-        ctx.arc(Math.cos(angle) * hr * 0.82, Math.sin(angle) * hr * 0.82, 3, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    } else {
-      // Pentagrama místico: desenhado em uma camada própria para girar ao contrário das runas.
-      ctx.strokeStyle = "#c084fc";
-      ctx.lineWidth = 2.4;
-      ctx.beginPath();
-      for (let p = 0; p < 5; p++) {
-        const angle = (p * 4 * Math.PI) / 5 - Math.PI / 2;
-        const px = Math.cos(angle) * r * 0.70;
-        const py = Math.sin(angle) * r * 0.70;
-        if (p === 0) ctx.moveTo(px, py);
-        else ctx.lineTo(px, py);
-      }
-      ctx.closePath();
-      ctx.stroke();
-
-      ctx.fillStyle = "#e9d5ff";
-      for (let p = 0; p < 5; p++) {
-        const angle = (p * 2 * Math.PI) / 5 - Math.PI / 2;
-        ctx.beginPath();
-        ctx.arc(Math.cos(angle) * r * 0.70, Math.sin(angle) * r * 0.70, 2.8, 0, Math.PI * 2);
-        ctx.fill();
-      }
+      ctx.arc(Math.cos(angle) * r * 0.70, Math.sin(angle) * r * 0.70, 3, 0, Math.PI * 2);
+      ctx.fill();
     }
   }
 
-  const layers = { base: baseLayer.canvas, runes: runeLayer.canvas, sigil: sigilLayer.canvas };
-  wellSpriteCache.set(key, layers);
-  return layers;
+  wellSpriteCache.set(key, canvas);
+  return canvas;
 }
 
-function drawWellSpriteLayers(
+function drawWellSpriteStatic(
   ctx: CanvasRenderingContext2D,
-  sprites: WellSpriteLayers,
+  sprite: HTMLCanvasElement,
   x: number,
   y: number,
   scale: number,
-  elapsed: number,
-  evolved: boolean,
   alpha = 1,
 ) {
-  const half = (sprites.base.width / 2) * scale;
-  const drawLayer = (layer: HTMLCanvasElement) => ctx.drawImage(layer, -half, -half, half * 2, half * 2);
-
+  const half = (sprite.width / 2) * scale;
   ctx.save();
-  ctx.translate(x, y);
   ctx.globalAlpha = alpha;
-
-  // Canvas usa eixo Y descendente: rotação positiva é horária.
-  ctx.save();
-  ctx.rotate(elapsed * 0.55);
-  drawLayer(sprites.runes);
-  ctx.restore();
-
-  ctx.save();
-  ctx.rotate(-elapsed * (evolved ? 0.65 : 0.55));
-  drawLayer(sprites.sigil);
-  ctx.restore();
+  // Desenho direto estático sem translate ou rotação por quadro:
+  ctx.drawImage(sprite, x - half, y - half, half * 2, half * 2);
   ctx.restore();
 }
 function drawRuneRing(ctx: CanvasRenderingContext2D, radius: number, color = "#f0abfc") {
@@ -1239,13 +1214,13 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
       // A aura permanente/intermitente é desenhada fora do passe aditivo abaixo.
       // Isso mantém source-over sem alternar o modo de composição dentro da lista de tiros.
       if (shot.isAura) return;
-      const radius = shot.radius ?? (game.evolved ? 116 : 88);
-      const spriteRadius = game.evolved ? 116 : 88;
+      const radius = shot.radius ?? (game.evolved ? 140 : 106);
+      const spriteRadius = game.evolved ? 140 : 106;
       const visualScale = radius / spriteRadius;
       const sprite = getWellSprite(spriteRadius, game.evolved);
       ctx.save();
       ctx.globalCompositeOperation = "source-over";
-      drawWellSpriteLayers(ctx, sprite, shot.x, shot.y, visualScale, game.elapsed, game.evolved, Math.min(1, lifeRatio * 1.25));
+      drawWellSpriteStatic(ctx, sprite, shot.x, shot.y, visualScale, Math.min(1, lifeRatio * 1.25));
       ctx.restore();
       return;
     }
@@ -1494,59 +1469,48 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
   // Selo Ritualístico e Vínculos de Almas do Grilhão.
   const gravityAura = game.gravityAuraShot;
   if (gravityAura?.active) {
-    const spriteRadius = game.evolved ? 116 : 88;
+    const spriteRadius = game.evolved ? 140 : 106;
     const visualScale = (gravityAura.radius ?? spriteRadius) / spriteRadius;
     const sprite = getWellSprite(spriteRadius, game.evolved);
     const lifeRatio = clamp(gravityAura.life / Math.max(0.01, gravityAura.maxLife ?? 9999), 0.08, 1);
 
     ctx.save();
     ctx.globalCompositeOperation = "source-over";
-    drawWellSpriteLayers(
+    drawWellSpriteStatic(
       ctx,
       sprite,
       game.player.x,
       game.player.y,
       visualScale,
-      game.elapsed,
-      game.evolved,
       Math.min(1, lifeRatio * 1.25) * 0.85,
     );
 
     const tetherList = game.gravityTethers;
     if (tetherList && tetherList.length > 0) {
-      // Correntes reais: elos ovais alternados, todos em um único path por cor.
       const px = game.player.x, py = game.player.y;
-      const linkStep = 9;
-      const scroll = (game.elapsed * 30) % (linkStep * 2);
-      ctx.lineWidth = game.evolved ? 2.4 : 2;
-      for (let pass = 0; pass < 2; pass++) {
-        ctx.beginPath();
-        for (let i = 0; i < tetherList.length; i++) {
-          const target = tetherList[i].enemy;
-          if (target.hp <= 0) continue;
-          const dx = target.x - px, dy = target.y - py;
-          const len = Math.sqrt(dx * dx + dy * dy);
-          if (len < 12) continue;
-          const ux = dx / len, uy = dy / len;
-          const ang = Math.atan2(dy, dx);
-          let k = 0;
-          for (let d = 10 + scroll; d < len - 4; d += linkStep, k++) {
-            if ((k & 1) !== pass) continue;
-            const cx = px + ux * d, cy = py + uy * d;
-            if (pass === 0) {
-              ctx.moveTo(cx + Math.cos(ang) * 6, cy + Math.sin(ang) * 6);
-              ctx.ellipse(cx, cy, 6, 3.2, ang, 0, Math.PI * 2);
-            } else {
-              ctx.moveTo(cx + Math.cos(ang) * 6, cy + Math.sin(ang) * 6);
-              ctx.lineTo(cx - Math.cos(ang) * 6, cy - Math.sin(ang) * 6);
-            }
-          }
-        }
-        ctx.strokeStyle = pass === 0
-          ? (game.evolved ? "#f43f5e" : "#c084fc")
-          : (game.evolved ? "#fecdd3" : "#ede9fe");
-        ctx.stroke();
+      ctx.save();
+      // Corrente ritualística segmentada: dois traçados nativos agregados em poucos paths.
+      ctx.lineWidth = game.evolved ? 3 : 2.2;
+      ctx.setLineDash([8, 6]);
+      ctx.lineDashOffset = -(game.elapsed * 26);
+      ctx.strokeStyle = game.evolved ? "#f43f5e" : "#c084fc";
+      ctx.beginPath();
+      for (let i = 0; i < tetherList.length; i++) {
+        const target = tetherList[i].enemy;
+        if (target.hp <= 0) continue;
+        ctx.moveTo(px, py);
+        ctx.lineTo(target.x, target.y);
       }
+      ctx.stroke();
+
+      // Núcleo luminoso dos elos acompanha a mesma corrente em segundo traçado.
+      ctx.lineWidth = 1.2;
+      ctx.setLineDash([4, 10]);
+      ctx.lineDashOffset = -(game.elapsed * 26) - 2;
+      ctx.strokeStyle = game.evolved ? "#fecdd3" : "#ede9fe";
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
     }
     ctx.restore();
   }
@@ -2001,8 +1965,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
       // Pré-aquece os dois sprites fixos do Grilhão durante a tela de preparação.
       // O tamanho da aura será escalado na renderização, sem criar canvases por upgrade.
       if (selectedWeapon === "gravity_shackle") {
-        getWellSprite(88, false);
-        getWellSprite(116, true);
+        getWellSprite(106, false);
+        getWellSprite(140, true);
       }
       const { data: newRunId, error: runError } = await (supabase.rpc as any)("start_fractal_run", { _corruption: corruption, _weapon: selectedWeapon, _omen: corruption >= 4 && purchases.omen_archive ? selectedOmen : null });
       if (runError) { toast.error(runError.message); return; }
@@ -2591,7 +2555,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         // Grilhão: uma única aura acompanha o herói. A forma normal pulsa em ciclos;
         // a evolução mantém o selo permanentemente ativo. Reutilizamos o sprite já existente.
         if (game.weaponId === "gravity_shackle") {
-          const auraRadius = (game.evolved ? 116 : 88)
+          const auraRadius = (game.evolved ? 140 : 106)
             * (1 + game.player.specialAreaStacks * 0.1)
             * game.player.projectileRangeMultiplier
             * (1 + game.player.projectileStacks * 0.06);
@@ -2978,7 +2942,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         if (game.weaponId === "gravity_shackle" && game.gravityAuraActive && gravityAura?.active) {
           const tethers = game.gravityTethers ?? (game.gravityTethers = []);
           const maxTethers = game.evolved ? 8 : 5;
-          const maxRange = gravityAura.radius ?? (game.evolved ? 116 : 88);
+          const maxRange = gravityAura.radius ?? (game.evolved ? 140 : 106);
           const maxRangeSquared = maxRange * maxRange;
           let tetherCount = tethers.length;
           game.gravityAuraTimer2 = (game.gravityAuraTimer2 ?? 0) - dt;
