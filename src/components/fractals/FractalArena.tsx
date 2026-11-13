@@ -849,16 +849,30 @@ function spawnCemeteryUrns(game: GameState, count: number) {
     game.urns.push({id:game.nextUrnId++,x,y,hp:3,maxHp:3,radius:15,broken:false}); placed++;
   }
 }
-function resolveCemeteryCollision(x:number,y:number,radius:number,obstacles:CemeteryObstacle[]) {
-  let nx=clamp(x,-WORLD_LIMIT+radius,WORLD_LIMIT-radius), ny=clamp(y,-WORLD_LIMIT+radius,WORLD_LIMIT-radius);
-  for (const obstacle of obstacles) {
-    const min=radius+obstacle.radius, dx=nx-obstacle.x, dy=ny-obstacle.y;
-    if (dx>min || dx<-min || dy>min || dy<-min) continue;
-    const d=Math.hypot(dx,dy);
-    if (d>0 && d<min) { const push=min-d; nx+=dx/d*push; ny+=dy/d*push; }
-    else if (d===0) nx+=min;
+// Reutilizado por todos os testes síncronos de colisão da arena para não alocar
+// um objeto temporário por inimigo em cada frame. Os chamadores consomem x/y imediatamente.
+const cemeteryCollisionResult = { x: 0, y: 0 };
+function resolveCemeteryCollision(x: number, y: number, radius: number, obstacles: CemeteryObstacle[]) {
+  let nx = clamp(x, -WORLD_LIMIT + radius, WORLD_LIMIT - radius);
+  let ny = clamp(y, -WORLD_LIMIT + radius, WORLD_LIMIT - radius);
+  for (let i = 0; i < obstacles.length; i++) {
+    const obstacle = obstacles[i];
+    const min = radius + obstacle.radius;
+    const dx = nx - obstacle.x;
+    const dy = ny - obstacle.y;
+    if (dx > min || dx < -min || dy > min || dy < -min) continue;
+    const d = Math.hypot(dx, dy);
+    if (d > 0 && d < min) {
+      const push = min - d;
+      nx += (dx / d) * push;
+      ny += (dy / d) * push;
+    } else if (d === 0) {
+      nx += min;
+    }
   }
-  return {x:clamp(nx,-WORLD_LIMIT+radius,WORLD_LIMIT-radius),y:clamp(ny,-WORLD_LIMIT+radius,WORLD_LIMIT-radius)};
+  cemeteryCollisionResult.x = clamp(nx, -WORLD_LIMIT + radius, WORLD_LIMIT - radius);
+  cemeteryCollisionResult.y = clamp(ny, -WORLD_LIMIT + radius, WORLD_LIMIT - radius);
+  return cemeteryCollisionResult;
 }
 
 
@@ -1154,7 +1168,9 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
 
     if (shot.kind === "dash_strike") return;
     if (shot.kind === "gravity_well") {
-      if (shot.isAura && !shot.active) return;
+      // A aura permanente/intermitente é desenhada fora do passe aditivo abaixo.
+      // Isso mantém source-over sem alternar o modo de composição dentro da lista de tiros.
+      if (shot.isAura) return;
       const radius = shot.radius ?? (game.evolved ? 230 : 175);
       const spriteRadius = game.evolved ? 230 : 175;
       const visualScale = radius / spriteRadius;
@@ -1410,6 +1426,25 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     ctx.restore();
   });
   ctx.restore();
+
+  // Renderiza a aura em source-over depois de sair do passe aditivo dos projéteis.
+  // O sprite continua girando com a mesma velocidade e escala de antes.
+  const gravityAura = game.gravityAuraShot;
+  if (gravityAura?.active) {
+    const spriteRadius = game.evolved ? 230 : 175;
+    const visualScale = (gravityAura.radius ?? spriteRadius) / spriteRadius;
+    const sprite = getWellSprite(spriteRadius, game.evolved);
+    const half = (sprite.width / 2) * visualScale;
+    const lifeRatio = clamp(gravityAura.life / Math.max(0.01, gravityAura.maxLife ?? 9999), 0.08, 1);
+    ctx.save();
+    ctx.globalCompositeOperation = "source-over";
+    ctx.translate(gravityAura.x, gravityAura.y);
+    ctx.rotate(game.elapsed * (game.evolved ? -0.72 : 0.62));
+    ctx.globalAlpha = Math.min(1, lifeRatio * 1.25);
+    ctx.drawImage(sprite, -half, -half, half * 2, half * 2);
+    ctx.restore();
+  }
+
   ctx.save();
   game.rings?.forEach((ring) => {
     ctx.globalAlpha = clamp(ring.life * 2.4, 0, 1);
@@ -1492,12 +1527,12 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
         charger: [46, 48, 0.66], brute: [56, 64, 0.68],
       };
       const [spriteWidth, spriteHeight, anchor] = dimensions[enemy.type];
-      ctx.globalAlpha = hurt ? 0.78 : 1;
       ctx.filter = bossInFury ? "brightness(1.15) sepia(1) saturate(4) hue-rotate(315deg)" : "none";
       ctx.shadowColor = bossInFury ? "#d41438" : enemy.type === "brute" ? "#9b7bce" : enemy.type === "charger" ? "#b58cff" : "#8b68ff";
       ctx.shadowBlur = 0;
+      // Um único passe por sprite evita a troca individual para composição aditiva.
+      ctx.globalAlpha = hurt ? 0.68 : 1;
       ctx.drawImage(enemySprite, -spriteWidth / 2, -spriteHeight * anchor, spriteWidth, spriteHeight);
-      if (hurt) { ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = 0.6; ctx.drawImage(enemySprite, -spriteWidth / 2, -spriteHeight * anchor, spriteWidth, spriteHeight); }
       ctx.restore();
     } else if (enemy.type === "wraith") {
       ctx.shadowColor = enemy.color; ctx.shadowBlur = 0; ctx.fillStyle = hurt ? "#fff" : "#827394";
@@ -2757,17 +2792,28 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             if (!isGravityAura) shot.hitTargets.length = 0;
           }
           const wideAttack = shot.kind === "scythe_slash" || shot.kind === "sentinel_explosion" || isPulsingField;
-          // Consultamos somente as células espaciais que intersectam a área do golpe.
-          if (!collisionGrid) collisionGrid = buildEnemySpatialGrid(game.enemies);
-          const nearbyTargets = wideAttack
-            ? getEnemiesInRadius(shot.x, shot.y, (shot.radius ?? 180) + 42, collisionGrid)
-            : getNearbyEnemies(shot.x, shot.y, collisionGrid);
-          if (!wideAttack && shot.targetEnemy && !nearbyTargets.includes(shot.targetEnemy)) nearbyTargets.push(shot.targetEnemy);
+          let nearbyTargets: Enemy[];
+          if (isGravityAura) {
+            // Reaproveita o array de inimigos: O(N) com pré-filtro AABB, sem Map,
+            // arrays temporários de células ou listas de alvos a cada pulso.
+            nearbyTargets = game.enemies;
+          } else {
+            // As demais armas continuam consultando a grade espacial sob demanda.
+            if (!collisionGrid) collisionGrid = buildEnemySpatialGrid(game.enemies);
+            nearbyTargets = wideAttack
+              ? getEnemiesInRadius(shot.x, shot.y, (shot.radius ?? 180) + 42, collisionGrid)
+              : getNearbyEnemies(shot.x, shot.y, collisionGrid);
+            if (!wideAttack && shot.targetEnemy && !nearbyTargets.includes(shot.targetEnemy)) nearbyTargets.push(shot.targetEnemy);
+          }
           for (const enemy of nearbyTargets) {
             if (enemy.hp <= 0 || (!isGravityAura && shot.hitTargets.includes(enemy))) continue;
             if (shot.targetEnemy && shot.targetEnemy !== enemy) continue;
             const hitX = shot.x - enemy.x;
             const hitY = shot.y - enemy.y;
+            if (isGravityAura) {
+              const hitLimit = (shot.radius ?? 90) + enemy.radius;
+              if (Math.abs(hitX) > hitLimit || Math.abs(hitY) > hitLimit) continue;
+            }
             const hitDistanceSquared = hitX * hitX + hitY * hitY;
             let hit = false;
             if (shot.kind === "plasma_puddle" || shot.kind === "gravity_well" || shot.kind === "sentinel_explosion") {
