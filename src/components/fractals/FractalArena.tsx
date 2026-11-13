@@ -1585,8 +1585,35 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     } else if (enemy.type === "boss" && enemy.windup > 0) {
       ctx.scale(1.04, 0.96);
     }
-    if (enemy.type === "boss" && enemy.windup > 0) { ctx.save(); ctx.globalAlpha = 0.25 + Math.sin(game.elapsed * 18) * 0.08; ctx.strokeStyle = "#d8b5ff"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(enemy.targetX - enemy.x, enemy.targetY - enemy.y, 88, 0, Math.PI * 2); ctx.stroke(); ctx.fillStyle = "rgba(177,112,220,.12)"; ctx.beginPath(); ctx.arc(enemy.targetX - enemy.x, enemy.targetY - enemy.y, 88, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
-    if (enemy.type === "brute" && enemy.windup > 0) { ctx.save(); ctx.globalAlpha = .25 + Math.sin(game.elapsed * 20) * .2; ctx.strokeStyle = "#ffb36b"; ctx.lineWidth = 3; ctx.setLineDash([6, 5]); ctx.beginPath(); ctx.arc(0, 0, 78, 0, Math.PI * 2); ctx.stroke(); ctx.fillStyle = "rgba(255,150,75,.13)"; ctx.fill(); ctx.restore(); }
+    if (enemy.type === "boss" && enemy.windup > 0) {
+      const tx = enemy.targetX - enemy.x, ty = enemy.targetY - enemy.y;
+      const fury = enemy.hp <= enemy.maxHp * 0.30;
+      const pulse = 0.5 + Math.sin(game.elapsed * 18) * 0.5;
+      ctx.save(); ctx.translate(tx, ty);
+      ctx.globalAlpha = 0.14 + pulse * 0.08; ctx.fillStyle = fury ? "#ef4444" : "#a855f7";
+      ctx.beginPath(); ctx.arc(0, 0, 88, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 0.9; ctx.strokeStyle = fury ? "#fca5a5" : "#e9d5ff"; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(0, 0, 88, 0, Math.PI * 2); ctx.stroke();
+      ctx.lineWidth = 1.5; ctx.rotate(game.elapsed * 1.6);
+      ctx.beginPath(); ctx.arc(0, 0, 72, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); for (let k = 0; k <= 5; k++) { const a2 = -Math.PI / 2 + k * 4 * Math.PI / 5; const px2 = Math.cos(a2) * 70, py2 = Math.sin(a2) * 70; if (k) ctx.lineTo(px2, py2); else ctx.moveTo(px2, py2); } ctx.stroke();
+      ctx.globalAlpha = 0.6; ctx.fillStyle = fury ? "#fecaca" : "#f3e8ff";
+      for (let k = 0; k < 4; k++) { ctx.beginPath(); ctx.moveTo(0, -18); ctx.lineTo(5, 0); ctx.lineTo(0, 18); ctx.lineTo(-5, 0); ctx.closePath(); ctx.fill(); ctx.rotate(Math.PI / 4); }
+      ctx.restore();
+    }
+    if (enemy.type === "brute" && enemy.windup > 0) {
+      const charge = 1 - enemy.windup / 0.72;
+      ctx.save();
+      ctx.globalAlpha = 0.12 + charge * 0.14; ctx.fillStyle = "#ff8a3d";
+      ctx.beginPath(); ctx.arc(0, 0, 78, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 0.3 + charge * 0.4; ctx.fillStyle = "#ffb36b";
+      ctx.beginPath(); ctx.arc(0, 0, 78 * charge, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 0.85; ctx.strokeStyle = "#ffd29a"; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.arc(0, 0, 78, 0, Math.PI * 2); ctx.stroke();
+      ctx.lineWidth = 1.6;
+      for (let k = 0; k < 6; k++) { const a2 = k * Math.PI / 3 + 0.3; ctx.beginPath(); ctx.moveTo(Math.cos(a2) * 18, Math.sin(a2) * 18); ctx.lineTo(Math.cos(a2 + 0.15) * 45 * charge + Math.cos(a2) * 18, Math.sin(a2 + 0.15) * 45 * charge + Math.sin(a2) * 18); ctx.lineTo(Math.cos(a2 - 0.1) * 74 * charge, Math.sin(a2 - 0.1) * 74 * charge); ctx.stroke(); }
+      ctx.restore();
+    }
     if (enemy.type === "charger" && enemy.windup > 0) {
       const charge = 1 - enemy.windup / 0.52;
       ctx.save(); ctx.rotate(Math.atan2(enemy.targetY, enemy.targetX));
@@ -2818,6 +2845,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             }
             if (enemy.windup > 0) {
               enemy.windup -= dt;
+              if (enemy.windup <= 0) { (game.rings ??= []).push({ x: enemy.targetX, y: enemy.targetY, r: 20, max: 100, life: 0.42, color: enemy.hp <= enemy.maxHp * 0.30 ? "#ef4444" : "#c084fc" }); game.shake = Math.max(game.shake ?? 0, 8); }
               if (enemy.windup <= 0 && distance(game.player.x, game.player.y, enemy.targetX, enemy.targetY) < 101 && game.player.invuln <= 0) {
                 game.player.hp = Math.max(0, game.player.hp - getPlayerDamageTaken(game, 28)); game.player.invuln = 0.85; game.player.hitFlash = 0.3; 
               }
@@ -2869,6 +2897,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               if (enemy.windup === 0) {
                 if (distance(game.player.x, game.player.y, enemy.x, enemy.y) < 78 + 12 && game.player.invuln <= 0) { game.player.hp = Math.max(0, game.player.hp - getPlayerDamageTaken(game, enemy.damage * 1.35)); game.player.invuln = .8; game.player.hitFlash = 0.3;  }
                 for (let i=0;i<5;i++) { const a=i*Math.PI*2/5; game.particles.push({x:enemy.x,y:enemy.y,vx:Math.cos(a)*105,vy:Math.sin(a)*105,life:.35,color:"#e7a56d"}); }
+                (game.rings ??= []).push({ x: enemy.x, y: enemy.y, r: 12, max: 82, life: 0.35, color: "#ffb36b" }); game.shake = Math.max(game.shake ?? 0, 4);
                 enemy.attack = 2.7;
               }
             } else {
