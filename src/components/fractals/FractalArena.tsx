@@ -314,7 +314,7 @@ type GameState = {
   weaponId: WeaponId; weaponLevel: number; evolved: boolean; rerollsRemaining: number; banishesRemaining: number; bannedUpgradeIds: string[];
   revolverShotCount?: number; orbitalPulseTimer?: number;
   gravityAuraTimer?: number; gravityAuraActive?: boolean; gravityAuraShot?: Shot;
-  gravityTethers?: { id: number; enemy: Enemy; duration: number }[];
+  gravityTethers?: { id: number; enemy: Enemy; duration: number }[]; gravityAuraTimer2?: number;
   scytheSiphonCooldown?: number; dashChainRemaining: number; dashChainWindow: number; dashHitTargets: Set<Enemy>;
   anchorReviveAvailable: boolean; anchorRevivesUsed: number; omenId: OmenId | null; omenSpawnMultiplier: number; omenEnemyHpMultiplier: number; omenRewardMultiplier: number; omenRevengeCooldown: number; lastObservedHp: number;
   shake?: number; rings?: { x: number; y: number; r: number; max: number; life: number; color: string }[];
@@ -667,6 +667,8 @@ const RUNE_PHRASE = "ᚷᚱᛁᛚᚺᚨᛟ ᚷᚱᚨᚹᛁᛏᚨᚲᛁᛟᚾᚨ�
 // A aura base permanece 3,2 s visível e 4 s recolhida entre ciclos.
 const GRAVITY_AURA_ACTIVE_PHASE_SECONDS = 3.2;
 const GRAVITY_AURA_INACTIVE_PHASE_SECONDS = 4.0;
+const gravityBestEnemies: (Enemy | null)[] = new Array(8).fill(null);
+const gravityBestDist: number[] = new Array(8).fill(0);
 const runeRingCache = new Map<string, HTMLCanvasElement>();
 type WellSpriteLayers = { base: HTMLCanvasElement; runes: HTMLCanvasElement; sigil: HTMLCanvasElement };
 const wellSpriteCache = new Map<string, WellSpriteLayers>();
@@ -691,8 +693,8 @@ function getWellSprite(radius: number, evolved: boolean): WellSpriteLayers {
   const runeLayer = createLayer();
   const sigilLayer = createLayer();
   const ringColor = evolved ? "rgba(225, 29, 72, 0.85)" : "rgba(168, 85, 247, 0.85)";
-  if (baseLayer.ctx) {
-    const ctx = baseLayer.ctx;
+  if (runeLayer.ctx) {
+    const ctx = runeLayer.ctx;
     ctx.strokeStyle = ringColor;
     ctx.lineWidth = 2;
     ctx.beginPath();
@@ -780,7 +782,6 @@ function drawWellSpriteLayers(
   ctx.save();
   ctx.translate(x, y);
   ctx.globalAlpha = alpha;
-  drawLayer(sprites.base);
 
   // Canvas usa eixo Y descendente: rotação positiva é horária.
   ctx.save();
@@ -1238,8 +1239,8 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
       // A aura permanente/intermitente é desenhada fora do passe aditivo abaixo.
       // Isso mantém source-over sem alternar o modo de composição dentro da lista de tiros.
       if (shot.isAura) return;
-      const radius = shot.radius ?? (game.evolved ? 230 : 175);
-      const spriteRadius = game.evolved ? 230 : 175;
+      const radius = shot.radius ?? (game.evolved ? 116 : 88);
+      const spriteRadius = game.evolved ? 116 : 88;
       const visualScale = radius / spriteRadius;
       const sprite = getWellSprite(spriteRadius, game.evolved);
       ctx.save();
@@ -1493,7 +1494,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
   // Selo Ritualístico e Vínculos de Almas do Grilhão.
   const gravityAura = game.gravityAuraShot;
   if (gravityAura?.active) {
-    const spriteRadius = game.evolved ? 230 : 175;
+    const spriteRadius = game.evolved ? 116 : 88;
     const visualScale = (gravityAura.radius ?? spriteRadius) / spriteRadius;
     const sprite = getWellSprite(spriteRadius, game.evolved);
     const lifeRatio = clamp(gravityAura.life / Math.max(0.01, gravityAura.maxLife ?? 9999), 0.08, 1);
@@ -1511,34 +1512,41 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
       Math.min(1, lifeRatio * 1.25) * 0.85,
     );
 
-    if (game.gravityTethers && game.gravityTethers.length > 0) {
-      const chainColor = game.evolved ? "#f43f5e" : "#c084fc";
-      const linkGlow = game.evolved ? "#fda4af" : "#f3e8ff";
-      ctx.lineWidth = game.evolved ? 2.5 : 2;
-      ctx.strokeStyle = chainColor;
-      ctx.setLineDash([7, 5]);
-      ctx.lineDashOffset = -game.elapsed * 45;
-
-      for (let i = 0; i < game.gravityTethers.length; i++) {
-        const target = game.gravityTethers[i].enemy;
-        if (target.hp <= 0) continue;
+    const tetherList = game.gravityTethers;
+    if (tetherList && tetherList.length > 0) {
+      // Correntes reais: elos ovais alternados, todos em um único path por cor.
+      const px = game.player.x, py = game.player.y;
+      const linkStep = 9;
+      const scroll = (game.elapsed * 30) % (linkStep * 2);
+      ctx.lineWidth = game.evolved ? 2.4 : 2;
+      for (let pass = 0; pass < 2; pass++) {
         ctx.beginPath();
-        ctx.moveTo(game.player.x, game.player.y);
-        ctx.lineTo(target.x, target.y);
+        for (let i = 0; i < tetherList.length; i++) {
+          const target = tetherList[i].enemy;
+          if (target.hp <= 0) continue;
+          const dx = target.x - px, dy = target.y - py;
+          const len = Math.sqrt(dx * dx + dy * dy);
+          if (len < 12) continue;
+          const ux = dx / len, uy = dy / len;
+          const ang = Math.atan2(dy, dx);
+          let k = 0;
+          for (let d = 10 + scroll; d < len - 4; d += linkStep, k++) {
+            if ((k & 1) !== pass) continue;
+            const cx = px + ux * d, cy = py + uy * d;
+            if (pass === 0) {
+              ctx.moveTo(cx + Math.cos(ang) * 6, cy + Math.sin(ang) * 6);
+              ctx.ellipse(cx, cy, 6, 3.2, ang, 0, Math.PI * 2);
+            } else {
+              ctx.moveTo(cx + Math.cos(ang) * 6, cy + Math.sin(ang) * 6);
+              ctx.lineTo(cx - Math.cos(ang) * 6, cy - Math.sin(ang) * 6);
+            }
+          }
+        }
+        ctx.strokeStyle = pass === 0
+          ? (game.evolved ? "#f43f5e" : "#c084fc")
+          : (game.evolved ? "#fecdd3" : "#ede9fe");
         ctx.stroke();
-
-        const midX = (game.player.x + target.x) / 2;
-        const midY = (game.player.y + target.y) / 2;
-        ctx.fillStyle = linkGlow;
-        ctx.beginPath();
-        ctx.arc(midX, midY, 2.5, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.beginPath();
-        ctx.arc(target.x, target.y, 4, 0, Math.PI * 2);
-        ctx.fill();
       }
-      ctx.setLineDash([]);
     }
     ctx.restore();
   }
@@ -1993,8 +2001,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
       // Pré-aquece os dois sprites fixos do Grilhão durante a tela de preparação.
       // O tamanho da aura será escalado na renderização, sem criar canvases por upgrade.
       if (selectedWeapon === "gravity_shackle") {
-        getWellSprite(175, false);
-        getWellSprite(230, true);
+        getWellSprite(88, false);
+        getWellSprite(116, true);
       }
       const { data: newRunId, error: runError } = await (supabase.rpc as any)("start_fractal_run", { _corruption: corruption, _weapon: selectedWeapon, _omen: corruption >= 4 && purchases.omen_archive ? selectedOmen : null });
       if (runError) { toast.error(runError.message); return; }
@@ -2583,7 +2591,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         // Grilhão: uma única aura acompanha o herói. A forma normal pulsa em ciclos;
         // a evolução mantém o selo permanentemente ativo. Reutilizamos o sprite já existente.
         if (game.weaponId === "gravity_shackle") {
-          const auraRadius = (game.evolved ? 230 : 175)
+          const auraRadius = (game.evolved ? 116 : 88)
             * (1 + game.player.specialAreaStacks * 0.1)
             * game.player.projectileRangeMultiplier
             * (1 + game.player.projectileStacks * 0.06);
@@ -2970,46 +2978,39 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         if (game.weaponId === "gravity_shackle" && game.gravityAuraActive && gravityAura?.active) {
           const tethers = game.gravityTethers ?? (game.gravityTethers = []);
           const maxTethers = game.evolved ? 8 : 5;
-          const maxRange = gravityAura.radius ?? (game.evolved ? 230 : 175);
+          const maxRange = gravityAura.radius ?? (game.evolved ? 116 : 88);
           const maxRangeSquared = maxRange * maxRange;
-          let tetherCount = 0;
-
-          for (let rank = 0; rank < maxTethers; rank++) {
-            let nearestEnemy: Enemy | null = null;
-            let nearestDistanceSquared = maxRangeSquared;
-
+          let tetherCount = tethers.length;
+          game.gravityAuraTimer2 = (game.gravityAuraTimer2 ?? 0) - dt;
+          if (game.gravityAuraTimer2 <= 0) {
+            game.gravityAuraTimer2 = 0.12;
+            const best = gravityBestEnemies, bestD = gravityBestDist;
+            let count = 0;
+            const px = game.player.x, py = game.player.y;
             for (let enemyIndex = 0; enemyIndex < game.enemies.length; enemyIndex++) {
               const enemy = game.enemies[enemyIndex];
               if (enemy.hp <= 0) continue;
-
-              let alreadyTethered = false;
-              for (let selectedIndex = 0; selectedIndex < tetherCount; selectedIndex++) {
-                if (tethers[selectedIndex].enemy === enemy) {
-                  alreadyTethered = true;
-                  break;
-                }
-              }
-              if (alreadyTethered) continue;
-
-              const dx = enemy.x - game.player.x;
-              const dy = enemy.y - game.player.y;
-              if (Math.abs(dx) > maxRange || Math.abs(dy) > maxRange) continue;
-              const distanceSquared = dx * dx + dy * dy;
-              if (distanceSquared < nearestDistanceSquared) {
-                nearestDistanceSquared = distanceSquared;
-                nearestEnemy = enemy;
-              }
+              const dx = enemy.x - px; if (dx > maxRange || dx < -maxRange) continue;
+              const dy = enemy.y - py; if (dy > maxRange || dy < -maxRange) continue;
+              const dsq = dx * dx + dy * dy;
+              if (dsq > maxRangeSquared) continue;
+              if (count === maxTethers && dsq >= bestD[count - 1]) continue;
+              let j = count < maxTethers ? count++ : count - 1;
+              while (j > 0 && bestD[j - 1] > dsq) { best[j] = best[j - 1]; bestD[j] = bestD[j - 1]; j--; }
+              best[j] = enemy; bestD[j] = dsq;
             }
-
-            if (!nearestEnemy) break;
-            const tether = tethers[rank] ?? { id: rank, enemy: nearestEnemy, duration: 1 };
-            tether.id = rank;
-            tether.enemy = nearestEnemy;
-            tether.duration = 1;
-            tethers[rank] = tether;
-            tetherCount++;
+            for (let rank = 0; rank < count; rank++) {
+              const tether = tethers[rank] ?? { id: rank, enemy: best[rank]!, duration: 1 };
+              tether.id = rank; tether.enemy = best[rank]!; tether.duration = 1;
+              tethers[rank] = tether;
+            }
+            tethers.length = count;
+            tetherCount = count;
+          } else {
+            let w = 0;
+            for (let i = 0; i < tethers.length; i++) if (tethers[i].enemy.hp > 0) tethers[w++] = tethers[i];
+            tethers.length = w; tetherCount = w;
           }
-          tethers.length = tetherCount;
 
           const pressureLevel = game.upgradeCounts.gift_gravity_pressure?.count ?? 0;
           const slowFactor = clamp(0.65 - pressureLevel * 0.05, 0.45, 0.65);
