@@ -649,36 +649,99 @@ function preloadCemeteryImages(): Promise<void> {
 const groundPatternCache = new WeakMap<CanvasRenderingContext2D, CanvasPattern>();
 const RUNE_PHRASE = "ᚷᚱᛁᛚᚺᚨᛟ ᚷᚱᚨᚹᛁᛏᚨᚲᛁᛟᚾᚨᛚ · ";
 const runeRingCache = new Map<number, HTMLCanvasElement>();
-const wellSpriteCache = new Map<string, { base: HTMLCanvasElement; sigil: HTMLCanvasElement; ring?: HTMLCanvasElement }>();
-function getWellSprite(radius: number, evolved: boolean) {
-  const r = Math.round(radius / 8) * 8; const key = r + (evolved ? "e" : "n");
-  const hit = wellSpriteCache.get(key); if (hit) return hit;
+// O ciclo da aura base fica visível por 3,2 s e o intervalo sem aura foi dobrado
+// de 2 s para 4 s, sem alterar a duração ativa nem o ritmo dos pulsos de dano.
+const GRAVITY_AURA_ACTIVE_PHASE_SECONDS = 3.2;
+const GRAVITY_AURA_INACTIVE_PHASE_SECONDS = 4.0;
+
+// Todo o desenho estático (halo, runas e selo) é pré-composto em um único bitmap.
+// Durante o jogo, somente esse bitmap gira: uma chamada drawImage por frame.
+const wellSpriteCache = new Map<string, HTMLCanvasElement>();
+function getWellSprite(radius: number, evolved: boolean): HTMLCanvasElement {
+  const r = Math.round(radius / 8) * 8;
+  const key = r + (evolved ? "e" : "n");
+  const cached = wellSpriteCache.get(key);
+  if (cached) return cached;
+
   const size = Math.ceil(r * 2 * 1.06 + 8);
-  const mk = () => { const c = document.createElement("canvas"); c.width = size; c.height = size; const g = c.getContext("2d")!; g.translate(size / 2, size / 2); return [c, g] as const; };
-  const [base, b] = mk();
-  const halo = b.createRadialGradient(0, 0, 5, 0, 0, r);
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
+  ctx.translate(size / 2, size / 2);
+
+  const halo = ctx.createRadialGradient(0, 0, 5, 0, 0, r);
   halo.addColorStop(0, evolved ? "rgba(35,12,58,.82)" : "rgba(8,35,62,.76)");
   halo.addColorStop(0.48, evolved ? "rgba(147,51,234,.20)" : "rgba(14,165,233,.18)");
   halo.addColorStop(1, "rgba(14,165,233,0)");
-  b.fillStyle = halo; b.beginPath(); b.arc(0, 0, r, 0, Math.PI * 2); b.fill();
-  b.strokeStyle = evolved ? "rgba(192,132,252,.9)" : "rgba(56,189,248,.85)"; b.lineWidth = 2.5; b.setLineDash([10, 8]);
-  b.beginPath(); b.arc(0, 0, r * 0.92, 0, Math.PI * 2); b.stroke(); b.setLineDash([]);
+  ctx.fillStyle = halo;
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.strokeStyle = evolved ? "rgba(192,132,252,.9)" : "rgba(56,189,248,.85)";
+  ctx.lineWidth = 2.5;
+  ctx.setLineDash([10, 8]);
+  ctx.beginPath();
+  ctx.arc(0, 0, r * 0.92, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
   const core = evolved ? "#c084fc" : "#38bdf8";
-  const cg = b.createRadialGradient(0, 0, 0, 0, 0, 22); cg.addColorStop(0, "#ffffff"); cg.addColorStop(0.35, core); cg.addColorStop(1, "rgba(0,0,0,0)");
-  b.fillStyle = cg; b.beginPath(); b.arc(0, 0, 22, 0, Math.PI * 2); b.fill();
-  const [sigil, g] = mk();
+  const coreGlow = ctx.createRadialGradient(0, 0, 0, 0, 0, 22);
+  coreGlow.addColorStop(0, "#ffffff");
+  coreGlow.addColorStop(0.35, core);
+  coreGlow.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = coreGlow;
+  ctx.beginPath();
+  ctx.arc(0, 0, 22, 0, Math.PI * 2);
+  ctx.fill();
+
+  // O anel rúnico evoluído também é rasterizado uma única vez.
+  if (evolved) drawRuneRing(ctx, r * 0.8);
+
+  // O selo central passa a fazer parte do mesmo sprite animado.
   if (evolved) {
-    g.strokeStyle = "#e879f9"; g.lineWidth = 3; const hr = r * 0.66; const hx = hr * Math.cos(Math.PI / 6), hy = hr * 0.5;
-    g.beginPath(); g.moveTo(0, -hr); g.lineTo(hx, hy); g.lineTo(-hx, -hy); g.lineTo(0, hr); g.lineTo(hx, -hy); g.lineTo(-hx, hy); g.closePath(); g.stroke();
-    g.lineWidth = 1.5; g.beginPath(); g.arc(0, 0, hr, 0, Math.PI * 2); g.stroke();
+    ctx.strokeStyle = "#e879f9";
+    ctx.lineWidth = 3;
+    const hr = r * 0.66;
+    const hx = hr * Math.cos(Math.PI / 6);
+    const hy = hr * 0.5;
+    ctx.beginPath();
+    ctx.moveTo(0, -hr);
+    ctx.lineTo(hx, hy);
+    ctx.lineTo(-hx, -hy);
+    ctx.lineTo(0, hr);
+    ctx.lineTo(hx, -hy);
+    ctx.lineTo(-hx, hy);
+    ctx.closePath();
+    ctx.stroke();
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(0, 0, hr, 0, Math.PI * 2);
+    ctx.stroke();
   } else {
-    g.strokeStyle = "#38bdf8"; g.lineWidth = 2.5; g.beginPath();
-    for (let p = 0; p < 5; p++) { const a = (p * 4 * Math.PI) / 5 - Math.PI / 2; const px = Math.cos(a) * r * 0.85, py = Math.sin(a) * r * 0.85; if (p === 0) g.moveTo(px, py); else g.lineTo(px, py); }
-    g.closePath(); g.stroke(); g.lineWidth = 1.2; g.beginPath(); g.arc(0, 0, r * 0.85, 0, Math.PI * 2); g.stroke();
+    ctx.strokeStyle = "#38bdf8";
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    for (let p = 0; p < 5; p++) {
+      const angle = (p * 4 * Math.PI) / 5 - Math.PI / 2;
+      const px = Math.cos(angle) * r * 0.85;
+      const py = Math.sin(angle) * r * 0.85;
+      if (p === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.stroke();
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 0.85, 0, Math.PI * 2);
+    ctx.stroke();
   }
-  let ring: HTMLCanvasElement | undefined;
-  if (evolved) { const rc = document.createElement("canvas"); const rg = rc.getContext("2d")!; const rs = Math.ceil(r * 0.8 * 2 + 40); rc.width = rs; rc.height = rs; rg.translate(rs / 2, rs / 2); drawRuneRing(rg, r * 0.8); base.getContext("2d")!.drawImage(rc, -rs / 2, -rs / 2); }
-  const out = { base, sigil, ring }; wellSpriteCache.set(key, out); return out;
+
+  wellSpriteCache.set(key, canvas);
+  return canvas;
 }
 function drawRuneRing(ctx: CanvasRenderingContext2D, radius: number) {
   const key = Math.round(radius / 4) * 4;
@@ -1081,18 +1144,14 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
       const radius = shot.radius ?? (game.evolved ? 230 : 175);
       const spriteRadius = game.evolved ? 230 : 175;
       const visualScale = radius / spriteRadius;
-      const layers = getWellSprite(spriteRadius, game.evolved);
-      const half = (layers.base.width / 2) * visualScale;
+      const sprite = getWellSprite(spriteRadius, game.evolved);
+      const half = (sprite.width / 2) * visualScale;
       ctx.save();
       ctx.translate(shot.x, shot.y);
+      ctx.rotate(game.elapsed * (game.evolved ? -0.72 : 0.62));
       ctx.globalAlpha = Math.min(1, lifeRatio * 1.25);
-      // Halo e anel evoluído ficam pré-compostos no sprite estático.
-      // Só o selo central gira, reduzindo mistura e draw calls em cada frame.
       ctx.globalCompositeOperation = "source-over";
-      ctx.drawImage(layers.base, -half, -half, half * 2, half * 2);
-      const rot = game.elapsed * (game.evolved ? -0.72 : 0.62);
-      ctx.rotate(rot);
-      ctx.drawImage(layers.sigil, -half, -half, half * 2, half * 2);
+      ctx.drawImage(sprite, -half, -half, half * 2, half * 2);
       ctx.restore();
       return;
     }
@@ -2321,7 +2380,9 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             game.gravityAuraActive = true;
           } else {
             game.gravityAuraTimer = (game.gravityAuraTimer ?? 0) + dt;
-            const auraPhaseDuration = (game.gravityAuraActive ?? true) ? 3.2 : 2.0;
+            const auraPhaseDuration = (game.gravityAuraActive ?? true)
+              ? GRAVITY_AURA_ACTIVE_PHASE_SECONDS
+              : GRAVITY_AURA_INACTIVE_PHASE_SECONDS;
             if (game.gravityAuraTimer >= auraPhaseDuration) {
               game.gravityAuraTimer -= auraPhaseDuration;
               game.gravityAuraActive = !(game.gravityAuraActive ?? true);
@@ -2661,14 +2722,16 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         const collisionGrid = buildEnemySpatialGrid(game.enemies);
         for (const shot of game.shots) {
           const isPulsingField = shot.kind === "plasma_puddle" || shot.kind === "gravity_well";
-          if (shot.kind === "gravity_well" && shot.isAura && !shot.active) continue;
+          const isGravityAura = shot.kind === "gravity_well" && shot.isAura === true;
+          if (isGravityAura && !shot.active) continue;
           if (isPulsingField) {
             if ((shot.pulseTimer ?? 0) > 0) continue;
-            const isGravityAura = shot.kind === "gravity_well" && shot.isAura;
             const baseFireRate = game.omenId === "rupture" ? 0.828 : 0.72;
             const gravityPulseInterval = clamp(0.4 * (game.player.fireRate / baseFireRate), 0.25, 0.4);
             shot.pulseTimer = isGravityAura ? gravityPulseInterval : 0.4;
-            shot.hitTargets.length = 0;
+            // A aura processa cada alvo uma vez no próprio pulso; não precisa manter
+            // uma lista crescente de referências entre pulsações.
+            if (!isGravityAura) shot.hitTargets.length = 0;
           }
           const wideAttack = shot.kind === "scythe_slash" || shot.kind === "sentinel_explosion" || isPulsingField;
           // Consultamos somente as células espaciais que intersectam a área do golpe.
@@ -2677,7 +2740,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             : getNearbyEnemies(shot.x, shot.y, collisionGrid);
           if (!wideAttack && shot.targetEnemy && !nearbyTargets.includes(shot.targetEnemy)) nearbyTargets.push(shot.targetEnemy);
           for (const enemy of nearbyTargets) {
-            if (enemy.hp <= 0 || shot.hitTargets.includes(enemy)) continue;
+            if (enemy.hp <= 0 || (!isGravityAura && shot.hitTargets.includes(enemy))) continue;
             if (shot.targetEnemy && shot.targetEnemy !== enemy) continue;
             const hitX = shot.x - enemy.x;
             const hitY = shot.y - enemy.y;
@@ -2711,7 +2774,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               enemy.hp -= hitDamage;
               game.totalDamageDealt += appliedDamage;
               enemy.flash = 0.09;
-              const isGravityAuraHit = shot.kind === "gravity_well" && shot.isAura;
+              const isGravityAuraHit = isGravityAura;
               // A aura já tem feedback visual contínuo; evitar objetos por inimigo/pulso
               // reduz pressão de GC sem alterar dano, lentidão ou estatísticas.
               if (!isGravityAuraHit) {
@@ -2735,7 +2798,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                 });
                 if (game.damageNumbers.length > 12) game.damageNumbers.shift();
               }
-              shot.hitTargets.push(enemy);
+              if (!isGravityAura) shot.hitTargets.push(enemy);
               if (shot.kind === "plasma_puddle") {
                 enemy.slowTimer = Math.max(enemy.slowTimer ?? 0, 0.5);
                 const pullRadius = shot.radius ?? 118;
