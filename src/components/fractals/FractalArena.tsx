@@ -206,7 +206,7 @@ const SHOP_ITEM_INFO: Record<string, ShopItemInfo> = {
   ]},
   weapon_gravity_shackle: { title: "Grilhão Gravitacional", category: "Arma", summary: "Selo permanente; correntes alcançam o dobro do raio visual.", details: [
     "O selo rúnico permanece sempre visível. O raio visual não limita o alcance: as correntes atingem alvos a até 2× essa distância.",
-    "Cada corrente concentra o dano de dois pulsos em um único impacto. Intervalo: 0,9 s na forma base e 0,7 s na evolução.",
+    "Arremessa correntes contra até 5 alvos (8 na evolução). Quem sobreviver fica acorrentado ao chão por 1,8 s (3,2 s na evolução).",
     "Desbloqueio permanente: 11.000 FR.",
     "Vença uma expedição com a arma para concluir a maestria. Depois, compre o Projeto de Evolução por 5.000 FR; no nível 10 da arma, a evolução Prisão do Abismo pode aparecer."
   ]},
@@ -316,6 +316,7 @@ type GameState = {
   revolverShotCount?: number; orbitalPulseTimer?: number;
   gravityAuraActive?: boolean; gravityAuraShot?: Shot;
   gravityTethers?: { id: number; enemy: Enemy; duration: number }[]; gravityAuraTimer2?: number;
+  gravityChains?: { sx: number; sy: number; enemy: Enemy; t: number; dur: number; dmg: number; hit: boolean; fade: number; ex: number; ey: number }[]; dashLevel?: number;
   scytheSiphonCooldown?: number; dashChainRemaining: number; dashChainWindow: number; dashHitTargets: Set<Enemy>;
   anchorReviveAvailable: boolean; anchorRevivesUsed: number; omenId: OmenId | null; omenSpawnMultiplier: number; omenEnemyHpMultiplier: number; omenRewardMultiplier: number; omenRevengeCooldown: number; lastObservedHp: number;
   shake?: number; rings?: { x: number; y: number; r: number; max: number; life: number; color: string }[];
@@ -1483,35 +1484,34 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
       Math.min(1, lifeRatio * 1.25) * 0.85,
     );
 
-    const tetherList = game.gravityTethers;
-    if (tetherList && tetherList.length > 0) {
-      const chainColor = game.evolved ? "#f43f5e" : "#c084fc";
-      const linkGlow = game.evolved ? "#fda4af" : "#f3e8ff";
-      ctx.lineWidth = game.evolved ? 2.5 : 2;
-      ctx.strokeStyle = chainColor;
-      ctx.setLineDash([7, 5]);
-      ctx.lineDashOffset = -game.elapsed * 45;
-
-      for (let i = 0; i < tetherList.length; i++) {
-        const target = tetherList[i].enemy;
-        if (target.hp <= 0) continue;
-        ctx.beginPath();
-        ctx.moveTo(game.player.x, game.player.y);
-        ctx.lineTo(target.x, target.y);
-        ctx.stroke();
-
-        const midX = (game.player.x + target.x) / 2;
-        const midY = (game.player.y + target.y) / 2;
-        ctx.fillStyle = linkGlow;
-        ctx.beginPath();
-        ctx.arc(midX, midY, 2.5, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.beginPath();
-        ctx.arc(target.x, target.y, 4, 0, Math.PI * 2);
-        ctx.fill();
+    const chainList = game.gravityChains;
+    if (chainList && chainList.length > 0) {
+      const chainColor = game.evolved ? "#fb7185" : "#d8b4fe";
+      const chainDark = game.evolved ? "#7f1d1d" : "#4c1d95";
+      for (let i = 0; i < chainList.length; i++) {
+        const c = chainList[i];
+        const prog = c.hit ? 1 : clamp(c.t / c.dur, 0, 1);
+        const tx = c.sx + (c.ex - c.sx) * prog, ty = c.sy + (c.ey - c.sy) * prog;
+        const ang = Math.atan2(ty - c.sy, tx - c.sx);
+        const len = Math.hypot(tx - c.sx, ty - c.sy);
+        const links = Math.min(40, Math.floor(len / 9));
+        ctx.save();
+        ctx.globalAlpha = c.hit ? clamp(c.fade / 0.22, 0, 1) : 1;
+        ctx.translate(c.sx, c.sy); ctx.rotate(ang);
+        for (let k = 0; k < links; k++) {
+          const lx = k * 9 + 4.5;
+          ctx.strokeStyle = chainDark; ctx.lineWidth = 3.4;
+          if (k % 2 === 0) ctx.strokeRect(lx - 5, -2.6, 10, 5.2);
+          else { ctx.beginPath(); ctx.moveTo(lx - 5, 0); ctx.lineTo(lx + 5, 0); ctx.stroke(); }
+          ctx.strokeStyle = chainColor; ctx.lineWidth = 1.5;
+          if (k % 2 === 0) ctx.strokeRect(lx - 5, -2.6, 10, 5.2);
+          else { ctx.beginPath(); ctx.moveTo(lx - 5, 0); ctx.lineTo(lx + 5, 0); ctx.stroke(); }
+        }
+        // ponta de arpão
+        ctx.fillStyle = chainColor;
+        ctx.beginPath(); ctx.moveTo(len + 7, 0); ctx.lineTo(len - 3, -5); ctx.lineTo(len, 0); ctx.lineTo(len - 3, 5); ctx.closePath(); ctx.fill();
+        ctx.restore();
       }
-      ctx.setLineDash([]);
     }
     ctx.restore();
   }
@@ -1587,7 +1587,30 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     }
     if (enemy.type === "boss" && enemy.windup > 0) { ctx.save(); ctx.globalAlpha = 0.25 + Math.sin(game.elapsed * 18) * 0.08; ctx.strokeStyle = "#d8b5ff"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(enemy.targetX - enemy.x, enemy.targetY - enemy.y, 88, 0, Math.PI * 2); ctx.stroke(); ctx.fillStyle = "rgba(177,112,220,.12)"; ctx.beginPath(); ctx.arc(enemy.targetX - enemy.x, enemy.targetY - enemy.y, 88, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
     if (enemy.type === "brute" && enemy.windup > 0) { ctx.save(); ctx.globalAlpha = .25 + Math.sin(game.elapsed * 20) * .2; ctx.strokeStyle = "#ffb36b"; ctx.lineWidth = 3; ctx.setLineDash([6, 5]); ctx.beginPath(); ctx.arc(0, 0, 78, 0, Math.PI * 2); ctx.stroke(); ctx.fillStyle = "rgba(255,150,75,.13)"; ctx.fill(); ctx.restore(); }
-    if (enemy.type === "charger" && enemy.windup > 0) { ctx.save(); ctx.rotate(Math.atan2(enemy.targetY - enemy.y, enemy.targetX - enemy.x)); ctx.globalAlpha = .55 + Math.sin(game.elapsed * 24) * .2; ctx.strokeStyle = "#ffc477"; ctx.lineWidth = 3; ctx.setLineDash([5, 4]); ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(125, 0); ctx.stroke(); ctx.restore(); }
+    if (enemy.type === "charger" && enemy.windup > 0) {
+      const charge = 1 - enemy.windup / 0.52;
+      ctx.save(); ctx.rotate(Math.atan2(enemy.targetY, enemy.targetX));
+      ctx.globalAlpha = 0.16 + charge * 0.22; ctx.fillStyle = "#ff8a3d";
+      ctx.beginPath(); ctx.moveTo(0, -9); ctx.lineTo(135, -14); ctx.lineTo(135, 14); ctx.lineTo(0, 9); ctx.closePath(); ctx.fill();
+      ctx.globalAlpha = 0.7; ctx.fillStyle = "#ffd29a"; ctx.fillRect(0, -1.5, 135 * charge, 3);
+      ctx.strokeStyle = "#ffc477"; ctx.lineWidth = 2;
+      for (let k = 0; k < 3; k++) { const ax = 40 + k * 32 + (game.elapsed * 90) % 32; ctx.beginPath(); ctx.moveTo(ax - 8, -7); ctx.lineTo(ax, 0); ctx.lineTo(ax - 8, 7); ctx.stroke(); }
+      ctx.globalAlpha = 0.35 + charge * 0.5; ctx.beginPath(); ctx.arc(0, 0, 18 - charge * 6, 0, Math.PI * 2); ctx.stroke();
+      ctx.restore();
+    }
+    if (enemy.type === "charger" && enemy.dashTime > 0) {
+      ctx.save(); ctx.rotate(Math.atan2(enemy.targetY, enemy.targetX));
+      for (let k = 1; k <= 4; k++) { ctx.globalAlpha = 0.32 / k; ctx.fillStyle = "#ff9a4d"; ctx.beginPath(); ctx.ellipse(-k * 13, 0, 13, 9 - k, 0, 0, Math.PI * 2); ctx.fill(); }
+      ctx.globalAlpha = 0.8; ctx.strokeStyle = "#ffe0a1"; ctx.lineWidth = 1.5;
+      for (let k = -1; k <= 1; k++) { ctx.beginPath(); ctx.moveTo(-14, k * 7); ctx.lineTo(-48 - Math.abs(k) * 6, k * 9); ctx.stroke(); }
+      ctx.restore();
+    }
+    if ((enemy.slowTimer ?? 0) > 0 && enemy.slowFactor === 0) {
+      ctx.save(); ctx.globalAlpha = 0.85; ctx.strokeStyle = game.evolved ? "#fb7185" : "#c084fc"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.ellipse(0, enemy.radius * 0.6, enemy.radius + 6, (enemy.radius + 6) * 0.38, 0, 0, Math.PI * 2); ctx.stroke();
+      for (let k = 0; k < 4; k++) { const a2 = k * Math.PI / 2 + 0.6; const rx = Math.cos(a2) * (enemy.radius + 6), ry = enemy.radius * 0.6 + Math.sin(a2) * (enemy.radius + 6) * 0.38; ctx.strokeRect(rx - 2.5, ry - 2, 5, 4); }
+      ctx.restore();
+    }
     if (enemy.type === "elite") { ctx.save(); ctx.globalAlpha = .18 + Math.sin(game.elapsed * 4) * .06; ctx.strokeStyle = "#d69cff"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, 0, 105, 0, Math.PI * 2); ctx.stroke(); ctx.restore(); }
     const hurt = enemy.flash > 0;
     const enemySprite = enemy.type === "boss" ? sprites.boss : enemy.type === "elite" ? sprites.elite : enemy.type === "wraith" ? sprites.wraith : enemy.type === "charger" ? sprites.charger : sprites.brute;
@@ -1726,6 +1749,19 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
   ctx.lineWidth = 1.3;
   ctx.beginPath(); ctx.ellipse(0, 2, 28 * auraPulse, 34 * auraPulse, 0, 0, Math.PI * 2); ctx.stroke();
   ctx.restore();
+  if (player.dashTimer > 0) {
+    const lvl = game.dashLevel ?? 0;
+    const col = lvl >= 3 ? "#f43f5e" : lvl >= 2 ? "#facc15" : lvl >= 1 ? "#67e8f9" : "#c4b5fd";
+    const k0 = player.dashTimer / 0.18;
+    ctx.save();
+    for (let k = 1; k <= 3 + lvl; k++) { ctx.globalAlpha = (0.34 / k) * k0; ctx.fillStyle = col; ctx.beginPath(); ctx.ellipse(-player.dashX * k * 14, -player.dashY * k * 14, 16, 22, 0, 0, Math.PI * 2); ctx.fill(); }
+    ctx.globalAlpha = 0.8 * k0; ctx.strokeStyle = col; ctx.lineWidth = 2;
+    for (let k = -1; k <= 1; k++) { const ox = -player.dashY * k * 9, oy = player.dashX * k * 9; ctx.beginPath(); ctx.moveTo(ox - player.dashX * 12, oy - player.dashY * 12); ctx.lineTo(ox - player.dashX * (44 + lvl * 10), oy - player.dashY * (44 + lvl * 10)); ctx.stroke(); }
+    if (lvl >= 1) { ctx.globalAlpha = 0.5 * k0; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.arc(0, 0, 30, 0, Math.PI * 2); ctx.stroke(); }
+    if (lvl >= 2) { ctx.fillStyle = "#fff7c2"; for (let k = 0; k < 5; k++) { const a2 = game.elapsed * 30 + k * 1.26; ctx.fillRect(Math.cos(a2) * 26 - 1.5, Math.sin(a2) * 26 - 1.5, 3, 3); } }
+    if (lvl >= 3) { ctx.globalAlpha = 0.4 * k0; ctx.strokeStyle = "#fda4af"; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(player.dashX * 26, player.dashY * 26); ctx.lineTo(player.dashX * 40 - player.dashY * 8, player.dashY * 40 + player.dashX * 8); ctx.moveTo(player.dashX * 26, player.dashY * 26); ctx.lineTo(player.dashX * 40 + player.dashY * 8, player.dashY * 40 - player.dashX * 8); ctx.stroke(); }
+    ctx.restore();
+  }
   if (player.moving) {
     const runWave = Math.sin(game.elapsed * 16 + player.facing * 0.8);
     ctx.transform(1 + runWave * 0.018, runWave * 0.012, -runWave * 0.015, 1 - runWave * 0.014, 0, 0);
@@ -2315,6 +2351,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             game.player.dashX = dashX / dashLength;
             game.player.dashY = dashY / dashLength;
             game.player.dashTimer = 0.18;
+            game.dashLevel = purchases.dash;
+            (game.rings ??= []).push({ x: game.player.x, y: game.player.y, r: 8, max: 34 + purchases.dash * 10, life: 0.3, color: purchases.dash >= 3 ? "#f43f5e" : purchases.dash >= 2 ? "#facc15" : purchases.dash >= 1 ? "#67e8f9" : "#c4b5fd" });
             game.dashHitTargets.clear();
             if (canUseFollowUp) {
               game.dashChainRemaining = 0;
@@ -2926,15 +2964,13 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         // A lista de vínculos é reutilizada e a seleção não cria arrays temporários.
         const gravityAura = game.gravityAuraShot;
         if (game.weaponId === "gravity_shackle" && game.gravityAuraActive && gravityAura?.active) {
-          const tethers = game.gravityTethers ?? (game.gravityTethers = []);
-          const maxTethers = game.evolved ? 8 : 5;
-          // Alcance mecânico independente do selo: dobra o raio, sem ampliar o visual.
+          const chains = game.gravityChains ?? (game.gravityChains = []);
+          const maxTargets = game.evolved ? 8 : 5;
           const maxRange = (gravityAura.radius ?? (game.evolved ? 140 : 106)) * 2;
           const maxRangeSquared = maxRange * maxRange;
-          let tetherCount = tethers.length;
-          game.gravityAuraTimer2 = (game.gravityAuraTimer2 ?? 0) - dt;
-          if (game.gravityAuraTimer2 <= 0) {
-            game.gravityAuraTimer2 = 0.12;
+          gravityAura.pulseTimer = (gravityAura.pulseTimer ?? 0) - dt;
+          if (gravityAura.pulseTimer <= 0 && chains.length === 0) {
+            gravityAura.pulseTimer = game.evolved ? 1.4 : 1.8;
             const best = gravityBestEnemies, bestD = gravityBestDist;
             let count = 0;
             const px = game.player.x, py = game.player.y;
@@ -2945,49 +2981,45 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               const dy = enemy.y - py; if (dy > maxRange || dy < -maxRange) continue;
               const dsq = dx * dx + dy * dy;
               if (dsq > maxRangeSquared) continue;
-              if (count === maxTethers && dsq >= bestD[count - 1]) continue;
-              let j = count < maxTethers ? count++ : count - 1;
+              if (count === maxTargets && dsq >= bestD[count - 1]) continue;
+              let j = count < maxTargets ? count++ : count - 1;
               while (j > 0 && bestD[j - 1] > dsq) { best[j] = best[j - 1]; bestD[j] = bestD[j - 1]; j--; }
               best[j] = enemy; bestD[j] = dsq;
             }
+            // Dano corrigido: o multiplicador da arma já vem em getEquippedWeaponStrikeDamage.
+            const chainDamage = getEquippedWeaponStrikeDamage(game) * (game.evolved ? 2.4 : 1.8) * (1 + (game.upgradeCounts.gift_gravity_resonance?.count ?? 0) * 0.15);
             for (let rank = 0; rank < count; rank++) {
-              const tether = tethers[rank] ?? { id: rank, enemy: best[rank]!, duration: 1 };
-              tether.id = rank; tether.enemy = best[rank]!; tether.duration = 1;
-              tethers[rank] = tether;
+              const enemy = best[rank]!;
+              chains.push({ sx: px, sy: py, enemy, t: 0, dur: 0.16 + Math.sqrt(bestD[rank]) / 900, dmg: chainDamage, hit: false, fade: 0.22, ex: enemy.x, ey: enemy.y });
             }
-            tethers.length = count;
-            tetherCount = count;
-          } else {
-            let w = 0;
-            for (let i = 0; i < tethers.length; i++) if (tethers[i].enemy.hp > 0) tethers[w++] = tethers[i];
-            tethers.length = w; tetherCount = w;
+            if (count > 0) gravityAura.pulseTimer = game.evolved ? 1.4 : 1.8;
+            else gravityAura.pulseTimer = 0.2;
           }
-
-          const pressureLevel = game.upgradeCounts.gift_gravity_pressure?.count ?? 0;
-          const slowFactor = clamp(0.65 - pressureLevel * 0.05, 0.45, 0.65);
-          for (let i = 0; i < tetherCount; i++) {
-            const enemy = tethers[i].enemy;
-            enemy.slowTimer = Math.max(enemy.slowTimer ?? 0, 0.35);
-            enemy.slowFactor = Math.min(enemy.slowFactor ?? 0.70, slowFactor);
+          const chainHold = game.evolved ? 3.2 : 1.8;
+          let w = 0;
+          for (let i = 0; i < chains.length; i++) {
+            const c = chains[i];
+            c.sx = game.player.x; c.sy = game.player.y;
+            if (!c.hit) {
+              if (c.enemy.hp > 0) { c.ex = c.enemy.x; c.ey = c.enemy.y; }
+              c.t += dt;
+              if (c.t >= c.dur) {
+                c.hit = true;
+                const enemy = c.enemy;
+                if (enemy.hp > 0) {
+                  const applied = Math.min(enemy.hp, c.dmg);
+                  enemy.hp -= applied; game.totalDamageDealt += applied;
+                  enemy.flash = Math.max(enemy.flash, 0.1);
+                  if (enemy.hp <= 0) handleEnemyDefeat(game, enemy);
+                  else { enemy.slowTimer = Math.max(enemy.slowTimer ?? 0, chainHold); enemy.slowFactor = 0; enemy.windup = 0; enemy.dashTime = 0; }
+                }
+              }
+            } else c.fade -= dt;
+            if (c.fade > 0) chains[w++] = c;
           }
-
-          gravityAura.pulseTimer = (gravityAura.pulseTimer ?? 0) - dt;
-          if (gravityAura.pulseTimer <= 0) {
-            // Um único impacto concentra quatro pulsos de dano; sem ondas intermediárias.
-            gravityAura.pulseTimer = game.evolved ? 1.4 : 1.8;
-            const hitDamage = gravityAura.damage * 4;
-            for (let i = 0; i < tetherCount; i++) {
-              const enemy = tethers[i].enemy;
-              if (enemy.hp <= 0) continue;
-              const appliedDamage = Math.min(enemy.hp, hitDamage);
-              enemy.hp -= appliedDamage;
-              game.totalDamageDealt += appliedDamage;
-              enemy.flash = Math.max(enemy.flash, 0.08);
-              if (enemy.hp <= 0) handleEnemyDefeat(game, enemy);
-            }
-          }
-        } else if (game.gravityTethers) {
-          game.gravityTethers.length = 0;
+          chains.length = w;
+        } else if (game.gravityChains) {
+          game.gravityChains.length = 0;
         }
 
         // A grade só é criada quando algum ataque realmente precisa testar colisões.
