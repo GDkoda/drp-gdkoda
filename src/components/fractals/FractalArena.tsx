@@ -664,6 +664,9 @@ function preloadCemeteryImages(): Promise<void> {
 }
 const groundPatternCache = new WeakMap<CanvasRenderingContext2D, CanvasPattern>();
 const RUNE_PHRASE = "ᚷᚱᛁᛚᚺᚨᛟ ᚷᚱᚨᚹᛁᛏᚨᚲᛁᛟᚾᚨᛚ · ";
+// A aura base permanece 3,2 s visível e 4 s recolhida entre ciclos.
+const GRAVITY_AURA_ACTIVE_PHASE_SECONDS = 3.2;
+const GRAVITY_AURA_INACTIVE_PHASE_SECONDS = 4.0;
 const runeRingCache = new Map<string, HTMLCanvasElement>();
 type WellSpriteLayers = { base: HTMLCanvasElement; runes: HTMLCanvasElement; sigil: HTMLCanvasElement };
 const wellSpriteCache = new Map<string, WellSpriteLayers>();
