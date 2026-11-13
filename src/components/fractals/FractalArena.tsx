@@ -1485,30 +1485,33 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
 
     const tetherList = game.gravityTethers;
     if (tetherList && tetherList.length > 0) {
-      const px = game.player.x, py = game.player.y;
-      ctx.save();
-      // Corrente ritualística segmentada: dois traçados nativos agregados em poucos paths.
-      ctx.lineWidth = game.evolved ? 3 : 2.2;
-      ctx.setLineDash([8, 6]);
-      ctx.lineDashOffset = -(game.elapsed * 26);
-      ctx.strokeStyle = game.evolved ? "#f43f5e" : "#c084fc";
-      ctx.beginPath();
+      const chainColor = game.evolved ? "#f43f5e" : "#c084fc";
+      const linkGlow = game.evolved ? "#fda4af" : "#f3e8ff";
+      ctx.lineWidth = game.evolved ? 2.5 : 2;
+      ctx.strokeStyle = chainColor;
+      ctx.setLineDash([7, 5]);
+      ctx.lineDashOffset = -game.elapsed * 45;
+
       for (let i = 0; i < tetherList.length; i++) {
         const target = tetherList[i].enemy;
         if (target.hp <= 0) continue;
-        ctx.moveTo(px, py);
+        ctx.beginPath();
+        ctx.moveTo(game.player.x, game.player.y);
         ctx.lineTo(target.x, target.y);
-      }
-      ctx.stroke();
+        ctx.stroke();
 
-      // Núcleo luminoso dos elos acompanha a mesma corrente em segundo traçado.
-      ctx.lineWidth = 1.2;
-      ctx.setLineDash([4, 10]);
-      ctx.lineDashOffset = -(game.elapsed * 26) - 2;
-      ctx.strokeStyle = game.evolved ? "#fecdd3" : "#ede9fe";
-      ctx.stroke();
+        const midX = (game.player.x + target.x) / 2;
+        const midY = (game.player.y + target.y) / 2;
+        ctx.fillStyle = linkGlow;
+        ctx.beginPath();
+        ctx.arc(midX, midY, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.arc(target.x, target.y, 4, 0, Math.PI * 2);
+        ctx.fill();
+      }
       ctx.setLineDash([]);
-      ctx.restore();
     }
     ctx.restore();
   }
@@ -2970,9 +2973,9 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
 
           gravityAura.pulseTimer = (gravityAura.pulseTimer ?? 0) - dt;
           if (gravityAura.pulseTimer <= 0) {
-            // Um impacto concentra dois pulsos de dano; o intervalo também é 2× maior.
-            gravityAura.pulseTimer = game.evolved ? 0.7 : 0.9;
-            const hitDamage = gravityAura.damage * 2;
+            // Um único impacto concentra quatro pulsos de dano; sem ondas intermediárias.
+            gravityAura.pulseTimer = game.evolved ? 1.4 : 1.8;
+            const hitDamage = gravityAura.damage * 4;
             for (let i = 0; i < tetherCount; i++) {
               const enemy = tethers[i].enemy;
               if (enemy.hp <= 0) continue;
