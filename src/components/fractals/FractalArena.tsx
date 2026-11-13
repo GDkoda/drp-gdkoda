@@ -959,6 +959,8 @@ function spawnEnemy(game: GameState, missionId: number, elapsed: number, corrupt
   }
 }
 
+const sharedParticleBuckets: Record<string, Particle[]> = {};
+
 function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: number, missionId: number, sprites: SpriteMap = {}, showPlayerHp = true, showDamageNumbers = true, zoom = 1) {
   const { width, height, player } = game;
   const safeZoom = clamp(zoom, 0.6, 1.6);
@@ -1123,9 +1125,14 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
   game.gems.forEach((gem) => {
     if (gem.x < cameraX - 30 || gem.x > cameraX + viewWidth + 30 || gem.y < cameraY - 30 || gem.y > cameraY + viewHeight + 30) return;
     if (gem.previousX !== undefined && gem.previousY !== undefined) {
-      const trail = ctx.createLinearGradient(gem.previousX, gem.previousY, gem.x, gem.y);
-      trail.addColorStop(0, "rgba(167,139,250,0)"); trail.addColorStop(.55, "rgba(167,139,250,.48)"); trail.addColorStop(1, "rgba(56,189,248,.95)");
-      ctx.save(); ctx.strokeStyle = trail; ctx.lineWidth = 2.5; ctx.shadowColor = "#38bdf8"; ctx.shadowBlur = 0; ctx.beginPath(); ctx.moveTo(gem.previousX, gem.previousY); ctx.lineTo(gem.x, gem.y); ctx.stroke(); ctx.restore();
+      ctx.save();
+      ctx.strokeStyle = "rgba(56,189,248,.72)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(gem.previousX, gem.previousY);
+      ctx.lineTo(gem.x, gem.y);
+      ctx.stroke();
+      ctx.restore();
     }
     ctx.save(); ctx.translate(gem.x, gem.y);
     const pulse = 1 + Math.sin(game.elapsed * 6 + gem.x * 0.03) * 0.08;
@@ -1527,12 +1534,17 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
         charger: [46, 48, 0.66], brute: [56, 64, 0.68],
       };
       const [spriteWidth, spriteHeight, anchor] = dimensions[enemy.type];
-      ctx.filter = bossInFury ? "brightness(1.15) sepia(1) saturate(4) hue-rotate(315deg)" : "none";
+      if (bossInFury) {
+        ctx.filter = "brightness(1.15) sepia(1) saturate(4) hue-rotate(315deg)";
+      }
       ctx.shadowColor = bossInFury ? "#d41438" : enemy.type === "brute" ? "#9b7bce" : enemy.type === "charger" ? "#b58cff" : "#8b68ff";
       ctx.shadowBlur = 0;
       // Um único passe por sprite evita a troca individual para composição aditiva.
       ctx.globalAlpha = hurt ? 0.68 : 1;
       ctx.drawImage(enemySprite, -spriteWidth / 2, -spriteHeight * anchor, spriteWidth, spriteHeight);
+      if (bossInFury) {
+        ctx.filter = "none";
+      }
       ctx.restore();
     } else if (enemy.type === "wraith") {
       ctx.shadowColor = enemy.color; ctx.shadowBlur = 0; ctx.fillStyle = hurt ? "#fff" : "#827394";
@@ -1568,28 +1580,37 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     }
     ctx.restore();
   });
-  // Sem partículas não há motivo para alocar Map/grupos nem trocar o modo de composição.
+  // Buckets persistentes: reutiliza os grupos sem criar Map/arrays a cada frame.
   if (game.particles.length > 0) {
     ctx.save();
     ctx.globalCompositeOperation = "lighter";
-    const particleGroups = new Map<string, Particle[]>();
-    for (const particle of game.particles) {
-      if (particle.x < cameraX - 16 || particle.x > cameraX + viewWidth + 16 || particle.y < cameraY - 16 || particle.y > cameraY + viewHeight + 16) continue;
-      const group = particleGroups.get(particle.color);
-      if (group) group.push(particle);
-      else particleGroups.set(particle.color, [particle]);
+    for (const color in sharedParticleBuckets) {
+      sharedParticleBuckets[color].length = 0;
     }
-    for (const [color, group] of particleGroups) {
+    for (let i = 0; i < game.particles.length; i++) {
+      const particle = game.particles[i];
+      if (particle.x < cameraX - 16 || particle.x > cameraX + viewWidth + 16 || particle.y < cameraY - 16 || particle.y > cameraY + viewHeight + 16) continue;
+      let group = sharedParticleBuckets[particle.color];
+      if (!group) {
+        group = [];
+        sharedParticleBuckets[particle.color] = group;
+      }
+      group.push(particle);
+    }
+    for (const color in sharedParticleBuckets) {
+      const group = sharedParticleBuckets[color];
+      if (!group || group.length === 0) continue;
       ctx.beginPath();
-      for (const particle of group) {
-        const size = 1.2 + clamp(particle.life * 2, 0, 1) * 2.1;
-        const angle = Math.atan2(particle.vy, particle.vx);
+      for (let i = 0; i < group.length; i++) {
+        const p = group[i];
+        const size = 1.2 + clamp(p.life * 2, 0, 1) * 2.1;
+        const angle = Math.atan2(p.vy, p.vx);
         const dx = Math.cos(angle) * size, dy = Math.sin(angle) * size;
         const px = -dy * 0.38, py = dx * 0.38;
-        ctx.moveTo(particle.x - dx, particle.y - dy);
-        ctx.lineTo(particle.x + px, particle.y + py);
-        ctx.lineTo(particle.x + dx, particle.y + dy);
-        ctx.lineTo(particle.x - px, particle.y - py);
+        ctx.moveTo(p.x - dx, p.y - dy);
+        ctx.lineTo(p.x + px, p.y + py);
+        ctx.lineTo(p.x + dx, p.y + dy);
+        ctx.lineTo(p.x - px, p.y - py);
         ctx.closePath();
       }
       ctx.fillStyle = color;
@@ -2773,7 +2794,23 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           game.sentinelTotems = game.sentinelTotems.filter((totem) => totem.hp > 0);
           game.sentinelRespawnTimer = 5;
         }
-        for (const enemy of game.enemies) { const resolved = resolveCemeteryCollision(enemy.x, enemy.y, enemy.radius, game.obstacles); enemy.x = resolved.x; enemy.y = resolved.y; }
+        for (let eIdx = 0; eIdx < game.enemies.length; eIdx++) {
+          const enemy = game.enemies[eIdx];
+          let nearObstacle = false;
+          for (let oIdx = 0; oIdx < game.obstacles.length; oIdx++) {
+            const obs = game.obstacles[oIdx];
+            const maxDist = enemy.radius + obs.radius;
+            if (Math.abs(enemy.x - obs.x) < maxDist && Math.abs(enemy.y - obs.y) < maxDist) {
+              nearObstacle = true;
+              break;
+            }
+          }
+          if (nearObstacle) {
+            const resolved = resolveCemeteryCollision(enemy.x, enemy.y, enemy.radius, game.obstacles);
+            enemy.x = resolved.x;
+            enemy.y = resolved.y;
+          }
+        }
         // A grade só é criada quando algum ataque realmente precisa testar colisões.
         // Grilhões passa vários frames sem pulsar (e até 4 s com a aura desligada),
         // então reconstruí-la a cada requestAnimationFrame era custo desnecessário.
@@ -3269,7 +3306,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           game.bossSpawned = true;
           if (!bossNotified) { bossNotified = true; setBossMessage(true); fractalAudio.bossAlert(); window.setTimeout(() => setBossMessage(false), 5200); }
         }
-        if (now - lastHud > 100 && game.player.hp > 0 && !game.ended) {
+        if (now - lastHud > 250 && game.player.hp > 0 && !game.ended) {
           lastHud = now;
           const halfViewWidth = game.width / (2 * zoomRef.current);
           const halfViewHeight = game.height / (2 * zoomRef.current);
