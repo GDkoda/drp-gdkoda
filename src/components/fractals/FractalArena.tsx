@@ -2719,7 +2719,10 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           game.sentinelRespawnTimer = 5;
         }
         for (const enemy of game.enemies) { const resolved = resolveCemeteryCollision(enemy.x, enemy.y, enemy.radius, game.obstacles); enemy.x = resolved.x; enemy.y = resolved.y; }
-        const collisionGrid = buildEnemySpatialGrid(game.enemies);
+        // A grade só é criada quando algum ataque realmente precisa testar colisões.
+        // Grilhões passa vários frames sem pulsar (e até 4 s com a aura desligada),
+        // então reconstruí-la a cada requestAnimationFrame era custo desnecessário.
+        let collisionGrid: EnemySpatialGrid | null = null;
         for (const shot of game.shots) {
           const isPulsingField = shot.kind === "plasma_puddle" || shot.kind === "gravity_well";
           const isGravityAura = shot.kind === "gravity_well" && shot.isAura === true;
@@ -2735,6 +2738,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           }
           const wideAttack = shot.kind === "scythe_slash" || shot.kind === "sentinel_explosion" || isPulsingField;
           // Consultamos somente as células espaciais que intersectam a área do golpe.
+          if (!collisionGrid) collisionGrid = buildEnemySpatialGrid(game.enemies);
           const nearbyTargets = wideAttack
             ? getEnemiesInRadius(shot.x, shot.y, (shot.radius ?? 180) + 42, collisionGrid)
             : getNearbyEnemies(shot.x, shot.y, collisionGrid);
