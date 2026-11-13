@@ -530,7 +530,7 @@ function compactAlive<T extends { life: number }>(items: T[]): void {
   let writeIndex = 0;
   for (let readIndex = 0; readIndex < items.length; readIndex++) {
     const item = items[readIndex];
-    if (item.life <= 0) continue;
+    if (!(item.life > 0)) continue;
     if (writeIndex !== readIndex) items[writeIndex] = item;
     writeIndex++;
   }
