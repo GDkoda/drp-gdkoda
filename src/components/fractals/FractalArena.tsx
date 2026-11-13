@@ -313,7 +313,9 @@ type GameState = {
   enemies: Enemy[]; shots: Shot[]; gems: Gem[]; specialDrops: SpecialDrop[]; sentinelTotems: SentinelTotem[]; sentinelRespawnTimer: number; nextSentinelTotemId: number; urns: BreakableUrn[]; obstacles: CemeteryObstacle[]; nextUrnMinute: number; nextUrnId: number; particles: Particle[]; damageNumbers: DamageNumber[]; pickupLabels: PickupLabel[]; challengeEvent: ChallengeEvent | null; nextChallengeEvent: number; kills: number; ended: boolean; upgradeCounts: UpgradeCounts; totalDamageDealt: number; crystalsCollected: number; highestLevel: number;
   weaponId: WeaponId; weaponLevel: number; evolved: boolean; rerollsRemaining: number; banishesRemaining: number; bannedUpgradeIds: string[];
   revolverShotCount?: number; orbitalPulseTimer?: number;
-  gravityAuraTimer?: number; gravityAuraActive?: boolean; gravityAuraShot?: Shot; scytheSiphonCooldown?: number; dashChainRemaining: number; dashChainWindow: number; dashHitTargets: Set<Enemy>;
+  gravityAuraTimer?: number; gravityAuraActive?: boolean; gravityAuraShot?: Shot;
+  gravityTethers?: { id: number; enemy: Enemy; duration: number }[];
+  scytheSiphonCooldown?: number; dashChainRemaining: number; dashChainWindow: number; dashHitTargets: Set<Enemy>;
   anchorReviveAvailable: boolean; anchorRevivesUsed: number; omenId: OmenId | null; omenSpawnMultiplier: number; omenEnemyHpMultiplier: number; omenRewardMultiplier: number; omenRevengeCooldown: number; lastObservedHp: number;
   shake?: number; rings?: { x: number; y: number; r: number; max: number; life: number; color: string }[];
 };
@@ -662,116 +664,171 @@ function preloadCemeteryImages(): Promise<void> {
 }
 const groundPatternCache = new WeakMap<CanvasRenderingContext2D, CanvasPattern>();
 const RUNE_PHRASE = "ᚷᚱᛁᛚᚺᚨᛟ ᚷᚱᚨᚹᛁᛏᚨᚲᛁᛟᚾᚨᛚ · ";
-const runeRingCache = new Map<number, HTMLCanvasElement>();
-// O ciclo da aura base fica visível por 3,2 s e o intervalo sem aura foi dobrado
-// de 2 s para 4 s, sem alterar a duração ativa nem o ritmo dos pulsos de dano.
-const GRAVITY_AURA_ACTIVE_PHASE_SECONDS = 3.2;
-const GRAVITY_AURA_INACTIVE_PHASE_SECONDS = 4.0;
+const runeRingCache = new Map<string, HTMLCanvasElement>();
+type WellSpriteLayers = { base: HTMLCanvasElement; runes: HTMLCanvasElement; sigil: HTMLCanvasElement };
+const wellSpriteCache = new Map<string, WellSpriteLayers>();
 
-// Todo o desenho estático (halo, runas e selo) é pré-composto em um único bitmap.
-// Durante o jogo, somente esse bitmap gira: uma chamada drawImage por frame.
-const wellSpriteCache = new Map<string, HTMLCanvasElement>();
-function getWellSprite(radius: number, evolved: boolean): HTMLCanvasElement {
+function getWellSprite(radius: number, evolved: boolean): WellSpriteLayers {
   const r = Math.round(radius / 8) * 8;
   const key = r + (evolved ? "e" : "n");
   const cached = wellSpriteCache.get(key);
   if (cached) return cached;
 
-  const size = Math.ceil(r * 2 * 1.06 + 8);
-  const canvas = document.createElement("canvas");
-  canvas.width = size;
-  canvas.height = size;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return canvas;
-  ctx.translate(size / 2, size / 2);
+  const size = Math.ceil(r * 2 * 1.05 + 8);
+  const createLayer = () => {
+    const canvas = document.createElement("canvas");
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext("2d");
+    if (ctx) ctx.translate(size / 2, size / 2);
+    return { canvas, ctx };
+  };
 
-  const halo = ctx.createRadialGradient(0, 0, 5, 0, 0, r);
-  halo.addColorStop(0, evolved ? "rgba(35,12,58,.82)" : "rgba(8,35,62,.76)");
-  halo.addColorStop(0.48, evolved ? "rgba(147,51,234,.20)" : "rgba(14,165,233,.18)");
-  halo.addColorStop(1, "rgba(14,165,233,0)");
-  ctx.fillStyle = halo;
-  ctx.beginPath();
-  ctx.arc(0, 0, r, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.strokeStyle = evolved ? "rgba(192,132,252,.9)" : "rgba(56,189,248,.85)";
-  ctx.lineWidth = 2.5;
-  ctx.setLineDash([10, 8]);
-  ctx.beginPath();
-  ctx.arc(0, 0, r * 0.92, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.setLineDash([]);
-
-  const core = evolved ? "#c084fc" : "#38bdf8";
-  const coreGlow = ctx.createRadialGradient(0, 0, 0, 0, 0, 22);
-  coreGlow.addColorStop(0, "#ffffff");
-  coreGlow.addColorStop(0.35, core);
-  coreGlow.addColorStop(1, "rgba(0,0,0,0)");
-  ctx.fillStyle = coreGlow;
-  ctx.beginPath();
-  ctx.arc(0, 0, 22, 0, Math.PI * 2);
-  ctx.fill();
-
-  // O anel rúnico evoluído também é rasterizado uma única vez.
-  if (evolved) drawRuneRing(ctx, r * 0.8);
-
-  // O selo central passa a fazer parte do mesmo sprite animado.
-  if (evolved) {
-    ctx.strokeStyle = "#e879f9";
-    ctx.lineWidth = 3;
-    const hr = r * 0.66;
-    const hx = hr * Math.cos(Math.PI / 6);
-    const hy = hr * 0.5;
+  const baseLayer = createLayer();
+  const runeLayer = createLayer();
+  const sigilLayer = createLayer();
+  const ringColor = evolved ? "rgba(225, 29, 72, 0.85)" : "rgba(168, 85, 247, 0.85)";
+  if (baseLayer.ctx) {
+    const ctx = baseLayer.ctx;
+    ctx.strokeStyle = ringColor;
+    ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(0, -hr);
-    ctx.lineTo(hx, hy);
-    ctx.lineTo(-hx, -hy);
-    ctx.lineTo(0, hr);
-    ctx.lineTo(hx, -hy);
-    ctx.lineTo(-hx, hy);
-    ctx.closePath();
-    ctx.stroke();
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.arc(0, 0, hr, 0, Math.PI * 2);
-    ctx.stroke();
-  } else {
-    ctx.strokeStyle = "#38bdf8";
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    for (let p = 0; p < 5; p++) {
-      const angle = (p * 4 * Math.PI) / 5 - Math.PI / 2;
-      const px = Math.cos(angle) * r * 0.85;
-      const py = Math.sin(angle) * r * 0.85;
-      if (p === 0) ctx.moveTo(px, py);
-      else ctx.lineTo(px, py);
-    }
-    ctx.closePath();
+    ctx.arc(0, 0, r * 0.94, 0, Math.PI * 2);
     ctx.stroke();
     ctx.lineWidth = 1.2;
     ctx.beginPath();
-    ctx.arc(0, 0, r * 0.85, 0, Math.PI * 2);
+    ctx.arc(0, 0, r * 0.82, 0, Math.PI * 2);
     ctx.stroke();
   }
 
-  wellSpriteCache.set(key, canvas);
-  return canvas;
-}
-function drawRuneRing(ctx: CanvasRenderingContext2D, radius: number) {
-  const key = Math.round(radius / 4) * 4;
-  let c = runeRingCache.get(key);
-  if (!c) {
-    c = document.createElement("canvas"); const size = Math.ceil(key * 2 + 40); c.width = size; c.height = size;
-    const g = c.getContext("2d")!; g.translate(size / 2, size / 2);
-    g.font = "bold 13px serif"; g.fillStyle = "#f0abfc"; g.textAlign = "center"; g.textBaseline = "middle";
-    const glyphs = Array.from(RUNE_PHRASE); const step = 13 / key;
-    const total = Math.floor((Math.PI * 2) / step);
-    for (let i = 0; i < total; i++) { const a = i * ((Math.PI * 2) / total); g.save(); g.rotate(a); g.translate(0, -key); g.fillText(glyphs[i % glyphs.length], 0, 0); g.restore(); }
-    g.strokeStyle = "rgba(232,121,249,.7)"; g.lineWidth = 1.2;
-    g.beginPath(); g.arc(0, 0, key - 10, 0, Math.PI * 2); g.stroke(); g.beginPath(); g.arc(0, 0, key + 10, 0, Math.PI * 2); g.stroke();
-    runeRingCache.set(key, c);
+  if (runeLayer.ctx) {
+    drawRuneRing(runeLayer.ctx, r * 0.88, evolved ? "#fb7185" : "#d8b4fe");
   }
-  ctx.drawImage(c, -c.width / 2, -c.height / 2);
+
+  if (sigilLayer.ctx) {
+    const ctx = sigilLayer.ctx;
+    if (evolved) {
+      // Hexagrama Unicursal Carmesim: traço único com seis nós rúnicos.
+      ctx.strokeStyle = "#f43f5e";
+      ctx.lineWidth = 2.8;
+      const hr = r * 0.65;
+      const hx = hr * Math.cos(Math.PI / 6);
+      const hy = hr * 0.5;
+      ctx.beginPath();
+      ctx.moveTo(0, -hr);
+      ctx.lineTo(hx, hy);
+      ctx.lineTo(-hx, -hy);
+      ctx.lineTo(0, hr);
+      ctx.lineTo(hx, -hy);
+      ctx.lineTo(-hx, hy);
+      ctx.closePath();
+      ctx.stroke();
+
+      ctx.fillStyle = "#fda4af";
+      for (let a = 0; a < 6; a++) {
+        const angle = (a * Math.PI) / 3 - Math.PI / 2;
+        ctx.beginPath();
+        ctx.arc(Math.cos(angle) * hr * 0.82, Math.sin(angle) * hr * 0.82, 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    } else {
+      // Pentagrama místico: desenhado em uma camada própria para girar ao contrário das runas.
+      ctx.strokeStyle = "#c084fc";
+      ctx.lineWidth = 2.4;
+      ctx.beginPath();
+      for (let p = 0; p < 5; p++) {
+        const angle = (p * 4 * Math.PI) / 5 - Math.PI / 2;
+        const px = Math.cos(angle) * r * 0.70;
+        const py = Math.sin(angle) * r * 0.70;
+        if (p === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+      ctx.stroke();
+
+      ctx.fillStyle = "#e9d5ff";
+      for (let p = 0; p < 5; p++) {
+        const angle = (p * 2 * Math.PI) / 5 - Math.PI / 2;
+        ctx.beginPath();
+        ctx.arc(Math.cos(angle) * r * 0.70, Math.sin(angle) * r * 0.70, 2.8, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  }
+
+  const layers = { base: baseLayer.canvas, runes: runeLayer.canvas, sigil: sigilLayer.canvas };
+  wellSpriteCache.set(key, layers);
+  return layers;
+}
+
+function drawWellSpriteLayers(
+  ctx: CanvasRenderingContext2D,
+  sprites: WellSpriteLayers,
+  x: number,
+  y: number,
+  scale: number,
+  elapsed: number,
+  evolved: boolean,
+  alpha = 1,
+) {
+  const half = (sprites.base.width / 2) * scale;
+  const drawLayer = (layer: HTMLCanvasElement) => ctx.drawImage(layer, -half, -half, half * 2, half * 2);
+
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.globalAlpha = alpha;
+  drawLayer(sprites.base);
+
+  // Canvas usa eixo Y descendente: rotação positiva é horária.
+  ctx.save();
+  ctx.rotate(elapsed * 0.55);
+  drawLayer(sprites.runes);
+  ctx.restore();
+
+  ctx.save();
+  ctx.rotate(-elapsed * (evolved ? 0.65 : 0.55));
+  drawLayer(sprites.sigil);
+  ctx.restore();
+  ctx.restore();
+}
+function drawRuneRing(ctx: CanvasRenderingContext2D, radius: number, color = "#f0abfc") {
+  const roundedRadius = Math.round(radius / 4) * 4;
+  const key = roundedRadius + ":" + color;
+  let canvas = runeRingCache.get(key);
+  if (!canvas) {
+    canvas = document.createElement("canvas");
+    const size = Math.ceil(roundedRadius * 2 + 40);
+    canvas.width = size;
+    canvas.height = size;
+    const runeCtx = canvas.getContext("2d")!;
+    runeCtx.translate(size / 2, size / 2);
+    runeCtx.font = "bold 13px serif";
+    runeCtx.fillStyle = color;
+    runeCtx.strokeStyle = color;
+    runeCtx.textAlign = "center";
+    runeCtx.textBaseline = "middle";
+    const glyphs = Array.from(RUNE_PHRASE);
+    const step = 13 / roundedRadius;
+    const total = Math.floor((Math.PI * 2) / step);
+    for (let i = 0; i < total; i++) {
+      const angle = i * ((Math.PI * 2) / total);
+      runeCtx.save();
+      runeCtx.rotate(angle);
+      runeCtx.translate(0, -roundedRadius);
+      runeCtx.fillText(glyphs[i % glyphs.length], 0, 0);
+      runeCtx.restore();
+    }
+    runeCtx.globalAlpha = 0.72;
+    runeCtx.lineWidth = 1.2;
+    runeCtx.beginPath();
+    runeCtx.arc(0, 0, roundedRadius - 10, 0, Math.PI * 2);
+    runeCtx.stroke();
+    runeCtx.beginPath();
+    runeCtx.arc(0, 0, roundedRadius + 10, 0, Math.PI * 2);
+    runeCtx.stroke();
+    runeRingCache.set(key, canvas);
+  }
+  ctx.drawImage(canvas, -canvas.width / 2, -canvas.height / 2);
 }
 function drawSprite(ctx: CanvasRenderingContext2D, src: string, size: number, footY: number): boolean {
   const img = cemImg(src); if (!img) return false;
@@ -886,7 +943,7 @@ function makeGame(width: number, height: number, purchases: PurchaseState, weapo
     player: { x: 0, y: 0, hp: maxHp, maxHp, speed: 205 * (omenId === "spectral_veil" ? 1.15 : 1), damage: 22 * omenDamage, fireRate: 0.72 * (omenId === "rupture" ? 1.15 : 1), invuln: 0, hitFlash: 0, xp: 0, nextXp: 12, level: 1, pickupRadius: 85, xpMultiplier: omenId === "famine" ? 1.2 : 1, specialAreaStacks: 0, specialExperienceStacks: 0, projectileRangeStacks: 0, projectileRangeMultiplier: 1, projectileStacks: 0, relicRicochet: 0, relicPiercing: 0, relicChainLightning: 0, projectileLife, facing: 0, castFacing: 0, castTimer: 0, moving: false, dashTimer: 0, dashCooldown: 0, dashX: 1, dashY: 0, spriteAction: "idle", spriteDirection: 0, previousSpriteAction: "idle", previousSpriteDirection: 0, spriteBlend: 1 },
     enemies: [], shots: [], gems: [], specialDrops: [], sentinelTotems: [], sentinelRespawnTimer: 0, nextSentinelTotemId: 1, urns: [], obstacles: createCemeteryObstacles(), nextUrnMinute: 1, nextUrnId: 1, particles: [], damageNumbers: [], pickupLabels: [], challengeEvent: null, nextChallengeEvent: 0, kills: 0, ended: false, upgradeCounts: {}, totalDamageDealt: 0, crystalsCollected: 0, highestLevel: 1,
     weaponId, weaponLevel: 1, evolved: false, rerollsRemaining: purchases.reroll, banishesRemaining: purchases.banish, bannedUpgradeIds: [],
-    revolverShotCount: 0, orbitalPulseTimer: 0, gravityAuraTimer: 0, gravityAuraActive: true, gravityAuraShot: undefined, scytheSiphonCooldown: 0,
+    revolverShotCount: 0, orbitalPulseTimer: 0, gravityAuraTimer: 0, gravityAuraActive: true, gravityAuraShot: undefined, gravityTethers: [], scytheSiphonCooldown: 0,
     anchorReviveAvailable: false, anchorRevivesUsed: 0, dashChainRemaining: 0, dashChainWindow: 0, dashHitTargets: new Set<Enemy>(), omenId, omenSpawnMultiplier: omenId === "famine" ? 1.2 : 1,
     omenEnemyHpMultiplier: omenId === "abundance" ? 1.15 : 1, omenRewardMultiplier: omenId === "abundance" ? 1.25 : 1,
     omenRevengeCooldown: 0, lastObservedHp: maxHp,
@@ -1182,13 +1239,9 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
       const spriteRadius = game.evolved ? 230 : 175;
       const visualScale = radius / spriteRadius;
       const sprite = getWellSprite(spriteRadius, game.evolved);
-      const half = (sprite.width / 2) * visualScale;
       ctx.save();
-      ctx.translate(shot.x, shot.y);
-      ctx.rotate(game.elapsed * (game.evolved ? -0.72 : 0.62));
-      ctx.globalAlpha = Math.min(1, lifeRatio * 1.25);
       ctx.globalCompositeOperation = "source-over";
-      ctx.drawImage(sprite, -half, -half, half * 2, half * 2);
+      drawWellSpriteLayers(ctx, sprite, shot.x, shot.y, visualScale, game.elapsed, game.evolved, Math.min(1, lifeRatio * 1.25));
       ctx.restore();
       return;
     }
@@ -1434,21 +1487,56 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
   });
   ctx.restore();
 
-  // Renderiza a aura em source-over depois de sair do passe aditivo dos projéteis.
-  // O sprite continua girando com a mesma velocidade e escala de antes.
+  // Selo Ritualístico e Vínculos de Almas do Grilhão.
   const gravityAura = game.gravityAuraShot;
   if (gravityAura?.active) {
     const spriteRadius = game.evolved ? 230 : 175;
     const visualScale = (gravityAura.radius ?? spriteRadius) / spriteRadius;
     const sprite = getWellSprite(spriteRadius, game.evolved);
-    const half = (sprite.width / 2) * visualScale;
     const lifeRatio = clamp(gravityAura.life / Math.max(0.01, gravityAura.maxLife ?? 9999), 0.08, 1);
+
     ctx.save();
     ctx.globalCompositeOperation = "source-over";
-    ctx.translate(gravityAura.x, gravityAura.y);
-    ctx.rotate(game.elapsed * (game.evolved ? -0.72 : 0.62));
-    ctx.globalAlpha = Math.min(1, lifeRatio * 1.25);
-    ctx.drawImage(sprite, -half, -half, half * 2, half * 2);
+    drawWellSpriteLayers(
+      ctx,
+      sprite,
+      game.player.x,
+      game.player.y,
+      visualScale,
+      game.elapsed,
+      game.evolved,
+      Math.min(1, lifeRatio * 1.25) * 0.85,
+    );
+
+    if (game.gravityTethers && game.gravityTethers.length > 0) {
+      const chainColor = game.evolved ? "#f43f5e" : "#c084fc";
+      const linkGlow = game.evolved ? "#fda4af" : "#f3e8ff";
+      ctx.lineWidth = game.evolved ? 2.5 : 2;
+      ctx.strokeStyle = chainColor;
+      ctx.setLineDash([7, 5]);
+      ctx.lineDashOffset = -game.elapsed * 45;
+
+      for (let i = 0; i < game.gravityTethers.length; i++) {
+        const target = game.gravityTethers[i].enemy;
+        if (target.hp <= 0) continue;
+        ctx.beginPath();
+        ctx.moveTo(game.player.x, game.player.y);
+        ctx.lineTo(target.x, target.y);
+        ctx.stroke();
+
+        const midX = (game.player.x + target.x) / 2;
+        const midY = (game.player.y + target.y) / 2;
+        ctx.fillStyle = linkGlow;
+        ctx.beginPath();
+        ctx.arc(midX, midY, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.arc(target.x, target.y, 4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.setLineDash([]);
+    }
     ctx.restore();
   }
 
@@ -2148,6 +2236,68 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
     window.addEventListener("keyup", onKeyUp);
     window.addEventListener("blur", onBlur);
 
+    const handleEnemyDefeat = (game: GameState, enemy: Enemy, sourceShot?: Shot) => {
+      if (enemy.hp > 0) return;
+    if (sourceShot?.kind === "scythe_slash" && game.weaponId === "spectral_scythe" && (game.upgradeCounts.gift_scythe_siphon?.count ?? 0) > 0 && (game.scytheSiphonCooldown ?? 0) <= 0) {
+      const siphonLevel = game.upgradeCounts.gift_scythe_siphon?.count ?? 0;
+      game.player.hp = Math.min(game.player.maxHp, game.player.hp + game.player.maxHp * 0.015 * siphonLevel);
+      game.scytheSiphonCooldown = 1.8;
+    }
+    game.kills += 1;
+    fractalAudio.kill(enemy.type === "boss" || enemy.type === "elite");
+    if (enemy.type !== "boss") {
+      game.gems.push({ x: enemy.x, y: enemy.y, value: enemy.xp, radius: 5 });
+      const fortuneBonus = [0, 0.10, 0.20, 0.30, 0.40, 0.50][Math.max(0, Math.min(5, purchases.fortune))];
+      const highestFieldRelicLevel = Math.max(purchases.area, purchases.experience, purchases.projectile_range, purchases.projectiles, purchases.ricochet, purchases.piercing, purchases.chain_lightning);
+      const baseRelicDropChance = [0, 0, 0.01, 0.03, 0.05][Math.max(0, Math.min(4, highestFieldRelicLevel))];
+      const specialDropChance = baseRelicDropChance > 0
+        ? Math.min(0.12, baseRelicDropChance * (1 + fortuneBonus) * game.omenRewardMultiplier)
+        : 0;
+      if (!enemy.isExecutioner && (enemy.type === "elite" || enemy.type === "brute") && specialDropChance > 0 && Math.random() < specialDropChance) {
+        const eligible: SpecialDrop["kind"][] = [];
+        if (purchases.area >= 1 && game.player.specialAreaStacks < MAX_AREA_RELIC_STACKS) eligible.push("area");
+        if (purchases.experience >= 1 && game.player.specialExperienceStacks < MAX_EXPERIENCE_RELIC_STACKS) eligible.push("experience");
+        if (purchases.projectile_range >= 1 && game.player.projectileRangeStacks < MAX_PROJECTILE_RANGE_STACKS) eligible.push("projectile_range");
+        if (purchases.projectiles >= 1 && game.player.projectileStacks < MAX_EXTRA_PROJECTILES) eligible.push("projectiles");
+        const projectileRelicsSupported = supportsProjectileRelics(game.weaponId);
+        if (projectileRelicsSupported && purchases.ricochet >= 1 && game.player.relicRicochet < 3) eligible.push("ricochet");
+        if (projectileRelicsSupported && purchases.piercing >= 1 && game.player.relicPiercing < 3) eligible.push("piercing");
+        if (projectileRelicsSupported && purchases.chain_lightning >= 1 && game.player.relicChainLightning < 3) eligible.push("chain_lightning");
+        eligible.push("food", "void");
+        if (eligible.length) game.specialDrops.push({ x: enemy.x, y: enemy.y, kind: eligible[Math.floor(Math.random() * eligible.length)], radius: 13 });
+      }
+      if(enemy.isExecutioner){
+        game.specialDrops.push({x:enemy.x-18,y:enemy.y,kind:"food",radius:15},{x:enemy.x+18,y:enemy.y,kind:"void",radius:15});
+        game.challengeEvent=null;eventRewardRemainingRef.current=2;setEventRewardStep(1);setSelectedUpgrade(null);setFlippedCardId(null);
+        setLevelChoices(buildLevelChoices(game,purchases));
+        toast.success("Algoz Espectral derrotado! O cemitério reverbera com dádivas!");
+      }
+    } else { game.ended = true; setStats({ totalDamageDealt: Math.round(game.totalDamageDealt), crystalsCollected: game.crystalsCollected, highestLevel: game.highestLevel }); setResult("victory"); fractalAudio.victory(); finishRun(true); }
+    {
+      const big = enemy.type === "boss" || enemy.type === "elite";
+      const count = big ? 20 : 6;
+      for (let i = 0; i < count && game.particles.length < 80; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 50 + Math.random() * (big ? 200 : 120);
+        game.particles.push({
+          x: enemy.x, y: enemy.y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          life: 0.28 + Math.random() * 0.25,
+          color: i % 3 === 0 ? "#fff1ff" : i % 3 === 1 ? "#b98cff" : enemy.color,
+        });
+      }
+      (game.rings ??= []).push({
+        x: enemy.x, y: enemy.y, r: 6,
+        max: big ? 140 : 42,
+        life: big ? 0.5 : 0.26,
+        color: big ? "#e9c46a" : "#c9a2ff",
+      });
+      if (big) game.shake = Math.max(game.shake ?? 0, enemy.type === "boss" ? 16 : 8);
+    }
+              
+    };
+
     const tick = (now: number) => {
       const game = gameRef.current;
       if (!game) return;
@@ -2527,7 +2677,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             shot.x += shot.vx * dt;
             shot.y += shot.vy * dt;
           }
-          if (shot.kind === "gravity_well" || shot.kind === "plasma_puddle") {
+          if (shot.kind === "plasma_puddle") {
             shot.pulseTimer = (shot.pulseTimer ?? 0) - dt;
           }
           shot.life -= dt;
@@ -2811,37 +2961,99 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             enemy.y = resolved.y;
           }
         }
+        // Vínculos Rituais de Almas: seleciona apenas os alvos mais próximos (5/8).
+        // A lista de vínculos é reutilizada e a seleção não cria arrays temporários.
+        const gravityAura = game.gravityAuraShot;
+        if (game.weaponId === "gravity_shackle" && game.gravityAuraActive && gravityAura?.active) {
+          const tethers = game.gravityTethers ?? (game.gravityTethers = []);
+          const maxTethers = game.evolved ? 8 : 5;
+          const maxRange = gravityAura.radius ?? (game.evolved ? 230 : 175);
+          const maxRangeSquared = maxRange * maxRange;
+          let tetherCount = 0;
+
+          for (let rank = 0; rank < maxTethers; rank++) {
+            let nearestEnemy: Enemy | null = null;
+            let nearestDistanceSquared = maxRangeSquared;
+
+            for (let enemyIndex = 0; enemyIndex < game.enemies.length; enemyIndex++) {
+              const enemy = game.enemies[enemyIndex];
+              if (enemy.hp <= 0) continue;
+
+              let alreadyTethered = false;
+              for (let selectedIndex = 0; selectedIndex < tetherCount; selectedIndex++) {
+                if (tethers[selectedIndex].enemy === enemy) {
+                  alreadyTethered = true;
+                  break;
+                }
+              }
+              if (alreadyTethered) continue;
+
+              const dx = enemy.x - game.player.x;
+              const dy = enemy.y - game.player.y;
+              if (Math.abs(dx) > maxRange || Math.abs(dy) > maxRange) continue;
+              const distanceSquared = dx * dx + dy * dy;
+              if (distanceSquared < nearestDistanceSquared) {
+                nearestDistanceSquared = distanceSquared;
+                nearestEnemy = enemy;
+              }
+            }
+
+            if (!nearestEnemy) break;
+            const tether = tethers[rank] ?? { id: rank, enemy: nearestEnemy, duration: 1 };
+            tether.id = rank;
+            tether.enemy = nearestEnemy;
+            tether.duration = 1;
+            tethers[rank] = tether;
+            tetherCount++;
+          }
+          tethers.length = tetherCount;
+
+          const pressureLevel = game.upgradeCounts.gift_gravity_pressure?.count ?? 0;
+          const slowFactor = clamp(0.65 - pressureLevel * 0.05, 0.45, 0.65);
+          for (let i = 0; i < tetherCount; i++) {
+            const enemy = tethers[i].enemy;
+            enemy.slowTimer = Math.max(enemy.slowTimer ?? 0, 0.35);
+            enemy.slowFactor = Math.min(enemy.slowFactor ?? 0.70, slowFactor);
+          }
+
+          gravityAura.pulseTimer = (gravityAura.pulseTimer ?? 0) - dt;
+          if (gravityAura.pulseTimer <= 0) {
+            gravityAura.pulseTimer = game.evolved ? 0.35 : 0.45;
+            for (let i = 0; i < tetherCount; i++) {
+              const enemy = tethers[i].enemy;
+              if (enemy.hp <= 0) continue;
+              const appliedDamage = Math.min(enemy.hp, gravityAura.damage);
+              enemy.hp -= gravityAura.damage;
+              game.totalDamageDealt += appliedDamage;
+              enemy.flash = Math.max(enemy.flash, 0.08);
+              if (enemy.hp <= 0) handleEnemyDefeat(game, enemy);
+            }
+          }
+        } else if (game.gravityTethers) {
+          game.gravityTethers.length = 0;
+        }
+
         // A grade só é criada quando algum ataque realmente precisa testar colisões.
         // Grilhões passa vários frames sem pulsar (e até 4 s com a aura desligada),
         // então reconstruí-la a cada requestAnimationFrame era custo desnecessário.
         let collisionGrid: EnemySpatialGrid | null = null;
         for (const shot of game.shots) {
-          const isPulsingField = shot.kind === "plasma_puddle" || shot.kind === "gravity_well";
-          const isGravityAura = shot.kind === "gravity_well" && shot.isAura === true;
-          if (isGravityAura && !shot.active) continue;
+          // A aura é processada exclusivamente pelo sistema de Vínculos Rituais acima.
+          if (shot.kind === "gravity_well" && shot.isAura) continue;
+          const isPulsingField = shot.kind === "plasma_puddle";
           if (isPulsingField) {
             if ((shot.pulseTimer ?? 0) > 0) continue;
-            const baseFireRate = game.omenId === "rupture" ? 0.828 : 0.72;
-            const gravityPulseInterval = clamp(0.4 * (game.player.fireRate / baseFireRate), 0.25, 0.4);
-            shot.pulseTimer = isGravityAura ? gravityPulseInterval : 0.4;
-            // A aura processa cada alvo uma vez no próprio pulso; não precisa manter
-            // uma lista crescente de referências entre pulsações.
-            if (!isGravityAura) shot.hitTargets.length = 0;
+            shot.pulseTimer = 0.4;
+            shot.hitTargets.length = 0;
           }
           const wideAttack = shot.kind === "scythe_slash" || shot.kind === "sentinel_explosion" || isPulsingField;
           let nearbyTargets: Enemy[];
-          if (isGravityAura) {
-            // Reaproveita o array de inimigos: O(N) com pré-filtro AABB, sem Map,
-            // arrays temporários de células ou listas de alvos a cada pulso.
-            nearbyTargets = game.enemies;
-          } else {
-            // As demais armas continuam consultando a grade espacial sob demanda.
-            if (!collisionGrid) collisionGrid = buildEnemySpatialGrid(game.enemies);
-            nearbyTargets = wideAttack
-              ? getEnemiesInRadius(shot.x, shot.y, (shot.radius ?? 180) + 42, collisionGrid)
-              : getNearbyEnemies(shot.x, shot.y, collisionGrid);
-            if (!wideAttack && shot.targetEnemy && !nearbyTargets.includes(shot.targetEnemy)) nearbyTargets.push(shot.targetEnemy);
-          }
+          // As demais armas continuam consultando a grade espacial sob demanda.
+          if (!collisionGrid) collisionGrid = buildEnemySpatialGrid(game.enemies);
+          nearbyTargets = wideAttack
+            ? getEnemiesInRadius(shot.x, shot.y, (shot.radius ?? 180) + 42, collisionGrid)
+            : getNearbyEnemies(shot.x, shot.y, collisionGrid);
+          if (!wideAttack && shot.targetEnemy && !nearbyTargets.includes(shot.targetEnemy)) nearbyTargets.push(shot.targetEnemy);
           for (const enemy of nearbyTargets) {
             if (enemy.hp <= 0 || (!isGravityAura && shot.hitTargets.includes(enemy))) continue;
             if (shot.targetEnemy && shot.targetEnemy !== enemy) continue;
@@ -2853,7 +3065,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             }
             const hitDistanceSquared = hitX * hitX + hitY * hitY;
             let hit = false;
-            if (shot.kind === "plasma_puddle" || shot.kind === "gravity_well" || shot.kind === "sentinel_explosion") {
+            if (shot.kind === "plasma_puddle" || shot.kind === "sentinel_explosion") {
               const radius = (shot.radius ?? 90) + enemy.radius;
               hit = hitDistanceSquared <= radius * radius;
             } else if (shot.kind === "scythe_slash") {
@@ -2881,31 +3093,26 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               enemy.hp -= hitDamage;
               game.totalDamageDealt += appliedDamage;
               enemy.flash = 0.09;
-              const isGravityAuraHit = isGravityAura;
-              // A aura já tem feedback visual contínuo; evitar objetos por inimigo/pulso
-              // reduz pressão de GC sem alterar dano, lentidão ou estatísticas.
-              if (!isGravityAuraHit) {
-                if (game.particles.length < 75) {
-                  game.particles.push({
-                    x: shot.x,
-                    y: shot.y,
-                    vx: (Math.random() - 0.5) * 140,
-                    vy: (Math.random() - 0.5) * 140,
-                    life: 0.18,
-                    color: shot.isAnchorBurst ? "#fbbf24" : shot.isChainLightning ? "#67e8f9" : "#f3dcff",
-                  });
-                }
-                game.damageNumbers.push({
-                  x: enemy.x + (Math.random() - 0.5) * 8,
-                  y: enemy.y - enemy.radius - 8,
-                  value: hitDamage,
-                  life: 0.72,
-                  maxLife: 0.72,
-                  drift: (Math.random() - 0.5) * 10,
+              if (game.particles.length < 75) {
+                game.particles.push({
+                  x: shot.x,
+                  y: shot.y,
+                  vx: (Math.random() - 0.5) * 140,
+                  vy: (Math.random() - 0.5) * 140,
+                  life: 0.18,
+                  color: shot.isAnchorBurst ? "#fbbf24" : shot.isChainLightning ? "#67e8f9" : "#f3dcff",
                 });
-                if (game.damageNumbers.length > 12) game.damageNumbers.shift();
               }
-              if (!isGravityAura) shot.hitTargets.push(enemy);
+              game.damageNumbers.push({
+                x: enemy.x + (Math.random() - 0.5) * 8,
+                y: enemy.y - enemy.radius - 8,
+                value: hitDamage,
+                life: 0.72,
+                maxLife: 0.72,
+                drift: (Math.random() - 0.5) * 10,
+              });
+              if (game.damageNumbers.length > 12) game.damageNumbers.shift();
+              shot.hitTargets.push(enemy);
               if (shot.kind === "plasma_puddle") {
                 enemy.slowTimer = Math.max(enemy.slowTimer ?? 0, 0.5);
                 const pullRadius = shot.radius ?? 118;
@@ -2918,11 +3125,6 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                   enemy.x += (pullX / pullDistance) * pullStep;
                   enemy.y += (pullY / pullDistance) * pullStep;
                 }
-              } else if (shot.kind === "gravity_well" && shot.isAura) {
-                const pressureLevel = game.upgradeCounts.gift_gravity_pressure?.count ?? 0;
-                const slowFactor = clamp(0.70 - pressureLevel * 0.04, 0.58, 0.70);
-                enemy.slowTimer = Math.max(enemy.slowTimer ?? 0, game.evolved ? 0.65 : 0.48);
-                enemy.slowFactor = Math.min(enemy.slowFactor ?? 0.70, slowFactor);
               } else if (shot.kind === "scythe_slash" && game.weaponId === "spectral_scythe") {
                 const crippleLevel = game.upgradeCounts.gift_scythe_cripple?.count ?? 0;
                 if (crippleLevel > 0) {
@@ -2967,65 +3169,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                 }
               }
 
-              if (enemy.hp <= 0) {
-                if (shot.kind === "scythe_slash" && game.weaponId === "spectral_scythe" && (game.upgradeCounts.gift_scythe_siphon?.count ?? 0) > 0 && (game.scytheSiphonCooldown ?? 0) <= 0) {
-                  const siphonLevel = game.upgradeCounts.gift_scythe_siphon?.count ?? 0;
-                  game.player.hp = Math.min(game.player.maxHp, game.player.hp + game.player.maxHp * 0.015 * siphonLevel);
-                  game.scytheSiphonCooldown = 1.8;
-                }
-                game.kills += 1;
-                fractalAudio.kill(enemy.type === "boss" || enemy.type === "elite");
-                if (enemy.type !== "boss") {
-                  game.gems.push({ x: enemy.x, y: enemy.y, value: enemy.xp, radius: 5 });
-                  const fortuneBonus = [0, 0.10, 0.20, 0.30, 0.40, 0.50][Math.max(0, Math.min(5, purchases.fortune))];
-                  const highestFieldRelicLevel = Math.max(purchases.area, purchases.experience, purchases.projectile_range, purchases.projectiles, purchases.ricochet, purchases.piercing, purchases.chain_lightning);
-                  const baseRelicDropChance = [0, 0, 0.01, 0.03, 0.05][Math.max(0, Math.min(4, highestFieldRelicLevel))];
-                  const specialDropChance = baseRelicDropChance > 0
-                    ? Math.min(0.12, baseRelicDropChance * (1 + fortuneBonus) * game.omenRewardMultiplier)
-                    : 0;
-                  if (!enemy.isExecutioner && (enemy.type === "elite" || enemy.type === "brute") && specialDropChance > 0 && Math.random() < specialDropChance) {
-                    const eligible: SpecialDrop["kind"][] = [];
-                    if (purchases.area >= 1 && game.player.specialAreaStacks < MAX_AREA_RELIC_STACKS) eligible.push("area");
-                    if (purchases.experience >= 1 && game.player.specialExperienceStacks < MAX_EXPERIENCE_RELIC_STACKS) eligible.push("experience");
-                    if (purchases.projectile_range >= 1 && game.player.projectileRangeStacks < MAX_PROJECTILE_RANGE_STACKS) eligible.push("projectile_range");
-                    if (purchases.projectiles >= 1 && game.player.projectileStacks < MAX_EXTRA_PROJECTILES) eligible.push("projectiles");
-                    const projectileRelicsSupported = supportsProjectileRelics(game.weaponId);
-                    if (projectileRelicsSupported && purchases.ricochet >= 1 && game.player.relicRicochet < 3) eligible.push("ricochet");
-                    if (projectileRelicsSupported && purchases.piercing >= 1 && game.player.relicPiercing < 3) eligible.push("piercing");
-                    if (projectileRelicsSupported && purchases.chain_lightning >= 1 && game.player.relicChainLightning < 3) eligible.push("chain_lightning");
-                    eligible.push("food", "void");
-                    if (eligible.length) game.specialDrops.push({ x: enemy.x, y: enemy.y, kind: eligible[Math.floor(Math.random() * eligible.length)], radius: 13 });
-                  }
-                  if(enemy.isExecutioner){
-                    game.specialDrops.push({x:enemy.x-18,y:enemy.y,kind:"food",radius:15},{x:enemy.x+18,y:enemy.y,kind:"void",radius:15});
-                    game.challengeEvent=null;eventRewardRemainingRef.current=2;setEventRewardStep(1);setSelectedUpgrade(null);setFlippedCardId(null);
-                    setLevelChoices(buildLevelChoices(game,purchases));
-                    toast.success("Algoz Espectral derrotado! O cemitério reverbera com dádivas!");
-                  }
-                } else { game.ended = true; setStats({ totalDamageDealt: Math.round(game.totalDamageDealt), crystalsCollected: game.crystalsCollected, highestLevel: game.highestLevel }); setResult("victory"); fractalAudio.victory(); finishRun(true); }
-                {
-                  const big = enemy.type === "boss" || enemy.type === "elite";
-                  const count = big ? 20 : 6;
-                  for (let i = 0; i < count && game.particles.length < 80; i++) {
-                    const angle = Math.random() * Math.PI * 2;
-                    const speed = 50 + Math.random() * (big ? 200 : 120);
-                    game.particles.push({
-                      x: enemy.x, y: enemy.y,
-                      vx: Math.cos(angle) * speed,
-                      vy: Math.sin(angle) * speed,
-                      life: 0.28 + Math.random() * 0.25,
-                      color: i % 3 === 0 ? "#fff1ff" : i % 3 === 1 ? "#b98cff" : enemy.color,
-                    });
-                  }
-                  (game.rings ??= []).push({
-                    x: enemy.x, y: enemy.y, r: 6,
-                    max: big ? 140 : 42,
-                    life: big ? 0.5 : 0.26,
-                    color: big ? "#e9c46a" : "#c9a2ff",
-                  });
-                  if (big) game.shake = Math.max(game.shake ?? 0, enemy.type === "boss" ? 16 : 8);
-                }
-              }
+              if (enemy.hp <= 0) handleEnemyDefeat(game, enemy, shot);
               if (shot.kind === "plasma_core") {
                 const projectileSpeed = Math.max(1, Math.hypot(shot.vx, shot.vy));
                 const dirX = shot.vx / projectileSpeed, dirY = shot.vy / projectileSpeed;
