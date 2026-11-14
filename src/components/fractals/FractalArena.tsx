@@ -1288,7 +1288,13 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     const pulse = 1 + Math.sin(game.elapsed * 7 + drop.y * 0.02) * 0.09;
     const size = drop.radius * 2.8 * pulse;
     if(drop.kind==="food"||drop.kind==="void"){ctx.font="25px serif";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(drop.kind==="food"?"🍔":"🌀",0,0);ctx.restore();return;}
-    const icon = drop.kind === "area" ? sprites.specialArea : drop.kind === "experience" ? sprites.specialXP : drop.kind === "projectile_range" ? sprites.specialRange : sprites.specialProjectiles;
+    const icon = drop.kind === "area" ? sprites.specialArea : drop.kind === "experience" ? sprites.specialXP : drop.kind === "projectile_range" ? sprites.specialRange : drop.kind === "projectiles" ? sprites.specialProjectiles : undefined;
+    if (drop.kind === "crit") {
+      ctx.fillStyle = "#fb7185"; ctx.shadowColor = "#f43f5e";
+      ctx.beginPath(); ctx.arc(0, 0, drop.radius * 1.15, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#fff1f2"; ctx.font = "900 16px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("✦", 0, 0);
+      ctx.restore(); return;
+    }
     ctx.globalAlpha = 0.9 + Math.sin(game.elapsed * 5 + drop.x * 0.02) * 0.1;
     ctx.shadowColor = drop.kind === "area" ? "#e9c46a" : "#b78cff";
     ctx.shadowBlur = 0;
@@ -1636,6 +1642,31 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     ctx.beginPath(); ctx.arc(ring.x, ring.y, ring.r, 0, Math.PI * 2); ctx.stroke();
   });
   ctx.restore();
+  game.microVortices.forEach((vortex) => {
+    const alpha = clamp(vortex.life / vortex.maxLife, 0, 1);
+    ctx.save();
+    ctx.globalAlpha = alpha * 0.72;
+    ctx.strokeStyle = "#c4b5fd"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(vortex.x, vortex.y, vortex.radius * (0.92 + Math.sin(game.elapsed * 12) * 0.04), 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = "#8b5cf6"; ctx.lineWidth = 4; ctx.setLineDash([8, 7]);
+    ctx.beginPath(); ctx.arc(vortex.x, vortex.y, vortex.radius * 0.56, game.elapsed * 2, game.elapsed * 2 + Math.PI * 1.7); ctx.stroke();
+    ctx.setLineDash([]);
+    const glow = ctx.createRadialGradient(vortex.x, vortex.y, 2, vortex.x, vortex.y, vortex.radius * 0.4);
+    glow.addColorStop(0, "rgba(221,214,254,.35)"); glow.addColorStop(1, "rgba(139,92,246,0)");
+    ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(vortex.x, vortex.y, vortex.radius * 0.4, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  });
+  if (game.alchemyCircle) {
+    ctx.save();
+    ctx.globalAlpha = 0.18 + 0.12 * (game.alchemyCircle.life / game.alchemyCircle.maxLife);
+    const gradient = ctx.createRadialGradient(game.alchemyCircle.x, game.alchemyCircle.y, 8, game.alchemyCircle.x, game.alchemyCircle.y, game.alchemyCircle.radius);
+    gradient.addColorStop(0, "rgba(52,211,153,.22)"); gradient.addColorStop(0.82, "rgba(52,211,153,.09)"); gradient.addColorStop(1, "rgba(52,211,153,0)");
+    ctx.fillStyle = gradient; ctx.beginPath(); ctx.arc(game.alchemyCircle.x, game.alchemyCircle.y, game.alchemyCircle.radius, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = "rgba(110,231,183,.72)"; ctx.lineWidth = 2; ctx.setLineDash([9, 7]);
+    ctx.beginPath(); ctx.arc(game.alchemyCircle.x, game.alchemyCircle.y, game.alchemyCircle.radius, 0, Math.PI * 2); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
   game.sentinelTotems.forEach((totem) => {
     if (totem.x < cameraX - 65 || totem.x > cameraX + viewWidth + 65 || totem.y < cameraY - 85 || totem.y > cameraY + viewHeight + 45) return;
     ctx.save();
@@ -1761,16 +1792,19 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
         charger: [46, 48, 0.66], brute: [56, 64, 0.68],
       };
       const [spriteWidth, spriteHeight, anchor] = dimensions[enemy.type];
-      if (bossInFury) {
-        ctx.filter = "brightness(1.15) sepia(1) saturate(4) hue-rotate(315deg)";
-      }
       ctx.shadowColor = bossInFury ? "#d41438" : enemy.type === "brute" ? "#9b7bce" : enemy.type === "charger" ? "#b58cff" : "#8b68ff";
       ctx.shadowBlur = 0;
       // Um único passe por sprite evita a troca individual para composição aditiva.
       ctx.globalAlpha = hurt ? 0.68 : 1;
       ctx.drawImage(enemySprite, -spriteWidth / 2, -spriteHeight * anchor, spriteWidth, spriteHeight);
       if (bossInFury) {
-        ctx.filter = "none";
+        ctx.save();
+        ctx.globalCompositeOperation = "lighter";
+        ctx.fillStyle = "rgba(255, 30, 60, 0.42)";
+        ctx.beginPath();
+        ctx.arc(0, -spriteHeight * 0.45, spriteWidth * 0.55, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
       }
       ctx.restore();
     } else if (enemy.type === "wraith") {
@@ -2312,6 +2346,15 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
     if (upgrade.id === "special_ricochet" && game.player.relicRicochet < 3) game.player.relicRicochet += 1;
     if (upgrade.id === "special_piercing" && game.player.relicPiercing < 3) game.player.relicPiercing += 1;
     if (upgrade.id === "special_chain_lightning" && game.player.relicChainLightning < 3) game.player.relicChainLightning += 1;
+    if (upgrade.id === "special_crit" && game.player.specialCritStacks < MAX_SPECIAL_CRIT_STACKS) {
+      game.player.specialCritStacks += 1;
+      game.pickupLabels.push({ x: game.player.x, y: game.player.y - 28, text: `Olho do Predador +${game.player.specialCritStacks}% crítico`, life: 1.4, maxLife: 1.4 });
+    }
+    if (upgrade.id === "universal_aether_shield") game.player.aetherShieldCharges = Math.min(3, game.player.aetherShieldCharges + 1);
+    if (upgrade.id === "universal_alchemy_circle" && !game.alchemyCircle) {
+      game.nextAlchemyAt = game.elapsed + 120;
+      game.pickupLabels.push({ x: game.player.x, y: game.player.y - 28, text: "Círculo de Alquimia vinculado", life: 1.5, maxLife: 1.5 });
+    }
     if (upgrade.id === "weapon_mastery" && game.weaponLevel < 10) {
       game.weaponLevel += 1;
       game.player.damage *= 1 + 0.045 * rarityPower;
@@ -2467,14 +2510,34 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
     window.addEventListener("keyup", onKeyUp);
     window.addEventListener("blur", onBlur);
 
-    const handleEnemyDefeat = (game: GameState, enemy: Enemy, sourceShot?: Shot) => {
+    const handleEnemyDefeat = (game: GameState, enemy: Enemy, sourceShot?: Shot, suppressThermalExplosion = false) => {
       if (enemy.hp > 0) return;
       if (sourceShot?.kind === "scythe_slash" && game.weaponId === "spectral_scythe" && (game.upgradeCounts.gift_scythe_siphon?.count ?? 0) > 0 && (game.scytheSiphonCooldown ?? 0) <= 0) {
         const siphonLevel = game.upgradeCounts.gift_scythe_siphon?.count ?? 0;
         game.player.hp = Math.min(game.player.maxHp, game.player.hp + game.player.maxHp * 0.015 * siphonLevel);
         game.scytheSiphonCooldown = 1.8;
       }
+      if (!suppressThermalExplosion && (enemy.thermalBurnDamage ?? 0) > 0 && (game.upgradeCounts.gift_thermal_overload?.count ?? 0) > 0) {
+        const burnLevel = game.upgradeCounts.gift_thermal_overload?.count ?? 0;
+        const explosionRadius = 100 + burnLevel * 12;
+        const explosionDamage = (enemy.thermalBurnDamage ?? 0) * (2 + burnLevel * 0.25);
+        enemy.thermalBurnDamage = 0;
+        for (const target of game.enemies) {
+          if (target === enemy || target.hp <= 0) continue;
+          if (distance(enemy.x, enemy.y, target.x, target.y) > explosionRadius + target.radius) continue;
+          const dealt = Math.min(target.hp, explosionDamage);
+          target.hp -= explosionDamage;
+          game.totalDamageDealt += dealt;
+          if (target.hp <= 0) handleEnemyDefeat(game, target, undefined, true);
+        }
+        (game.rings ??= []).push({ x: enemy.x, y: enemy.y, r: 12, max: explosionRadius, life: 0.45, color: "#fb923c" });
+      }
       game.kills += 1;
+      const killGravityLevel = game.upgradeCounts.gift_kill_gravity?.count ?? 0;
+      if (game.weaponId === "unstable_core" && killGravityLevel > 0 && game.kills % 25 === 0) {
+        game.microVortices.push({ x: enemy.x, y: enemy.y, life: 2, maxLife: 2, radius: 145 + killGravityLevel * 15, pull: 62 + killGravityLevel * 12 });
+        (game.rings ??= []).push({ x: enemy.x, y: enemy.y, r: 8, max: 145 + killGravityLevel * 15, life: 0.4, color: "#8b5cf6" });
+      }
       fractalAudio.kill(enemy.type === "boss" || enemy.type === "elite");
       if (enemy.type !== "boss") {
         game.gems.push({ x: enemy.x, y: enemy.y, value: enemy.xp, radius: 5 });
@@ -2494,6 +2557,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           if (projectileRelicsSupported && purchasesRef.current.ricochet >= 1 && game.player.relicRicochet < 3) eligible.push("ricochet");
           if (projectileRelicsSupported && purchasesRef.current.piercing >= 1 && game.player.relicPiercing < 3) eligible.push("piercing");
           if (projectileRelicsSupported && purchasesRef.current.chain_lightning >= 1 && game.player.relicChainLightning < 3) eligible.push("chain_lightning");
+          if (purchasesRef.current.crit_relic >= 1 && game.player.specialCritStacks < MAX_SPECIAL_CRIT_STACKS) eligible.push("crit");
           eligible.push("food", "void");
           if (eligible.length) game.specialDrops.push({ x: enemy.x, y: enemy.y, kind: eligible[Math.floor(Math.random() * eligible.length)], radius: 13 });
         }
@@ -2529,6 +2593,43 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                 
     };
 
+
+    const triggerThornRetaliation = (game: GameState) => {
+      const level = game.upgradeCounts.gift_thorn_retaliation?.count ?? 0;
+      if (level <= 0) return;
+      const radius = 112 + level * 18;
+      const damage = getEquippedWeaponStrikeDamage(game) * 0.60 * level;
+      (game.rings ??= []).push({ x: game.player.x, y: game.player.y, r: 14, max: radius, life: 0.42, color: "#f43f5e" });
+      for (const enemy of game.enemies) {
+        if (enemy.hp <= 0 || distance(game.player.x, game.player.y, enemy.x, enemy.y) > radius + enemy.radius) continue;
+        const dealt = Math.min(enemy.hp, damage);
+        enemy.hp -= damage;
+        game.totalDamageDealt += dealt;
+        if (enemy.hp <= 0) handleEnemyDefeat(game, enemy, undefined, true);
+      }
+      for (let i = 0; i < 18 && game.particles.length < 110; i++) {
+        const angle = i / 18 * Math.PI * 2;
+        game.particles.push({ x: game.player.x, y: game.player.y, vx: Math.cos(angle) * 125, vy: Math.sin(angle) * 125, life: 0.28, color: "#fb7185" });
+      }
+    };
+
+    const applyPlayerDamage = (game: GameState, rawDamage: number, invulnerability: number) => {
+      if (game.player.invuln > 0 || rawDamage <= 0) return;
+      if (game.player.aetherShieldCharges > 0) {
+        game.player.aetherShieldCharges -= 1;
+        game.player.invuln = 1.8;
+        game.player.hitFlash = 0.12;
+        game.pickupLabels.push({ x: game.player.x, y: game.player.y - 28, text: "ESCUDO DE ÉTER · GOLPE ABSORVIDO", life: 1.25, maxLife: 1.25 });
+        triggerThornRetaliation(game);
+        return;
+      }
+      const taken = getPlayerDamageTaken(game, rawDamage);
+      game.player.hp = Math.max(0, game.player.hp - taken);
+      game.player.invuln = invulnerability;
+      game.player.hitFlash = 0.3;
+      triggerThornRetaliation(game);
+    };
+
     const tick = (now: number) => {
       const game = gameRef.current;
       if (!game) return;
@@ -2538,6 +2639,21 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
       game.last = now;
       if (!game.ended && !paused && levelChoices.length === 0) {
         game.elapsed += dt;
+        const vampirismLevel = game.upgradeCounts.universal_vampirism?.count ?? 0;
+        if (vampirismLevel > 0) game.player.hp = Math.min(game.player.maxHp, game.player.hp + 0.4 * vampirismLevel * dt);
+        const alchemyLevel = game.upgradeCounts.universal_alchemy_circle?.count ?? 0;
+        if (alchemyLevel > 0 && game.elapsed >= game.nextAlchemyAt && !game.alchemyCircle) {
+          game.alchemyCircle = { x: game.player.x, y: game.player.y, life: 10, maxLife: 10, radius: 150, tickTimer: 0 };
+          game.nextAlchemyAt += 120;
+          (game.rings ??= []).push({ x: game.player.x, y: game.player.y, r: 18, max: 150, life: 0.7, color: "#34d399" });
+          game.pickupLabels.push({ x: game.player.x, y: game.player.y - 32, text: "CÍRCULO DE ALQUIMIA", life: 1.6, maxLife: 1.6 });
+        }
+        if (game.alchemyCircle) {
+          game.alchemyCircle.life -= dt;
+          if (game.alchemyCircle.life <= 0) game.alchemyCircle = null;
+        }
+        const alchemyActive = Boolean(game.alchemyCircle && distance(game.player.x, game.player.y, game.alchemyCircle.x, game.alchemyCircle.y) <= game.alchemyCircle.radius);
+        if (alchemyActive) game.player.hp = Math.min(game.player.maxHp, game.player.hp + game.player.maxHp * 0.005 * dt);
         game.scytheSiphonCooldown = Math.max(0, (game.scytheSiphonCooldown ?? 0) - dt);
         game.player.invuln = Math.max(0, game.player.invuln - dt);
         game.player.hitFlash = Math.max(0, game.player.hitFlash - dt);
@@ -2983,6 +3099,19 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           const d = Math.max(1, distance(game.player.x, game.player.y, enemy.x, enemy.y));
           enemy.flash = Math.max(0, enemy.flash - dt);
           enemy.attack = Math.max(0, enemy.attack - dt);
+          enemy.hunterMarkTimer = Math.max(0, (enemy.hunterMarkTimer ?? 0) - dt);
+          if ((enemy.thermalBurnTimer ?? 0) > 0) {
+            enemy.thermalBurnTimer = Math.max(0, (enemy.thermalBurnTimer ?? 0) - dt);
+            enemy.thermalBurnTick = (enemy.thermalBurnTick ?? 0.5) - dt;
+            if (enemy.thermalBurnTick <= 0 && enemy.hp > 0) {
+              enemy.thermalBurnTick = 0.5;
+              const burnDamage = enemy.thermalBurnDamage ?? 0;
+              enemy.hp = Math.max(0, enemy.hp - burnDamage);
+              game.totalDamageDealt += burnDamage;
+              if (game.particles.length < 100) game.particles.push({ x: enemy.x, y: enemy.y, vx: (Math.random() - 0.5) * 50, vy: -25 - Math.random() * 35, life: 0.3, color: "#fb923c" });
+              if (enemy.hp <= 0) { handleEnemyDefeat(game, enemy); continue; }
+            }
+          }
           const movementFactor = (enemy.slowTimer ?? 0) > 0 ? (enemy.slowFactor ?? 0.7) : 1;
           enemy.slowTimer = Math.max(0, (enemy.slowTimer ?? 0) - dt);
           if (enemy.slowTimer <= 0) enemy.slowFactor = undefined;
@@ -3040,7 +3169,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               enemy.windup -= dt;
               if (enemy.windup <= 0) { (game.rings ??= []).push({ x: enemy.targetX, y: enemy.targetY, r: 20, max: 100, life: 0.42, color: enemy.hp <= enemy.maxHp * 0.30 ? "#ef4444" : "#c084fc" }); game.shake = Math.max(game.shake ?? 0, 8); }
               if (enemy.windup <= 0 && distance(game.player.x, game.player.y, enemy.targetX, enemy.targetY) < 101 && game.player.invuln <= 0) {
-                game.player.hp = Math.max(0, game.player.hp - getPlayerDamageTaken(game, 28)); game.player.invuln = 0.85; game.player.hitFlash = 0.3; 
+                applyPlayerDamage(game, 28, 0.85); 
               }
             } else if (enemy.attack <= 0) {
               const phaseTwo = enemy.hp <= enemy.maxHp * 0.5;
@@ -3065,7 +3194,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               enemy.dashTime = Math.max(0, enemy.dashTime - dt);
               enemy.x += enemy.targetX * 390 * movementFactor * dt; enemy.y += enemy.targetY * 390 * movementFactor * dt;
               const dashDistance = distance(game.player.x, game.player.y, enemy.x, enemy.y);
-              if (dashDistance < enemy.radius + 20 && game.player.invuln <= 0) { game.player.hp = Math.max(0, game.player.hp - getPlayerDamageTaken(game, enemy.damage)); game.player.invuln = .65; game.player.hitFlash = 0.3;  enemy.dashTime = 0; }
+              if (dashDistance < enemy.radius + 20 && game.player.invuln <= 0) { applyPlayerDamage(game, enemy.damage, .65);  enemy.dashTime = 0; }
             } else if (enemy.windup > 0) {
               enemy.windup = Math.max(0, enemy.windup - dt);
               if (enemy.windup === 0) { enemy.dashTime = .34; enemy.attack = 2.25; }
@@ -3082,13 +3211,13 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               const steerLength = Math.max(1, Math.hypot(steerX, steerY));
               enemy.x += (steerX / steerLength) * enemy.speed * movementFactor * dt;
               enemy.y += (steerY / steerLength) * enemy.speed * movementFactor * dt;
-              if (d < enemy.radius + 15 && enemy.attack <= 0 && game.player.invuln <= 0) { game.player.hp = Math.max(0, game.player.hp - getPlayerDamageTaken(game, enemy.damage)); game.player.invuln = .65; game.player.hitFlash = 0.3;  enemy.attack = 1.1; }
+              if (d < enemy.radius + 15 && enemy.attack <= 0 && game.player.invuln <= 0) { applyPlayerDamage(game, enemy.damage, .65);  enemy.attack = 1.1; }
             }
           } else if (enemy.type === "brute") {
             if (enemy.windup > 0) {
               enemy.windup = Math.max(0, enemy.windup - dt);
               if (enemy.windup === 0) {
-                if (distance(game.player.x, game.player.y, enemy.x, enemy.y) < 78 + 12 && game.player.invuln <= 0) { game.player.hp = Math.max(0, game.player.hp - getPlayerDamageTaken(game, enemy.damage * 1.35)); game.player.invuln = .8; game.player.hitFlash = 0.3;  }
+                if (distance(game.player.x, game.player.y, enemy.x, enemy.y) < 78 + 12 && game.player.invuln <= 0) { applyPlayerDamage(game, enemy.damage * 1.35, .8);  }
                 for (let i=0;i<5;i++) { const a=i*Math.PI*2/5; game.particles.push({x:enemy.x,y:enemy.y,vx:Math.cos(a)*105,vy:Math.sin(a)*105,life:.35,color:"#e7a56d"}); }
                 (game.rings ??= []).push({ x: enemy.x, y: enemy.y, r: 12, max: 82, life: 0.35, color: "#ffb36b" }); game.shake = Math.max(game.shake ?? 0, 4);
                 enemy.attack = 2.7;
@@ -3104,7 +3233,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                 enemy.x += (steerX / steerLength) * enemy.speed * movementFactor * dt;
                 enemy.y += (steerY / steerLength) * enemy.speed * movementFactor * dt;
               }
-              if (d < enemy.radius + 15 && enemy.attack <= 0 && game.player.invuln <= 0) { game.player.hp = Math.max(0, game.player.hp - getPlayerDamageTaken(game, enemy.damage)); game.player.invuln = .72; game.player.hitFlash = 0.3;  enemy.attack = 1.2; }
+              if (d < enemy.radius + 15 && enemy.attack <= 0 && game.player.invuln <= 0) { applyPlayerDamage(game, enemy.damage, .72);  enemy.attack = 1.2; }
             }
           } else {
             const separation = movementGrid ? getEnemySeparation(enemy, movementGrid) : NO_ENEMY_SEPARATION;
@@ -3129,12 +3258,26 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               enemy.y += (steerY / steerLength) * enemy.speed * movementFactor * dt;
             }
             if (enemy.type === "elite" && enemy.attack <= 0) {
-              if (d < 105 && game.player.invuln <= 0) { game.player.hp = Math.max(0, game.player.hp - getPlayerDamageTaken(game, 7)); game.player.invuln = 0.35; game.player.hitFlash = 0.3;  }
+              if (d < 105 && game.player.invuln <= 0) { applyPlayerDamage(game, 7, 0.35);  }
               enemy.attack = 1.7;
             }
             if (enemy.type === "wraith" && d < enemy.radius + 15 && enemy.attack <= 0 && game.player.invuln <= 0) {
-              game.player.hp = Math.max(0, game.player.hp - getPlayerDamageTaken(game, enemy.damage)); game.player.invuln = 0.72; game.player.hitFlash = 0.3;  enemy.attack = 0.8;
+              applyPlayerDamage(game, enemy.damage, 0.72);  enemy.attack = 0.8;
             }
+          }
+        }
+        for (let i = game.microVortices.length - 1; i >= 0; i--) {
+          const vortex = game.microVortices[i];
+          vortex.life -= dt;
+          if (vortex.life <= 0) { game.microVortices.splice(i, 1); continue; }
+          for (const enemy of game.enemies) {
+            if (enemy.hp <= 0) continue;
+            const dx = vortex.x - enemy.x, dy = vortex.y - enemy.y;
+            const d = Math.max(1, Math.hypot(dx, dy));
+            if (d >= vortex.radius) continue;
+            const pull = Math.min(vortex.pull * dt, Math.max(0, d - enemy.radius - 4));
+            enemy.x += (dx / d) * pull;
+            enemy.y += (dy / d) * pull;
           }
         }
         const destroyedTotems = game.sentinelTotems.filter((totem) => totem.hp <= 0);
@@ -3294,10 +3437,24 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                 && enemy.hp > enemy.maxHp * 0.70
                 ? 1 + (game.upgradeCounts.gift_revolver_weakpoint?.count ?? 0) * 0.12
                 : 1;
-              const hitDamage = shot.damage * markedBossBonus * weakpointBonus;
-              const appliedDamage = Math.min(enemy.hp, hitDamage);
-              enemy.hp -= hitDamage;
+              const baseCritChance = clamp((purchasesRef.current.crit_chance ?? 0) * 0.01 + (game.player.specialCritStacks ?? 0) * 0.01, 0, 1);
+              const baseCritMult = 2.0 + (purchasesRef.current.crit_damage ?? 0) * 0.05;
+              const isCrit = Math.random() < baseCritChance;
+              const hunterLevel = game.upgradeCounts.gift_hunter_mark?.count ?? 0;
+              const hunterMarkBonus = (enemy.hunterMarkTimer ?? 0) > 0 ? 1 + hunterLevel * 0.05 : 1;
+              const hitDamage = shot.damage * markedBossBonus * weakpointBonus * hunterMarkBonus * (isCrit ? baseCritMult : 1) * (alchemyActive ? 1.25 : 1);
+              const shadowExecution = game.upgradeCounts.gift_shadow_execution?.count ?? 0;
+              const canExecute = shadowExecution > 0 && enemy.type !== "boss" && enemy.type !== "elite" && enemy.hp <= enemy.maxHp * 0.10;
+              const finalHitDamage = canExecute ? enemy.hp : hitDamage;
+              const appliedDamage = Math.min(enemy.hp, finalHitDamage);
+              enemy.hp -= finalHitDamage;
               game.totalDamageDealt += appliedDamage;
+              if (isCrit && hunterLevel > 0) enemy.hunterMarkTimer = 6;
+              if (isCrit && (game.weaponId === "unstable_core" || game.weaponId === "rune_sentinels") && (game.upgradeCounts.gift_thermal_overload?.count ?? 0) > 0) {
+                enemy.thermalBurnTimer = 3;
+                enemy.thermalBurnTick = 0.5;
+                enemy.thermalBurnDamage = Math.max(enemy.thermalBurnDamage ?? 0, hitDamage * 0.12);
+              }
               enemy.flash = 0.09;
               if (game.particles.length < 75) {
                 game.particles.push({
@@ -3312,13 +3469,32 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               game.damageNumbers.push({
                 x: enemy.x + (Math.random() - 0.5) * 8,
                 y: enemy.y - enemy.radius - 8,
-                value: hitDamage,
+                value: finalHitDamage,
                 life: 0.72,
                 maxLife: 0.72,
                 drift: (Math.random() - 0.5) * 10,
               });
               if (game.damageNumbers.length > 12) game.damageNumbers.shift();
               shot.hitTargets.push(enemy);
+              const impactResonanceLevel = game.upgradeCounts.gift_impact_resonance?.count ?? 0;
+              if (impactResonanceLevel > 0 && (game.weaponId === "spectral_scythe" || game.weaponId === "orbital_swords") && (shot.kind === "scythe_slash" || shot.kind === "orbital_blade")) {
+                const awayX = enemy.x - game.player.x, awayY = enemy.y - game.player.y;
+                const awayLength = Math.max(1, Math.hypot(awayX, awayY));
+                const pushDistance = 18 * (1 + 0.5 * impactResonanceLevel);
+                const proposedX = enemy.x + (awayX / awayLength) * pushDistance;
+                const proposedY = enemy.y + (awayY / awayLength) * pushDistance;
+                const resolved = resolveCemeteryCollision(proposedX, proposedY, enemy.radius, game.obstacles);
+                const struckObstacle = distance(resolved.x, resolved.y, proposedX, proposedY) > 2;
+                enemy.x = resolved.x; enemy.y = resolved.y;
+                if (struckObstacle) {
+                  const impactDamage = hitDamage * 0.50 * impactResonanceLevel;
+                  const impactApplied = Math.min(enemy.hp, impactDamage);
+                  enemy.hp -= impactDamage;
+                  game.totalDamageDealt += impactApplied;
+                  game.damageNumbers.push({ x: enemy.x, y: enemy.y - enemy.radius - 18, value: impactDamage, life: 0.65, maxLife: 0.65, drift: 0 });
+                  if (game.damageNumbers.length > 12) game.damageNumbers.shift();
+                }
+              }
               if (shot.kind === "plasma_puddle") {
                 enemy.slowTimer = Math.max(enemy.slowTimer ?? 0, 0.5);
                 const pullRadius = shot.radius ?? 118;
@@ -3505,6 +3681,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               if (projectileRelicsSupported && purchasesRef.current.ricochet >= 1 && game.player.relicRicochet < 3) eligibleRelics.push("ricochet");
               if (projectileRelicsSupported && purchasesRef.current.piercing >= 1 && game.player.relicPiercing < 3) eligibleRelics.push("piercing");
               if (projectileRelicsSupported && purchasesRef.current.chain_lightning >= 1 && game.player.relicChainLightning < 3) eligibleRelics.push("chain_lightning");
+              if (purchasesRef.current.crit_relic >= 1 && game.player.specialCritStacks < MAX_SPECIAL_CRIT_STACKS) eligibleRelics.push("crit");
               if (roll < 0.20) game.gems.push({ x: urn.x, y: urn.y, value: 15, radius: 8, runeCrystal: true });
               else if (eligibleRelics.length && roll < 0.20 + relicChance) game.specialDrops.push({ x: urn.x, y: urn.y, kind: eligibleRelics[Math.floor(Math.random() * eligibleRelics.length)], radius: 13 });
               else if (roll < 0.20 + relicChance + foodChance) game.specialDrops.push({ x: urn.x, y: urn.y, kind: "food", radius: 14 });
@@ -3527,7 +3704,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           }
           if (d < 17) {
             fractalAudio.gem();
-            game.player.xp += gem.value * game.player.xpMultiplier;
+            game.player.xp += gem.value * game.player.xpMultiplier * (1 + purchasesRef.current.extra_xp * 0.10) * (alchemyActive ? 2 : 1);
             game.crystalsCollected += gem.runeCrystal ? 5 : 1;
             gem.value = 0;
           }
@@ -3540,7 +3717,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             if(drop.kind==="food"){game.player.hp=Math.min(game.player.maxHp,game.player.hp+game.player.maxHp*.4);game.pickupLabels.push({x:game.player.x,y:game.player.y-28,text:"+40% HP! Iguaria Cósmica 🍔",life:1.8,maxLife:1.8});drop.radius=0;fractalAudio.special();return;}
             if(drop.kind==="void"){for(const gem of game.gems){gem.x=game.player.x;gem.y=game.player.y;}game.pickupLabels.push({x:game.player.x,y:game.player.y-28,text:"Vórtice do Vazio! Cristais Sugados!",life:1.8,maxLife:1.8});drop.radius=0;fractalAudio.special();return;}
             fractalAudio.special();
-            const specialUpgradeId: UpgradeId = drop.kind === "area" ? "special_area" : drop.kind === "experience" ? "special_experience" : drop.kind === "projectile_range" ? "special_projectile_range" : drop.kind === "projectiles" ? "special_projectiles" : drop.kind === "ricochet" ? "special_ricochet" : drop.kind === "piercing" ? "special_piercing" : "special_chain_lightning";
+            const specialUpgradeId: UpgradeId = drop.kind === "area" ? "special_area" : drop.kind === "experience" ? "special_experience" : drop.kind === "projectile_range" ? "special_projectile_range" : drop.kind === "projectiles" ? "special_projectiles" : drop.kind === "ricochet" ? "special_ricochet" : drop.kind === "piercing" ? "special_piercing" : drop.kind === "crit" ? "special_crit" : "special_chain_lightning";
             const specialUpgrade = SPECIAL_UPGRADES.find((item) => item.id === specialUpgradeId)!;
             const currentRune = game.upgradeCounts[specialUpgradeId];
             game.upgradeCounts[specialUpgradeId] = { name: specialUpgrade.name, count: (currentRune?.count ?? 0) + 1, rarity: "uncommon" };
@@ -3552,6 +3729,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               ricochet: "Ricochete Instável",
               piercing: "Perfuração Espectral",
               chain_lightning: "Descarga em Cadeia",
+              crit: "Olho do Predador",
               food: "Iguaria de uma Dimensão Perdida",
               void: "Vórtice do Vazio",
             };
@@ -3563,6 +3741,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             if (drop.kind === "ricochet" && game.player.relicRicochet < 3) game.player.relicRicochet += 1;
             if (drop.kind === "piercing" && game.player.relicPiercing < 3) game.player.relicPiercing += 1;
             if (drop.kind === "chain_lightning" && game.player.relicChainLightning < 3) game.player.relicChainLightning += 1;
+            if (drop.kind === "crit" && game.player.specialCritStacks < MAX_SPECIAL_CRIT_STACKS) game.player.specialCritStacks += 1;
             drop.radius = 0;
           }
         });
@@ -4287,7 +4466,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           {masterGiftListOpen ? "Ocultar Lista de Dádivas" : "Mostrar Lista de Dádivas"} <ChevronDown className={`h-4 w-4 transition-transform ${masterGiftListOpen ? "rotate-180" : ""}`}/>
         </Button>
         {masterGiftListOpen && <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
-          {MASTER_GIFT_OPTIONS.filter((gift) => {
+          {MASTER_GIFT_OPTIONS.filter((gift, index, items) => items.findIndex((item) => item.id === gift.id) === index).filter((gift) => {
             const activeWeapon = gameRef.current?.weaponId ?? selectedWeapon;
             if (gift.id === "weapon_mastery" || gift.id === "weapon_evolution" || gift.id === "anchor_soul") return false;
             if (gift.id.startsWith("gift_") && !WEAPON_GIFTS[activeWeapon].some((weaponGift) => weaponGift.id === gift.id)) return false;
@@ -4303,7 +4482,11 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               : gift.id === "special_projectiles" ? (game?.player.projectileStacks ?? 0) >= MAX_EXTRA_PROJECTILES
               : gift.id === "special_ricochet" ? (game?.player.relicRicochet ?? 0) >= 3
               : gift.id === "special_piercing" ? (game?.player.relicPiercing ?? 0) >= 3
-              : gift.id === "special_chain_lightning" ? (game?.player.relicChainLightning ?? 0) >= 3 : false;
+              : gift.id === "special_chain_lightning" ? (game?.player.relicChainLightning ?? 0) >= 3
+              : gift.id === "special_crit" ? (game?.player.specialCritStacks ?? 0) >= MAX_SPECIAL_CRIT_STACKS
+              : gift.id === "universal_aether_shield" ? currentLevel >= 3
+              : gift.id === "universal_vampirism" ? currentLevel >= 5
+              : gift.id === "universal_alchemy_circle" ? currentLevel >= 1 : false;
             return <Button key={gift.id} variant="outline" disabled={!game || capped} className="h-auto min-h-[46px] justify-between gap-2 border-white/10 bg-black/20 px-3 py-2 text-left text-[10px] text-white hover:border-violet-200/35 hover:bg-violet-400/10 disabled:opacity-35" onClick={() => { if (!gameRef.current) return; applyUpgrade(gift); toast.success(gift.name + " concedida pelo Mestre."); }}>
               <span className="min-w-0 truncate">{gift.name}</span><span className="shrink-0 rounded-full border border-amber-200/25 bg-amber-300/10 px-2 py-1 text-[9px] font-black tabular-nums text-amber-100">Nvl. {currentLevel}</span>
             </Button>;
