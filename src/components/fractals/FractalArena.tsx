@@ -1387,22 +1387,108 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     }
 
     if (shot.kind === "fractal_boomerang") {
-      ctx.save(); ctx.translate(shot.x, shot.y); ctx.rotate(shot.rotation ?? shot.angle ?? 0); ctx.globalAlpha = lifeRatio;
+      ctx.save();
+      ctx.translate(shot.x, shot.y);
+      ctx.rotate(shot.rotation ?? shot.angle ?? 0);
+      ctx.globalAlpha = lifeRatio;
       const evolved = game.evolved;
-      ctx.fillStyle = evolved ? "rgba(147,51,234,.42)" : "rgba(91,33,182,.32)";
-      ctx.strokeStyle = evolved ? "#e879f9" : "#a78bfa"; ctx.lineWidth = evolved ? 5 : 4;
-      ctx.beginPath(); ctx.moveTo(-23, -13); ctx.quadraticCurveTo(-3, -38, 25, -12); ctx.lineTo(11, -2); ctx.quadraticCurveTo(-1, -18, -13, 10); ctx.closePath(); ctx.fill(); ctx.stroke();
-      ctx.strokeStyle = "#fdf4ff"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-17, -10); ctx.quadraticCurveTo(-1, -28, 18, -11); ctx.stroke();
+      const returning = shot.phase === "return";
+      const accent = returning ? "#67e8f9" : evolved ? "#e879f9" : "#a78bfa";
+      const bladeGradient = ctx.createLinearGradient(-26, -30, 28, 20);
+      bladeGradient.addColorStop(0, evolved ? "rgba(250,232,255,.96)" : "rgba(237,233,254,.94)");
+      bladeGradient.addColorStop(0.28, evolved ? "rgba(217,70,239,.78)" : "rgba(139,92,246,.72)");
+      bladeGradient.addColorStop(0.72, evolved ? "rgba(88,28,135,.92)" : "rgba(76,29,149,.88)");
+      bladeGradient.addColorStop(1, "rgba(15,10,36,.96)");
+
+      ctx.lineJoin = "round";
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(-23, -13);
+      ctx.quadraticCurveTo(-3, -38, 25, -12);
+      ctx.lineTo(11, -2);
+      ctx.quadraticCurveTo(-1, -18, -13, 10);
+      ctx.closePath();
+      ctx.fillStyle = bladeGradient;
+      ctx.fill();
+
+      // Borda luminosa dupla: brilho obtido por traços vetoriais, sem filtros de blur por quadro.
+      ctx.globalAlpha = lifeRatio * 0.26;
+      ctx.strokeStyle = accent;
+      ctx.lineWidth = evolved ? 12 : 9;
+      ctx.stroke();
+      ctx.globalAlpha = lifeRatio;
+      ctx.strokeStyle = evolved ? "#f5d0fe" : "#c4b5fd";
+      ctx.lineWidth = evolved ? 3.4 : 2.8;
+      ctx.stroke();
+
+      ctx.strokeStyle = "#fff7ff";
+      ctx.lineWidth = 1.5;
+      ctx.globalAlpha = lifeRatio * 0.92;
+      ctx.beginPath();
+      ctx.moveTo(-18, -12);
+      ctx.quadraticCurveTo(-2, -31, 19, -12);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(9, -5);
+      ctx.quadraticCurveTo(-2, -9, -12, 8);
+      ctx.stroke();
+
       if (evolved) {
-        ctx.strokeStyle = "#f0abfc"; ctx.lineWidth = 2.4; ctx.beginPath(); ctx.arc(0, -4, 21, Math.PI * 1.05, Math.PI * 1.95); ctx.stroke();
-        for (let tooth = 0; tooth < 9; tooth++) {
-          const angle = Math.PI * 1.05 + tooth / 8 * Math.PI * 0.9, inner = 19, outer = 29;
-          ctx.beginPath(); ctx.moveTo(Math.cos(angle) * inner, -4 + Math.sin(angle) * inner);
-          ctx.lineTo(Math.cos(angle + 0.05) * outer, -4 + Math.sin(angle + 0.05) * outer);
-          ctx.lineTo(Math.cos(angle + 0.10) * inner, -4 + Math.sin(angle + 0.10) * inner); ctx.stroke();
+        // A Serra Retornante recebe dentes facetados ao redor do arco e um anel de rotação interno.
+        ctx.globalAlpha = lifeRatio;
+        ctx.strokeStyle = returning ? "#a5f3fc" : "#f0abfc";
+        ctx.lineWidth = 2.2;
+        for (let tooth = 0; tooth < 12; tooth++) {
+          const angle = Math.PI * 1.03 + tooth / 11 * Math.PI * 0.94;
+          const inner = 19, outer = 30;
+          ctx.beginPath();
+          ctx.moveTo(Math.cos(angle) * inner, -4 + Math.sin(angle) * inner);
+          ctx.lineTo(Math.cos(angle + 0.045) * outer, -4 + Math.sin(angle + 0.045) * outer);
+          ctx.lineTo(Math.cos(angle + 0.09) * inner, -4 + Math.sin(angle + 0.09) * inner);
+          ctx.stroke();
+        }
+        ctx.setLineDash([3, 4]);
+        ctx.lineWidth = 1.2;
+        ctx.strokeStyle = "rgba(250,232,255,.72)";
+        ctx.beginPath();
+        ctx.arc(0, -4, 14, -Math.PI * 0.9, Math.PI * 0.9);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      } else {
+        // As três incisões rúnicas deixam a forma base reconhecível sem acrescentar sprites.
+        ctx.globalAlpha = lifeRatio * 0.78;
+        ctx.strokeStyle = "#e9d5ff";
+        ctx.lineWidth = 1.25;
+        for (let rune = 0; rune < 3; rune++) {
+          const x = -8 + rune * 8, y = -15 + Math.abs(rune - 1) * 2;
+          ctx.beginPath();
+          ctx.moveTo(x - 2, y);
+          ctx.lineTo(x, y - 3);
+          ctx.lineTo(x + 2, y);
+          ctx.lineTo(x, y + 3);
+          ctx.stroke();
         }
       }
-      ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(6, -5); ctx.lineTo(0, 5); ctx.lineTo(-6, -5); ctx.closePath(); ctx.fill(); ctx.restore(); return;
+
+      const coreGradient = ctx.createRadialGradient(0, -5, 1, 0, -5, 10);
+      coreGradient.addColorStop(0, "#ffffff");
+      coreGradient.addColorStop(0.36, returning ? "#cffafe" : "#fae8ff");
+      coreGradient.addColorStop(0.72, returning ? "#0891b2" : "#c026d3");
+      coreGradient.addColorStop(1, "#581c87");
+      ctx.globalAlpha = lifeRatio;
+      ctx.fillStyle = coreGradient;
+      ctx.beginPath();
+      ctx.moveTo(0, -16);
+      ctx.lineTo(7, -5);
+      ctx.lineTo(0, 6);
+      ctx.lineTo(-7, -5);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = "#fff";
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+      ctx.restore();
+      return;
     }
     if (shot.kind === "boomerang_catch" || shot.kind === "rift_blast" || shot.kind === "rift_residue") {
       ctx.save(); ctx.translate(shot.x, shot.y); ctx.globalAlpha = Math.min(1, lifeRatio * (shot.kind === "rift_residue" ? 0.72 : 1.3));
@@ -1672,26 +1758,73 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
         const linked = (game.evolved && aMine.groupId === bMine.groupId)
           || (networkLevel > 0 && distance(aMine.x, aMine.y, bMine.x, bMine.y) <= 250 * game.player.projectileRangeMultiplier);
         if (!linked || aMine.x < cameraX - 320 || aMine.x > cameraX + viewWidth + 320 || aMine.y < cameraY - 320 || aMine.y > cameraY + viewHeight + 320) continue;
-        ctx.strokeStyle = aMine.triggered || bMine.triggered ? "rgba(251,191,36,.92)" : "rgba(167,139,250,.78)";
-        ctx.lineWidth = aMine.triggered || bMine.triggered ? 4 : 2.2;
+        const energized = aMine.triggered || bMine.triggered;
+        // Duas camadas simples criam a impressão de energia sem filtros de sombra.
+        ctx.save();
+        ctx.globalAlpha = energized ? 0.28 : 0.16;
+        ctx.strokeStyle = energized ? "#fbbf24" : "#a78bfa";
+        ctx.lineWidth = energized ? 9 : 7;
+        ctx.setLineDash([]);
+        ctx.beginPath(); ctx.moveTo(aMine.x, aMine.y); ctx.lineTo(bMine.x, bMine.y); ctx.stroke();
+        ctx.globalAlpha = 1;
+        ctx.strokeStyle = energized ? "rgba(254,243,199,.98)" : "rgba(196,181,253,.88)";
+        ctx.lineWidth = energized ? 2.8 : 2.1;
         ctx.setLineDash([9, 7]); ctx.lineDashOffset = -game.elapsed * 35;
         ctx.beginPath(); ctx.moveTo(aMine.x, aMine.y); ctx.lineTo(bMine.x, bMine.y); ctx.stroke();
+        ctx.restore();
       }
     }
     ctx.setLineDash([]);
     for (const mine of game.riftMines) {
       if (mine.x < cameraX - 70 || mine.x > cameraX + viewWidth + 70 || mine.y < cameraY - 70 || mine.y > cameraY + viewHeight + 70) continue;
       ctx.save(); ctx.translate(mine.x, mine.y);
-      const armed = mine.armTimer <= 0, pulse = 1 + Math.sin(game.elapsed * 8 + mine.id) * 0.08;
+      const armed = mine.armTimer <= 0;
+      const pulse = 1 + Math.sin(game.elapsed * 8 + mine.id) * 0.08;
+      const accent = mine.triggered ? "#fbbf24" : armed ? "#c4b5fd" : "#67e8f9";
       const radius = (mine.triggered ? mine.blastRadius * 0.36 : mine.triggerRadius * 0.48) * pulse;
       const glow = ctx.createRadialGradient(0, 0, 2, 0, 0, radius);
-      glow.addColorStop(0, mine.triggered ? "rgba(251,191,36,.4)" : armed ? "rgba(167,139,250,.30)" : "rgba(103,232,249,.16)");
-      glow.addColorStop(1, "rgba(124,58,237,0)"); ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = mine.triggered ? "#fbbf24" : armed ? "#c4b5fd" : "#67e8f9"; ctx.lineWidth = mine.triggered ? 3 : 2;
+      glow.addColorStop(0, mine.triggered ? "rgba(251,191,36,.46)" : armed ? "rgba(167,139,250,.34)" : "rgba(103,232,249,.20)");
+      glow.addColorStop(0.42, "rgba(124,58,237,.13)");
+      glow.addColorStop(1, "rgba(124,58,237,0)");
+      ctx.fillStyle = glow;
+      ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI * 2); ctx.fill();
+
+      // Disco rúnico externo e anéis internos dão leitura clara de armado/disparado.
+      ctx.globalAlpha = 0.48;
+      ctx.strokeStyle = accent;
+      ctx.lineWidth = 1.2;
+      ctx.setLineDash([3, 5]);
+      ctx.beginPath(); ctx.arc(0, 0, 23 * pulse, game.elapsed * 0.8, game.elapsed * 0.8 + Math.PI * 1.7); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = accent;
+      ctx.lineWidth = mine.triggered ? 3.2 : 2;
       ctx.beginPath(); ctx.arc(0, 0, 15 * pulse, 0, Math.PI * 2); ctx.stroke();
+      ctx.strokeStyle = "rgba(255,255,255,.72)";
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(0, 0, 9 * pulse, Math.PI * 0.12, Math.PI * 1.12); ctx.stroke();
+
       ctx.rotate(game.elapsed * (mine.nodeIndex % 2 ? -1 : 1) * 0.65);
-      ctx.fillStyle = mine.triggered ? "#fef3c7" : "#ede9fe"; ctx.beginPath(); ctx.moveTo(0, -11); ctx.lineTo(8, 0); ctx.lineTo(0, 11); ctx.lineTo(-8, 0); ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = "#7c3aed"; ctx.lineWidth = 1.3; ctx.stroke(); ctx.restore();
+      ctx.fillStyle = mine.triggered ? "#fef3c7" : "#ede9fe";
+      ctx.beginPath();
+      ctx.moveTo(0, -12); ctx.lineTo(8, -2); ctx.lineTo(6, 7);
+      ctx.lineTo(0, 11); ctx.lineTo(-6, 7); ctx.lineTo(-8, -2);
+      ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = "#7c3aed"; ctx.lineWidth = 1.3; ctx.stroke();
+
+      ctx.fillStyle = mine.triggered ? "#fff7ed" : "#c4b5fd";
+      ctx.beginPath(); ctx.moveTo(0, -6); ctx.lineTo(4, 0); ctx.lineTo(0, 6); ctx.lineTo(-4, 0); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,.8)";
+      ctx.lineWidth = 1;
+      for (let rune = 0; rune < 4; rune++) {
+        const angle = rune * Math.PI / 2;
+        const inner = 17, outer = 21;
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(angle) * inner, Math.sin(angle) * inner);
+        ctx.lineTo(Math.cos(angle) * outer, Math.sin(angle) * outer);
+        ctx.stroke();
+      }
+      ctx.restore();
     }
     ctx.restore();
   }
@@ -3191,7 +3324,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                 shot.y -= shot.vy / speed * (shot.travelled - (shot.maxDistance ?? 238));
                 shot.hitTargets.length = 0;
                 if (game.evolved) {
-                  shot.phase = "spin"; shot.spinTimer = 0.24; shot.vx = 0; shot.vy = 0; shot.radius = 54;
+                  shot.phase = "spin"; shot.spinTimer = 0.24; shot.vx = 0; shot.vy = 0;
+                  shot.radius = 54 * (1 + Math.min(MAX_AREA_RELIC_STACKS, game.player.specialAreaStacks) * 0.10);
                   shot.life = Math.max(shot.life, 0.85);
                   if (game.particles.length < 128) for (let particle = 0; particle < 10; particle++) {
                     const angle = particle / 10 * Math.PI * 2, particleSpeed = 65 + (particle % 3) * 24;
@@ -3229,7 +3363,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                 shot.life = 0;
                 const catchLevel = game.upgradeCounts.gift_boomerang_catch?.count ?? 0;
                 if (catchLevel > 0 && game.shots.length < 88) {
-                  const catchRadius = 72 + catchLevel * 14;
+                  const catchRadius = Math.min(180, (72 + catchLevel * 14)
+                    * (1 + Math.min(MAX_AREA_RELIC_STACKS, game.player.specialAreaStacks) * 0.10));
                   game.shots.push({ x: game.player.x, y: game.player.y, vx: 0, vy: 0, damage: shot.damage * 0.32,
                     life: 0.24, maxLife: 0.24, hitTargets: [], bouncesRemaining: 0, piercesRemaining: 0,
                     kind: "boomerang_catch", radius: catchRadius });
