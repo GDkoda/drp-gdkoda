@@ -1153,6 +1153,55 @@ function spawnEnemy(game: GameState, missionId: number, elapsed: number, corrupt
 
 const sharedParticleBuckets: Record<string, Particle[]> = {};
 
+type RadialGlowStop = readonly [number, string];
+const radialGlowCache = new Map<string, HTMLCanvasElement>();
+const MAX_RADIAL_GLOW_CACHE = 96;
+
+/** Rasteriza uma combinação de brilho uma vez; quadros seguintes usam somente drawImage. */
+function getRadialGlowSprite(radius: number, stops: readonly RadialGlowStop[]): HTMLCanvasElement {
+  const quantizedRadius = Math.max(8, Math.round(radius / 4) * 4);
+  const key = quantizedRadius + "|" + stops.map(([offset, color]) => offset + ":" + color).join("|");
+  const cached = radialGlowCache.get(key);
+  if (cached) return cached;
+
+  const size = quantizedRadius * 2;
+  const sprite = document.createElement("canvas");
+  sprite.width = size;
+  sprite.height = size;
+  const spriteCtx = sprite.getContext("2d");
+  if (!spriteCtx) return sprite;
+
+  const gradient = spriteCtx.createRadialGradient(size / 2, size / 2, 1, size / 2, size / 2, size / 2);
+  for (const [offset, color] of stops) gradient.addColorStop(offset, color);
+  spriteCtx.fillStyle = gradient;
+  spriteCtx.fillRect(0, 0, size, size);
+
+  if (radialGlowCache.size >= MAX_RADIAL_GLOW_CACHE) {
+    const oldestKey = radialGlowCache.keys().next().value;
+    if (oldestKey) radialGlowCache.delete(oldestKey);
+  }
+  radialGlowCache.set(key, sprite);
+  return sprite;
+}
+
+function drawCachedRadialGlow(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  radius: number,
+  stops: readonly RadialGlowStop[],
+  alpha = 1,
+  blend: GlobalCompositeOperation = "lighter",
+) {
+  const sprite = getRadialGlowSprite(radius, stops);
+  const size = Math.max(2, radius * 2);
+  ctx.save();
+  ctx.globalAlpha *= clamp(alpha, 0, 1);
+  ctx.globalCompositeOperation = blend;
+  ctx.drawImage(sprite, x - size / 2, y - size / 2, size, size);
+  ctx.restore();
+}
+
 function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: number, missionId: number, sprites: SpriteMap = {}, showPlayerHp = true, showDamageNumbers = true, zoom = 1, screenShakeEnabled = true) {
   const { width, height, player } = game;
   const safeZoom = clamp(zoom, 0.6, 1.6);
@@ -1236,10 +1285,10 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
 
   for(const prop of game.obstacles){if(prop.x<cameraX-90||prop.x>cameraX+viewWidth+90||prop.y<cameraY-90||prop.y>cameraY+viewHeight+90)continue;ctx.save();ctx.translate(prop.x,prop.y);
     {const sh=prop.kind==="mausoleum"?[60,18]:[22,8];ctx.fillStyle="rgba(0,0,0,.45)";ctx.beginPath();ctx.ellipse(0,prop.radius*.55,sh[0],sh[1],0,0,Math.PI*2);ctx.fill();}
-    if(prop.kind==="torch"){const pulse=1+Math.sin(game.elapsed*4.2+prop.x*.02)*.12;const glow=ctx.createRadialGradient(0,-22,2,0,-22,60*pulse);glow.addColorStop(0,"rgba(255,190,110,.35)");glow.addColorStop(1,"rgba(255,150,60,0)");ctx.fillStyle=glow;ctx.beginPath();ctx.arc(0,-22,60*pulse,0,Math.PI*2);ctx.fill();}
+    if(prop.kind==="torch"){const pulse=1+Math.sin(game.elapsed*4.2+prop.x*.02)*.12;drawCachedRadialGlow(ctx,0,-22,60*pulse,[[0,"rgba(255,190,110,.35)"],[1,"rgba(255,150,60,0)"]],1,"lighter");}
     const spS=clamp(Math.min(game.width,game.height)/720,0.72,1.15);const spr0=prop.kind==="mausoleum"?[mausoleumImg,140,40]:prop.kind==="cross"?[crossImg,62,22]:prop.kind==="torch"?[candlesImg,58,20]:[gravestoneImg,60,22];const spr=[spr0[0],(spr0[1] as number)*spS,(spr0[2] as number)*spS];
     if(drawSprite(ctx,spr[0] as string,spr[1] as number,spr[2] as number)){ctx.restore();continue;}
-    if(prop.kind==="torch"){const pulse=1+Math.sin(game.elapsed*3.8+prop.x*.02)*.12;const glow=ctx.createRadialGradient(0,-14,2,0,-14,42*pulse);glow.addColorStop(0,"rgba(193,117,255,.42)");glow.addColorStop(.45,"rgba(128,67,190,.16)");glow.addColorStop(1,"rgba(128,67,190,0)");ctx.fillStyle=glow;ctx.beginPath();ctx.arc(0,-14,42*pulse,0,Math.PI*2);ctx.fill();ctx.fillStyle="#292333";ctx.strokeStyle="#746181";ctx.fillRect(-5,-4,10,21);ctx.strokeRect(-5,-4,10,21);ctx.fillStyle="#d8a8ff";ctx.beginPath();ctx.moveTo(0,-31);ctx.quadraticCurveTo(13,-18,2,-8);ctx.quadraticCurveTo(-10,-15,0,-31);ctx.fill();ctx.fillStyle="#ffd99a";ctx.beginPath();ctx.arc(0,-17,3,0,Math.PI*2);ctx.fill();}
+    if(prop.kind==="torch"){const pulse=1+Math.sin(game.elapsed*3.8+prop.x*.02)*.12;drawCachedRadialGlow(ctx,0,-14,42*pulse,[[0,"rgba(193,117,255,.42)"],[.45,"rgba(128,67,190,.16)"],[1,"rgba(128,67,190,0)"]],1,"lighter");ctx.fillStyle="#292333";ctx.strokeStyle="#746181";ctx.fillRect(-5,-4,10,21);ctx.strokeRect(-5,-4,10,21);ctx.fillStyle="#d8a8ff";ctx.beginPath();ctx.moveTo(0,-31);ctx.quadraticCurveTo(13,-18,2,-8);ctx.quadraticCurveTo(-10,-15,0,-31);ctx.fill();ctx.fillStyle="#ffd99a";ctx.beginPath();ctx.arc(0,-17,3,0,Math.PI*2);ctx.fill();}
     else if(prop.kind==="mausoleum"){ctx.fillStyle="rgba(0,0,0,.45)";ctx.beginPath();ctx.ellipse(0,18,54,17,0,0,Math.PI*2);ctx.fill();ctx.fillStyle="#25212d";ctx.strokeStyle="#75677e";ctx.lineWidth=3;ctx.fillRect(-42,-22,84,42);ctx.strokeRect(-42,-22,84,42);ctx.beginPath();ctx.moveTo(-48,-22);ctx.lineTo(-35,-48);ctx.lineTo(35,-48);ctx.lineTo(48,-22);ctx.closePath();ctx.fill();ctx.stroke();ctx.fillStyle="#100e17";ctx.fillRect(-12,-5,24,25);ctx.strokeStyle="#9a83a5";ctx.strokeRect(-12,-5,24,25);}
     else if(prop.kind==="cross"){ctx.fillStyle="#272330";ctx.strokeStyle="#786a83";ctx.lineWidth=3;ctx.fillRect(-4,-23,8,43);ctx.fillRect(-14,-14,28,7);ctx.strokeRect(-4,-23,8,43);ctx.strokeRect(-14,-14,28,7);}
     else{ctx.fillStyle="rgba(0,0,0,.4)";ctx.beginPath();ctx.ellipse(2,15,21,8,0,0,Math.PI*2);ctx.fill();ctx.fillStyle="#282330";ctx.strokeStyle="#81758a";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-16,13);ctx.lineTo(-13,-13);ctx.lineTo(-8,-23);ctx.lineTo(8,-23);ctx.lineTo(15,-12);ctx.lineTo(16,13);ctx.closePath();ctx.fill();ctx.stroke();ctx.fillStyle="#9c83a9";ctx.fillRect(-10,-17,20,3);}ctx.restore();}
@@ -1312,7 +1361,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
   }
 
   for(const urn of game.urns){if(urn.broken||urn.x<cameraX-35||urn.x>cameraX+viewWidth+35||urn.y<cameraY-35||urn.y>cameraY+viewHeight+35)continue;ctx.save();ctx.translate(urn.x,urn.y);
-    {const catI=cemImg(catUrnImg);if(catI){const pulse=.7+Math.sin(game.elapsed*2.4+urn.id)*.3;const aura=ctx.createRadialGradient(0,-4,4,0,-4,30);aura.addColorStop(0,`rgba(255,215,120,${.28*pulse})`);aura.addColorStop(1,"rgba(255,200,90,0)");ctx.fillStyle=aura;ctx.beginPath();ctx.arc(0,-4,30,0,Math.PI*2);ctx.fill();ctx.fillStyle="rgba(0,0,0,.4)";ctx.beginPath();ctx.ellipse(0,13,14,5,0,0,Math.PI*2);ctx.fill();ctx.drawImage(catI,-19,-24,38,38);if(urn.hp<urn.maxHp){ctx.fillStyle="#3a2a10";ctx.fillRect(-10,-30,20,3);ctx.fillStyle="#f2c460";ctx.fillRect(-10,-30,20*(urn.hp/urn.maxHp),3);}ctx.restore();continue;}}
+    {const catI=cemImg(catUrnImg);if(catI){const pulse=.7+Math.sin(game.elapsed*2.4+urn.id)*.3;drawCachedRadialGlow(ctx,0,-4,30,[[0,"rgba(255,215,120,.28)"],[1,"rgba(255,200,90,0)"]],pulse,"lighter");ctx.fillStyle="rgba(0,0,0,.4)";ctx.beginPath();ctx.ellipse(0,13,14,5,0,0,Math.PI*2);ctx.fill();ctx.drawImage(catI,-19,-24,38,38);if(urn.hp<urn.maxHp){ctx.fillStyle="#3a2a10";ctx.fillRect(-10,-30,20,3);ctx.fillStyle="#f2c460";ctx.fillRect(-10,-30,20*(urn.hp/urn.maxHp),3);}ctx.restore();continue;}}
     ctx.fillStyle="rgba(0,0,0,.4)";ctx.beginPath();ctx.ellipse(0,13,17,6,0,0,Math.PI*2);ctx.fill();ctx.fillStyle="#514454";ctx.strokeStyle="#b49ab7";ctx.lineWidth=1.6;ctx.beginPath();ctx.moveTo(-11,-9);ctx.lineTo(-8,-17);ctx.lineTo(8,-17);ctx.lineTo(11,-9);ctx.lineTo(9,10);ctx.quadraticCurveTo(0,17,-9,10);ctx.closePath();ctx.fill();ctx.stroke();ctx.fillStyle="#241d2b";ctx.fillRect(-9,-10,18,4);ctx.strokeStyle="#d8c0d7";ctx.beginPath();ctx.moveTo(-5,-5);ctx.lineTo(5,7);ctx.moveTo(5,-5);ctx.lineTo(-5,7);ctx.stroke();ctx.fillStyle="#efb6ff";ctx.fillRect(-10,-25,20,3);ctx.fillStyle="#8c4ca8";ctx.fillRect(-10,-25,20*(urn.hp/urn.maxHp),3);ctx.restore();}
   game.gems.forEach((gem) => {
     if (gem.x < cameraX - 30 || gem.x > cameraX + viewWidth + 30 || gem.y < cameraY - 30 || gem.y > cameraY + viewHeight + 30) return;
@@ -1328,7 +1377,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     }
     ctx.save(); ctx.translate(gem.x, gem.y);
     const pulse = 1 + Math.sin(game.elapsed * 6 + gem.x * 0.03) * 0.08;
-    if(gem.runeCrystal){const glow=ctx.createRadialGradient(0,0,1,0,0,20);glow.addColorStop(0,"rgba(255,210,255,.8)");glow.addColorStop(.35,"rgba(217,70,239,.42)");glow.addColorStop(1,"rgba(217,70,239,0)");ctx.fillStyle=glow;ctx.beginPath();ctx.arc(0,0,20,0,Math.PI*2);ctx.fill();ctx.fillStyle="#d946ef";ctx.rotate(Math.PI/4);ctx.fillRect(-6,-6,12,12);ctx.fillStyle="#fff0ff";ctx.fillRect(-2,-2,4,4);ctx.restore();return;}
+    if(gem.runeCrystal){drawCachedRadialGlow(ctx,0,0,20,[[0,"rgba(255,210,255,.8)"],[.35,"rgba(217,70,239,.42)"],[1,"rgba(217,70,239,0)"]],1,"lighter");ctx.fillStyle="#d946ef";ctx.rotate(Math.PI/4);ctx.fillRect(-6,-6,12,12);ctx.fillStyle="#fff0ff";ctx.fillRect(-2,-2,4,4);ctx.restore();return;}
     ctx.scale(pulse, pulse);
     const icon = sprites.xpGem;
     if (icon?.complete && icon.naturalWidth > 0) {
@@ -1783,12 +1832,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
       const pulse = 1 + Math.sin(game.elapsed * 8 + mine.id) * 0.08;
       const accent = mine.triggered ? "#fbbf24" : armed ? "#c4b5fd" : "#67e8f9";
       const radius = (mine.triggered ? mine.blastRadius * 0.36 : mine.triggerRadius * 0.48) * pulse;
-      const glow = ctx.createRadialGradient(0, 0, 2, 0, 0, radius);
-      glow.addColorStop(0, mine.triggered ? "rgba(251,191,36,.46)" : armed ? "rgba(167,139,250,.34)" : "rgba(103,232,249,.20)");
-      glow.addColorStop(0.42, "rgba(124,58,237,.13)");
-      glow.addColorStop(1, "rgba(124,58,237,0)");
-      ctx.fillStyle = glow;
-      ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI * 2); ctx.fill();
+      drawCachedRadialGlow(ctx, 0, 0, radius, [[0, mine.triggered ? "rgba(251,191,36,.46)" : armed ? "rgba(167,139,250,.34)" : "rgba(103,232,249,.20)"], [0.42, "rgba(124,58,237,.13)"], [1, "rgba(124,58,237,0)"]], 1, "lighter");
 
       // Disco rúnico externo e anéis internos dão leitura clara de armado/disparado.
       ctx.globalAlpha = 0.48;
