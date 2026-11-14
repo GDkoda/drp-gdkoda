@@ -2542,7 +2542,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
       if (enemy.type !== "boss") {
         game.gems.push({ x: enemy.x, y: enemy.y, value: enemy.xp, radius: 5 });
         const fortuneBonus = [0, 0.10, 0.20, 0.30, 0.40, 0.50][Math.max(0, Math.min(5, purchasesRef.current.fortune))];
-        const highestFieldRelicLevel = Math.max(purchasesRef.current.area, purchasesRef.current.experience, purchasesRef.current.projectile_range, purchasesRef.current.projectiles, purchasesRef.current.ricochet, purchasesRef.current.piercing, purchasesRef.current.chain_lightning);
+        const highestFieldRelicLevel = Math.max(purchasesRef.current.area, purchasesRef.current.experience, purchasesRef.current.projectile_range, purchasesRef.current.projectiles, purchasesRef.current.ricochet, purchasesRef.current.piercing, purchasesRef.current.chain_lightning, purchasesRef.current.crit_relic);
         const baseRelicDropChance = [0, 0, 0.01, 0.03, 0.05][Math.max(0, Math.min(4, highestFieldRelicLevel))];
         const specialDropChance = baseRelicDropChance > 0
           ? Math.min(0.12, baseRelicDropChance * (1 + fortuneBonus) * game.omenRewardMultiplier)
@@ -3684,7 +3684,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               const roll = Math.random(), fortuneBonus = [0, 0.10, 0.20, 0.30, 0.40, 0.50][Math.max(0, Math.min(5, purchasesRef.current.fortune))];
               const specialMultiplier = (1 + fortuneBonus) * game.omenRewardMultiplier;
               const foodChance = Math.min(0.18, 0.09 * specialMultiplier), voidChance = Math.min(0.04, 0.01 * specialMultiplier);
-              const highestFieldRelicLevel = Math.max(purchasesRef.current.area, purchasesRef.current.experience, purchasesRef.current.projectile_range, purchasesRef.current.projectiles, purchasesRef.current.ricochet, purchasesRef.current.piercing, purchasesRef.current.chain_lightning);
+              const highestFieldRelicLevel = Math.max(purchasesRef.current.area, purchasesRef.current.experience, purchasesRef.current.projectile_range, purchasesRef.current.projectiles, purchasesRef.current.ricochet, purchasesRef.current.piercing, purchasesRef.current.chain_lightning, purchasesRef.current.crit_relic);
               const baseRelicDropChance = [0, 0, 0.01, 0.03, 0.05][Math.max(0, Math.min(4, highestFieldRelicLevel))];
               const relicChance = Math.min(0.12, baseRelicDropChance * specialMultiplier);
               const eligibleRelics: SpecialDrop["kind"][] = [];
@@ -4490,7 +4490,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           }).map((gift) => {
             const game = gameRef.current;
             const currentLevel = game?.upgradeCounts[gift.id]?.count ?? 0;
-            const capped = gift.id.startsWith("gift_") ? currentLevel >= 3
+            const capped = gift.id === "gift_hunter_mark" ? currentLevel >= 5 : gift.id === "gift_shadow_execution" ? currentLevel >= 1 : gift.id.startsWith("gift_") ? currentLevel >= 3
                : gift.id === "special_area" ? (game?.player.specialAreaStacks ?? 0) >= MAX_AREA_RELIC_STACKS
               : gift.id === "special_experience" ? (game?.player.specialExperienceStacks ?? 0) >= MAX_EXPERIENCE_RELIC_STACKS
               : gift.id === "special_projectile_range" ? (game?.player.projectileRangeStacks ?? 0) >= MAX_PROJECTILE_RANGE_STACKS
