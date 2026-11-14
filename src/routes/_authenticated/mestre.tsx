@@ -12,7 +12,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { deleteAccount } from "@/lib/admin.functions";
 import { defaultAppearance, defaultTexts, useCustomization, type Appearance, type Customization, type TextKey } from "@/lib/app-customization";
 import { Slider } from "@/components/ui/slider";
-import { ImageUp, RotateCcw, Save, LayoutDashboard, Users, ShoppingBag, SlidersHorizontal, Skull, Puzzle, Palette, ScrollText, Search, Coins, ArrowUpRight, ShieldAlert } from "lucide-react";
+import { ImageUp, RotateCcw, Save, LayoutDashboard, Users, ShoppingBag, SlidersHorizontal, Skull, Puzzle, Palette, ScrollText, Search, Coins, ArrowUpRight, ShieldAlert, Sparkles } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/mestre")({
   head: () => ({ meta: [{ title: "Painel do Mestre — Mesa 3D&T" }, { name: "description", content: "Gerencie jogadores, loja e tesouros." }] }),
@@ -26,6 +26,7 @@ const masterSections = [
   { value: "rules", label: "Regras", icon: SlidersHorizontal },
   { value: "monsters", label: "Monstros", icon: Skull },
   { value: "puzzles", label: "Enigmas", icon: Puzzle },
+  { value: "fractals", label: "Fractais", icon: Sparkles },
   { value: "appearance", label: "Personalização", icon: Palette },
   { value: "log", label: "Registro", icon: ScrollText },
 ] as const;
@@ -49,6 +50,38 @@ function Mestre() {
     enabled: !!me?.isMaster,
     staleTime: 30_000,
   });
+
+  const { data: fractalRuns, isLoading: loadingFractals, isError: fractalRunsError } = useQuery({
+    queryKey: ["master-fractal-runs"],
+    queryFn: async () => {
+      const { data, error } = await (supabase.rpc as any)("master_fractal_runs", { _limit: 100 });
+      if (error) throw error;
+      return (data ?? []) as Array<{
+        id: string;
+        username: string | null;
+        mission_id: number;
+        corruption_level: number;
+        weapon: string;
+        omen: string | null;
+        status: "active" | "won" | "lost" | "abandoned";
+        game_seconds: number | null;
+        kills: number | null;
+        player_level: number | null;
+        earned_fractals: number | null;
+        started_at: string;
+      }>;
+    },
+    enabled: !!me?.isMaster,
+    staleTime: 15_000,
+  });
+  const settledFractalRuns = (fractalRuns ?? []).filter((run) => run.status === "won" || run.status === "lost");
+  const fractalWinRate = settledFractalRuns.length > 0
+    ? Math.round((settledFractalRuns.filter((run) => run.status === "won").length / settledFractalRuns.length) * 100) + "%"
+    : "—";
+  const fractalKillsAverage = fractalRuns && fractalRuns.length > 0
+    ? Math.round(fractalRuns.reduce((total, run) => total + (run.kills ?? 0), 0) / fractalRuns.length)
+    : "—";
+  const fractalPaidTotal = fractalRuns?.reduce((total, run) => total + (run.earned_fractals ?? 0), 0) ?? 0;
   if (me && !me.isMaster) return <p className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-destructive">Apenas o Mestre pode ver esta página.</p>;
   const goTo = (value: string) => setSection(value);
   return (
@@ -64,12 +97,13 @@ function Mestre() {
           ))}
         </TabsList>
         <TabsContent value="overview" className="space-y-5">
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
             {[
               { label: "Jogadores", value: overview?.players, icon: Users, target: "players", detail: "Contas da mesa" },
               { label: "Itens na loja", value: overview?.shop, icon: ShoppingBag, target: "shop", detail: "Catálogo de itens" },
               { label: "Monstros ativos", value: overview?.monsters, icon: Skull, target: "monsters", detail: "Encontros disponíveis" },
               { label: "Enigmas ativos", value: overview?.puzzles, icon: Puzzle, target: "puzzles", detail: "Desafios publicados" },
+              { label: "Expedições", value: fractalRuns?.length, icon: Sparkles, target: "fractals", detail: "Partidas de Fractais" },
               { label: "Movimentações", value: overview?.transactions, icon: ScrollText, target: "log", detail: "Histórico financeiro" },
             ].map(({ label, value, icon: Icon, target, detail }) => (
               <button key={target} type="button" onClick={() => goTo(target)} className="group rounded-2xl border bg-card p-4 text-left transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-lg">
@@ -102,7 +136,110 @@ function Mestre() {
             <div className="flex items-start gap-3"><ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-amber-500" /><div><h2 className="font-semibold">Ações sensíveis</h2><p className="text-sm text-muted-foreground">Distribuição em massa e exclusão de contas alteram dados de vários jogadores. Confirme os valores e revise o alvo antes de executar.</p></div></div>
           </section>
         </TabsContent>
-        <TabsContent value="players"><Players /></TabsContent><TabsContent value="shop"><ShopAdmin /></TabsContent><TabsContent value="rules"><Rules /></TabsContent><TabsContent value="monsters"><Monsters /></TabsContent><TabsContent value="puzzles"><Puzzles /></TabsContent><TabsContent value="appearance"><AppearanceEditor /></TabsContent><TabsContent value="log"><Log /></TabsContent>
+        <TabsContent value="players"><Players /></TabsContent>
+        <TabsContent value="shop"><ShopAdmin /></TabsContent>
+        <TabsContent value="rules"><Rules /></TabsContent>
+        <TabsContent value="monsters"><Monsters /></TabsContent>
+        <TabsContent value="puzzles"><Puzzles /></TabsContent>
+        <TabsContent value="fractals" className="space-y-5">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-2xl border bg-card p-4">
+              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Total de Expedições</span>
+              <p className="mt-2 font-display text-3xl text-gold">{fractalRuns?.length ?? 0}</p>
+              <p className="mt-1 text-xs text-muted-foreground">Últimas 100 partidas registradas</p>
+            </div>
+            <div className="rounded-2xl border bg-card p-4">
+              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Taxa de Vitórias</span>
+              <p className="mt-2 font-display text-3xl text-emerald-400">{fractalWinRate}</p>
+              <p className="mt-1 text-xs text-muted-foreground">Vitórias sobre expedições encerradas</p>
+            </div>
+            <div className="rounded-2xl border bg-card p-4">
+              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Média de Abates</span>
+              <p className="mt-2 font-display text-3xl text-sky-400">{fractalKillsAverage}</p>
+              <p className="mt-1 text-xs text-muted-foreground">Monstros eliminados por run</p>
+            </div>
+            <div className="rounded-2xl border bg-card p-4">
+              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Fractais Pagos</span>
+              <p className="mt-2 font-display text-3xl text-purple-400">{fractalPaidTotal.toLocaleString("pt-BR")} FR</p>
+              <p className="mt-1 text-xs text-muted-foreground">Recompensas nas últimas 100 expedições</p>
+            </div>
+          </div>
+
+          <section className="rounded-2xl border bg-card p-5 sm:p-6">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h2 className="font-display text-xl text-gold">Histórico de Expedições</h2>
+                <p className="text-xs text-muted-foreground">Acompanhe missão, escolhas, sobrevivência e recompensas dos jogadores.</p>
+              </div>
+              <span className="rounded-lg border border-primary/20 bg-primary/5 px-2.5 py-1 text-[10px] font-semibold text-gold">Atualização a cada 15s</span>
+            </div>
+
+            {fractalRunsError ? (
+              <p className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-center text-sm text-destructive">
+                Não foi possível carregar a telemetria. Confira se a migração de missões e telemetria dos Fractais foi aplicada.
+              </p>
+            ) : loadingFractals ? (
+              <p className="py-8 text-center text-sm text-muted-foreground">Carregando expedições...</p>
+            ) : !fractalRuns || fractalRuns.length === 0 ? (
+              <p className="py-8 text-center text-sm text-muted-foreground">Nenhuma expedição registrada ainda.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[980px] text-left text-xs">
+                  <thead className="border-b border-border/60 text-muted-foreground">
+                    <tr>
+                      <th className="py-2.5 pr-3 font-semibold">Jogador</th>
+                      <th className="px-3 py-2.5 font-semibold">Resultado</th>
+                      <th className="px-3 py-2.5 font-semibold">Missão</th>
+                      <th className="px-3 py-2.5 font-semibold">Corrupção</th>
+                      <th className="px-3 py-2.5 font-semibold">Arma</th>
+                      <th className="px-3 py-2.5 font-semibold">Tempo</th>
+                      <th className="px-3 py-2.5 font-semibold">Abates</th>
+                      <th className="px-3 py-2.5 font-semibold">Nível</th>
+                      <th className="px-3 py-2.5 font-semibold">Prêmio</th>
+                      <th className="py-2.5 pl-3 font-semibold">Data</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/30">
+                    {fractalRuns.map((run) => {
+                      const mins = Math.floor((run.game_seconds ?? 0) / 60);
+                      const secs = ((run.game_seconds ?? 0) % 60).toString().padStart(2, "0");
+                      const statusLabel = run.status === "won" ? "Vitória" : run.status === "lost" ? "Derrota" : run.status === "active" ? "Em andamento" : "Abandonada";
+                      const statusClass = run.status === "won"
+                        ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                        : run.status === "lost"
+                          ? "bg-rose-500/20 text-rose-300 border border-rose-500/30"
+                          : run.status === "active"
+                            ? "bg-sky-500/15 text-sky-300 border border-sky-500/25"
+                            : "bg-muted text-muted-foreground border border-border/50";
+                      return (
+                        <tr key={run.id} className="hover:bg-muted/20">
+                          <td className="py-2.5 pr-3 font-bold text-foreground">{run.username ?? "Anônimo"}</td>
+                          <td className="px-3 py-2.5">
+                            <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-bold uppercase ${statusClass}`}>
+                              {statusLabel}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2.5 text-muted-foreground">Mapa {run.mission_id}</td>
+                          <td className="px-3 py-2.5 text-amber-200">C{run.corruption_level}</td>
+                          <td className="px-3 py-2.5 capitalize text-muted-foreground">{run.weapon?.replace(/_/g, " ") ?? "—"}</td>
+                          <td className="px-3 py-2.5 font-mono">{mins}:{secs}</td>
+                          <td className="px-3 py-2.5">{run.kills ?? 0}</td>
+                          <td className="px-3 py-2.5">Nv {run.player_level ?? 1}</td>
+                          <td className="px-3 py-2.5 font-bold text-purple-300">+{run.earned_fractals ?? 0} FR</td>
+                          <td className="py-2.5 pl-3 text-muted-foreground">
+                            {new Date(run.started_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+        </TabsContent>
+        <TabsContent value="appearance"><AppearanceEditor /></TabsContent>
+        <TabsContent value="log"><Log /></TabsContent>
       </Tabs>
     </div>
   );
