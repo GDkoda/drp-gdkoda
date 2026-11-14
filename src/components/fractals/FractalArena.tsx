@@ -1096,7 +1096,7 @@ function getEquippedWeaponStrikeDamage(game: GameState): number {
     : game.weaponId === "rune_sentinels" ? (game.evolved ? 0.75 : 0.55)
     : game.weaponId === "void_revolver" && game.evolved ? 0.85
     : game.weaponId === "fractal_boomerang" ? (game.evolved ? 0.38 : 0.58)
-    : game.weaponId === "rift_seeder" ? (game.evolved ? 0.90 : 1.90)
+    : game.weaponId === "rift_seeder" ? (game.evolved ? 1.12 : 1.90)
     : 1;
   return Math.max(1, Math.round(game.player.damage * weaponPower * weaponMultiplier));
 }
@@ -1756,7 +1756,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
       for (let second = first + 1; second < game.riftMines.length; second++) {
         const bMine = game.riftMines[second];
         const linked = (game.evolved && aMine.groupId === bMine.groupId)
-          || (networkLevel > 0 && distance(aMine.x, aMine.y, bMine.x, bMine.y) <= 250 * game.player.projectileRangeMultiplier);
+          || (networkLevel > 0 && distance(aMine.x, aMine.y, bMine.x, bMine.y) <= (190 + networkLevel * 35) * game.player.projectileRangeMultiplier);
         if (!linked || aMine.x < cameraX - 320 || aMine.x > cameraX + viewWidth + 320 || aMine.y < cameraY - 320 || aMine.y > cameraY + viewHeight + 320) continue;
         const energized = aMine.triggered || bMine.triggered;
         // Duas camadas simples criam a impressão de energia sem filtros de sombra.
@@ -3214,7 +3214,9 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             const centerX = center.x, centerY = center.y;
             const blastScale = (1 + game.player.specialAreaStacks * 0.10) * game.player.projectileRangeMultiplier;
             const blastRadius = (game.evolved ? 84 : 76) * blastScale;
-            const mineDamage = weaponDamage * (game.evolved ? 0.90 : 1.90);
+            // A Matriz cobre três zonas: duas explosões tendem a cruzar a faixa frontal.
+            // 1.12x por mina a cada 2.5x de intervalo mantém esse par próximo da mina base (1.90x / 1.85x).
+            const mineDamage = weaponDamage * (game.evolved ? 1.12 : 1.90);
             const points = game.evolved
               ? [
                   { x: centerX + Math.cos(baseAngle + Math.PI / 2) * 76, y: centerY + Math.sin(baseAngle + Math.PI / 2) * 76 },
@@ -3250,7 +3252,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             }
             game.player.castFacing = directionFromVector(target.x - game.player.x, target.y - game.player.y);
             game.player.castTimer = 0.24;
-            game.shotTimer = game.player.fireRate * (game.evolved ? 3.0 : 1.85);
+            game.shotTimer = game.player.fireRate * (game.evolved ? 2.5 : 1.85);
           }
 
           if (game.weaponId !== "orbital_swords" && game.weaponId !== "rune_sentinels") fractalAudio.shoot();
@@ -3365,7 +3367,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                 if (catchLevel > 0 && game.shots.length < 88) {
                   const catchRadius = Math.min(180, (72 + catchLevel * 14)
                     * (1 + Math.min(MAX_AREA_RELIC_STACKS, game.player.specialAreaStacks) * 0.10));
-                  game.shots.push({ x: game.player.x, y: game.player.y, vx: 0, vy: 0, damage: shot.damage * 0.32,
+                  game.shots.push({ x: game.player.x, y: game.player.y, vx: 0, vy: 0, damage: shot.damage * (0.28 + catchLevel * 0.04),
                     life: 0.24, maxLife: 0.24, hitTargets: [], bouncesRemaining: 0, piercesRemaining: 0,
                     kind: "boomerang_catch", radius: catchRadius });
                   (game.rings ??= []).push({ x: game.player.x, y: game.player.y, r: 12, max: catchRadius,
@@ -3465,7 +3467,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                   let residueCount = 0;
                   for (const shot of game.shots) if (shot.kind === "rift_residue") residueCount++;
                   if (residueCount < 5) game.shots.push({ x: mine.x, y: mine.y, vx: 0, vy: 0,
-                    damage: mine.damage * 0.105, life: 0.9, maxLife: 0.9, hitTargets: [], bouncesRemaining: 0,
+                    damage: mine.damage * (0.075 + aftershock * 0.03), life: 0.9, maxLife: 0.9, hitTargets: [], bouncesRemaining: 0,
                     piercesRemaining: 0, kind: "rift_residue", radius: 42 + aftershock * 5, pulseTimer: 0.08 });
                 }
                 mine.life = 0;
@@ -3484,9 +3486,9 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                 const bMine = game.riftMines[second];
                 if (bMine.triggered || bMine.armTimer > 0) continue;
                 const linked = (game.evolved && aMine.groupId === bMine.groupId)
-                  || (networkLevel > 0 && distance(aMine.x, aMine.y, bMine.x, bMine.y) <= 250 * game.player.projectileRangeMultiplier);
+                  || (networkLevel > 0 && distance(aMine.x, aMine.y, bMine.x, bMine.y) <= (190 + networkLevel * 35) * game.player.projectileRangeMultiplier);
                 if (!linked) continue;
-                const wireRadius = 9 + networkLevel * 2;
+                const wireRadius = 8 + networkLevel * 3;
                 for (const enemy of game.enemies) {
                   if (enemy.hp <= 0 || distanceToSegmentSquared(enemy.x, enemy.y, aMine.x, aMine.y, bMine.x, bMine.y) > (wireRadius + enemy.radius) ** 2) continue;
                   triggerRiftMineGroup(game, aMine.groupId, aMine.id, 0);
