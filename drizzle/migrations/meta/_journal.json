@@ -36,6 +36,13 @@
       "when": 1794010516240,
       "tag": "0004_strategic_3dt_alpha_combat",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1794615426762,
+      "tag": "0005_tighten_profile_settings_reads",
+      "breakpoints": true
     }
   ]
 }

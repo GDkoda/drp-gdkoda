@@ -1078,6 +1078,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      list_player_directory: {
+        Args: never
+        Returns: {
+          display_name: string
+          id: string
+          username: string
+        }[]
+      }
       master_adjust_coins: {
         Args: { _delta: number; _note: string; _user: string }
         Returns: undefined
