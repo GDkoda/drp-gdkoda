@@ -6,7 +6,7 @@ import candlesImg from "@/assets/fractals/candles.png";
 import catUrnImg from "@/assets/fractals/cat-urn.png";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, Heart, Move, Pause, Play, RotateCcw, RotateCw, Check, Shield, Skull, Sparkles, Swords, Zap, Maximize, UserRound, Gauge, ArrowLeft, ShoppingBag, Crown, Gem as GemIcon, MapPin, Flame, Leaf, Snowflake, Orbit, Lock, Link2, ChevronDown, Coins, Timer, Target, ZoomIn, ZoomOut, Volume2, VolumeX, Ban, Clover, Dna, BookOpen, Monitor, Keyboard, Diamond } from "lucide-react";
+import { AlertTriangle, Heart, Move, Pause, Play, RotateCcw, RotateCw, Check, Shield, Skull, Sparkles, Swords, Zap, Maximize, UserRound, Gauge, ArrowLeft, ShoppingBag, Crown, Gem as GemIcon, MapPin, Flame, Leaf, Snowflake, Orbit, Lock, Link2, ChevronDown, Coins, Timer, Target, ZoomIn, ZoomOut, Volume2, VolumeX, Ban, Clover, Dna, BookOpen, Monitor, Keyboard, Diamond, SlidersHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -286,6 +286,8 @@ const MAX_PROJECTILE_RANGE_STACKS = 5;
 const MAX_EXTRA_PROJECTILES = 2;
 const ORACLE_FOURTH_CHOICE_CHANCE = [0, 6, 12, 18, 24, 30, 36, 42, 48, 50, 50] as const;
 const WORLD_LIMIT = 1300;
+const CEMETERY_ARENA_HALF = 1290;
+const BOSS_SPAWN_TIME = 660;
 const CHALLENGE_EVENT_TIMES = [240, 480] as const;
 const RITUAL_DURATION = 25;
 const RITUAL_WINDOW = 50;
@@ -996,7 +998,7 @@ function spawnEnemy(game: GameState, missionId: number, elapsed: number, corrupt
 
 const sharedParticleBuckets: Record<string, Particle[]> = {};
 
-function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: number, missionId: number, sprites: SpriteMap = {}, showPlayerHp = true, showDamageNumbers = true, zoom = 1) {
+function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: number, missionId: number, sprites: SpriteMap = {}, showPlayerHp = true, showDamageNumbers = true, zoom = 1, screenShakeEnabled = true) {
   const { width, height, player } = game;
   const safeZoom = clamp(zoom, 0.6, 1.6);
   const viewWidth = width / safeZoom;
@@ -1007,7 +1009,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
   ctx.clearRect(0, 0, width, height);
   ctx.save();
   ctx.translate(width / 2, height / 2);
-  if (game.shake) {
+  if (game.shake && screenShakeEnabled) {
     const shakePhase = game.elapsed * 42;
     ctx.translate(Math.sin(shakePhase) * game.shake * 0.52, Math.cos(shakePhase * 0.83) * game.shake * 0.38);
   }
@@ -1930,8 +1932,42 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
   const [unlockedCorruption, setUnlockedCorruption] = useState(0);
   const [completedCorruptions, setCompletedCorruptions] = useState<number[]>([]);
   const [purchases, setPurchases] = useState<PurchaseState>(DEFAULT_PURCHASES);
+  const purchasesRef = useRef(purchases);
+  purchasesRef.current = purchases;
   const [showPlayerHp, setShowPlayerHp] = useState(true);
   const [showDamageNumbers, setShowDamageNumbers] = useState(true);
+  const prefersReduced = typeof window !== "undefined"
+    && typeof window.matchMedia === "function"
+    && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const [screenShakeEnabled, setScreenShakeEnabled] = useState<boolean>(() => {
+    if (typeof window === "undefined") return true;
+    try {
+      const saved = window.localStorage.getItem("fractals_screen_shake");
+      return saved !== null ? saved === "true" : !prefersReduced;
+    } catch {
+      return !prefersReduced;
+    }
+  });
+  const toggleScreenShake = () => {
+    setScreenShakeEnabled((previous) => {
+      const next = !previous;
+      try {
+        window.localStorage.setItem("fractals_screen_shake", String(next));
+      } catch {
+        // A preferência continua funcionando nesta sessão mesmo sem storage disponível.
+      }
+      return next;
+    });
+  };
+  // Refs para atualizar preferências sem recriar o loop gráfico.
+  const speedMultiplierRef = useRef(speedMultiplier);
+  speedMultiplierRef.current = speedMultiplier;
+  const showPlayerHpRef = useRef(showPlayerHp);
+  showPlayerHpRef.current = showPlayerHp;
+  const showDamageNumbersRef = useRef(showDamageNumbers);
+  showDamageNumbersRef.current = showDamageNumbers;
+  const screenShakeEnabledRef = useRef(screenShakeEnabled);
+  screenShakeEnabledRef.current = screenShakeEnabled;
   const [shopSection, setShopSection] = useState<"permanent" | "relics" | "weapons" | "omens">("permanent");
   const [shopInfo, setShopInfo] = useState<ShopItemInfo | null>(null);
   const [selectedWeapon, setSelectedWeapon] = useState<WeaponId>("void_revolver");
@@ -1941,7 +1977,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
   const [isMuted, setIsMuted] = useState(() => fractalAudio.isMuted());
   const [earnedFractals, setEarnedFractals] = useState<number | null>(null);
   const [rewardStatus, setRewardStatus] = useState<"pending" | "confirmed" | "error">("pending");
-  const lastRunSettlementRef = useRef<{ runId: string; victory: boolean; gameSeconds: number; kills: number; level: number } | null>(null);
+  const lastRunSettlementRef = useRef<{ runId: string; victory: boolean; gameSeconds: number; kills: number; level: number; missionId: number } | null>(null);
   const [shopBusy, setShopBusy] = useState(false);
   const [shopOpen, setShopOpen] = useState(true);
   const [shopError, setShopError] = useState<string | null>(null);
@@ -2048,7 +2084,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         getWellSprite(106, false);
         getWellSprite(140, true);
       }
-      const { data: newRunId, error: runError } = await (supabase.rpc as any)("start_fractal_run", { _corruption: corruption, _weapon: selectedWeapon, _omen: corruption >= 4 && purchases.omen_archive ? selectedOmen : null });
+      lastRunSettlementRef.current = null;
+      const { data: newRunId, error: runError } = await (supabase.rpc as any)("start_fractal_run", { _corruption: corruption, _weapon: selectedWeapon, _omen: corruption >= 4 && purchases.omen_archive ? selectedOmen : null, _mission_id: missionId });
       if (runError) { toast.error(runError.message); return; }
       setRunId(newRunId);
       dashRequestRef.current = false;
@@ -2071,7 +2108,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
       preparingArenaRef.current = false;
       setPreparingArena(false);
     }
-  }, [corruption, purchases, selectedWeapon, selectedOmen, desktopSupported]);
+  }, [corruption, purchases, selectedWeapon, selectedOmen, desktopSupported, missionId]);
 
   const finishRun = useCallback((victory: boolean) => {
     if (!runId) {
@@ -2084,8 +2121,9 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
     const gameSeconds = Math.round(game?.elapsed ?? 0);
     const kills = Math.round(game?.kills ?? 0);
     const level = Math.max(1, Math.round(game?.player.level ?? game?.highestLevel ?? 1));
+    const payload = { runId, victory, gameSeconds, kills, level, missionId };
 
-    lastRunSettlementRef.current = { runId, victory, gameSeconds, kills, level };
+    lastRunSettlementRef.current = payload;
 
     setRewardStatus("pending");
     setEarnedFractals(null);
@@ -2096,6 +2134,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
       _game_seconds: gameSeconds,
       _kills: kills,
       _level: level,
+      _mission_id: payload.missionId,
     })
       .then(({ data, error }: any) => {
         if (error) {
@@ -2126,7 +2165,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         setRewardStatus("error");
         toast.error(error instanceof Error ? error.message : "Não foi possível validar as recompensas.");
       });
-  }, [runId]);
+  }, [runId, missionId]);
 
   const retrySettleRun = useCallback(() => {
     const payload = lastRunSettlementRef.current;
@@ -2138,6 +2177,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
       _game_seconds: payload.gameSeconds,
       _kills: payload.kills,
       _level: payload.level,
+      _mission_id: payload.missionId,
     })
       .then(({ data, error }: any) => {
         if (error) {
@@ -2158,6 +2198,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         toast.error(err?.message ?? "Falha ao tentar novamente.");
       });
   }, []);
+  const finishRunRef = useRef(finishRun);
+  finishRunRef.current = finishRun;
 
   const chooseUpgrade = useCallback((upgrade: Upgrade) => {
     setSelectedUpgrade(null);
@@ -2340,32 +2382,32 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
       fractalAudio.kill(enemy.type === "boss" || enemy.type === "elite");
       if (enemy.type !== "boss") {
         game.gems.push({ x: enemy.x, y: enemy.y, value: enemy.xp, radius: 5 });
-        const fortuneBonus = [0, 0.10, 0.20, 0.30, 0.40, 0.50][Math.max(0, Math.min(5, purchases.fortune))];
-        const highestFieldRelicLevel = Math.max(purchases.area, purchases.experience, purchases.projectile_range, purchases.projectiles, purchases.ricochet, purchases.piercing, purchases.chain_lightning);
+        const fortuneBonus = [0, 0.10, 0.20, 0.30, 0.40, 0.50][Math.max(0, Math.min(5, purchasesRef.current.fortune))];
+        const highestFieldRelicLevel = Math.max(purchasesRef.current.area, purchasesRef.current.experience, purchasesRef.current.projectile_range, purchasesRef.current.projectiles, purchasesRef.current.ricochet, purchasesRef.current.piercing, purchasesRef.current.chain_lightning);
         const baseRelicDropChance = [0, 0, 0.01, 0.03, 0.05][Math.max(0, Math.min(4, highestFieldRelicLevel))];
         const specialDropChance = baseRelicDropChance > 0
           ? Math.min(0.12, baseRelicDropChance * (1 + fortuneBonus) * game.omenRewardMultiplier)
           : 0;
         if (!enemy.isExecutioner && (enemy.type === "elite" || enemy.type === "brute") && specialDropChance > 0 && Math.random() < specialDropChance) {
           const eligible: SpecialDrop["kind"][] = [];
-          if (purchases.area >= 1 && game.player.specialAreaStacks < MAX_AREA_RELIC_STACKS) eligible.push("area");
-          if (purchases.experience >= 1 && game.player.specialExperienceStacks < MAX_EXPERIENCE_RELIC_STACKS) eligible.push("experience");
-          if (purchases.projectile_range >= 1 && game.player.projectileRangeStacks < MAX_PROJECTILE_RANGE_STACKS) eligible.push("projectile_range");
-          if (purchases.projectiles >= 1 && game.player.projectileStacks < MAX_EXTRA_PROJECTILES) eligible.push("projectiles");
+          if (purchasesRef.current.area >= 1 && game.player.specialAreaStacks < MAX_AREA_RELIC_STACKS) eligible.push("area");
+          if (purchasesRef.current.experience >= 1 && game.player.specialExperienceStacks < MAX_EXPERIENCE_RELIC_STACKS) eligible.push("experience");
+          if (purchasesRef.current.projectile_range >= 1 && game.player.projectileRangeStacks < MAX_PROJECTILE_RANGE_STACKS) eligible.push("projectile_range");
+          if (purchasesRef.current.projectiles >= 1 && game.player.projectileStacks < MAX_EXTRA_PROJECTILES) eligible.push("projectiles");
           const projectileRelicsSupported = supportsProjectileRelics(game.weaponId);
-          if (projectileRelicsSupported && purchases.ricochet >= 1 && game.player.relicRicochet < 3) eligible.push("ricochet");
-          if (projectileRelicsSupported && purchases.piercing >= 1 && game.player.relicPiercing < 3) eligible.push("piercing");
-          if (projectileRelicsSupported && purchases.chain_lightning >= 1 && game.player.relicChainLightning < 3) eligible.push("chain_lightning");
+          if (projectileRelicsSupported && purchasesRef.current.ricochet >= 1 && game.player.relicRicochet < 3) eligible.push("ricochet");
+          if (projectileRelicsSupported && purchasesRef.current.piercing >= 1 && game.player.relicPiercing < 3) eligible.push("piercing");
+          if (projectileRelicsSupported && purchasesRef.current.chain_lightning >= 1 && game.player.relicChainLightning < 3) eligible.push("chain_lightning");
           eligible.push("food", "void");
           if (eligible.length) game.specialDrops.push({ x: enemy.x, y: enemy.y, kind: eligible[Math.floor(Math.random() * eligible.length)], radius: 13 });
         }
         if(enemy.isExecutioner){
           game.specialDrops.push({x:enemy.x-18,y:enemy.y,kind:"food",radius:15},{x:enemy.x+18,y:enemy.y,kind:"void",radius:15});
           game.challengeEvent=null;eventRewardRemainingRef.current=2;setEventRewardStep(1);setSelectedUpgrade(null);setFlippedCardId(null);
-          setLevelChoices(buildLevelChoices(game,purchases));
+          setLevelChoices(buildLevelChoices(game,purchasesRef.current));
           toast.success("Algoz Espectral derrotado! O cemitério reverbera com dádivas!");
         }
-      } else { game.ended = true; setStats({ totalDamageDealt: Math.round(game.totalDamageDealt), crystalsCollected: game.crystalsCollected, highestLevel: game.highestLevel }); setResult("victory"); fractalAudio.victory(); finishRun(true); }
+      } else { game.ended = true; setStats({ totalDamageDealt: Math.round(game.totalDamageDealt), crystalsCollected: game.crystalsCollected, highestLevel: game.highestLevel }); setResult("victory"); fractalAudio.victory(); finishRunRef.current(true); }
       {
         const big = enemy.type === "boss" || enemy.type === "elite";
         const count = big ? 20 : 6;
@@ -2396,7 +2438,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
       if (!game) return;
       if (!game.last) game.last = now;
       const rawDt = Math.min(0.033, (now - game.last) / 1000);
-      const dt = rawDt * speedMultiplier;
+      const dt = rawDt * speedMultiplierRef.current;
       game.last = now;
       if (!game.ended && !paused && levelChoices.length === 0) {
         game.elapsed += dt;
@@ -2421,7 +2463,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         }
         if (dashRequestRef.current && game.player.dashTimer <= 0) {
           dashRequestRef.current = false;
-          const canUseFollowUp = purchases.dash >= 3 && game.dashChainRemaining > 0 && game.dashChainWindow > 0;
+          const canUseFollowUp = purchasesRef.current.dash >= 3 && game.dashChainRemaining > 0 && game.dashChainWindow > 0;
           if (game.player.dashCooldown <= 0 || canUseFollowUp) {
             let dashX = dx, dashY = dy;
             if (Math.hypot(dashX, dashY) < 0.05) {
@@ -2432,14 +2474,14 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             game.player.dashX = dashX / dashLength;
             game.player.dashY = dashY / dashLength;
             game.player.dashTimer = 0.18;
-            game.dashLevel = purchases.dash;
-            (game.rings ??= []).push({ x: game.player.x, y: game.player.y, r: 8, max: 34 + purchases.dash * 10, life: 0.3, color: purchases.dash >= 3 ? "#f43f5e" : purchases.dash >= 2 ? "#facc15" : purchases.dash >= 1 ? "#67e8f9" : "#c4b5fd" });
+            game.dashLevel = purchasesRef.current.dash;
+            (game.rings ??= []).push({ x: game.player.x, y: game.player.y, r: 8, max: 34 + purchasesRef.current.dash * 10, life: 0.3, color: purchasesRef.current.dash >= 3 ? "#f43f5e" : purchasesRef.current.dash >= 2 ? "#facc15" : purchasesRef.current.dash >= 1 ? "#67e8f9" : "#c4b5fd" });
             game.dashHitTargets.clear();
             if (canUseFollowUp) {
               game.dashChainRemaining = 0;
               game.dashChainWindow = 0;
               game.player.dashCooldown = 1.25;
-            } else if (purchases.dash >= 3) {
+            } else if (purchasesRef.current.dash >= 3) {
               game.dashChainRemaining = 1;
               game.dashChainWindow = 0.55;
               game.player.dashCooldown = 0;
@@ -2453,13 +2495,13 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         const inputDashX = dx, inputDashY = dy;
         const isDashing = game.player.dashTimer > 0;
         if (isDashing) {
-          if (purchases.dash >= 3 && Math.hypot(inputDashX, inputDashY) > 0.05) {
+          if (purchasesRef.current.dash >= 3 && Math.hypot(inputDashX, inputDashY) > 0.05) {
             const inputLength = Math.hypot(inputDashX, inputDashY);
             game.player.dashX = inputDashX / inputLength;
             game.player.dashY = inputDashY / inputLength;
           }
           dx = game.player.dashX; dy = game.player.dashY;
-          if (purchases.dash >= 1) game.player.invuln = Math.max(game.player.invuln, dt);
+          if (purchasesRef.current.dash >= 1) game.player.invuln = Math.max(game.player.invuln, dt);
           game.player.dashTimer = Math.max(0, game.player.dashTimer - dt);
         }
         game.player.moving = isDashing || Math.hypot(dx, dy) > 0.05;
@@ -2468,9 +2510,10 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         const movementSpeed = isDashing ? 650 : game.player.speed;
         const previousPlayerX = game.player.x, previousPlayerY = game.player.y;
         const movedPlayer = resolveCemeteryCollision(game.player.x + (dx / mag) * movementSpeed * dt, game.player.y + (dy / mag) * movementSpeed * dt, 14, game.obstacles);
-        game.player.x = movedPlayer.x;
-        game.player.y = movedPlayer.y;
-        if (isDashing && purchases.dash >= 2) {
+        const arenaHalf = missionId === 1 ? CEMETERY_ARENA_HALF : WORLD_LIMIT;
+        game.player.x = clamp(movedPlayer.x, -arenaHalf, arenaHalf);
+        game.player.y = clamp(movedPlayer.y, -arenaHalf, arenaHalf);
+        if (isDashing && purchasesRef.current.dash >= 2) {
           const segmentX = game.player.x - previousPlayerX;
           const segmentY = game.player.y - previousPlayerY;
           const segmentLengthSq = segmentX * segmentX + segmentY * segmentY;
@@ -2532,7 +2575,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               game.shake = Math.max(game.shake ?? 0, 13);
               for(let i=0;i<42;i++){const a=Math.random()*Math.PI*2,sp=70+Math.random()*260;game.particles.push({x:centerX,y:centerY,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:.5+Math.random()*.5,color:i%2?"#d8b4fe":"#f0abfc"});}
               game.challengeEvent = null; eventRewardRemainingRef.current = 2; setEventRewardStep(1); setSelectedUpgrade(null); setFlippedCardId(null);
-              setLevelChoices(buildLevelChoices(game,purchases));
+              setLevelChoices(buildLevelChoices(game,purchasesRef.current));
               toast.success("Ritual da Fenda Rúnica concluído! A onda de choque rompeu a horda. Duas dádivas aguardam.");
             } else if (activeEvent.remaining <= 0) {
               game.challengeEvent = null; toast.error("O Ritual da Fenda Rúnica se dissipou antes de ser concluído.");
@@ -3351,21 +3394,21 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                 const angle = Math.random() * Math.PI * 2, speed = 45 + Math.random() * 170;
                 game.particles.push({ x: urn.x, y: urn.y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 0.35 + Math.random() * 0.45, color: p % 2 ? "#c4b5c5" : "#8f7b99" });
               }
-              const roll = Math.random(), fortuneBonus = [0, 0.10, 0.20, 0.30, 0.40, 0.50][Math.max(0, Math.min(5, purchases.fortune))];
+              const roll = Math.random(), fortuneBonus = [0, 0.10, 0.20, 0.30, 0.40, 0.50][Math.max(0, Math.min(5, purchasesRef.current.fortune))];
               const specialMultiplier = (1 + fortuneBonus) * game.omenRewardMultiplier;
               const foodChance = Math.min(0.18, 0.09 * specialMultiplier), voidChance = Math.min(0.04, 0.01 * specialMultiplier);
-              const highestFieldRelicLevel = Math.max(purchases.area, purchases.experience, purchases.projectile_range, purchases.projectiles, purchases.ricochet, purchases.piercing, purchases.chain_lightning);
+              const highestFieldRelicLevel = Math.max(purchasesRef.current.area, purchasesRef.current.experience, purchasesRef.current.projectile_range, purchasesRef.current.projectiles, purchasesRef.current.ricochet, purchasesRef.current.piercing, purchasesRef.current.chain_lightning);
               const baseRelicDropChance = [0, 0, 0.01, 0.03, 0.05][Math.max(0, Math.min(4, highestFieldRelicLevel))];
               const relicChance = Math.min(0.12, baseRelicDropChance * specialMultiplier);
               const eligibleRelics: SpecialDrop["kind"][] = [];
-              if (purchases.area >= 1 && game.player.specialAreaStacks < MAX_AREA_RELIC_STACKS) eligibleRelics.push("area");
-              if (purchases.experience >= 1 && game.player.specialExperienceStacks < MAX_EXPERIENCE_RELIC_STACKS) eligibleRelics.push("experience");
-              if (purchases.projectile_range >= 1 && game.player.projectileRangeStacks < MAX_PROJECTILE_RANGE_STACKS) eligibleRelics.push("projectile_range");
-              if (purchases.projectiles >= 1 && game.player.projectileStacks < MAX_EXTRA_PROJECTILES) eligibleRelics.push("projectiles");
+              if (purchasesRef.current.area >= 1 && game.player.specialAreaStacks < MAX_AREA_RELIC_STACKS) eligibleRelics.push("area");
+              if (purchasesRef.current.experience >= 1 && game.player.specialExperienceStacks < MAX_EXPERIENCE_RELIC_STACKS) eligibleRelics.push("experience");
+              if (purchasesRef.current.projectile_range >= 1 && game.player.projectileRangeStacks < MAX_PROJECTILE_RANGE_STACKS) eligibleRelics.push("projectile_range");
+              if (purchasesRef.current.projectiles >= 1 && game.player.projectileStacks < MAX_EXTRA_PROJECTILES) eligibleRelics.push("projectiles");
               const projectileRelicsSupported = supportsProjectileRelics(game.weaponId);
-              if (projectileRelicsSupported && purchases.ricochet >= 1 && game.player.relicRicochet < 3) eligibleRelics.push("ricochet");
-              if (projectileRelicsSupported && purchases.piercing >= 1 && game.player.relicPiercing < 3) eligibleRelics.push("piercing");
-              if (projectileRelicsSupported && purchases.chain_lightning >= 1 && game.player.relicChainLightning < 3) eligibleRelics.push("chain_lightning");
+              if (projectileRelicsSupported && purchasesRef.current.ricochet >= 1 && game.player.relicRicochet < 3) eligibleRelics.push("ricochet");
+              if (projectileRelicsSupported && purchasesRef.current.piercing >= 1 && game.player.relicPiercing < 3) eligibleRelics.push("piercing");
+              if (projectileRelicsSupported && purchasesRef.current.chain_lightning >= 1 && game.player.relicChainLightning < 3) eligibleRelics.push("chain_lightning");
               if (roll < 0.20) game.gems.push({ x: urn.x, y: urn.y, value: 15, radius: 8, runeCrystal: true });
               else if (eligibleRelics.length && roll < 0.20 + relicChance) game.specialDrops.push({ x: urn.x, y: urn.y, kind: eligibleRelics[Math.floor(Math.random() * eligibleRelics.length)], radius: 13 });
               else if (roll < 0.20 + relicChance + foodChance) game.specialDrops.push({ x: urn.x, y: urn.y, kind: "food", radius: 14 });
@@ -3459,7 +3502,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           
           setSelectedUpgrade(null);
               setFlippedCardId(null);
-              setLevelChoices(buildLevelChoices(game, purchases));
+              setLevelChoices(buildLevelChoices(game, purchasesRef.current));
         }
         if (game.omenId === "revenge") {
           game.omenRevengeCooldown = Math.max(0, game.omenRevengeCooldown - dt);
@@ -3479,7 +3522,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           const consumedAnchorNumber = game.anchorRevivesUsed + 1;
           game.anchorReviveAvailable = false;
           game.anchorRevivesUsed = consumedAnchorNumber;
-          const improvedAnchor = purchases.anchor_soul >= 2;
+          const improvedAnchor = purchasesRef.current.anchor_soul >= 2;
           game.player.hp = Math.max(1, game.player.maxHp * (improvedAnchor ? 0.60 : 0.40));
           game.player.invuln = improvedAnchor ? 6 : 3;
           game.rings = [...(game.rings ?? []), { x: game.player.x, y: game.player.y, r: 10, max: 220, life: 1.1, color: "#fbbf24" }];
@@ -3488,7 +3531,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             game.particles.push({ x: game.player.x, y: game.player.y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 0.45 + Math.random() * 0.55, color: i % 2 ? "#fbbf24" : "#f5d0fe" });
           }
 
-          if (consumedAnchorNumber === 2 && purchases.anchor_soul >= 3) {
+          if (consumedAnchorNumber === 2 && purchasesRef.current.anchor_soul >= 3) {
             const burstRadius = 260;
             const burstDamage = getEquippedWeaponStrikeDamage(game);
             const burstTargets = game.enemies.filter((enemy) => enemy.hp > 0 && distance(game.player.x, game.player.y, enemy.x, enemy.y) <= burstRadius);
@@ -3511,8 +3554,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             toast.success("A Âncora da Alma impediu sua queda!");
           }
         }
-        if (game.player.hp <= 0 && !game.ended) { game.ended = true; setStats({ totalDamageDealt: Math.round(game.totalDamageDealt), crystalsCollected: game.crystalsCollected, highestLevel: game.highestLevel }); setResult("defeat"); fractalAudio.defeat(); finishRun(false); }
-        if (game.elapsed >= RUN_DURATION_SECONDS && !game.ended && !game.bossSpawned) {
+        if (game.player.hp <= 0 && !game.ended) { game.ended = true; setStats({ totalDamageDealt: Math.round(game.totalDamageDealt), crystalsCollected: game.crystalsCollected, highestLevel: game.highestLevel }); setResult("defeat"); fractalAudio.defeat(); finishRunRef.current(false); }
+        if (game.elapsed >= BOSS_SPAWN_TIME && !game.ended && !game.bossSpawned) {
           spawnEnemy(game, missionId, game.elapsed, corruption, true);
           game.bossSpawned = true;
           if (!bossNotified) { bossNotified = true; setBossMessage(true); fractalAudio.bossAlert(); window.setTimeout(() => setBossMessage(false), 5200); }
@@ -3534,7 +3577,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           fpsFrames = 0;
           fpsWindowStart = now;
         }
-        drawGame(ctx, game, corruption, missionId, spritesRef.current, showPlayerHp, showDamageNumbers, zoomRef.current);
+        drawGame(ctx, game, corruption, missionId, spritesRef.current, showPlayerHpRef.current, showDamageNumbersRef.current, zoomRef.current, screenShakeEnabledRef.current);
       }
       frame = requestAnimationFrame(tick);
     };
@@ -3546,7 +3589,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
       window.removeEventListener("keyup", onKeyUp);
       window.removeEventListener("blur", onBlur);
     };
-  }, [running, desktopSupported, paused, levelChoices.length, missionId, corruption, speedMultiplier, finishRun, purchases, showPlayerHp, showDamageNumbers]);
+  }, [running, desktopSupported, paused, levelChoices.length, missionId, corruption]);
 
   const formatTime = (seconds: number) => `${Math.floor(seconds / 60).toString().padStart(2, "0")}:${Math.floor(seconds % 60).toString().padStart(2, "0")}`;
   const mission = FRACTAL_MISSIONS.find((item) => item.id === missionId)!;
@@ -4013,7 +4056,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                 <div className="fractals-hud-kills"><Skull/><b>{hud.kills}</b><small>ABATES</small></div>
               </div>
               <div className="fractals-hud-zone fractals-hud-zone--center">
-                <div className="fractals-hud-clock"><Timer/><b>{formatTime(hud.elapsed)}</b><small>/ 12:00</small></div>
+                <div className="fractals-hud-clock"><Timer/><b>{formatTime(hud.elapsed)}</b><small>/ 11:00</small></div>
                 <div className="fractals-hud-density"><span className="fractals-live-dot"/><b>{hud.pressure.toFixed(1)}</b><small>DENSIDADE</small></div>
                 <div className="fractals-hud-performance"><b>{hud.fps}</b><small>FPS</small><i>{hud.visibleEnemies}/50</i></div>
                 {hud.event && <div className="fractals-hud-event"><Target/> {hud.event.id === 1 ? "RITUAL RÚNICO" : "CAÇADA DO ALGOZ"} · {Math.ceil(hud.event.remaining)}s {hud.event.id === 1 ? "· " + Math.floor(hud.event.progress) + "/25s" : ""}</div>}
@@ -4041,7 +4084,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
  <div className={`fractals-pause-panel relative w-full ${pausePanel === "master" ? "max-w-3xl" : "max-w-md"} overflow-hidden p-4 sm:p-5`}>
   <div className="fractals-pause-header mb-4 flex items-center justify-between pb-3"><div><p className="text-[9px] font-bold uppercase tracking-[.24em] text-violet-200/70">Ecos dos Fractais · Refúgio</p><h3 className="mt-1 font-display text-2xl text-white">Expedição pausada</h3></div><div className="grid h-11 w-11 place-items-center rounded-2xl border border-amber-200/20 bg-amber-200/10 text-amber-100 shadow-[0_0_24px_rgba(251,191,36,0.12)]"><Pause className="h-5 w-5"/></div></div>
   {pausePanel === "main" ? <>
-   <div className="fractals-pause-actions grid grid-cols-2 gap-2"><Button variant="outline" className="h-auto justify-start gap-2 rounded-xl border-violet-100/15 bg-white/[0.055] py-3 text-white shadow-inner hover:border-violet-100/35 hover:bg-violet-300/10" onClick={() => setPausePanel("attributes")}><UserRound className="h-4 w-4"/> Atributos</Button><Button variant="outline" className="h-auto justify-start gap-2 rounded-xl border-violet-100/15 bg-white/[0.055] py-3 text-white shadow-inner hover:border-violet-100/35 hover:bg-violet-300/10" onClick={() => setPausePanel("runes")}><Sparkles className="h-4 w-4 text-amber-200"/> Dádivas &amp; Runas</Button><Button variant="outline" className="h-auto justify-start gap-2 rounded-xl border-violet-100/15 bg-white/[0.055] py-3 text-white shadow-inner hover:border-violet-100/35 hover:bg-violet-300/10" onClick={toggleFullscreen}><Maximize className="h-4 w-4"/> Tela cheia</Button><Button variant="outline" className="h-auto justify-start gap-2 rounded-xl border-violet-100/15 bg-white/[0.055] py-3 text-white shadow-inner hover:border-violet-100/35 hover:bg-violet-300/10" onClick={() => setShowPlayerHp((v) => !v)}><Heart className="h-4 w-4 text-rose-300"/> HP: {showPlayerHp ? "visível" : "oculto"}</Button><Button variant="outline" className="h-auto justify-start gap-2 rounded-xl border-violet-100/15 bg-white/[0.055] py-3 text-white shadow-inner hover:border-violet-100/35 hover:bg-violet-300/10" onClick={() => setShowDamageNumbers((v) => !v)}><Swords className="h-4 w-4 text-amber-200"/> Dano: {showDamageNumbers ? "visível" : "oculto"}</Button></div>
+   <div className="fractals-pause-actions grid grid-cols-2 gap-2"><Button variant="outline" className="h-auto justify-start gap-2 rounded-xl border-violet-100/15 bg-white/[0.055] py-3 text-white shadow-inner hover:border-violet-100/35 hover:bg-violet-300/10" onClick={() => setPausePanel("attributes")}><UserRound className="h-4 w-4"/> Atributos</Button><Button variant="outline" className="h-auto justify-start gap-2 rounded-xl border-violet-100/15 bg-white/[0.055] py-3 text-white shadow-inner hover:border-violet-100/35 hover:bg-violet-300/10" onClick={() => setPausePanel("runes")}><Sparkles className="h-4 w-4 text-amber-200"/> Dádivas &amp; Runas</Button><Button variant="outline" className="h-auto justify-start gap-2 rounded-xl border-violet-100/15 bg-white/[0.055] py-3 text-white shadow-inner hover:border-violet-100/35 hover:bg-violet-300/10" onClick={toggleFullscreen}><Maximize className="h-4 w-4"/> Tela cheia</Button><Button variant="outline" className="h-auto justify-start gap-2 rounded-xl border-violet-100/15 bg-white/[0.055] py-3 text-white shadow-inner hover:border-violet-100/35 hover:bg-violet-300/10" onClick={() => setShowPlayerHp((v) => !v)}><Heart className="h-4 w-4 text-rose-300"/> HP: {showPlayerHp ? "visível" : "oculto"}</Button><Button variant="outline" className="h-auto justify-start gap-2 rounded-xl border-violet-100/15 bg-white/[0.055] py-3 text-white shadow-inner hover:border-violet-100/35 hover:bg-violet-300/10" onClick={() => setShowDamageNumbers((v) => !v)}><Swords className="h-4 w-4 text-amber-200"/> Dano: {showDamageNumbers ? "visível" : "oculto"}</Button><Button variant="outline" className="h-auto justify-start gap-2 rounded-xl border-violet-100/15 bg-white/[0.055] py-3 text-white shadow-inner hover:border-violet-100/35 hover:bg-violet-300/10" onClick={toggleScreenShake}><SlidersHorizontal className="h-4 w-4 text-amber-200"/> Tremor: {screenShakeEnabled ? "Ativado" : "Desativado"}</Button></div>
    <Button variant="destructive" className="mt-3 h-10 w-full border border-rose-300/25 bg-rose-950/55 font-bold text-rose-100 hover:bg-rose-900/70" onClick={() => { const game = gameRef.current; if (!game || game.ended) return; game.ended = true; setStats({ totalDamageDealt: Math.round(game.totalDamageDealt), crystalsCollected: game.crystalsCollected, highestLevel: game.highestLevel }); setResult("defeat"); setPaused(false); setPausePanel("main"); fractalAudio.defeat(); finishRun(false); }}><Skull className="mr-2 h-4 w-4"/> Desistir da partida</Button>
     <div className="fractals-pause-speed mt-3 rounded-2xl p-3"><div className="mb-2 flex items-center gap-2 text-xs font-semibold text-white/75"><Gauge className="h-4 w-4"/> Velocidade da expedição</div><div className="grid grid-cols-3 gap-2">{([1,2,3] as const).map((speed) => <Button key={speed} size="sm" variant={speedMultiplier===speed?"default":"outline"} disabled={!isMaster && (speed===2 ? !purchases.speed_2x : speed===3 ? !purchases.speed_3x : false)} className={!isMaster && speed>1?"border-white/10 opacity-45":""} onClick={()=>setSpeedMultiplier(speed)}>{speed}x{!isMaster && (speed===2 ? !purchases.speed_2x : speed===3 ? !purchases.speed_3x : false)?" 🔒":""}</Button>)}</div>{!isMaster && <p className="mt-2 text-[10px] text-white/45">Desbloqueie 2x e 3x na loja de fractais.</p>}{isMaster && <p className="mt-2 text-[10px] text-emerald-200/70">Acesso de mestre: todas as velocidades liberadas para testes.</p>}</div>
     {isMaster && <Button className="mt-3 h-12 w-full border border-amber-200/50 bg-gradient-to-r from-amber-300 via-emerald-300 to-emerald-500 font-black tracking-wide text-[#08130e] shadow-[0_0_28px_rgba(52,211,153,.22)] hover:brightness-110" onClick={() => { setMasterGiftListOpen(false); setPausePanel("master"); }}><Crown className="mr-2 h-5 w-5"/> Painel do Mestre</Button>}
