@@ -28,7 +28,7 @@ function Bau() {
   });
   const { data: players } = useQuery({
     queryKey: ["players"],
-    queryFn: async () => (await supabase.from("profiles").select("id, display_name, username").order("display_name")).data ?? [],
+    queryFn: async () => (await supabase.rpc("list_player_directory")).data ?? [],
   });
 
   async function usePotion(item: { id: string; bonus: unknown; name: string }) {
