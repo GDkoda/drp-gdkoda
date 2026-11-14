@@ -6,7 +6,7 @@ import candlesImg from "@/assets/fractals/candles.png";
 import catUrnImg from "@/assets/fractals/cat-urn.png";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, Heart, Move, Pause, Play, RotateCcw, RotateCw, Check, Shield, Skull, Sparkles, Swords, Zap, Maximize, UserRound, Gauge, ArrowLeft, ShoppingBag, Crown, Gem as GemIcon, MapPin, Flame, Leaf, Snowflake, Orbit, Lock, Link2, ChevronDown, Coins, Timer, Target, ZoomIn, ZoomOut, Volume2, VolumeX, Ban, Clover, Dna, BookOpen, Monitor, Keyboard, Diamond, SlidersHorizontal } from "lucide-react";
+import { AlertTriangle, Heart, Move, Pause, Play, RotateCcw, RotateCw, Check, Shield, Skull, Sparkles, Swords, Zap, Maximize, UserRound, Gauge, ArrowLeft, ShoppingBag, Crown, Gem as GemIcon, MapPin, Flame, Leaf, Snowflake, Orbit, Lock, Link2, ChevronDown, Coins, Timer, Target, Volume2, VolumeX, Ban, Clover, Dna, BookOpen, Monitor, Keyboard, Diamond, SlidersHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -16,6 +16,7 @@ import { CORRUPTION_LEVELS, FRACTAL_MISSIONS, RUN_DURATION_SECONDS } from "@/lib
 import { FRACTAL_SHOP, FRACTAL_RARITY_TIERS } from "@/lib/fractals/economy";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { FractalHud, type FractalHudHandle, type FractalHudSnapshot, INITIAL_FRACTAL_HUD } from "./FractalHud";
 import "./fractal-arena.css";
 
 type WeaponId = "void_revolver" | "unstable_core" | "spectral_scythe" | "orbital_swords" | "gravity_shackle" | "rune_sentinels" | "fractal_boomerang" | "rift_seeder";
@@ -2310,7 +2311,9 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
   const [selectedUpgrade, setSelectedUpgrade] = useState<Upgrade | null>(null);
   const [flippedCardId, setFlippedCardId] = useState<string | null>(null);
   const [eventRewardStep, setEventRewardStep] = useState(0);
-  const [hud, setHud] = useState({ hp: 100, maxHp: 100, xp: 0, nextXp: 12, level: 1, kills: 0, elapsed: 0, moveSpeed: 205, fps: 0, visibleEnemies: 0, phase: "Exploração", pressure: 0, event: null as null | { id: number; remaining: number; progress: number; inside: boolean }, runes: [] as { id: string; name: string; count: number; rarity: string }[] });
+  const hudSnapshotRef = useRef<FractalHudSnapshot>({ ...INITIAL_FRACTAL_HUD });
+  const hudComponentRef = useRef<FractalHudHandle>(null);
+  const hud = hudSnapshotRef.current;
   const [stats, setStats] = useState({ totalDamageDealt: 0, crystalsCollected: 0, highestLevel: 1 });
   const [result, setResult] = useState<"victory" | "defeat" | null>(null);
   const [bossMessage, setBossMessage] = useState(false);
@@ -2410,7 +2413,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
 
   const refreshFractalState = useCallback(async () => {
     const { data, error } = await (supabase.rpc as any)("get_fractal_state");
-    if (error) { setShopError("Aplique as migrações SQL 0005 e 0006 para ativar a loja e a progressão."); return; }
+    if (error) { setShopError("Não foi possível carregar seu progresso agora. Atualize a página; se o problema continuar, entre em contato com o suporte."); return; }
     setFractalBalance(Number(data?.fractals ?? 0));
     setCoinBalance(Number(data?.coins ?? 0));
     setUnlockedCorruption(Number(data?.corruptionUnlocked ?? 0));
@@ -2490,7 +2493,9 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
       setMasterWeaponSelection(null);
       eventRewardRemainingRef.current = 0;
       setEventRewardStep(0);
-      setHud({ hp: game.player.hp, maxHp: game.player.maxHp, xp: 0, nextXp: 12, level: 1, kills: 0, elapsed: 0, moveSpeed: Math.round(game.player.speed), fps: 0, visibleEnemies: 0, phase: "Exploração", pressure: 0, event: null, runes: [] });
+      const initialHud: FractalHudSnapshot = { ...INITIAL_FRACTAL_HUD, hp: game.player.hp, maxHp: game.player.maxHp, moveSpeed: Math.round(game.player.speed) };
+      hudSnapshotRef.current = initialHud;
+      hudComponentRef.current?.update(initialHud);
       setStats({ totalDamageDealt: 0, crystalsCollected: 0, highestLevel: 1 });
       setLevelChoices([]); setSelectedUpgrade(null); setFlippedCardId(null); setPaused(false); setResult(null); setBossMessage(false); setRunning(true);
     } catch (error: any) {
@@ -2732,7 +2737,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
   useEffect(() => {
     if (!running || !desktopSupported) return;
     const canvas = canvasRef.current;
-    const ctx = canvas?.getContext("2d");
+    const ctx = canvas?.getContext("2d", { alpha: false });
     if (!canvas || !ctx) return;
     let frame = 0;
     let lastHud = 0;
@@ -4349,7 +4354,9 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           const halfViewHeight = game.height / (2 * zoomRef.current);
           const visibleEnemies = game.enemies.reduce((count, enemy) =>
             count + Number(enemy.x >= game.player.x - halfViewWidth && enemy.x <= game.player.x + halfViewWidth && enemy.y >= game.player.y - halfViewHeight && enemy.y <= game.player.y + halfViewHeight), 0);
-          setHud({ hp: game.player.hp, maxHp: game.player.maxHp, xp: game.player.xp, nextXp: game.player.nextXp, level: game.player.level, kills: game.kills, elapsed: game.elapsed, moveSpeed: Math.round(game.player.speed), fps: measuredFps, visibleEnemies, phase: snapshot.phaseLabel, pressure: snapshot.totalPressure + (game.challengeEvent ? 2 : 0), event: game.challengeEvent ? { id: game.challengeEvent.id, remaining: game.challengeEvent.remaining, progress: game.challengeEvent.progress, inside: distance(game.player.x, game.player.y, game.challengeEvent.x, game.challengeEvent.y) <= game.challengeEvent.radius } : null, runes: Object.entries(game.upgradeCounts).map(([id, rune]) => ({ id, name: rune.name, count: rune.count, rarity: rune.rarity })) });
+          const nextHud: FractalHudSnapshot = { hp: game.player.hp, maxHp: game.player.maxHp, xp: game.player.xp, nextXp: game.player.nextXp, level: game.player.level, kills: game.kills, elapsed: game.elapsed, moveSpeed: Math.round(game.player.speed), fps: measuredFps, visibleEnemies, phase: snapshot.phaseLabel, pressure: snapshot.totalPressure + (game.challengeEvent ? 2 : 0), event: game.challengeEvent ? { id: game.challengeEvent.id, remaining: game.challengeEvent.remaining, progress: game.challengeEvent.progress, inside: distance(game.player.x, game.player.y, game.challengeEvent.x, game.challengeEvent.y) <= game.challengeEvent.radius } : null };
+          hudSnapshotRef.current = nextHud;
+          hudComponentRef.current?.update(nextHud);
         }
       }
       if (!paused && levelChoices.length === 0 && !game.ended) {
@@ -4375,6 +4382,14 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
   }, [running, desktopSupported, paused, levelChoices.length, missionId, corruption]);
 
   const formatTime = (seconds: number) => `${Math.floor(seconds / 60).toString().padStart(2, "0")}:${Math.floor(seconds % 60).toString().padStart(2, "0")}`;
+  const decreaseHudSpeed = useCallback(() => setSpeedMultiplier((value) => value === 3 ? 2 : 1), []);
+  const increaseHudSpeed = useCallback(() => setSpeedMultiplier((value) => value === 1 ? 2 : 3), []);
+  const changeHudZoom = useCallback((delta: number) => {
+    const next = clamp(zoomRef.current + delta, 0.6, 1.6);
+    zoomRef.current = next;
+    setZoom(next);
+  }, []);
+  const toggleHudPause = useCallback(() => setPaused((value) => !value), []);
   const mission = FRACTAL_MISSIONS.find((item) => item.id === missionId)!;
   const exchangeValue = Number(exchangeAmount);
   const isWeaponUnlocked = (weapon: WeaponId) => {
@@ -4876,42 +4891,21 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         <Card className="fractals-game-shell overflow-hidden border-border/70 bg-[#11111a] text-white">
           <div className="fractals-arena-frame relative">
             <canvas ref={canvasRef} className="block h-[min(78vh,720px)] min-h-[430px] w-full select-none" aria-label="Arena de sobrevivência para PC. Use WASD ou setas para mover e Espaço para dash." />
-            <section className="fractals-hud-bar absolute inset-x-0 top-0" aria-label="Status da expedição">
-              <div className="fractals-hud-zone fractals-hud-zone--left">
-                <div className="fractals-hud-meter">
-                  <span className="fractals-hud-label"><Heart/> VIDA</span>
-                  <b>{Math.ceil(hud.hp)}<i>/{Math.ceil(hud.maxHp)}</i></b>
-                  <span className="fractals-hud-track"><i className="is-life" style={{width:`${clamp(hud.hp / Math.max(1, hud.maxHp), 0, 1) * 100}%`}}/></span>
-                </div>
-                <div className="fractals-hud-meter">
-                  <span className="fractals-hud-label"><Sparkles/> NV.{hud.level} · XP</span>
-                  <b>{Math.floor(hud.xp)}<i>/{Math.floor(hud.nextXp)}</i></b>
-                  <span className="fractals-hud-track"><i className="is-xp" style={{width:`${clamp(Math.floor(hud.xp) / Math.max(1, Math.floor(hud.nextXp)), 0, 1) * 100}%`}}/></span>
-                </div>
-                <div className="fractals-hud-kills"><Skull/><b>{hud.kills}</b><small>ABATES</small></div>
-              </div>
-              <div className="fractals-hud-zone fractals-hud-zone--center">
-                <div className="fractals-hud-clock"><Timer/><b>{formatTime(hud.elapsed)}</b><small>/ 11:00</small></div>
-                <div className="fractals-hud-density"><span className="fractals-live-dot"/><b>{hud.pressure.toFixed(1)}</b><small>DENSIDADE</small></div>
-                <div className="fractals-hud-performance"><b>{hud.fps}</b><small>FPS</small><i>{hud.visibleEnemies}/50</i></div>
-                {hud.event && <div className="fractals-hud-event"><Target/> {hud.event.id === 1 ? "RITUAL RÚNICO" : "CAÇADA DO ALGOZ"} · {Math.ceil(hud.event.remaining)}s {hud.event.id === 1 ? "· " + Math.floor(hud.event.progress) + "/25s" : ""}</div>}
-              </div>
-              <div className="fractals-hud-zone fractals-hud-zone--right">
-                <div className="fractals-hud-mission"><b>{mission.name}</b><small>{mission.pathName} · {CORRUPTION_LEVELS[corruption].name}</small></div>
-                <div className="fractals-hud-control-group" aria-label="Velocidade da expedição">
-                  <small>RITMO</small>
-                  <button type="button" aria-label="Diminuir velocidade" disabled={speedMultiplier === 1} onClick={() => setSpeedMultiplier((value) => value === 3 ? 2 : 1)}>−</button>
-                  <b>{speedMultiplier}×</b>
-                  <button type="button" aria-label="Aumentar velocidade" disabled={speedMultiplier === 3 || (!isMaster && (speedMultiplier === 1 ? !purchases.speed_2x : !purchases.speed_3x))} onClick={() => setSpeedMultiplier((value) => value === 1 ? 2 : 3)}>+</button>
-                </div>
-                <div className="fractals-hud-control-group" aria-label="Zoom da fase">
-                  <button type="button" aria-label="Diminuir zoom" disabled={zoom <= 0.6} onClick={() => { const next = clamp(zoomRef.current - 0.1, 0.6, 1.6); zoomRef.current = next; setZoom(next); }}><ZoomOut/></button>
-                  <b>{Math.round(zoom * 100)}%</b>
-                  <button type="button" aria-label="Aumentar zoom" disabled={zoom >= 1.6} onClick={() => { const next = clamp(zoomRef.current + 0.1, 0.6, 1.6); zoomRef.current = next; setZoom(next); }}><ZoomIn/></button>
-                </div>
-                {!result && <Button size="sm" variant="outline" className="fractals-hud-pause" onClick={() => setPaused((value) => !value)}><Pause/></Button>}
-              </div>
-            </section>
+            <FractalHud
+              ref={hudComponentRef}
+              initialSnapshot={INITIAL_FRACTAL_HUD}
+              missionName={mission.name}
+              missionSubtitle={`${mission.pathName} · ${CORRUPTION_LEVELS[corruption].name}`}
+              speedMultiplier={speedMultiplier}
+              canIncreaseSpeed={speedMultiplier === 1 ? isMaster || purchases.speed_2x : speedMultiplier === 2 ? isMaster || purchases.speed_3x : false}
+              zoom={zoom}
+              showPause={!result}
+              onSpeedDecrease={decreaseHudSpeed}
+              onSpeedIncrease={increaseHudSpeed}
+              onZoomDecrease={() => changeHudZoom(-0.1)}
+              onZoomIncrease={() => changeHudZoom(0.1)}
+              onPause={toggleHudPause}
+            />
 
             <div className="fractals-arena-hint pointer-events-none absolute bottom-3 left-3"><b>NECRÓPOLE DOS ESQUECIDOS</b> · WASD / SETAS: MOVER · ESPAÇO: DASH (RECARGA 1,25s)</div>
             {bossMessage && !result && <div className="fractals-boss-alert pointer-events-none absolute inset-x-0 top-1/2 z-30 -translate-y-1/2 px-3 text-center"><span>⚠ ALERTA DE FENDA: O GUARDIÃO DESPERTOU ⚠</span></div>}
@@ -5027,7 +5021,9 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           const game = gameRef.current;
           if (!game) return;
           game.player.hp = game.player.maxHp; game.player.hitFlash = 0; game.player.invuln = 0;
-          setHud((current) => ({ ...current, hp: game.player.hp, maxHp: game.player.maxHp }));
+          const nextHud = { ...hudSnapshotRef.current, hp: game.player.hp, maxHp: game.player.maxHp };
+          hudSnapshotRef.current = nextHud;
+          hudComponentRef.current?.update(nextHud);
           toast.success("HP restaurado ao máximo.");
         }}><Heart className="mr-2 h-4 w-4"/>Restaurar HP Total</Button>
       </section>
