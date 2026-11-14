@@ -3372,9 +3372,24 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                 c.hit = true;
                 const enemy = c.enemy;
                 if (enemy.hp > 0) {
-                  const applied = Math.min(enemy.hp, c.dmg);
-                  enemy.hp -= applied; game.totalDamageDealt += applied;
+                  // As correntes rituais não passam pelo laço de colisão dos projéteis;
+                  // aplicam crítico, marca e execução diretamente no impacto.
+                  const baseCritChance = clamp((purchasesRef.current.crit_chance ?? 0) * 0.01 + (game.player.specialCritStacks ?? 0) * 0.01, 0, 1);
+                  const baseCritMult = 2.0 + (purchasesRef.current.crit_damage ?? 0) * 0.05;
+                  const isCrit = Math.random() < baseCritChance;
+                  const hunterLevel = game.upgradeCounts.gift_hunter_mark?.count ?? 0;
+                  const hunterMarkBonus = (enemy.hunterMarkTimer ?? 0) > 0 ? 1 + hunterLevel * 0.05 : 1;
+                  const shadowExecution = game.upgradeCounts.gift_shadow_execution?.count ?? 0;
+                  const canExecute = shadowExecution > 0 && enemy.type !== "boss" && enemy.type !== "elite" && enemy.hp <= enemy.maxHp * 0.10;
+                  const hitDamage = c.dmg * hunterMarkBonus * (isCrit ? baseCritMult : 1) * (alchemyActive ? 1.25 : 1);
+                  const finalDamage = canExecute ? enemy.hp : hitDamage;
+                  const applied = Math.min(enemy.hp, finalDamage);
+                  enemy.hp -= finalDamage;
+                  game.totalDamageDealt += applied;
+                  if (isCrit && hunterLevel > 0) enemy.hunterMarkTimer = 6;
                   enemy.flash = Math.max(enemy.flash, 0.1);
+                  game.damageNumbers.push({ x: enemy.x, y: enemy.y - enemy.radius - 10, value: finalDamage, life: 0.72, maxLife: 0.72, drift: 0 });
+                  if (game.damageNumbers.length > 12) game.damageNumbers.shift();
                   if (enemy.hp <= 0) handleEnemyDefeat(game, enemy);
                   else { enemy.slowTimer = Math.max(enemy.slowTimer ?? 0, chainHold); enemy.slowFactor = 0; enemy.windup = 0; enemy.dashTime = 0; }
                 }
