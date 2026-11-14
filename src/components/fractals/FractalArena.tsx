@@ -20,11 +20,11 @@ import "./fractal-arena.css";
 
 type WeaponId = "void_revolver" | "unstable_core" | "spectral_scythe" | "orbital_swords" | "gravity_shackle" | "rune_sentinels";
 type OmenId = "famine" | "rupture" | "spectral_veil" | "abundance" | "revenge";
-type UpgradeId = "power" | "haste" | "vitality" | "swift" | "special_area" | "special_experience" | "special_projectile_range" | "special_projectiles" | "special_ricochet" | "special_piercing" | "special_chain_lightning" | "gift_revolver_mark" | "gift_revolver_echo" | "gift_revolver_weakpoint" | "gift_core_expansion" | "gift_core_implosion" | "gift_core_residue" | "gift_scythe_siphon" | "gift_scythe_arc" | "gift_scythe_cripple" | "gift_orbital_orbit" | "gift_orbital_edge" | "gift_orbital_velocity" | "gift_gravity_pressure" | "gift_gravity_resonance" | "gift_gravity_guard" | "gift_sentinel_focus" | "gift_sentinel_overload" | "gift_sentinel_relay" | "weapon_mastery" | "weapon_evolution" | "anchor_soul";
+type UpgradeId = "power" | "haste" | "vitality" | "swift" | "special_area" | "special_experience" | "special_projectile_range" | "special_projectiles" | "special_ricochet" | "special_piercing" | "special_chain_lightning" | "gift_revolver_mark" | "gift_revolver_echo" | "gift_revolver_weakpoint" | "gift_core_expansion" | "gift_core_implosion" | "gift_core_residue" | "gift_scythe_siphon" | "gift_scythe_arc" | "gift_scythe_cripple" | "gift_orbital_orbit" | "gift_orbital_edge" | "gift_orbital_velocity" | "gift_gravity_pressure" | "gift_gravity_resonance" | "gift_gravity_guard" | "gift_sentinel_focus" | "gift_sentinel_overload" | "gift_sentinel_relay" | "gift_thorn_retaliation" | "gift_shadow_execution" | "gift_hunter_mark" | "gift_thermal_overload" | "gift_kill_gravity" | "gift_impact_resonance" | "universal_aether_shield" | "universal_vampirism" | "universal_alchemy_circle" | "special_crit" | "weapon_mastery" | "weapon_evolution" | "anchor_soul";
 type Upgrade = { id: UpgradeId; name: string; description: string; icon: typeof Zap; rarity?: "normal" | "uncommon" | "rare" | "epic" | "legendary" | "maestria" | "evolution" };
 type UpgradeCounts = Record<string, { name: string; count: number; rarity: string }>;
 
-type Enemy = { x: number; y: number; hp: number; maxHp: number; speed: number; radius: number; damage: number; color: string; xp: number; type: "wraith" | "brute" | "charger" | "elite" | "boss"; attack: number; flash: number; windup: number; targetX: number; targetY: number; dashTime: number; summonedAtHalf: boolean; furyTriggered: boolean; isExecutioner?: boolean; slowTimer?: number; slowFactor?: number };
+type Enemy = { x: number; y: number; hp: number; maxHp: number; speed: number; radius: number; damage: number; color: string; xp: number; type: "wraith" | "brute" | "charger" | "elite" | "boss"; attack: number; flash: number; windup: number; targetX: number; targetY: number; dashTime: number; summonedAtHalf: boolean; furyTriggered: boolean; isExecutioner?: boolean; slowTimer?: number; slowFactor?: number; hunterMarkTimer?: number; thermalBurnTimer?: number; thermalBurnTick?: number; thermalBurnDamage?: number };
 type ShotKind =
   | "bullet"
   | "revolver_empowered"
@@ -46,7 +46,7 @@ type Shot = {
   isAura?: boolean; active?: boolean;
 };
 type Gem = { x: number; y: number; value: number; radius: number; previousX?: number; previousY?: number; runeCrystal?: boolean };
-type SpecialDrop = { x: number; y: number; kind: "area" | "experience" | "projectile_range" | "projectiles" | "ricochet" | "piercing" | "chain_lightning" | "food" | "void"; radius: number };
+type SpecialDrop = { x: number; y: number; kind: "area" | "experience" | "projectile_range" | "projectiles" | "ricochet" | "piercing" | "chain_lightning" | "crit" | "food" | "void"; radius: number };
 type SentinelTotem = { id: number; x: number; y: number; hp: number; maxHp: number; attackTimer: number; radius: number };
 type BreakableUrn = { id: number; x: number; y: number; hp: number; maxHp: number; radius: number; broken: boolean; contactCooldown?: number };
 type CemeteryObstacle = { x: number; y: number; radius: number; kind: "gravestone" | "cross" | "mausoleum" | "torch" };
@@ -137,6 +137,32 @@ const SHOP_ITEM_INFO: Record<string, ShopItemInfo> = {
     "Nível 1: retorna com 40% da vida máxima e 3 segundos de invulnerabilidade.",
     "Nível 2: melhora o retorno para 60% da vida máxima e 6 segundos de invulnerabilidade.",
     "Nível 3: na segunda morte, além da ressurreição, libera uma explosão ao redor do personagem que atinge inimigos próximos."
+  ]},
+  extra_xp: { title: "Erudição das Fendas", category: "Melhoria permanente", summary: "+10% de experiência por nível (até +100% no nível 10).", details: [
+    "Cada nível acrescenta +10% à experiência concedida por monstros e urnas.",
+    "No nível 10, a experiência recebida é dobrada permanentemente.",
+    "Requer Corrupção 1."
+  ]},
+  crit_chance: { title: "Foco do Vazio", category: "Melhoria permanente", summary: "+1% de chance crítica por nível (até +20%).", details: [
+    "Cada nível acrescenta permanentemente +1 ponto percentual de chance crítica.",
+    "O bônus soma-se às cargas temporárias do Olho do Predador.",
+    "Requer Corrupção 3."
+  ]},
+  crit_damage: { title: "Golpe Letal", category: "Melhoria permanente", summary: "Dano crítico base de 2x; +5% por nível (até 3x).", details: [
+    "Acertos críticos começam causando 200% do dano normal.",
+    "Cada nível acrescenta +5% ao multiplicador crítico, até 300% no nível 20.",
+    "Requer Corrupção 3."
+  ]},
+  greed_pact: { title: "Pacto da Ganância", category: "Recompensas", summary: "+5% de fractais por nível de Corrupção para cada nível comprado.", details: [
+    "Cada nível concede +5% de recompensa por nível de Corrupção ativo.",
+    "No nível 5 e na Corrupção 5, o bônus chega a +125%.",
+    "O bônus é calculado e aplicado pelo servidor ao validar a expedição.",
+    "Requer Corrupção 2."
+  ]},
+  crit_relic: { title: "Olho do Predador", category: "Relíquia de Campo", summary: "Desbloqueia uma relíquia que acumula +1% de crítico até 20 vezes.", details: [
+    "Desbloqueia o Olho do Predador para aparecer em urnas, espólios e escolhas de subida de nível.",
+    "Cada coleta concede +1% de chance crítica, até 20 acúmulos (+20%).",
+    "Requer Corrupção 1."
   ]},
   omen_archive: { title: "Arquivo dos Presságios", category: "Modificadores de expedição", summary: "Abre 5 Presságios; escolha 1 antes da expedição.", details: [
     "Abre a categoria Presságios do Arsenal e permite selecionar um modificador antes da expedição.",
@@ -250,6 +276,37 @@ function ShopInfoButton({ info, onOpen }: { info: ShopItemInfo; onOpen: (info: S
   );
 }
 
+
+function ShopLevelIndicator({ current, max, label }: { current: number; max: number; label?: string }) {
+  const safeMax = Math.max(1, max);
+  const safeCurrent = Math.max(0, Math.min(safeMax, current));
+  const isMax = safeCurrent >= safeMax;
+  const pct = Math.round((safeCurrent / safeMax) * 100);
+
+  if (safeMax <= 5) {
+    return (
+      <div className="fractals-shop-pips" aria-label={`Nível ${safeCurrent} de ${safeMax}`}>
+        {Array.from({ length: safeMax }).map((_, i) => (
+          <i key={i} className={i < safeCurrent ? "fractals-shop-pip is-filled" : "fractals-shop-pip"} />
+        ))}
+        <span>{safeCurrent}/{safeMax}{label ? ` · ${label}` : ""}</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="fractals-shop-level mt-2 w-full max-w-[240px]">
+      <div className="mb-1 flex items-center justify-between gap-2 text-[10px] font-bold text-amber-200/90">
+        <span className="tracking-wider">{isMax ? "NÍVEL MÁXIMO" : `NV. ${safeCurrent} / ${safeMax}`}</span>
+        {label && <span className="truncate font-mono text-[9px] text-violet-300/80">{label}</span>}
+      </div>
+      <div className="h-2 w-full overflow-hidden rounded-full border border-amber-400/30 bg-purple-950/80 p-0.5 shadow-inner">
+        <div className="h-full rounded-full bg-gradient-to-r from-amber-500 via-amber-300 to-amber-200 shadow-[0_0_8px_rgba(245,215,142,0.8)] transition-all duration-300" style={{ width: `${pct}%` }} />
+      </div>
+    </div>
+  );
+}
+
 const OMEN_CONFIG: Record<OmenId, { name: string; description: string }> = {
   famine: { name: "Fome Insaciável", description: "+20% de experiência e +20% de frequência de surgimento de inimigos." },
   rupture: { name: "Ruptura", description: "+20% de dano das armas, mas +15% no intervalo entre ataques." },
@@ -263,7 +320,7 @@ type PurchaseState = {
   health: number; projectile_duration: number; projectile_range: number; projectiles: number;
   ricochet: number; piercing: number; chain_lightning: number;
   reroll: number; oracle: number; banish: number; fortune: number; transmutation: number;
-  anchor_soul: number; dash: number; omen_archive: boolean;
+  anchor_soul: number; dash: number; extra_xp: number; crit_chance: number; crit_damage: number; greed_pact: number; crit_relic: number; omen_archive: boolean;
   weapon_nucleus: boolean; weapon_scythe: boolean; weapon_orbitals: boolean; weapon_gravity: boolean; weapon_sentinels: boolean;
   mastery_void_revolver: boolean; mastery_nucleus: boolean; mastery_scythe: boolean; mastery_orbitals: boolean; mastery_gravity: boolean; mastery_sentinels: boolean;
   evolution_void_revolver: boolean; evolution_nucleus: boolean; evolution_scythe: boolean; evolution_orbitals: boolean; evolution_gravity: boolean; evolution_sentinels: boolean;
@@ -273,7 +330,7 @@ const DEFAULT_PURCHASES: PurchaseState = {
   health: 0, projectile_duration: 0, projectile_range: 0, projectiles: 0,
   ricochet: 0, piercing: 0, chain_lightning: 0,
   reroll: 0, oracle: 0, banish: 0, fortune: 0, transmutation: 0,
-  anchor_soul: 0, dash: 0, omen_archive: false,
+  anchor_soul: 0, dash: 0, extra_xp: 0, crit_chance: 0, crit_damage: 0, greed_pact: 0, crit_relic: 0, omen_archive: false,
   weapon_nucleus: false, weapon_scythe: false, weapon_orbitals: false, weapon_gravity: false, weapon_sentinels: false,
   mastery_void_revolver: false, mastery_nucleus: false, mastery_scythe: false, mastery_orbitals: false, mastery_gravity: false, mastery_sentinels: false,
   evolution_void_revolver: false, evolution_nucleus: false, evolution_scythe: false, evolution_orbitals: false, evolution_gravity: false, evolution_sentinels: false,
@@ -284,6 +341,7 @@ const MAX_AREA_RELIC_STACKS = 10;
 const MAX_EXPERIENCE_RELIC_STACKS = 10;
 const MAX_PROJECTILE_RANGE_STACKS = 5;
 const MAX_EXTRA_PROJECTILES = 2;
+const MAX_SPECIAL_CRIT_STACKS = 20;
 const ORACLE_FOURTH_CHOICE_CHANCE = [0, 6, 12, 18, 24, 30, 36, 42, 48, 50, 50] as const;
 const WORLD_LIMIT = 1300;
 const CEMETERY_ARENA_HALF = 1290;
@@ -294,7 +352,7 @@ const RITUAL_WINDOW = 50;
 const EXECUTIONER_WINDOW = 60;
 function parsePurchaseState(raw: any): PurchaseState {
   const defaults = DEFAULT_PURCHASES;
-  const numericKeys = ["area","experience","rarity","health","projectile_duration","projectile_range","projectiles","ricochet","piercing","chain_lightning","reroll","oracle","banish","fortune","transmutation","anchor_soul","dash"] as const;
+  const numericKeys = ["area","experience","rarity","health","projectile_duration","projectile_range","projectiles","ricochet","piercing","chain_lightning","reroll","oracle","banish","fortune","transmutation","anchor_soul","dash","extra_xp","crit_chance","crit_damage","greed_pact","crit_relic"] as const;
   const booleanKeys = Object.keys(defaults).filter((key) => !numericKeys.includes(key as typeof numericKeys[number])) as Array<keyof PurchaseState>;
   const parsed = { ...defaults, ...raw } as PurchaseState;
   for (const key of numericKeys) {
@@ -312,14 +370,14 @@ function parsePurchaseState(raw: any): PurchaseState {
 
 type GameState = {
   width: number; height: number; last: number; elapsed: number; spawnTimer: number; shotTimer: number; bossSpawned: boolean;
-  player: { x: number; y: number; hp: number; maxHp: number; speed: number; damage: number; fireRate: number; invuln: number; hitFlash: number; xp: number; nextXp: number; level: number; pickupRadius: number; xpMultiplier: number; specialAreaStacks: number; specialExperienceStacks: number; projectileRangeStacks: number; projectileRangeMultiplier: number; projectileStacks: number; relicRicochet: number; relicPiercing: number; relicChainLightning: number; projectileLife: number; facing: number; castFacing: number; castTimer: number; moving: boolean; dashTimer: number; dashCooldown: number; dashX: number; dashY: number; spriteAction: PlayerVisualAction; spriteDirection: number; previousSpriteAction: PlayerVisualAction; previousSpriteDirection: number; spriteBlend: number };
+  player: { x: number; y: number; hp: number; maxHp: number; speed: number; damage: number; fireRate: number; invuln: number; hitFlash: number; xp: number; nextXp: number; level: number; pickupRadius: number; xpMultiplier: number; specialAreaStacks: number; specialExperienceStacks: number; projectileRangeStacks: number; projectileRangeMultiplier: number; projectileStacks: number; relicRicochet: number; relicPiercing: number; relicChainLightning: number; specialCritStacks: number; aetherShieldCharges: number; projectileLife: number; facing: number; castFacing: number; castTimer: number; moving: boolean; dashTimer: number; dashCooldown: number; dashX: number; dashY: number; spriteAction: PlayerVisualAction; spriteDirection: number; previousSpriteAction: PlayerVisualAction; previousSpriteDirection: number; spriteBlend: number };
   enemies: Enemy[]; shots: Shot[]; gems: Gem[]; specialDrops: SpecialDrop[]; sentinelTotems: SentinelTotem[]; sentinelRespawnTimer: number; nextSentinelTotemId: number; urns: BreakableUrn[]; obstacles: CemeteryObstacle[]; nextUrnMinute: number; nextUrnId: number; particles: Particle[]; damageNumbers: DamageNumber[]; pickupLabels: PickupLabel[]; challengeEvent: ChallengeEvent | null; nextChallengeEvent: number; kills: number; ended: boolean; upgradeCounts: UpgradeCounts; totalDamageDealt: number; crystalsCollected: number; highestLevel: number;
   weaponId: WeaponId; weaponLevel: number; evolved: boolean; rerollsRemaining: number; banishesRemaining: number; bannedUpgradeIds: string[];
   revolverShotCount?: number; orbitalPulseTimer?: number;
   gravityAuraActive?: boolean; gravityAuraShot?: Shot;
   gravityTethers?: { id: number; enemy: Enemy; duration: number }[]; gravityAuraTimer2?: number;
   gravityChains?: { sx: number; sy: number; enemy: Enemy; t: number; dur: number; dmg: number; hit: boolean; fade: number; ex: number; ey: number }[]; dashLevel?: number;
-  scytheSiphonCooldown?: number; dashChainRemaining: number; dashChainWindow: number; dashHitTargets: Set<Enemy>;
+  scytheSiphonCooldown?: number; dashChainRemaining: number; dashChainWindow: number; dashHitTargets: Set<Enemy>; microVortices: { x: number; y: number; life: number; maxLife: number; radius: number; pull: number }[]; alchemyCircle: { x: number; y: number; life: number; maxLife: number; radius: number; tickTimer: number } | null; nextAlchemyAt: number;
   anchorReviveAvailable: boolean; anchorRevivesUsed: number; omenId: OmenId | null; omenSpawnMultiplier: number; omenEnemyHpMultiplier: number; omenRewardMultiplier: number; omenRevengeCooldown: number; lastObservedHp: number;
   shake?: number; rings?: { x: number; y: number; r: number; max: number; life: number; color: string }[];
 };
@@ -339,6 +397,13 @@ const SPECIAL_UPGRADES: Upgrade[] = [
   { id: "special_ricochet", name: "Ricochete Instável", description: "Revólver e Núcleo ganham +1 ricochete por nível (máx. 3).", icon: Orbit },
   { id: "special_piercing", name: "Perfuração Espectral", description: "Revólver e Núcleo atravessam +1 inimigo por nível (máx. 3).", icon: Target },
   { id: "special_chain_lightning", name: "Descarga em Cadeia", description: "Impactos do Revólver e do Núcleo saltam para +1 alvo por nível (máx. 3).", icon: Zap },
+  { id: "special_crit", name: "Olho do Predador", description: "+1% de chance crítica por coleta, até 20 acúmulos.", icon: Target },
+];
+
+const UNIVERSAL_GIFTS: Upgrade[] = [
+  { id: "universal_aether_shield", name: "Escudo de Éter", description: "Concede uma carga de escudo por nível; absorve um golpe e concede 1,8s de invulnerabilidade. Máx. 3.", icon: Shield, rarity: "uncommon" },
+  { id: "universal_vampirism", name: "Vampirismo Rúnico", description: "Regenera continuamente +0,4 HP por segundo por nível. Máx. 5.", icon: Heart, rarity: "uncommon" },
+  { id: "universal_alchemy_circle", name: "Círculo de Alquimia", description: "A cada 120s cria uma área de 10s: +25% dano, +100% XP e até 5% de cura máxima.", icon: Sparkles, rarity: "uncommon" },
 ];
 
 const WEAPON_GIFTS: Record<WeaponId, Upgrade[]> = {
@@ -346,31 +411,43 @@ const WEAPON_GIFTS: Record<WeaponId, Upgrade[]> = {
     { id: "gift_revolver_mark", name: "Marca do Predador", description: "Dano contra Elites e Chefes +12% por nível.", icon: Target, rarity: "uncommon" },
     { id: "gift_revolver_echo", name: "Sexto Eco", description: "O disparo dourado do Revólver recebe +1 ricochete por nível.", icon: Orbit, rarity: "uncommon" },
     { id: "gift_revolver_weakpoint", name: "Ponto de Ruptura", description: "Causa +12% de dano por nível contra inimigos acima de 70% da vida.", icon: Target, rarity: "uncommon" },
+    { id: "gift_hunter_mark", name: "Marcador de Caçador", description: "Acertos críticos marcam o alvo por 6s; dano contra ele +5% por nível (máx. +25%).", icon: Target, rarity: "uncommon" },
   ],
   unstable_core: [
     { id: "gift_core_expansion", name: "Campo Devorador", description: "A poça do Núcleo aumenta seu raio em 12% por nível.", icon: Orbit, rarity: "uncommon" },
     { id: "gift_core_implosion", name: "Implosão Concentrada", description: "A atração de cada pulso da poça fica mais forte em 3 unidades por nível.", icon: Move, rarity: "uncommon" },
     { id: "gift_core_residue", name: "Rastro Persistente", description: "A poça corrosiva permanece ativa por +0,3s por nível.", icon: Timer, rarity: "uncommon" },
+    { id: "gift_thermal_overload", name: "Sobrecarga Térmica", description: "Acertos críticos queimam por 3s; inimigos queimados explodem ao morrer.", icon: Flame, rarity: "uncommon" },
+    { id: "gift_kill_gravity", name: "Gravidade nos Abates", description: "A cada 25 abates, cria um micro-vórtice de atração por 2s.", icon: Orbit, rarity: "uncommon" },
   ],
   spectral_scythe: [
     { id: "gift_scythe_siphon", name: "Sede de Almas", description: "Abates com a Foice recuperam 1,5% da vida máxima por nível. Recarga: 1,8s.", icon: Heart, rarity: "uncommon" },
     { id: "gift_scythe_arc", name: "Arco do Ceifador", description: "O alcance do corte aumenta em 12% por nível.", icon: Swords, rarity: "uncommon" },
     { id: "gift_scythe_cripple", name: "Corte Entorpecente", description: "Os cortes reduzem a velocidade dos atingidos em 20%, 25% ou 30% por 0,7s conforme o nível.", icon: Snowflake, rarity: "uncommon" },
+    { id: "gift_shadow_execution", name: "Execução Sombria", description: "Elimina instantaneamente monstros comuns com 10% ou menos de vida.", icon: Skull, rarity: "uncommon" },
+    { id: "gift_impact_resonance", name: "Ressonância de Impacto", description: "Empurrão da Foice +50% por nível; colisões contra túmulos e paredes causam dano extra.", icon: Zap, rarity: "uncommon" },
   ],
   orbital_swords: [
     { id: "gift_orbital_orbit", name: "Órbita Distante", description: "As lâminas orbitam 12% mais longe por nível.", icon: Orbit, rarity: "uncommon" },
     { id: "gift_orbital_edge", name: "Fio Astral", description: "Dano de contato das lâminas +12% por nível.", icon: Swords, rarity: "uncommon" },
     { id: "gift_orbital_velocity", name: "Dança Acelerada", description: "A velocidade de rotação das lâminas aumenta em 12% por nível.", icon: RotateCw, rarity: "uncommon" },
+    { id: "gift_shadow_execution", name: "Execução Sombria", description: "Elimina instantaneamente monstros comuns com 10% ou menos de vida.", icon: Skull, rarity: "uncommon" },
+    { id: "gift_impact_resonance", name: "Ressonância de Impacto", description: "Empurrão das lâminas +50% por nível; colisões contra túmulos e paredes causam dano extra.", icon: Zap, rarity: "uncommon" },
   ],
   gravity_shackle: [
     { id: "gift_gravity_pressure", name: "Peso Abissal", description: "A lentidão da aura fica 4 pontos percentuais mais forte por nível, até 42% de redução de velocidade.", icon: Move, rarity: "uncommon" },
     { id: "gift_gravity_resonance", name: "Ressonância do Abismo", description: "Dano dos impactos das correntes +15% por nível.", icon: Sparkles, rarity: "uncommon" },
     { id: "gift_gravity_guard", name: "Manto Inabalável", description: "Enquanto a aura está ativa, dano recebido -5% por nível (máx. -15%).", icon: Shield, rarity: "uncommon" },
+    { id: "gift_thorn_retaliation", name: "Retaliação Espinhosa", description: "Ao receber um golpe, espinhos carmesins varrem 360° e causam 0,6x do dano-base por nível.", icon: Shield, rarity: "uncommon" },
+    { id: "gift_shadow_execution", name: "Execução Sombria", description: "Elimina instantaneamente monstros comuns com 10% ou menos de vida.", icon: Skull, rarity: "uncommon" },
+    { id: "gift_hunter_mark", name: "Marcador de Caçador", description: "Acertos críticos marcam o alvo por 6s; dano contra ele +5% por nível (máx. +25%).", icon: Target, rarity: "uncommon" },
   ],
   rune_sentinels: [
     { id: "gift_sentinel_focus", name: "Mirada do Vigia", description: "Dano dos feixes das Sentinelas +12% por nível.", icon: Target, rarity: "uncommon" },
     { id: "gift_sentinel_overload", name: "Sobrecarga Final", description: "Explosão de uma Sentinela: dano +15% e raio +12% por nível.", icon: Zap, rarity: "uncommon" },
     { id: "gift_sentinel_relay", name: "Rede de Vigília", description: "As Sentinelas disparam 10% mais rápido por nível.", icon: Timer, rarity: "uncommon" },
+    { id: "gift_hunter_mark", name: "Marcador de Caçador", description: "Acertos críticos marcam o alvo por 6s; dano contra ele +5% por nível (máx. +25%).", icon: Target, rarity: "uncommon" },
+    { id: "gift_thermal_overload", name: "Sobrecarga Térmica", description: "Acertos críticos queimam por 3s; inimigos queimados explodem ao morrer.", icon: Flame, rarity: "uncommon" },
   ],
 };
 
@@ -379,15 +456,26 @@ function supportsProjectileRelics(weapon: WeaponId): boolean {
 }
 
 function getEligibleWeaponGifts(game: GameState): Upgrade[] {
-  return WEAPON_GIFTS[game.weaponId].filter((gift) =>
-    !game.bannedUpgradeIds.includes(gift.id) && (game.upgradeCounts[gift.id]?.count ?? 0) < 3
-  );
+  return WEAPON_GIFTS[game.weaponId].filter((gift) => {
+    const max = gift.id === "gift_hunter_mark" ? 5 : gift.id === "gift_shadow_execution" ? 1 : 3;
+    return !game.bannedUpgradeIds.includes(gift.id) && (game.upgradeCounts[gift.id]?.count ?? 0) < max;
+  });
+}
+
+function getEligibleUniversalGifts(game: GameState): Upgrade[] {
+  return UNIVERSAL_GIFTS.filter((gift) => {
+    if (game.bannedUpgradeIds.includes(gift.id)) return false;
+    const current = game.upgradeCounts[gift.id]?.count ?? 0;
+    const max = gift.id === "universal_aether_shield" ? 3 : gift.id === "universal_vampirism" ? 5 : 1;
+    return current < max;
+  });
 }
 
 const MASTER_GIFT_OPTIONS: Upgrade[] = [
   ...UPGRADES,
   ...SPECIAL_UPGRADES,
   ...Object.values(WEAPON_GIFTS).flat(),
+  ...UNIVERSAL_GIFTS,
   { id: "anchor_soul", name: "Âncora da Alma", description: "Concede uma ressurreição adicional.", icon: Heart },
   { id: "weapon_mastery", name: "Ressonância da Arma", description: "Aumenta em um nível a arma equipada.", icon: Swords, rarity: "maestria" },
   { id: "weapon_evolution", name: "Evolução da Arma", description: "Desperta a forma evoluída da arma equipada.", icon: Crown, rarity: "evolution" },
@@ -408,6 +496,7 @@ function getEligibleFieldRelics(game: GameState, purchases: PurchaseState): Upgr
     if (item.id === "special_ricochet") return projectileRelicsSupported && purchases.ricochet >= 1 && game.player.relicRicochet < 3;
     if (item.id === "special_piercing") return projectileRelicsSupported && purchases.piercing >= 1 && game.player.relicPiercing < 3;
     if (item.id === "special_chain_lightning") return projectileRelicsSupported && purchases.chain_lightning >= 1 && game.player.relicChainLightning < 3;
+    if (item.id === "special_crit") return purchases.crit_relic >= 1 && game.player.specialCritStacks < MAX_SPECIAL_CRIT_STACKS;
     return false;
   });
 }
@@ -454,6 +543,7 @@ function buildLevelChoices(game: GameState, purchases: PurchaseState): Upgrade[]
   }
 
   const availableWeaponGifts = getEligibleWeaponGifts(game);
+  const availableUniversalGifts = getEligibleUniversalGifts(game);
   const basicChoiceSlots = choices
     .map((choice, index) => ({ choice, index }))
     .filter(({ choice }) => ["power", "haste", "vitality", "swift"].includes(choice.id))
@@ -464,9 +554,15 @@ function buildLevelChoices(game: GameState, purchases: PurchaseState): Upgrade[]
     choices[slot] = weaponGift;
   }
 
+  if (availableUniversalGifts.length && basicChoiceSlots.length && Math.random() < 0.20) {
+    const slot = basicChoiceSlots[Math.floor(Math.random() * basicChoiceSlots.length)];
+    const universalGift = availableUniversalGifts[Math.floor(Math.random() * availableUniversalGifts.length)];
+    choices[slot] = universalGift;
+  }
+
   const transmutationChance = [0, 3, 6, 10][Math.max(0, Math.min(3, purchases.transmutation))];
   const withRarity = choices.map((upgrade) => {
-    const isUncommonRelic = upgrade.id.startsWith("special_") || upgrade.id.startsWith("gift_") || upgrade.id === "anchor_soul";
+    const isUncommonRelic = upgrade.id.startsWith("special_") || upgrade.id.startsWith("gift_") || upgrade.id.startsWith("universal_") || upgrade.id === "anchor_soul";
     return {
       ...upgrade,
       // Relíquias são Incomuns fixas: não entram no sorteio nem recebem bônus de raridade.
@@ -477,7 +573,7 @@ function buildLevelChoices(game: GameState, purchases: PurchaseState): Upgrade[]
   // Oráculo: a quarta carta pode ser uma Relíquia de Campo ou uma Dádiva Exclusiva elegível da arma equipada.
   const oracleBonusChance = ORACLE_FOURTH_CHOICE_CHANCE[clamp(purchases.oracle, 0, 10)];
   if (purchases.oracle > 0 && Math.random() * 100 < oracleBonusChance) {
-    const fourthOptions = [...getEligibleFieldRelics(game, purchases), ...getEligibleWeaponGifts(game)]
+    const fourthOptions = [...getEligibleFieldRelics(game, purchases), ...getEligibleWeaponGifts(game), ...getEligibleUniversalGifts(game)]
       .filter((item, index, items) => items.findIndex((candidate) => candidate.id === item.id) === index)
       .filter((item) => !withRarity.some((choice) => choice.id === item.id));
     if (fourthOptions.length) {
@@ -920,10 +1016,10 @@ function makeGame(width: number, height: number, purchases: PurchaseState, weapo
   const omenDamage = omenId === "rupture" ? 1.2 : 1;
   return {
     width, height, last: 0, elapsed: 0, spawnTimer: 0.4, shotTimer: 0.25, bossSpawned: false,
-    player: { x: 0, y: 0, hp: maxHp, maxHp, speed: 205 * (omenId === "spectral_veil" ? 1.15 : 1), damage: 22 * omenDamage, fireRate: 0.72 * (omenId === "rupture" ? 1.15 : 1), invuln: 0, hitFlash: 0, xp: 0, nextXp: 12, level: 1, pickupRadius: 85, xpMultiplier: omenId === "famine" ? 1.2 : 1, specialAreaStacks: 0, specialExperienceStacks: 0, projectileRangeStacks: 0, projectileRangeMultiplier: 1, projectileStacks: 0, relicRicochet: 0, relicPiercing: 0, relicChainLightning: 0, projectileLife, facing: 0, castFacing: 0, castTimer: 0, moving: false, dashTimer: 0, dashCooldown: 0, dashX: 1, dashY: 0, spriteAction: "idle", spriteDirection: 0, previousSpriteAction: "idle", previousSpriteDirection: 0, spriteBlend: 1 },
+    player: { x: 0, y: 0, hp: maxHp, maxHp, speed: 205 * (omenId === "spectral_veil" ? 1.15 : 1), damage: 22 * omenDamage, fireRate: 0.72 * (omenId === "rupture" ? 1.15 : 1), invuln: 0, hitFlash: 0, xp: 0, nextXp: 12, level: 1, pickupRadius: 85, xpMultiplier: omenId === "famine" ? 1.2 : 1, specialAreaStacks: 0, specialExperienceStacks: 0, projectileRangeStacks: 0, projectileRangeMultiplier: 1, projectileStacks: 0, relicRicochet: 0, relicPiercing: 0, relicChainLightning: 0, specialCritStacks: 0, aetherShieldCharges: 0, projectileLife, facing: 0, castFacing: 0, castTimer: 0, moving: false, dashTimer: 0, dashCooldown: 0, dashX: 1, dashY: 0, spriteAction: "idle", spriteDirection: 0, previousSpriteAction: "idle", previousSpriteDirection: 0, spriteBlend: 1 },
     enemies: [], shots: [], gems: [], specialDrops: [], sentinelTotems: [], sentinelRespawnTimer: 0, nextSentinelTotemId: 1, urns: [], obstacles: createCemeteryObstacles(), nextUrnMinute: 1, nextUrnId: 1, particles: [], damageNumbers: [], pickupLabels: [], challengeEvent: null, nextChallengeEvent: 0, kills: 0, ended: false, upgradeCounts: {}, totalDamageDealt: 0, crystalsCollected: 0, highestLevel: 1,
     weaponId, weaponLevel: 1, evolved: false, rerollsRemaining: purchases.reroll, banishesRemaining: purchases.banish, bannedUpgradeIds: [],
-    revolverShotCount: 0, orbitalPulseTimer: 0, gravityAuraActive: true, gravityAuraShot: undefined, gravityTethers: [], scytheSiphonCooldown: 0,
+    revolverShotCount: 0, orbitalPulseTimer: 0, gravityAuraActive: true, gravityAuraShot: undefined, gravityTethers: [], scytheSiphonCooldown: 0, microVortices: [], alchemyCircle: null, nextAlchemyAt: 120,
     anchorReviveAvailable: false, anchorRevivesUsed: 0, dashChainRemaining: 0, dashChainWindow: 0, dashHitTargets: new Set<Enemy>(), omenId, omenSpawnMultiplier: omenId === "famine" ? 1.2 : 1,
     omenEnemyHpMultiplier: omenId === "abundance" ? 1.15 : 1, omenRewardMultiplier: omenId === "abundance" ? 1.25 : 1,
     omenRevengeCooldown: 0, lastObservedHp: maxHp,
