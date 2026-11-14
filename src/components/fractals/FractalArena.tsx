@@ -4041,7 +4041,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                 && enemy.hp > enemy.maxHp * 0.70
                 ? 1 + (game.upgradeCounts.gift_revolver_weakpoint?.count ?? 0) * 0.12
                 : 1;
-              const baseCritChance = clamp((purchasesRef.current.crit_chance ?? 0) * 0.01 + (game.player.specialCritStacks ?? 0) * 0.01, 0, 1);
+              const baseCritChance = clamp(0.05 + (purchasesRef.current.crit_chance ?? 0) * 0.01 + (game.player.specialCritStacks ?? 0) * 0.01, 0, 1);
               const baseCritMult = 2.0 + (purchasesRef.current.crit_damage ?? 0) * 0.05;
               const isCrit = Math.random() < baseCritChance;
               const hunterLevel = game.upgradeCounts.gift_hunter_mark?.count ?? 0;
