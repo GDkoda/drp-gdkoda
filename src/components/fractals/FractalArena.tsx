@@ -1486,32 +1486,47 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
 
     const chainList = game.gravityChains;
     if (chainList && chainList.length > 0) {
+      // Lote único: todos os elos de todas as correntes em 2 paths (escuro + claro), sem save/rotate por corrente.
       const chainColor = game.evolved ? "#fb7185" : "#d8b4fe";
       const chainDark = game.evolved ? "#7f1d1d" : "#4c1d95";
+      ctx.globalAlpha = 1;
+      for (let pass = 0; pass < 2; pass++) {
+        ctx.strokeStyle = pass === 0 ? chainDark : chainColor;
+        ctx.lineWidth = pass === 0 ? 4 : 1.6;
+        ctx.beginPath();
+        for (let i = 0; i < chainList.length; i++) {
+          const c = chainList[i];
+          if (c.hit && c.fade < 0.11) continue;
+          const prog = c.hit ? 1 : clamp(c.t / c.dur, 0, 1);
+          const dx = (c.ex - c.sx) * prog, dy = (c.ey - c.sy) * prog;
+          const len = Math.sqrt(dx * dx + dy * dy);
+          if (len < 2) continue;
+          const ux = dx / len, uy = dy / len, nx = -uy * 2.6, ny = ux * 2.6;
+          const links = Math.min(30, Math.floor(len / 10));
+          for (let k = 0; k < links; k++) {
+            const cx = c.sx + ux * (k * 10 + 5), cy = c.sy + uy * (k * 10 + 5);
+            const ax = ux * 5, ay = uy * 5;
+            if (k % 2 === 0) {
+              ctx.moveTo(cx - ax + nx, cy - ay + ny); ctx.lineTo(cx + ax + nx, cy + ay + ny);
+              ctx.lineTo(cx + ax - nx, cy + ay - ny); ctx.lineTo(cx - ax - nx, cy - ay - ny); ctx.closePath();
+            } else { ctx.moveTo(cx - ax, cy - ay); ctx.lineTo(cx + ax, cy + ay); }
+          }
+        }
+        ctx.stroke();
+      }
+      ctx.fillStyle = chainColor;
+      ctx.beginPath();
       for (let i = 0; i < chainList.length; i++) {
         const c = chainList[i];
-        const prog = c.hit ? 1 : clamp(c.t / c.dur, 0, 1);
+        if (c.hit) continue;
+        const prog = clamp(c.t / c.dur, 0, 1);
         const tx = c.sx + (c.ex - c.sx) * prog, ty = c.sy + (c.ey - c.sy) * prog;
-        const ang = Math.atan2(ty - c.sy, tx - c.sx);
-        const len = Math.hypot(tx - c.sx, ty - c.sy);
-        const links = Math.min(40, Math.floor(len / 9));
-        ctx.save();
-        ctx.globalAlpha = c.hit ? clamp(c.fade / 0.22, 0, 1) : 1;
-        ctx.translate(c.sx, c.sy); ctx.rotate(ang);
-        for (let k = 0; k < links; k++) {
-          const lx = k * 9 + 4.5;
-          ctx.strokeStyle = chainDark; ctx.lineWidth = 3.4;
-          if (k % 2 === 0) ctx.strokeRect(lx - 5, -2.6, 10, 5.2);
-          else { ctx.beginPath(); ctx.moveTo(lx - 5, 0); ctx.lineTo(lx + 5, 0); ctx.stroke(); }
-          ctx.strokeStyle = chainColor; ctx.lineWidth = 1.5;
-          if (k % 2 === 0) ctx.strokeRect(lx - 5, -2.6, 10, 5.2);
-          else { ctx.beginPath(); ctx.moveTo(lx - 5, 0); ctx.lineTo(lx + 5, 0); ctx.stroke(); }
-        }
-        // ponta de arpão
-        ctx.fillStyle = chainColor;
-        ctx.beginPath(); ctx.moveTo(len + 7, 0); ctx.lineTo(len - 3, -5); ctx.lineTo(len, 0); ctx.lineTo(len - 3, 5); ctx.closePath(); ctx.fill();
-        ctx.restore();
+        const dx = tx - c.sx, dy = ty - c.sy, len = Math.sqrt(dx * dx + dy * dy) || 1;
+        const ux = dx / len, uy = dy / len;
+        ctx.moveTo(tx + ux * 7, ty + uy * 7); ctx.lineTo(tx - ux * 3 - uy * 5, ty - uy * 3 + ux * 5);
+        ctx.lineTo(tx, ty); ctx.lineTo(tx - ux * 3 + uy * 5, ty - uy * 3 - ux * 5); ctx.closePath();
       }
+      ctx.fill();
     }
     ctx.restore();
   }
