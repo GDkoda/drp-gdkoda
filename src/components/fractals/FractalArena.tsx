@@ -2374,6 +2374,9 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
   purchasesRef.current = purchases;
   const [showPlayerHp, setShowPlayerHp] = useState(true);
   const [showDamageNumbers, setShowDamageNumbers] = useState(true);
+  const [graphicsQuality, setGraphicsQuality] = useState<"auto" | "high" | "low">("auto");
+  const graphicsQualityRef = useRef(graphicsQuality);
+  graphicsQualityRef.current = graphicsQuality;
   const prefersReduced = typeof window !== "undefined"
     && typeof window.matchMedia === "function"
     && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -2804,14 +2807,20 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
     let fpsWindowStart = 0;
     let measuredFps = 0;
     let bossNotified = false;
+    let autoQualityScale = 1;
+    let belowTargetSince = 0;
+    let aboveTargetSince = 0;
     const resize = () => {
       const rect = canvas.getBoundingClientRect();
       const compactDevice = window.matchMedia("(max-width: 680px)").matches;
-      const dpr = Math.min(window.devicePixelRatio || 1, compactDevice ? 1 : 1.25);
+      const deviceDpr = window.devicePixelRatio || 1;
+      const qualityMode = graphicsQualityRef.current;
+      const maxDpr = qualityMode === "high" ? 1.5 : qualityMode === "low" ? 0.9 : (compactDevice ? 1 : 1.25) * autoQualityScale;
+      const dpr = Math.min(deviceDpr, maxDpr);
       canvas.width = Math.max(1, Math.floor(rect.width * dpr));
       canvas.height = Math.max(1, Math.floor(rect.height * dpr));
       ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = compactDevice ? "low" : "medium";
+      ctx.imageSmoothingQuality = qualityMode === "high" ? "high" : qualityMode === "low" || autoQualityScale < 0.9 ? "low" : compactDevice ? "low" : "medium";
       const game = gameRef.current;
       if (game) { game.width = rect.width; game.height = rect.height; }
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -4425,6 +4434,31 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           measuredFps = Math.round(fpsFrames * 1000 / (now - fpsWindowStart));
           fpsFrames = 0;
           fpsWindowStart = now;
+
+          // Auto reduz a resolução após 2 s abaixo de 50 FPS e recupera
+          // gradualmente quando o desempenho permanece acima de 58 FPS.
+          if (graphicsQualityRef.current === "auto") {
+            if (measuredFps < 50) {
+              if (!belowTargetSince) belowTargetSince = now;
+              aboveTargetSince = 0;
+              if (now - belowTargetSince >= 2000 && autoQualityScale > 0.72) {
+                autoQualityScale = Math.max(0.72, autoQualityScale - 0.14);
+                belowTargetSince = now;
+                resize();
+              }
+            } else if (measuredFps >= 58) {
+              if (!aboveTargetSince) aboveTargetSince = now;
+              belowTargetSince = 0;
+              if (now - aboveTargetSince >= 5000 && autoQualityScale < 1) {
+                autoQualityScale = Math.min(1, autoQualityScale + 0.1);
+                aboveTargetSince = now;
+                resize();
+              }
+            } else {
+              belowTargetSince = 0;
+              aboveTargetSince = 0;
+            }
+          }
         }
         drawGame(ctx, game, corruption, missionId, spritesRef.current, showPlayerHpRef.current, showDamageNumbersRef.current, zoomRef.current, screenShakeEnabledRef.current);
       }
@@ -4438,7 +4472,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
       window.removeEventListener("keyup", onKeyUp);
       window.removeEventListener("blur", onBlur);
     };
-  }, [running, desktopSupported, paused, levelChoices.length, missionId, corruption]);
+  }, [running, desktopSupported, paused, levelChoices.length, missionId, corruption, graphicsQuality]);
 
   const formatTime = (seconds: number) => `${Math.floor(seconds / 60).toString().padStart(2, "0")}:${Math.floor(seconds % 60).toString().padStart(2, "0")}`;
   const decreaseHudSpeed = useCallback(() => setSpeedMultiplier((value) => value === 3 ? 2 : 1), []);
@@ -4977,6 +5011,13 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
    <div className="fractals-pause-actions grid grid-cols-2 gap-2"><Button variant="outline" className="h-auto justify-start gap-2 rounded-xl border-violet-100/15 bg-white/[0.055] py-3 text-white shadow-inner hover:border-violet-100/35 hover:bg-violet-300/10" onClick={() => setPausePanel("attributes")}><UserRound className="h-4 w-4"/> Atributos</Button><Button variant="outline" className="h-auto justify-start gap-2 rounded-xl border-violet-100/15 bg-white/[0.055] py-3 text-white shadow-inner hover:border-violet-100/35 hover:bg-violet-300/10" onClick={() => setPausePanel("runes")}><Sparkles className="h-4 w-4 text-amber-200"/> Dádivas &amp; Runas</Button><Button variant="outline" className="h-auto justify-start gap-2 rounded-xl border-violet-100/15 bg-white/[0.055] py-3 text-white shadow-inner hover:border-violet-100/35 hover:bg-violet-300/10" onClick={toggleFullscreen}><Maximize className="h-4 w-4"/> Tela cheia</Button><Button variant="outline" className="h-auto justify-start gap-2 rounded-xl border-violet-100/15 bg-white/[0.055] py-3 text-white shadow-inner hover:border-violet-100/35 hover:bg-violet-300/10" onClick={() => setShowPlayerHp((v) => !v)}><Heart className="h-4 w-4 text-rose-300"/> HP: {showPlayerHp ? "visível" : "oculto"}</Button><Button variant="outline" className="h-auto justify-start gap-2 rounded-xl border-violet-100/15 bg-white/[0.055] py-3 text-white shadow-inner hover:border-violet-100/35 hover:bg-violet-300/10" onClick={() => setShowDamageNumbers((v) => !v)}><Swords className="h-4 w-4 text-amber-200"/> Dano: {showDamageNumbers ? "visível" : "oculto"}</Button><Button variant="outline" className="h-auto justify-start gap-2 rounded-xl border-violet-100/15 bg-white/[0.055] py-3 text-white shadow-inner hover:border-violet-100/35 hover:bg-violet-300/10" onClick={toggleScreenShake}><SlidersHorizontal className="h-4 w-4 text-amber-200"/> Tremor: {screenShakeEnabled ? "Ativado" : "Desativado"}</Button></div>
    <Button variant="destructive" className="mt-3 h-10 w-full border border-rose-300/25 bg-rose-950/55 font-bold text-rose-100 hover:bg-rose-900/70" onClick={() => { const game = gameRef.current; if (!game || game.ended) return; game.ended = true; setStats({ totalDamageDealt: Math.round(game.totalDamageDealt), crystalsCollected: game.crystalsCollected, highestLevel: game.highestLevel }); setResult("defeat"); setPaused(false); setPausePanel("main"); fractalAudio.defeat(); finishRun(false); }}><Skull className="mr-2 h-4 w-4"/> Desistir da partida</Button>
     <div className="fractals-pause-speed mt-3 rounded-2xl p-3"><div className="mb-2 flex items-center gap-2 text-xs font-semibold text-white/75"><Gauge className="h-4 w-4"/> Velocidade da expedição</div><div className="grid grid-cols-3 gap-2">{([1,2,3] as const).map((speed) => <Button key={speed} size="sm" variant={speedMultiplier===speed?"default":"outline"} disabled={!isMaster && (speed===2 ? !purchases.speed_2x : speed===3 ? !purchases.speed_3x : false)} className={!isMaster && speed>1?"border-white/10 opacity-45":""} onClick={()=>setSpeedMultiplier(speed)}>{speed}x{!isMaster && (speed===2 ? !purchases.speed_2x : speed===3 ? !purchases.speed_3x : false)?" 🔒":""}</Button>)}</div>{!isMaster && <p className="mt-2 text-[10px] text-white/45">Desbloqueie 2x e 3x na loja de fractais.</p>}{isMaster && <p className="mt-2 text-[10px] text-emerald-200/70">Acesso de mestre: todas as velocidades liberadas para testes.</p>}</div>
+    <div className="fractals-pause-speed mt-3 rounded-2xl p-3">
+      <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-white/75"><SlidersHorizontal className="h-4 w-4"/> Qualidade gráfica</div>
+      <div className="grid grid-cols-3 gap-2">
+        {(["auto", "high", "low"] as const).map((quality) => <Button key={quality} size="sm" variant={graphicsQuality === quality ? "default" : "outline"} onClick={() => setGraphicsQuality(quality)}>{quality === "auto" ? "Auto" : quality === "high" ? "Alta" : "Baixa"}</Button>)}
+      </div>
+      <p className="mt-2 text-[10px] text-white/45">{graphicsQuality === "auto" ? "Auto reduz a resolução se ficar abaixo de 50 FPS por 2 segundos e recupera aos poucos." : graphicsQuality === "high" ? "Prioriza nitidez; usa até 1,5× de escala de tela." : "Prioriza desempenho; limita a escala a 0,9×."}</p>
+    </div>
     {isMaster && <Button className="mt-3 h-12 w-full border border-amber-200/50 bg-gradient-to-r from-amber-300 via-emerald-300 to-emerald-500 font-black tracking-wide text-[#08130e] shadow-[0_0_28px_rgba(52,211,153,.22)] hover:brightness-110" onClick={() => { setMasterGiftListOpen(false); setPausePanel("master"); }}><Crown className="mr-2 h-5 w-5"/> Painel do Mestre</Button>}
     <Button className="fractals-pause-resume mt-3 h-11 w-full font-bold" onClick={() => {setPausePanel("main");setPaused(false)}}><Play className="mr-2 h-4 w-4"/> Retomar expedição</Button>
   </> : pausePanel === "attributes" ? <>
