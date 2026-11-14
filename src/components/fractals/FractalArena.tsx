@@ -51,7 +51,7 @@ type SentinelTotem = { id: number; x: number; y: number; hp: number; maxHp: numb
 type BreakableUrn = { id: number; x: number; y: number; hp: number; maxHp: number; radius: number; broken: boolean; contactCooldown?: number };
 type CemeteryObstacle = { x: number; y: number; radius: number; kind: "gravestone" | "cross" | "mausoleum" | "torch" };
 type Particle = { x: number; y: number; vx: number; vy: number; life: number; color: string };
-type DamageNumber = { x: number; y: number; value: number; life: number; maxLife: number; drift: number };
+type DamageNumber = { x: number; y: number; value: number; life: number; maxLife: number; drift: number; isCritical?: boolean };
 type PickupLabel = { x: number; y: number; text: string; life: number; maxLife: number };
 type ChallengeEvent = { id: 1 | 2; x: number; y: number; radius: number; remaining: number; progress: number };
 type SpriteKey = "boss" | "elite" | "wraith" | "charger" | "brute" | "playerIdle" | "playerMove" | "playerCast" | "xpGem" | "specialXP" | "specialArea" | "specialRange" | "specialProjectiles" | "projectile";
@@ -1886,9 +1886,10 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     ctx.save();
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.font = "900 15px Inter, ui-sans-serif, system-ui, sans-serif";
     ctx.lineJoin = "round";
     for (const number of game.damageNumbers) {
+      const isCritical = number.isCritical === true;
+      ctx.font = `900 ${isCritical ? 18 : 15}px Inter, ui-sans-serif, system-ui, sans-serif`;
       const progress = 1 - number.life / number.maxLife;
       const alpha = clamp(number.life / number.maxLife, 0, 1);
       const label = `−${Math.max(1, Math.round(number.value))}`;
@@ -1899,7 +1900,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
       ctx.shadowColor = "rgba(255,53,89,.9)";
       ctx.shadowBlur = 0;
       ctx.strokeText(label, number.x, y);
-      ctx.fillStyle = "#fff4ed";
+      ctx.fillStyle = isCritical ? "#ff303f" : "#fff4ed";
       ctx.fillText(label, number.x, y);
     }
     ctx.restore();
@@ -3392,7 +3393,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                   game.totalDamageDealt += applied;
                   if (isCrit && hunterLevel > 0) enemy.hunterMarkTimer = 6;
                   enemy.flash = Math.max(enemy.flash, 0.1);
-                  game.damageNumbers.push({ x: enemy.x, y: enemy.y - enemy.radius - 10, value: finalDamage, life: 0.72, maxLife: 0.72, drift: 0 });
+                  game.damageNumbers.push({ x: enemy.x, y: enemy.y - enemy.radius - 10, value: finalDamage, life: 0.72, maxLife: 0.72, drift: 0, isCritical: isCrit });
                   if (game.damageNumbers.length > 12) game.damageNumbers.shift();
                   if (enemy.hp <= 0) handleEnemyDefeat(game, enemy);
                   else { enemy.slowTimer = Math.max(enemy.slowTimer ?? 0, chainHold); enemy.slowFactor = 0; enemy.windup = 0; enemy.dashTime = 0; }
@@ -3492,6 +3493,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                 life: 0.72,
                 maxLife: 0.72,
                 drift: (Math.random() - 0.5) * 10,
+                isCritical: isCrit,
               });
               if (game.damageNumbers.length > 12) game.damageNumbers.shift();
               shot.hitTargets.push(enemy);
