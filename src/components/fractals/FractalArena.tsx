@@ -3111,6 +3111,10 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               if (game.particles.length < 100) game.particles.push({ x: enemy.x, y: enemy.y, vx: (Math.random() - 0.5) * 50, vy: -25 - Math.random() * 35, life: 0.3, color: "#fb923c" });
               if (enemy.hp <= 0) { handleEnemyDefeat(game, enemy); continue; }
             }
+            if (enemy.thermalBurnTimer <= 0) {
+              enemy.thermalBurnDamage = 0;
+              enemy.thermalBurnTick = undefined;
+            }
           }
           const movementFactor = (enemy.slowTimer ?? 0) > 0 ? (enemy.slowFactor ?? 0.7) : 1;
           enemy.slowTimer = Math.max(0, (enemy.slowTimer ?? 0) - dt);
