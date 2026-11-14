@@ -141,6 +141,8 @@ export const FRACTAL_SHOP = {
     orbitals: 10000,
     gravity: 11000,
     sentinels: 12000,
+    boomerang: 13000,
+    rift_seeder: 14000,
   },
   evolution_project: 5000,
   speed: {
