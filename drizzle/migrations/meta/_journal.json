@@ -43,6 +43,13 @@
       "when": 1794615426762,
       "tag": "0005_tighten_profile_settings_reads",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794616310822,
+      "tag": "0006_fractal_run_validation_and_exchange",
+      "breakpoints": true
     }
   ]
 }

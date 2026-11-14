@@ -337,8 +337,12 @@ export type Database = {
       fractal_runs: {
         Row: {
           corruption_level: number
+          earned_fractals: number | null
           finished_at: string | null
+          game_seconds: number | null
           id: string
+          kills: number | null
+          player_level: number | null
           selected_omen: string | null
           selected_weapon: string
           started_at: string
@@ -347,8 +351,12 @@ export type Database = {
         }
         Insert: {
           corruption_level: number
+          earned_fractals?: number | null
           finished_at?: string | null
+          game_seconds?: number | null
           id?: string
+          kills?: number | null
+          player_level?: number | null
           selected_omen?: string | null
           selected_weapon?: string
           started_at?: string
@@ -357,8 +365,12 @@ export type Database = {
         }
         Update: {
           corruption_level?: number
+          earned_fractals?: number | null
           finished_at?: string | null
+          game_seconds?: number | null
           id?: string
+          kills?: number | null
+          player_level?: number | null
           selected_omen?: string | null
           selected_weapon?: string
           started_at?: string
@@ -1065,6 +1077,16 @@ export type Database = {
         Args: { _run_id: string; _victory: boolean }
         Returns: Json
       }
+      finish_fractal_run_v2: {
+        Args: {
+          _game_seconds: number
+          _kills: number
+          _level: number
+          _run_id: string
+          _victory: boolean
+        }
+        Returns: Json
+      }
       get_active_combat: { Args: never; Returns: Json }
       get_active_twentyone_game: { Args: never; Returns: Json }
       get_combat_state: { Args: { _session_id: string }; Returns: Json }
@@ -1093,6 +1115,22 @@ export type Database = {
       master_adjust_vigor: {
         Args: { _delta: number; _user: string }
         Returns: undefined
+      }
+      master_fractal_runs: {
+        Args: { _limit?: number }
+        Returns: {
+          corruption_level: number
+          earned_fractals: number
+          game_seconds: number
+          id: string
+          kills: number
+          omen: string
+          player_level: number
+          started_at: string
+          status: string
+          username: string
+          weapon: string
+        }[]
       }
       master_give_item: {
         Args: { _item: string; _user: string }
