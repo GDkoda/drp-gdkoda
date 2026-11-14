@@ -69,10 +69,10 @@ type PlayerVisualAction = "idle" | "move" | "cast";
 const WEAPON_CONFIG: Record<WeaponId, { name: string; description: string; price: number; purchaseKey: keyof PurchaseState | null; masteryKey: keyof PurchaseState; projectKey: keyof PurchaseState; evolutionName: string }> = {
   void_revolver: { name: "Revólver do Vazio", description: "Rajadas lineares de precisão; a cada seis disparos, uma bala dourada reforçada.", price: 0, purchaseKey: null, masteryKey: "mastery_void_revolver", projectKey: "evolution_void_revolver", evolutionName: "Seis Ecos" },
   unstable_core: { name: "Núcleo Instável", description: "Orbe lento de plasma que deixa uma poça corrosiva ampliada; seus pulsos atraem inimigos para o centro.", price: 8000, purchaseKey: "weapon_nucleus", masteryKey: "mastery_nucleus", projectKey: "evolution_nucleus", evolutionName: "Singularidade" },
-  spectral_scythe: { name: "Foice Espectral", description: "Um arco cortante de quase 200° que se torna um golpe circular completo ao evoluir.", price: 9000, purchaseKey: "weapon_scythe", masteryKey: "mastery_scythe", projectKey: "evolution_scythe", evolutionName: "Ceifador de Almas" },
+  spectral_scythe: { name: "Foice Espectral", description: "Golpe em arco de 166° na forma base e 239° na forma evoluída, cortando inimigos à frente.", price: 9000, purchaseKey: "weapon_scythe", masteryKey: "mastery_scythe", projectKey: "evolution_scythe", evolutionName: "Ceifador de Almas" },
   orbital_swords: { name: "Espadas Orbitais", description: "Lâminas físicas permanecem em órbita e ferem ameaças por contato.", price: 10000, purchaseKey: "weapon_orbitals", masteryKey: "mastery_orbitals", projectKey: "evolution_orbitals", evolutionName: "Dança das Lâminas" },
   gravity_shackle: { name: "Grilhão Gravitacional", description: "Mantém um selo rúnico permanente; correntes alcançam inimigos a até o dobro do raio visual.", price: 11000, purchaseKey: "weapon_gravity", masteryKey: "mastery_gravity", projectKey: "evolution_gravity", evolutionName: "Prisão do Abismo" },
-  rune_sentinels: { name: "Sentinelas Rúnicas", description: "Sentinelas orbitais disparam feixes rúnicos rápidos contra os alvos mais resistentes.", price: 12000, purchaseKey: "weapon_sentinels", masteryKey: "mastery_sentinels", projectKey: "evolution_sentinels", evolutionName: "Arsenal Ancestral" },
+  rune_sentinels: { name: "Sentinelas Rúnicas", description: "Totens rúnicos fixos perdem 1 PV por segundo e disparam feixes rápidos contra os alvos mais resistentes.", price: 12000, purchaseKey: "weapon_sentinels", masteryKey: "mastery_sentinels", projectKey: "evolution_sentinels", evolutionName: "Arsenal Ancestral" },
   fractal_boomerang: { name: "Bumerangue Fractal", description: "Lâmina crescente que atravessa os alvos e retorna à posição atual do jogador.", price: 13000, purchaseKey: "weapon_boomerang", masteryKey: "mastery_boomerang", projectKey: "evolution_boomerang", evolutionName: "Serra Retornante" },
   rift_seeder: { name: "Semeador de Fendas", description: "Instala minas rúnicas que explodem quando inimigos avançam; evolui para uma rede de ruptura.", price: 14000, purchaseKey: "weapon_rift_seeder", masteryKey: "mastery_rift_seeder", projectKey: "evolution_rift_seeder", evolutionName: "Matriz de Ruptura" },
 };
@@ -154,7 +154,8 @@ const SHOP_ITEM_INFO: Record<string, ShopItemInfo> = {
     "No nível 10, a experiência recebida é dobrada permanentemente.",
     "Requer Corrupção 1."
   ]},
-  crit_chance: { title: "Foco do Vazio", category: "Melhoria permanente", summary: "+1% de chance crítica por nível (até +20%).", details: [
+  crit_chance: { title: "Foco do Vazio", category: "Melhoria permanente", summary: "Parte de 5% de chance crítica base; +1% por nível (até +20%).", details: [
+    "Todos os acertos elegíveis começam com 5% de chance crítica base.",
     "Cada nível acrescenta permanentemente +1 ponto percentual de chance crítica.",
     "O bônus soma-se às cargas temporárias do Olho do Predador.",
     "Requer Corrupção 3."
@@ -543,7 +544,13 @@ function getEligibleFieldRelics(game: GameState, purchases: PurchaseState): Upgr
   });
 }
 function buildLevelChoices(game: GameState, purchases: PurchaseState): Upgrade[] {
-  const corePool = UPGRADES.filter((item) => !game.bannedUpgradeIds.includes(item.id)).sort(() => Math.random() - 0.5);
+  const corePool = UPGRADES.filter((item) => !game.bannedUpgradeIds.includes(item.id));
+  for (let i = corePool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const swap = corePool[i];
+    corePool[i] = corePool[j];
+    corePool[j] = swap;
+  }
   const core = corePool.slice(0, 2);
   const choices: Upgrade[] = [...core];
   if (game.weaponLevel < 10) {
@@ -3886,13 +3893,17 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         if (game.weaponId === "gravity_shackle" && game.gravityAuraActive && gravityAura?.active) {
           const chains = game.gravityChains ?? (game.gravityChains = []);
           const maxTargets = game.evolved ? 8 : 5;
+          const pulseInterval = Math.max(0.6, (game.evolved ? 1.4 : 1.8) * (game.player.fireRate / 0.72));
           const maxRange = (gravityAura.radius ?? (game.evolved ? 140 : 106)) * 2;
           const maxRangeSquared = maxRange * maxRange;
           gravityAura.pulseTimer = (gravityAura.pulseTimer ?? 0) - dt;
           if (gravityAura.pulseTimer <= 0 && chains.length === 0) {
-            gravityAura.pulseTimer = game.evolved ? 1.4 : 1.8;
+            gravityAura.pulseTimer = pulseInterval;
             const best = gravityBestEnemies, bestD = gravityBestDist;
             let count = 0;
+            let priorityTarget: Enemy | null = null;
+            let priorityTargetClass = -1;
+            let priorityTargetMaxHp = -1;
             const px = game.player.x, py = game.player.y;
             for (let enemyIndex = 0; enemyIndex < game.enemies.length; enemyIndex++) {
               const enemy = game.enemies[enemyIndex];
@@ -3901,6 +3912,15 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               const dy = enemy.y - py; if (dy > maxRange || dy < -maxRange) continue;
               const dsq = dx * dx + dy * dy;
               if (dsq > maxRangeSquared) continue;
+
+              // Chefes e elites têm preferência; entre eles, prioriza o maior PV máximo.
+              const targetClass = enemy.type === "boss" || enemy.type === "elite" ? 1 : 0;
+              if (targetClass > priorityTargetClass || (targetClass === priorityTargetClass && enemy.maxHp > priorityTargetMaxHp)) {
+                priorityTarget = enemy;
+                priorityTargetClass = targetClass;
+                priorityTargetMaxHp = enemy.maxHp;
+              }
+
               if (count === maxTargets && dsq >= bestD[count - 1]) continue;
               let j = count < maxTargets ? count++ : count - 1;
               while (j > 0 && bestD[j - 1] > dsq) { best[j] = best[j - 1]; bestD[j] = bestD[j - 1]; j--; }
@@ -3912,7 +3932,21 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               const enemy = best[rank]!;
               chains.push({ sx: px, sy: py, enemy, t: 0, dur: 0.16 + Math.sqrt(bestD[rank]) / 900, dmg: chainDamage, hit: false, fade: 0.22, ex: enemy.x, ey: enemy.y });
             }
-            if (count > 0) gravityAura.pulseTimer = game.evolved ? 1.4 : 1.8;
+
+            // Correntes restantes reforçam o alvo prioritário: no máximo três extras,
+            // cada uma com 60% do dano normal. O total de vínculos continua limitado.
+            if (count > 0 && count < maxTargets && priorityTarget) {
+              const extraCount = Math.min(3, maxTargets - count);
+              const dx = priorityTarget.x - px;
+              const dy = priorityTarget.y - py;
+              const extraDuration = 0.16 + Math.sqrt(dx * dx + dy * dy) / 900;
+              const extraDamage = chainDamage * 0.60;
+              for (let extra = 0; extra < extraCount; extra++) {
+                chains.push({ sx: px, sy: py, enemy: priorityTarget, t: 0, dur: extraDuration, dmg: extraDamage, hit: false, fade: 0.22, ex: priorityTarget.x, ey: priorityTarget.y });
+              }
+            }
+
+            if (count > 0) gravityAura.pulseTimer = pulseInterval;
             else gravityAura.pulseTimer = 0.2;
           }
           const chainHold = game.evolved ? 3.2 : 1.8;
@@ -3929,7 +3963,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                 if (enemy.hp > 0) {
                   // As correntes rituais não passam pelo laço de colisão dos projéteis;
                   // aplicam crítico, marca e execução diretamente no impacto.
-                  const baseCritChance = clamp((purchasesRef.current.crit_chance ?? 0) * 0.01 + (game.player.specialCritStacks ?? 0) * 0.01, 0, 1);
+                  const baseCritChance = clamp(0.05 + (purchasesRef.current.crit_chance ?? 0) * 0.01 + (game.player.specialCritStacks ?? 0) * 0.01, 0, 1);
                   const baseCritMult = 2.0 + (purchasesRef.current.crit_damage ?? 0) * 0.05;
                   const isCrit = Math.random() < baseCritChance;
                   const hunterLevel = game.upgradeCounts.gift_hunter_mark?.count ?? 0;
