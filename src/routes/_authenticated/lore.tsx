@@ -193,7 +193,7 @@ function Lore() {
     queryKey: ["lore-profiles"],
     enabled: isMaster,
     queryFn: async () => {
-      const { data, error } = await (supabase as any).from("profiles").select("id,username,display_name").order("display_name");
+      const { data, error } = await (supabase as any).rpc("list_player_directory");
       if (error) throw error;
       return (data ?? []) as Profile[];
     },

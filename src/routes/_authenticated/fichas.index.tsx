@@ -30,10 +30,7 @@ function Fichas() {
   const playersQuery = useQuery({
     queryKey: ["players"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("id, display_name, username")
-        .order("display_name");
+      const { data, error } = await supabase.rpc("list_player_directory");
       if (error) throw error;
       return data ?? [];
     },

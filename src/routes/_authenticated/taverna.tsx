@@ -43,7 +43,7 @@ function Taverna() {
   const { data: vigor } = useQuery({ queryKey: ["vigor"], queryFn: () => rpc("get_vigor", {}) as Promise<number> });
   const { data: players } = useQuery({
     queryKey: ["players"],
-    queryFn: async () => (await supabase.from("profiles").select("id, display_name, username").order("display_name")).data ?? [],
+    queryFn: async () => (await supabase.rpc("list_player_directory")).data ?? [],
   });
   const { data: txs } = useQuery({
     queryKey: ["mytx"],
