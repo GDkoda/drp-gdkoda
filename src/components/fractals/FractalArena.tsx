@@ -2561,6 +2561,21 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
     const gameSeconds = Math.round(game?.elapsed ?? 0);
     const kills = Math.round(game?.kills ?? 0);
     const level = Math.max(1, Math.round(game?.player.level ?? game?.highestLevel ?? 1));
+    if (game) {
+      const settledHud: FractalHudSnapshot = {
+        ...hudSnapshotRef.current,
+        hp: game.player.hp,
+        maxHp: game.player.maxHp,
+        xp: game.player.xp,
+        nextXp: game.player.nextXp,
+        level,
+        kills,
+        elapsed: gameSeconds,
+        moveSpeed: Math.round(game.player.speed),
+      };
+      hudSnapshotRef.current = settledHud;
+      hudComponentRef.current?.update(settledHud);
+    }
     const payload = { runId, victory, gameSeconds, kills, level, missionId };
 
     lastRunSettlementRef.current = payload;
@@ -4433,6 +4448,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
     zoomRef.current = next;
     setZoom(next);
   }, []);
+  const decreaseHudZoom = useCallback(() => changeHudZoom(-0.1), [changeHudZoom]);
+  const increaseHudZoom = useCallback(() => changeHudZoom(0.1), [changeHudZoom]);
   const toggleHudPause = useCallback(() => setPaused((value) => !value), []);
   const mission = FRACTAL_MISSIONS.find((item) => item.id === missionId)!;
   const exchangeValue = Number(exchangeAmount);
@@ -4937,7 +4954,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             <canvas ref={canvasRef} className="block h-[min(78vh,720px)] min-h-[430px] w-full select-none" aria-label="Arena de sobrevivência para PC. Use WASD ou setas para mover e Espaço para dash." />
             <FractalHud
               ref={hudComponentRef}
-              initialSnapshot={INITIAL_FRACTAL_HUD}
+              initialSnapshot={hudSnapshotRef.current}
               missionName={mission.name}
               missionSubtitle={`${mission.pathName} · ${CORRUPTION_LEVELS[corruption].name}`}
               speedMultiplier={speedMultiplier}
@@ -4946,8 +4963,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               showPause={!result}
               onSpeedDecrease={decreaseHudSpeed}
               onSpeedIncrease={increaseHudSpeed}
-              onZoomDecrease={() => changeHudZoom(-0.1)}
-              onZoomIncrease={() => changeHudZoom(0.1)}
+              onZoomDecrease={decreaseHudZoom}
+              onZoomIncrease={increaseHudZoom}
               onPause={toggleHudPause}
             />
 
