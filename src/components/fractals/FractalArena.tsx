@@ -3913,7 +3913,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                         <div className="min-w-0">
                           <div className="fractals-shop-item__heading"><p className="fractals-shop-item__name">Vida Reforçada</p><ShopInfoButton info={SHOP_ITEM_INFO.health} onOpen={setShopInfo} /></div>
                           <p className="fractals-shop-item__description">{SHOP_ITEM_INFO.health.summary}</p>
-                          <div className="fractals-shop-pips" aria-label={"Nível " + purchases.health + " de 15"}>{Array.from({ length: 15 }).map((_, i) => <i key={i} className={i < purchases.health ? "fractals-shop-pip is-filled" : "fractals-shop-pip"} />)}<span>{purchases.health}/15</span></div>
+                          <ShopLevelIndicator current={purchases.health} max={15} />
                         </div>
                         <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || purchases.health >= 15 || (!isMaster && fractalBalance < FRACTAL_SHOP.health[purchases.health]?.cost)} onClick={() => void purchaseUpgrade("health")}>{purchases.health >= 15 ? "MAX" : isMaster ? "GRÁTIS" : FRACTAL_SHOP.health[purchases.health]?.cost.toLocaleString("pt-BR") + " FR"}</button>
                       </article>
@@ -3923,7 +3923,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                         <div className="min-w-0">
                           <div className="fractals-shop-item__heading"><p className="fractals-shop-item__name">Duração de Projéteis</p><ShopInfoButton info={SHOP_ITEM_INFO.projectile_duration} onOpen={setShopInfo} /></div>
                           <p className="fractals-shop-item__description">{SHOP_ITEM_INFO.projectile_duration.summary}</p>
-                          <div className="fractals-shop-pips" aria-label={"Nível " + purchases.projectile_duration + " de 3"}>{Array.from({ length: 3 }).map((_, i) => <i key={i} className={i < purchases.projectile_duration ? "fractals-shop-pip is-filled" : "fractals-shop-pip"} />)}<span>{purchases.projectile_duration}/3</span></div>
+                          <ShopLevelIndicator current={purchases.projectile_duration} max={3} />
                         </div>
                         <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || purchases.projectile_duration >= 3 || (!isMaster && fractalBalance < FRACTAL_SHOP.projectile_duration[purchases.projectile_duration]?.cost)} onClick={() => void purchaseUpgrade("projectile_duration")}>{purchases.projectile_duration >= 3 ? "MAX" : isMaster ? "GRÁTIS" : FRACTAL_SHOP.projectile_duration[purchases.projectile_duration]?.cost.toLocaleString("pt-BR") + " FR"}</button>
                       </article>
@@ -3933,7 +3933,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                         <div className="min-w-0">
                           <div className="fractals-shop-item__heading"><p className="fractals-shop-item__name">Ressonância Rara</p><ShopInfoButton info={SHOP_ITEM_INFO.rarity} onOpen={setShopInfo} /></div>
                           <p className="fractals-shop-item__description">{SHOP_ITEM_INFO.rarity.summary}</p>
-                          <div className="fractals-shop-pips" aria-label={"Nível " + purchases.rarity + " de 3"}>{Array.from({ length: 3 }).map((_, i) => <i key={i} className={i < purchases.rarity ? "fractals-shop-pip is-filled" : "fractals-shop-pip"} />)}<span>{purchases.rarity}/3</span></div>
+                          <ShopLevelIndicator current={purchases.rarity} max={3} />
                         </div>
                         <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || purchases.rarity >= 3 || (!isMaster && fractalBalance < FRACTAL_SHOP.rarity[purchases.rarity]?.cost)} onClick={() => void purchaseUpgrade("rarity")}>{purchases.rarity >= 3 ? "MAX" : isMaster ? "GRÁTIS" : FRACTAL_SHOP.rarity[purchases.rarity]?.cost.toLocaleString("pt-BR") + " FR"}</button>
                       </article>
@@ -3943,6 +3943,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                         <div className="min-w-0">
                           <div className="fractals-shop-item__heading"><p className="fractals-shop-item__name">Aceleração 2x</p><ShopInfoButton info={SHOP_ITEM_INFO.speed_2x} onOpen={setShopInfo} /></div>
                           <p className="fractals-shop-item__description">{SHOP_ITEM_INFO.speed_2x.summary}</p>
+                          <ShopLevelIndicator current={purchases.speed_2x ? 1 : 0} max={1} />
                           <span className="fractals-shop-item__status">{purchases.speed_2x ? "Desbloqueado" : "Nível 0/1 · 1.000 FR"}</span>
                         </div>
                         <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || purchases.speed_2x || (!isMaster && fractalBalance < FRACTAL_SHOP.speed.double.cost)} onClick={() => void purchaseUpgrade("speed_2x")}>{purchases.speed_2x ? "ADQUIRIDO" : isMaster ? "GRÁTIS" : "1.000 FR"}</button>
@@ -3953,6 +3954,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                         <div className="min-w-0">
                           <div className="fractals-shop-item__heading"><p className="fractals-shop-item__name">Aceleração 3x</p><ShopInfoButton info={SHOP_ITEM_INFO.speed_3x} onOpen={setShopInfo} /></div>
                           <p className="fractals-shop-item__description">{SHOP_ITEM_INFO.speed_3x.summary}</p>
+                          <ShopLevelIndicator current={purchases.speed_3x ? 1 : 0} max={1} />
                           <span className="fractals-shop-item__status">{purchases.speed_3x ? "Desbloqueado" : purchases.speed_2x ? "Nível 0/1 · 2.000 FR" : "Bloqueado · requer 2x"}</span>
                         </div>
                         <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || purchases.speed_3x || (!isMaster && (!purchases.speed_2x || fractalBalance < FRACTAL_SHOP.speed.triple.cost))} onClick={() => void purchaseUpgrade("speed_3x")}>{purchases.speed_3x ? "ADQUIRIDO" : isMaster ? "GRÁTIS" : "2.000 FR"}</button>
@@ -3963,7 +3965,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                         <div className="min-w-0">
                           <div className="fractals-shop-item__heading"><p className="fractals-shop-item__name">Ruptura Cinética</p><ShopInfoButton info={SHOP_ITEM_INFO.dash} onOpen={setShopInfo} /></div>
                           <p className="fractals-shop-item__description">{SHOP_ITEM_INFO.dash.summary}</p>
-                          <div className="fractals-shop-pips" aria-label={"Nível " + purchases.dash + " de 3"}>{Array.from({ length: 3 }).map((_, i) => <i key={i} className={i < purchases.dash ? "fractals-shop-pip is-filled" : "fractals-shop-pip"} />)}<span>{purchases.dash}/3</span></div>
+                          <ShopLevelIndicator current={purchases.dash} max={3} />
                           <span className="fractals-shop-item__status">{purchases.dash >= 3 ? "Duas investidas liberadas" : purchases.dash >= 2 ? "Impacto durante o dash liberado" : purchases.dash >= 1 ? "Invulnerabilidade durante o dash" : "Disponível"}</span>
                         </div>
                         <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || purchases.dash >= 3 || (!isMaster && fractalBalance < FRACTAL_SHOP.dash[purchases.dash])} onClick={() => void purchaseUpgrade("dash")}>{purchases.dash >= 3 ? "MAX" : isMaster ? "GRÁTIS" : FRACTAL_SHOP.dash[purchases.dash].toLocaleString("pt-BR") + " FR"}</button>
@@ -3971,37 +3973,77 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
 
                       <article className="fractals-shop-item">
                         <div className="fractals-shop-item__slot"><RotateCcw className="h-5 w-5 text-sky-300" /></div>
-                        <div className="min-w-0"><div className="fractals-shop-item__heading"><p className="fractals-shop-item__name">Rerrolagem de Dádivas</p><ShopInfoButton info={SHOP_ITEM_INFO.reroll} onOpen={setShopInfo} /></div><p className="fractals-shop-item__description">{SHOP_ITEM_INFO.reroll.summary}</p><div className="fractals-shop-pips" aria-label={"Nível " + purchases.reroll + " de 10"}>{Array.from({length:10}).map((_,i)=><i key={i} className={i<purchases.reroll?"fractals-shop-pip is-filled":"fractals-shop-pip"}/>)}<span>{purchases.reroll}/10</span></div><span className="fractals-shop-item__status">{unlockedCorruption>=1?"Disponível":"Requer Corrupção 1"}</span></div>
+                        <div className="min-w-0"><div className="fractals-shop-item__heading"><p className="fractals-shop-item__name">Rerrolagem de Dádivas</p><ShopInfoButton info={SHOP_ITEM_INFO.reroll} onOpen={setShopInfo} /></div><p className="fractals-shop-item__description">{SHOP_ITEM_INFO.reroll.summary}</p><ShopLevelIndicator current={purchases.reroll} max={10} /><span className="fractals-shop-item__status">{unlockedCorruption>=1?"Disponível":"Requer Corrupção 1"}</span></div>
                         <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || unlockedCorruption<1 && !isMaster || purchases.reroll>=10 || (!isMaster && fractalBalance<FRACTAL_SHOP.reroll[purchases.reroll])} onClick={()=>void purchaseUpgrade("reroll")}>{purchases.reroll>=10?"MAX":isMaster?"GRÁTIS":FRACTAL_SHOP.reroll[purchases.reroll].toLocaleString("pt-BR")+" FR"}</button>
                       </article>
                       <article className="fractals-shop-item">
                         <div className="fractals-shop-item__slot"><Sparkles className="h-5 w-5 text-amber-300" /></div>
-                        <div className="min-w-0"><div className="fractals-shop-item__heading"><p className="fractals-shop-item__name">Oráculo das Relíquias</p><ShopInfoButton info={SHOP_ITEM_INFO.oracle} onOpen={setShopInfo} /></div><p className="fractals-shop-item__description">{SHOP_ITEM_INFO.oracle.summary}</p><div className="fractals-shop-pips" aria-label={"Nível " + purchases.oracle + " de 10"}>{Array.from({length:10}).map((_,i)=><i key={i} className={i<purchases.oracle?"fractals-shop-pip is-filled":"fractals-shop-pip"}/>)}<span>{purchases.oracle}/10 · {ORACLE_FOURTH_CHOICE_CHANCE[clamp(purchases.oracle,0,10)]}%</span></div><span className="fractals-shop-item__status">{purchases.oracle>=1?"Relíquias de Campo liberadas":unlockedCorruption>=1?"Disponível":"Requer Corrupção 1"}</span></div>
+                        <div className="min-w-0"><div className="fractals-shop-item__heading"><p className="fractals-shop-item__name">Oráculo das Relíquias</p><ShopInfoButton info={SHOP_ITEM_INFO.oracle} onOpen={setShopInfo} /></div><p className="fractals-shop-item__description">{SHOP_ITEM_INFO.oracle.summary}</p><ShopLevelIndicator current={purchases.oracle} max={10} label={`${ORACLE_FOURTH_CHOICE_CHANCE[clamp(purchases.oracle,0,10)]}%`} /><span className="fractals-shop-item__status">{purchases.oracle>=1?"Relíquias de Campo liberadas":unlockedCorruption>=1?"Disponível":"Requer Corrupção 1"}</span></div>
                         <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || unlockedCorruption<1 && !isMaster || purchases.oracle>=10 || (!isMaster && fractalBalance<FRACTAL_SHOP.oracle[purchases.oracle])} onClick={()=>void purchaseUpgrade("oracle")}>{purchases.oracle>=10?"MAX":isMaster?"GRÁTIS":FRACTAL_SHOP.oracle[purchases.oracle].toLocaleString("pt-BR")+" FR"}</button>
                       </article>
                       <article className="fractals-shop-item">
                         <div className="fractals-shop-item__slot"><Ban className="h-5 w-5 text-rose-300" /></div>
-                        <div className="min-w-0"><div className="fractals-shop-item__heading"><p className="fractals-shop-item__name">Selo do Exílio</p><ShopInfoButton info={SHOP_ITEM_INFO.banish} onOpen={setShopInfo} /></div><p className="fractals-shop-item__description">{SHOP_ITEM_INFO.banish.summary}</p><div className="fractals-shop-pips" aria-label={"Nível " + purchases.banish + " de 5"}>{Array.from({length:5}).map((_,i)=><i key={i} className={i<purchases.banish?"fractals-shop-pip is-filled":"fractals-shop-pip"}/>)}<span>{purchases.banish}/5</span></div></div>
+                        <div className="min-w-0"><div className="fractals-shop-item__heading"><p className="fractals-shop-item__name">Selo do Exílio</p><ShopInfoButton info={SHOP_ITEM_INFO.banish} onOpen={setShopInfo} /></div><p className="fractals-shop-item__description">{SHOP_ITEM_INFO.banish.summary}</p><ShopLevelIndicator current={purchases.banish} max={5} /></div>
                         <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || purchases.banish>=5 || (!isMaster && fractalBalance<FRACTAL_SHOP.banish[purchases.banish])} onClick={()=>void purchaseUpgrade("banish")}>{purchases.banish>=5?"MAX":isMaster?"GRÁTIS":FRACTAL_SHOP.banish[purchases.banish].toLocaleString("pt-BR")+" FR"}</button>
                       </article>
                       <article className="fractals-shop-item">
                         <div className="fractals-shop-item__slot"><Clover className="h-5 w-5 text-emerald-300" /></div>
-                        <div className="min-w-0"><div className="fractals-shop-item__heading"><p className="fractals-shop-item__name">Fortuna Fractal</p><ShopInfoButton info={SHOP_ITEM_INFO.fortune} onOpen={setShopInfo} /></div><p className="fractals-shop-item__description">{SHOP_ITEM_INFO.fortune.summary}</p><div className="fractals-shop-pips" aria-label={"Nível " + purchases.fortune + " de 5"}>{Array.from({length:5}).map((_,i)=><i key={i} className={i<purchases.fortune?"fractals-shop-pip is-filled":"fractals-shop-pip"}/>)}<span>{purchases.fortune}/5 · +{purchases.fortune*10}%</span></div><span className="fractals-shop-item__status">{unlockedCorruption>=2?"Disponível":"Requer Corrupção 2"}</span></div>
+                        <div className="min-w-0"><div className="fractals-shop-item__heading"><p className="fractals-shop-item__name">Fortuna Fractal</p><ShopInfoButton info={SHOP_ITEM_INFO.fortune} onOpen={setShopInfo} /></div><p className="fractals-shop-item__description">{SHOP_ITEM_INFO.fortune.summary}</p><ShopLevelIndicator current={purchases.fortune} max={5} label={`+${purchases.fortune*10}%`} /><span className="fractals-shop-item__status">{unlockedCorruption>=2?"Disponível":"Requer Corrupção 2"}</span></div>
                         <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || unlockedCorruption<2 && !isMaster || purchases.fortune>=5 || (!isMaster && fractalBalance<FRACTAL_SHOP.fortune[purchases.fortune])} onClick={()=>void purchaseUpgrade("fortune")}>{purchases.fortune>=5?"MAX":isMaster?"GRÁTIS":FRACTAL_SHOP.fortune[purchases.fortune].toLocaleString("pt-BR")+" FR"}</button>
                       </article>
                       <article className="fractals-shop-item">
                         <div className="fractals-shop-item__slot"><Dna className="h-5 w-5 text-fuchsia-300" /></div>
-                        <div className="min-w-0"><div className="fractals-shop-item__heading"><p className="fractals-shop-item__name">Transmutação Rúnica</p><ShopInfoButton info={SHOP_ITEM_INFO.transmutation} onOpen={setShopInfo} /></div><p className="fractals-shop-item__description">{SHOP_ITEM_INFO.transmutation.summary}</p><div className="fractals-shop-pips" aria-label={"Nível " + purchases.transmutation + " de 3"}>{Array.from({length:3}).map((_,i)=><i key={i} className={i<purchases.transmutation?"fractals-shop-pip is-filled":"fractals-shop-pip"}/>)}<span>{[0,3,6,10][purchases.transmutation]}%</span></div><span className="fractals-shop-item__status">{unlockedCorruption>=3?"Disponível":"Requer Corrupção 3"}</span></div>
+                        <div className="min-w-0"><div className="fractals-shop-item__heading"><p className="fractals-shop-item__name">Transmutação Rúnica</p><ShopInfoButton info={SHOP_ITEM_INFO.transmutation} onOpen={setShopInfo} /></div><p className="fractals-shop-item__description">{SHOP_ITEM_INFO.transmutation.summary}</p><ShopLevelIndicator current={purchases.transmutation} max={3} label={`${[0,3,6,10][purchases.transmutation]}%`} /><span className="fractals-shop-item__status">{unlockedCorruption>=3?"Disponível":"Requer Corrupção 3"}</span></div>
                         <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || unlockedCorruption<3 && !isMaster || purchases.transmutation>=3 || (!isMaster && fractalBalance<FRACTAL_SHOP.transmutation[purchases.transmutation])} onClick={()=>void purchaseUpgrade("transmutation")}>{purchases.transmutation>=3?"MAX":isMaster?"GRÁTIS":FRACTAL_SHOP.transmutation[purchases.transmutation].toLocaleString("pt-BR")+" FR"}</button>
                       </article>
                       <article className="fractals-shop-item">
                         <div className="fractals-shop-item__slot"><Heart className="h-5 w-5 text-rose-300" /></div>
-                        <div className="min-w-0"><div className="fractals-shop-item__heading"><p className="fractals-shop-item__name">Âncora da Alma</p><ShopInfoButton info={SHOP_ITEM_INFO.anchor_soul} onOpen={setShopInfo} /></div><p className="fractals-shop-item__description">{SHOP_ITEM_INFO.anchor_soul.summary}</p><div className="fractals-shop-pips" aria-label={"Nível " + purchases.anchor_soul + " de 3"}>{Array.from({length:3}).map((_,i)=><i key={i} className={i<purchases.anchor_soul?"fractals-shop-pip is-filled":"fractals-shop-pip"}/>)}<span>{purchases.anchor_soul}/3</span></div><span className="fractals-shop-item__status">{purchases.anchor_soul>=3?"Explosão da segunda Âncora liberada":purchases.anchor_soul>=2?"Recuperação reforçada liberada":purchases.anchor_soul>=1?"Ressurreição liberada":unlockedCorruption>=2?"Disponível":"Requer Corrupção 2"}</span></div>
+                        <div className="min-w-0"><div className="fractals-shop-item__heading"><p className="fractals-shop-item__name">Âncora da Alma</p><ShopInfoButton info={SHOP_ITEM_INFO.anchor_soul} onOpen={setShopInfo} /></div><p className="fractals-shop-item__description">{SHOP_ITEM_INFO.anchor_soul.summary}</p><ShopLevelIndicator current={purchases.anchor_soul} max={3} /><span className="fractals-shop-item__status">{purchases.anchor_soul>=3?"Explosão da segunda Âncora liberada":purchases.anchor_soul>=2?"Recuperação reforçada liberada":purchases.anchor_soul>=1?"Ressurreição liberada":unlockedCorruption>=2?"Disponível":"Requer Corrupção 2"}</span></div>
                         <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || purchases.anchor_soul>=3 || unlockedCorruption<2 && !isMaster || (!isMaster && fractalBalance<Number(FRACTAL_SHOP.anchor_soul[purchases.anchor_soul] ?? 0))} onClick={()=>void purchaseUpgrade("anchor_soul")}>{purchases.anchor_soul>=3?"MAX":isMaster?"GRÁTIS":Number(FRACTAL_SHOP.anchor_soul[purchases.anchor_soul] ?? 0).toLocaleString("pt-BR")+" FR"}</button>
                       </article>
+                                            <article className="fractals-shop-item">
+                        <div className="fractals-shop-item__slot"><Sparkles className="h-5 w-5 text-sky-300" /></div>
+                        <div className="min-w-0">
+                          <div className="fractals-shop-item__heading"><p className="fractals-shop-item__name">Erudição das Fendas</p><ShopInfoButton info={SHOP_ITEM_INFO.extra_xp} onOpen={setShopInfo} /></div>
+                          <p className="fractals-shop-item__description">{SHOP_ITEM_INFO.extra_xp.summary}</p>
+                          <ShopLevelIndicator current={purchases.extra_xp} max={10} label={`+${purchases.extra_xp * 10}% XP`} />
+                          <span className="fractals-shop-item__status">{unlockedCorruption >= 1 ? "Disponível" : "Requer Corrupção 1"}</span>
+                        </div>
+                        <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || (unlockedCorruption < 1 && !isMaster) || purchases.extra_xp >= 10 || (!isMaster && fractalBalance < FRACTAL_SHOP.extra_xp[purchases.extra_xp]?.cost)} onClick={() => void purchaseUpgrade("extra_xp")}>{purchases.extra_xp >= 10 ? "MAX" : isMaster ? "GRÁTIS" : FRACTAL_SHOP.extra_xp[purchases.extra_xp]?.cost.toLocaleString("pt-BR") + " FR"}</button>
+                      </article>
                       <article className="fractals-shop-item">
+                        <div className="fractals-shop-item__slot"><Target className="h-5 w-5 text-amber-300" /></div>
+                        <div className="min-w-0">
+                          <div className="fractals-shop-item__heading"><p className="fractals-shop-item__name">Foco do Vazio</p><ShopInfoButton info={SHOP_ITEM_INFO.crit_chance} onOpen={setShopInfo} /></div>
+                          <p className="fractals-shop-item__description">{SHOP_ITEM_INFO.crit_chance.summary}</p>
+                          <ShopLevelIndicator current={purchases.crit_chance} max={20} label={`+${purchases.crit_chance}% CRÍT`} />
+                          <span className="fractals-shop-item__status">{unlockedCorruption >= 3 ? "Disponível" : "Requer Corrupção 3"}</span>
+                        </div>
+                        <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || (unlockedCorruption < 3 && !isMaster) || purchases.crit_chance >= 20 || (!isMaster && fractalBalance < FRACTAL_SHOP.crit_chance[purchases.crit_chance]?.cost)} onClick={() => void purchaseUpgrade("crit_chance")}>{purchases.crit_chance >= 20 ? "MAX" : isMaster ? "GRÁTIS" : FRACTAL_SHOP.crit_chance[purchases.crit_chance]?.cost.toLocaleString("pt-BR") + " FR"}</button>
+                      </article>
+                      <article className="fractals-shop-item">
+                        <div className="fractals-shop-item__slot"><Swords className="h-5 w-5 text-rose-300" /></div>
+                        <div className="min-w-0">
+                          <div className="fractals-shop-item__heading"><p className="fractals-shop-item__name">Golpe Letal</p><ShopInfoButton info={SHOP_ITEM_INFO.crit_damage} onOpen={setShopInfo} /></div>
+                          <p className="fractals-shop-item__description">{SHOP_ITEM_INFO.crit_damage.summary}</p>
+                          <ShopLevelIndicator current={purchases.crit_damage} max={20} label={`×${(2 + purchases.crit_damage * 0.05).toFixed(2)} DANO`} />
+                          <span className="fractals-shop-item__status">{unlockedCorruption >= 3 ? "Disponível" : "Requer Corrupção 3"}</span>
+                        </div>
+                        <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || (unlockedCorruption < 3 && !isMaster) || purchases.crit_damage >= 20 || (!isMaster && fractalBalance < FRACTAL_SHOP.crit_damage[purchases.crit_damage]?.cost)} onClick={() => void purchaseUpgrade("crit_damage")}>{purchases.crit_damage >= 20 ? "MAX" : isMaster ? "GRÁTIS" : FRACTAL_SHOP.crit_damage[purchases.crit_damage]?.cost.toLocaleString("pt-BR") + " FR"}</button>
+                      </article>
+                      <article className="fractals-shop-item">
+                        <div className="fractals-shop-item__slot"><Clover className="h-5 w-5 text-emerald-300" /></div>
+                        <div className="min-w-0">
+                          <div className="fractals-shop-item__heading"><p className="fractals-shop-item__name">Pacto da Ganância</p><ShopInfoButton info={SHOP_ITEM_INFO.greed_pact} onOpen={setShopInfo} /></div>
+                          <p className="fractals-shop-item__description">{SHOP_ITEM_INFO.greed_pact.summary}</p>
+                          <ShopLevelIndicator current={purchases.greed_pact} max={5} label={`+${purchases.greed_pact * 5 * corruption}%`} />
+                          <span className="fractals-shop-item__status">{unlockedCorruption >= 2 ? "Disponível" : "Requer Corrupção 2"}</span>
+                        </div>
+                        <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || (unlockedCorruption < 2 && !isMaster) || purchases.greed_pact >= 5 || (!isMaster && fractalBalance < FRACTAL_SHOP.greed_pact[purchases.greed_pact]?.cost)} onClick={() => void purchaseUpgrade("greed_pact")}>{purchases.greed_pact >= 5 ? "MAX" : isMaster ? "GRÁTIS" : FRACTAL_SHOP.greed_pact[purchases.greed_pact]?.cost.toLocaleString("pt-BR") + " FR"}</button>
+                      </article>
+<article className="fractals-shop-item">
                         <div className="fractals-shop-item__slot"><BookOpen className="h-5 w-5 text-fuchsia-300" /></div>
-                        <div className="min-w-0"><div className="fractals-shop-item__heading"><p className="fractals-shop-item__name">Arquivo dos Presságios</p><ShopInfoButton info={SHOP_ITEM_INFO.omen_archive} onOpen={setShopInfo} /></div><p className="fractals-shop-item__description">{SHOP_ITEM_INFO.omen_archive.summary}</p><span className="fractals-shop-item__status">{purchases.omen_archive?"Arquivo desbloqueado":unlockedCorruption>=4?"Requer Corrupção 4":"Requer Corrupção 4"}</span></div>
+                        <div className="min-w-0"><div className="fractals-shop-item__heading"><p className="fractals-shop-item__name">Arquivo dos Presságios</p><ShopInfoButton info={SHOP_ITEM_INFO.omen_archive} onOpen={setShopInfo} /></div><p className="fractals-shop-item__description">{SHOP_ITEM_INFO.omen_archive.summary}</p><ShopLevelIndicator current={purchases.omen_archive ? 1 : 0} max={1} /><span className="fractals-shop-item__status">{purchases.omen_archive?"Arquivo desbloqueado":unlockedCorruption>=4?"Requer Corrupção 4":"Requer Corrupção 4"}</span></div>
                         <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || purchases.omen_archive || unlockedCorruption<4 && !isMaster || (!isMaster && fractalBalance<FRACTAL_SHOP.omen_archive)} onClick={()=>void purchaseUpgrade("omen_archive")}>{purchases.omen_archive?"ADQUIRIDO":isMaster?"GRÁTIS":FRACTAL_SHOP.omen_archive.toLocaleString("pt-BR")+" FR"}</button>
                       </article>
 
@@ -4048,7 +4090,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                         <div className="min-w-0">
                           <div className="fractals-shop-item__heading"><p className="fractals-shop-item__name">Vórtice Coletor</p><ShopInfoButton info={SHOP_ITEM_INFO.area} onOpen={setShopInfo} /></div>
                           <p className="fractals-shop-item__description">{SHOP_ITEM_INFO.area.summary}</p>
-                          <div className="fractals-shop-pips" aria-label={"Nível " + purchases.area + " de 4"}>{Array.from({ length: 4 }).map((_, i) => <i key={i} className={i < purchases.area ? "fractals-shop-pip is-filled" : "fractals-shop-pip"} />)}<span>{purchases.area}/4</span></div>
+                          <ShopLevelIndicator current={purchases.area} max={4} />
                         </div>
                         <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || purchases.area >= 4 || (!isMaster && fractalBalance < FRACTAL_SHOP.area[purchases.area]?.cost)} onClick={() => void purchaseUpgrade("area")}>{purchases.area >= 4 ? "MAX" : isMaster ? "GRÁTIS" : FRACTAL_SHOP.area[purchases.area]?.cost.toLocaleString("pt-BR") + " FR"}</button>
                       </article>
@@ -4058,7 +4100,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                         <div className="min-w-0">
                           <div className="fractals-shop-item__heading"><p className="fractals-shop-item__name">Afinidade de XP</p><ShopInfoButton info={SHOP_ITEM_INFO.experience} onOpen={setShopInfo} /></div>
                           <p className="fractals-shop-item__description">{SHOP_ITEM_INFO.experience.summary}</p>
-                          <div className="fractals-shop-pips" aria-label={"Nível " + purchases.experience + " de 4"}>{Array.from({ length: 4 }).map((_, i) => <i key={i} className={i < purchases.experience ? "fractals-shop-pip is-filled" : "fractals-shop-pip"} />)}<span>{purchases.experience}/4</span></div>
+                          <ShopLevelIndicator current={purchases.experience} max={4} />
                         </div>
                         <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || purchases.experience >= 4 || (!isMaster && fractalBalance < FRACTAL_SHOP.experience[purchases.experience]?.cost)} onClick={() => void purchaseUpgrade("experience")}>{purchases.experience >= 4 ? "MAX" : isMaster ? "GRÁTIS" : FRACTAL_SHOP.experience[purchases.experience]?.cost.toLocaleString("pt-BR") + " FR"}</button>
                       </article>
@@ -4068,7 +4110,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                         <div className="min-w-0">
                           <div className="fractals-shop-item__heading"><p className="fractals-shop-item__name">Alcance Arcano</p><ShopInfoButton info={SHOP_ITEM_INFO.projectile_range} onOpen={setShopInfo} /></div>
                           <p className="fractals-shop-item__description">{SHOP_ITEM_INFO.projectile_range.summary}</p>
-                          <div className="fractals-shop-pips" aria-label={"Nível " + purchases.projectile_range + " de 4"}>{Array.from({ length: 4 }).map((_, i) => <i key={i} className={i < purchases.projectile_range ? "fractals-shop-pip is-filled" : "fractals-shop-pip"} />)}<span>{purchases.projectile_range}/4</span></div>
+                          <ShopLevelIndicator current={purchases.projectile_range} max={4} />
                         </div>
                         <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || purchases.projectile_range >= 4 || (!isMaster && fractalBalance < FRACTAL_SHOP.projectile_range[purchases.projectile_range]?.cost)} onClick={() => void purchaseUpgrade("projectile_range")}>{purchases.projectile_range >= 4 ? "MAX" : isMaster ? "GRÁTIS" : FRACTAL_SHOP.projectile_range[purchases.projectile_range]?.cost.toLocaleString("pt-BR") + " FR"}</button>
                       </article>
@@ -4078,7 +4120,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                         <div className="min-w-0">
                           <div className="fractals-shop-item__heading"><p className="fractals-shop-item__name">Coroa de Estilhaços</p><ShopInfoButton info={SHOP_ITEM_INFO.projectiles} onOpen={setShopInfo} /></div>
                           <p className="fractals-shop-item__description">{SHOP_ITEM_INFO.projectiles.summary}</p>
-                          <div className="fractals-shop-pips" aria-label={"Nível " + purchases.projectiles + " de 4"}>{Array.from({ length: 4 }).map((_, i) => <i key={i} className={i < purchases.projectiles ? "fractals-shop-pip is-filled" : "fractals-shop-pip"} />)}<span>{purchases.projectiles}/4</span></div>
+                          <ShopLevelIndicator current={purchases.projectiles} max={4} />
                         </div>
                         <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || purchases.projectiles >= 4 || (!isMaster && fractalBalance < FRACTAL_SHOP.projectiles[purchases.projectiles]?.cost)} onClick={() => void purchaseUpgrade("projectiles")}>{purchases.projectiles >= 4 ? "MAX" : isMaster ? "GRÁTIS" : FRACTAL_SHOP.projectiles[purchases.projectiles]?.cost.toLocaleString("pt-BR") + " FR"}</button>
                       </article>
@@ -4087,7 +4129,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                         <div className="min-w-0">
                           <div className="fractals-shop-item__heading"><p className="fractals-shop-item__name">Ricochete Arcano</p><ShopInfoButton info={SHOP_ITEM_INFO.ricochet} onOpen={setShopInfo} /></div>
                           <p className="fractals-shop-item__description">{SHOP_ITEM_INFO.ricochet.summary}</p>
-                          <div className="fractals-shop-pips" aria-label={"Nível " + purchases.ricochet + " de 3"}>{Array.from({ length: 3 }).map((_, i) => <i key={i} className={i < purchases.ricochet ? "fractals-shop-pip is-filled" : "fractals-shop-pip"} />)}<span>{purchases.ricochet}/3</span></div>
+                          <ShopLevelIndicator current={purchases.ricochet} max={3} />
                         </div>
                         <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || purchases.ricochet >= 3 || (!isMaster && fractalBalance < FRACTAL_SHOP.ricochet[purchases.ricochet]?.cost)} onClick={() => void purchaseUpgrade("ricochet")}>{purchases.ricochet >= 3 ? "MAX" : isMaster ? "GRÁTIS" : FRACTAL_SHOP.ricochet[purchases.ricochet]?.cost.toLocaleString("pt-BR") + " FR"}</button>
                       </article>
@@ -4096,7 +4138,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                         <div className="min-w-0">
                           <div className="fractals-shop-item__heading"><p className="fractals-shop-item__name">Perfuração Espectral</p><ShopInfoButton info={SHOP_ITEM_INFO.piercing} onOpen={setShopInfo} /></div>
                           <p className="fractals-shop-item__description">{SHOP_ITEM_INFO.piercing.summary}</p>
-                          <div className="fractals-shop-pips" aria-label={"Nível " + purchases.piercing + " de 3"}>{Array.from({ length: 3 }).map((_, i) => <i key={i} className={i < purchases.piercing ? "fractals-shop-pip is-filled" : "fractals-shop-pip"} />)}<span>{purchases.piercing}/3</span></div>
+                          <ShopLevelIndicator current={purchases.piercing} max={3} />
                         </div>
                         <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || purchases.piercing >= 3 || (!isMaster && fractalBalance < FRACTAL_SHOP.piercing[purchases.piercing]?.cost)} onClick={() => void purchaseUpgrade("piercing")}>{purchases.piercing >= 3 ? "MAX" : isMaster ? "GRÁTIS" : FRACTAL_SHOP.piercing[purchases.piercing]?.cost.toLocaleString("pt-BR") + " FR"}</button>
                       </article>
@@ -4105,11 +4147,21 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                         <div className="min-w-0">
                           <div className="fractals-shop-item__heading"><p className="fractals-shop-item__name">Descarga em Cadeia</p><ShopInfoButton info={SHOP_ITEM_INFO.chain_lightning} onOpen={setShopInfo} /></div>
                           <p className="fractals-shop-item__description">{SHOP_ITEM_INFO.chain_lightning.summary}</p>
-                          <div className="fractals-shop-pips" aria-label={"Nível " + purchases.chain_lightning + " de 3"}>{Array.from({ length: 3 }).map((_, i) => <i key={i} className={i < purchases.chain_lightning ? "fractals-shop-pip is-filled" : "fractals-shop-pip"} />)}<span>{purchases.chain_lightning}/3</span></div>
+                          <ShopLevelIndicator current={purchases.chain_lightning} max={3} />
                         </div>
                         <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || purchases.chain_lightning >= 3 || (!isMaster && fractalBalance < FRACTAL_SHOP.chain_lightning[purchases.chain_lightning]?.cost)} onClick={() => void purchaseUpgrade("chain_lightning")}>{purchases.chain_lightning >= 3 ? "MAX" : isMaster ? "GRÁTIS" : FRACTAL_SHOP.chain_lightning[purchases.chain_lightning]?.cost.toLocaleString("pt-BR") + " FR"}</button>
                       </article>
-                    </div>
+                                          <article className="fractals-shop-item">
+                        <div className="fractals-shop-item__slot"><Target className="h-5 w-5 text-rose-300" /></div>
+                        <div className="min-w-0">
+                          <div className="fractals-shop-item__heading"><p className="fractals-shop-item__name">Olho do Predador</p><ShopInfoButton info={SHOP_ITEM_INFO.crit_relic} onOpen={setShopInfo} /></div>
+                          <p className="fractals-shop-item__description">{SHOP_ITEM_INFO.crit_relic.summary}</p>
+                          <ShopLevelIndicator current={purchases.crit_relic} max={3} />
+                          <span className="fractals-shop-item__status">{unlockedCorruption >= 1 ? "Relíquia crítica liberada" : "Requer Corrupção 1"} · {gameRef.current?.player.specialCritStacks ?? 0}/20 cargas na partida atual</span>
+                        </div>
+                        <button type="button" className="fractals-shop-buy-btn" disabled={shopBusy || (unlockedCorruption < 1 && !isMaster) || purchases.crit_relic >= 3 || (!isMaster && fractalBalance < FRACTAL_SHOP.crit_relic[purchases.crit_relic]?.cost)} onClick={() => void purchaseUpgrade("crit_relic")}>{purchases.crit_relic >= 3 ? "MAX" : isMaster ? "GRÁTIS" : FRACTAL_SHOP.crit_relic[purchases.crit_relic]?.cost.toLocaleString("pt-BR") + " FR"}</button>
+                      </article>
+</div>
                   )}
                 </div>
               )}
