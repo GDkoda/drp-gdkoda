@@ -50,7 +50,7 @@ type Shot = {
   kind?: ShotKind; radius?: number; maxLife?: number; angle?: number; arcSpan?: number;
   bladeIndex?: number; totalBlades?: number; pulseTimer?: number; hasDetonated?: boolean;
   isAura?: boolean; active?: boolean;
-  phase?: "outbound" | "spin" | "return"; travelled?: number; maxDistance?: number; spinTimer?: number; rotation?: number;
+  phase?: "outbound" | "spin" | "return"; travelled?: number; maxDistance?: number; spinTimer?: number; rotation?: number; trailTimer?: number;
 };
 type Gem = { x: number; y: number; value: number; radius: number; previousX?: number; previousY?: number; runeCrystal?: boolean };
 type SpecialDrop = { x: number; y: number; kind: "area" | "experience" | "projectile_range" | "projectiles" | "ricochet" | "piercing" | "chain_lightning" | "crit" | "food" | "void"; radius: number };
@@ -416,7 +416,7 @@ const SPECIAL_UPGRADES: Upgrade[] = [
   { id: "special_projectiles", name: "Coroa de Estilhaços", description: "Adapta-se à arma: +1 bala/orbe/lâmina/totem; +12% de dano para Foice e Bumerangue; +1 mina ativa para o Semeador; o Grilhão recebe +6% de raio (máx. 2).", icon: Swords },
   { id: "special_ricochet", name: "Ricochete Instável", description: "Revólver e Núcleo ganham +1 ricochete por nível (máx. 3).", icon: Orbit },
   { id: "special_piercing", name: "Perfuração Espectral", description: "Revólver e Núcleo atravessam +1 inimigo por nível (máx. 3).", icon: Target },
-  { id: "special_chain_lightning", name: "Descarga em Cadeia", description: "Impactos do Revólver e do Núcleo saltam para +1 alvo por nível (máx. 3).", icon: Zap },
+  { id: "special_chain_lightning", name: "Descarga em Cadeia", description: "Impactos do Revólver, Núcleo e Bumerangue saltam para +1 alvo por nível (máx. 3).", icon: Zap },
   { id: "special_crit", name: "Olho do Predador", description: "+1% de chance crítica por coleta, até 20 acúmulos.", icon: Target },
 ];
 
@@ -1095,8 +1095,8 @@ function getEquippedWeaponStrikeDamage(game: GameState): number {
     : game.weaponId === "gravity_shackle" ? (game.evolved ? 0.75 : 0.5625)
     : game.weaponId === "rune_sentinels" ? (game.evolved ? 0.75 : 0.55)
     : game.weaponId === "void_revolver" && game.evolved ? 0.85
-    : game.weaponId === "fractal_boomerang" ? (game.evolved ? 0.42 : 0.52)
-    : game.weaponId === "rift_seeder" ? (game.evolved ? 0.68 : 1.22)
+    : game.weaponId === "fractal_boomerang" ? (game.evolved ? 0.38 : 0.58)
+    : game.weaponId === "rift_seeder" ? (game.evolved ? 0.90 : 1.90)
     : 1;
   return Math.max(1, Math.round(game.player.damage * weaponPower * weaponMultiplier));
 }
@@ -3054,7 +3054,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             // Projéteis extras ampliam a cobertura, mas dividem o orçamento de dano do disparo.
             const count = 1 + Math.min(2, game.player.projectileStacks);
             const range = 238 * game.player.projectileRangeMultiplier;
-            const damagePerBlade = weaponDamage * (game.evolved ? 0.42 : 0.52)
+            const damagePerBlade = weaponDamage * (game.evolved ? 0.38 : 0.58)
               * (1 + game.player.projectileStacks * 0.12) / count;
             for (let index = 0; index < count && game.shots.length < 80; index++) {
               const spread = (index - (count - 1) / 2) * 0.12;
@@ -3081,7 +3081,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             const centerX = center.x, centerY = center.y;
             const blastScale = (1 + game.player.specialAreaStacks * 0.10) * game.player.projectileRangeMultiplier;
             const blastRadius = (game.evolved ? 84 : 76) * blastScale;
-            const mineDamage = weaponDamage * (game.evolved ? 0.68 : 1.22);
+            const mineDamage = weaponDamage * (game.evolved ? 0.90 : 1.90);
             const points = game.evolved
               ? [
                   { x: centerX + Math.cos(baseAngle + Math.PI / 2) * 76, y: centerY + Math.sin(baseAngle + Math.PI / 2) * 76 },
@@ -3108,6 +3108,12 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                 life: game.evolved ? 9 : 8, armTimer: 0.55, detonateTimer: 0, blastRadius,
                 triggerRadius: (game.evolved ? 54 : 48) * blastScale, damage: mineDamage, triggered: false,
               });
+              (game.rings ??= []).push({ x: position.x, y: position.y, r: 3, max: 32, life: 0.42, color: "#a78bfa" });
+              if (game.particles.length < 126) for (let particle = 0; particle < 5; particle++) {
+                const particleAngle = particle / 5 * Math.PI * 2, particleSpeed = 36 + particle * 7;
+                game.particles.push({ x: position.x, y: position.y, vx: Math.cos(particleAngle) * particleSpeed,
+                  vy: Math.sin(particleAngle) * particleSpeed, life: 0.22, color: particle % 2 ? "#c4b5fd" : "#67e8f9" });
+              }
             }
             game.player.castFacing = directionFromVector(target.x - game.player.x, target.y - game.player.y);
             game.player.castTimer = 0.24;
@@ -3168,6 +3174,15 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           if (shot.kind === "fractal_boomerang") {
             const speed = Math.max(1, Math.hypot(shot.vx, shot.vy));
             shot.rotation = (shot.rotation ?? shot.angle ?? 0) + dt * (shot.phase === "spin" ? 25 : 13);
+            shot.trailTimer = (shot.trailTimer ?? 0) - dt;
+            if (shot.trailTimer <= 0) {
+              shot.trailTimer = 0.045;
+              if (game.particles.length < 128) {
+                const trailAngle = Math.atan2(shot.vy, shot.vx) + Math.PI;
+                const trailColor = shot.phase === "return" ? "#67e8f9" : game.evolved ? "#e879f9" : "#c4b5fd";
+                game.particles.push({ x: shot.x, y: shot.y, vx: Math.cos(trailAngle) * 34, vy: Math.sin(trailAngle) * 34, life: 0.17, color: trailColor });
+              }
+            }
             if (shot.phase === "outbound") {
               shot.x += shot.vx * dt; shot.y += shot.vy * dt;
               shot.travelled = (shot.travelled ?? 0) + speed * dt;

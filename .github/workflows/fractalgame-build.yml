@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - FractalGame
+      - Fractal-armas-novas
   workflow_dispatch:
 
 permissions:

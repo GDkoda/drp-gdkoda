@@ -346,48 +346,48 @@ after update of status on public.fractal_runs
 for each row
 execute function public.unlock_new_fractal_weapon_mastery();
 
--- Inicializa somente chaves ausentes, preservando todo o progresso já gravado.
+-- Inicializa somente chaves ausentes em uma única passagem, preservando progresso existente.
 update public.fractal_player_state
 set purchased_upgrades =
-  case
-    when purchased_upgrades ? 'weapon_boomerang'
-      then purchased_upgrades
-      else pg_catalog.jsonb_set(coalesce(purchased_upgrades, '{}'::jsonb), '{weapon_boomerang}', 'false'::jsonb, true)
-  end;
-update public.fractal_player_state
-set purchased_upgrades =
-  case
-    when purchased_upgrades ? 'weapon_rift_seeder'
-      then purchased_upgrades
-      else pg_catalog.jsonb_set(coalesce(purchased_upgrades, '{}'::jsonb), '{weapon_rift_seeder}', 'false'::jsonb, true)
-  end;
-update public.fractal_player_state
-set purchased_upgrades =
-  case
-    when purchased_upgrades ? 'mastery_boomerang'
-      then purchased_upgrades
-      else pg_catalog.jsonb_set(coalesce(purchased_upgrades, '{}'::jsonb), '{mastery_boomerang}', 'false'::jsonb, true)
-  end;
-update public.fractal_player_state
-set purchased_upgrades =
-  case
-    when purchased_upgrades ? 'mastery_rift_seeder'
-      then purchased_upgrades
-      else pg_catalog.jsonb_set(coalesce(purchased_upgrades, '{}'::jsonb), '{mastery_rift_seeder}', 'false'::jsonb, true)
-  end;
-update public.fractal_player_state
-set purchased_upgrades =
-  case
-    when purchased_upgrades ? 'evolution_boomerang'
-      then purchased_upgrades
-      else pg_catalog.jsonb_set(coalesce(purchased_upgrades, '{}'::jsonb), '{evolution_boomerang}', 'false'::jsonb, true)
-  end;
-update public.fractal_player_state
-set purchased_upgrades =
-  case
-    when purchased_upgrades ? 'evolution_rift_seeder'
-      then purchased_upgrades
-      else pg_catalog.jsonb_set(coalesce(purchased_upgrades, '{}'::jsonb), '{evolution_rift_seeder}', 'false'::jsonb, true)
-  end;
+  pg_catalog.jsonb_set(
+    pg_catalog.jsonb_set(
+      pg_catalog.jsonb_set(
+        pg_catalog.jsonb_set(
+          pg_catalog.jsonb_set(
+            pg_catalog.jsonb_set(
+              coalesce(purchased_upgrades, '{}'::jsonb),
+              '{weapon_boomerang}',
+              coalesce(purchased_upgrades -> 'weapon_boomerang', 'false'::jsonb),
+              true
+            ),
+            '{weapon_rift_seeder}',
+            coalesce(purchased_upgrades -> 'weapon_rift_seeder', 'false'::jsonb),
+            true
+          ),
+          '{mastery_boomerang}',
+          coalesce(purchased_upgrades -> 'mastery_boomerang', 'false'::jsonb),
+          true
+        ),
+        '{mastery_rift_seeder}',
+        coalesce(purchased_upgrades -> 'mastery_rift_seeder', 'false'::jsonb),
+        true
+      ),
+      '{evolution_boomerang}',
+      coalesce(purchased_upgrades -> 'evolution_boomerang', 'false'::jsonb),
+      true
+    ),
+    '{evolution_rift_seeder}',
+    coalesce(purchased_upgrades -> 'evolution_rift_seeder', 'false'::jsonb),
+    true
+  )
+where purchased_upgrades is null
+   or not (purchased_upgrades ?& array[
+     'weapon_boomerang',
+     'weapon_rift_seeder',
+     'mastery_boomerang',
+     'mastery_rift_seeder',
+     'evolution_boomerang',
+     'evolution_rift_seeder'
+   ]);
 
 commit;
