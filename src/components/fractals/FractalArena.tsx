@@ -1906,7 +1906,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
     media.addEventListener("change", syncSupport);
     return () => media.removeEventListener("change", syncSupport);
   }, []);
-  const [exchangeAmount, setExchangeAmount] = useState("10");
+  const [exchangeAmount, setExchangeAmount] = useState("1000");
   const [coinBalance, setCoinBalance] = useState(0);
   const [corruption, setCorruption] = useState(0);
   const [running, setRunning] = useState(false);
@@ -1941,6 +1941,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
   const [isMuted, setIsMuted] = useState(() => fractalAudio.isMuted());
   const [earnedFractals, setEarnedFractals] = useState<number | null>(null);
   const [rewardStatus, setRewardStatus] = useState<"pending" | "confirmed" | "error">("pending");
+  const lastRunSettlementRef = useRef<{ runId: string; victory: boolean; gameSeconds: number; kills: number; level: number } | null>(null);
   const [shopBusy, setShopBusy] = useState(false);
   const [shopOpen, setShopOpen] = useState(true);
   const [shopError, setShopError] = useState<string | null>(null);
@@ -2007,8 +2008,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
 
   const exchangeFractals = async () => {
     const amount = Number(exchangeAmount);
-    if (!Number.isInteger(amount) || amount < 10 || amount % 10 !== 0) {
-      toast.error("Escolha uma quantidade em múltiplos de 10 fractais.");
+    if (!Number.isInteger(amount) || amount < 1000 || amount % 1000 !== 0) {
+      toast.error("Escolha uma quantidade em múltiplos de 1.000 fractais.");
       return;
     }
     if (amount > fractalBalance) {
@@ -2022,7 +2023,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
       setFractalBalance(Number(data?.fractals ?? 0));
       setCoinBalance(Number(data?.coins ?? 0));
       await queryClient.invalidateQueries({ queryKey: ["me"] });
-      toast.success(amount.toLocaleString("pt-BR") + " fractais convertidos em " + (amount / 10).toLocaleString("pt-BR") + " moedas.");
+      toast.success(amount.toLocaleString("pt-BR") + " fractais convertidos em " + (amount / 1000).toLocaleString("pt-BR") + " moedas.");
     } catch (error: any) {
       if (error?.code === "PGRST202") toast.error("Aplique a migração SQL 0007 para habilitar a troca por moedas.");
       else toast.error(error?.message ?? "Não foi possível converter os fractais.");
@@ -2079,24 +2080,31 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
       return;
     }
 
+    const game = gameRef.current;
+    const gameSeconds = Math.round(game?.elapsed ?? 0);
+    const kills = Math.round(game?.kills ?? 0);
+    const level = Math.max(1, Math.round(game?.player.level ?? game?.highestLevel ?? 1));
+
+    lastRunSettlementRef.current = { runId, victory, gameSeconds, kills, level };
+
     setRewardStatus("pending");
     setEarnedFractals(null);
 
-    void (supabase.rpc as any)("finish_fractal_run", { _run_id: runId, _victory: victory })
+    void (supabase.rpc as any)("finish_fractal_run_v2", {
+      _run_id: runId,
+      _victory: victory,
+      _game_seconds: gameSeconds,
+      _kills: kills,
+      _level: level,
+    })
       .then(({ data, error }: any) => {
         if (error) {
           setRewardStatus("error");
-          toast.error(error.message);
+          toast.error(error.message || "Erro ao validar recompensas com o servidor.");
           return;
         }
 
-        if (data?.earnedFractals === undefined) {
-          setRewardStatus("error");
-          toast.error("Aplique a migração 0008 para ativar a economia de recompensas dos Fractais.");
-          return;
-        }
-
-        const earned = Number(data.earnedFractals ?? 0);
+        const earned = Number(data?.earnedFractals ?? 0);
         const safeEarned = Number.isFinite(earned) ? Math.max(0, earned) : 0;
         setEarnedFractals(safeEarned);
         setRewardStatus("confirmed");
@@ -2119,6 +2127,37 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         toast.error(error instanceof Error ? error.message : "Não foi possível validar as recompensas.");
       });
   }, [runId]);
+
+  const retrySettleRun = useCallback(() => {
+    const payload = lastRunSettlementRef.current;
+    if (!payload) return;
+    setRewardStatus("pending");
+    void (supabase.rpc as any)("finish_fractal_run_v2", {
+      _run_id: payload.runId,
+      _victory: payload.victory,
+      _game_seconds: payload.gameSeconds,
+      _kills: payload.kills,
+      _level: payload.level,
+    })
+      .then(({ data, error }: any) => {
+        if (error) {
+          setRewardStatus("error");
+          toast.error(error.message);
+          return;
+        }
+        const earned = Number(data?.earnedFractals ?? 0);
+        setEarnedFractals(Number.isFinite(earned) ? Math.max(0, earned) : 0);
+        setRewardStatus("confirmed");
+        setFractalBalance(Number(data?.fractals ?? 0));
+        setCoinBalance(Number(data?.coins ?? 0));
+        setPurchases(parsePurchaseState(data?.purchasedUpgrades));
+        toast.success("Recompensas validadas com sucesso!");
+      })
+      .catch((err: any) => {
+        setRewardStatus("error");
+        toast.error(err?.message ?? "Falha ao tentar novamente.");
+      });
+  }, []);
 
   const chooseUpgrade = useCallback((upgrade: Upgrade) => {
     setSelectedUpgrade(null);
@@ -3516,7 +3555,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
     const key = WEAPON_CONFIG[weapon].purchaseKey;
     return key === null || Boolean(purchases[key]);
   };
-  const exchangeValid = Number.isInteger(exchangeValue) && exchangeValue >= 10 && exchangeValue % 10 === 0 && exchangeValue <= fractalBalance;
+  const exchangeValid = Number.isInteger(exchangeValue) && exchangeValue >= 1000 && exchangeValue % 1000 === 0 && exchangeValue <= fractalBalance;
   const toggleFullscreen = async () => {
     const target = canvasRef.current?.closest("[data-fractal-arena]") as HTMLElement | null;
     try { if (!document.fullscreenElement) await target?.requestFullscreen(); else await document.exitFullscreen(); } catch { /* Fullscreen may be unavailable in embedded browsers. */ }
@@ -3712,11 +3751,11 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                   <div className="flex flex-col justify-between gap-3 rounded-lg border border-amber-300/25 bg-black/40 p-3 sm:flex-row sm:items-center">
                     <div>
                       <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-amber-200"><Coins className="h-4 w-4 text-amber-300" /> Troca de Moedas</div>
-                      <p className="mt-1 text-xs text-white/65">Converta 10 fractais em 1 moeda de ouro. Saldo: <strong className="text-amber-300">{coinBalance.toLocaleString("pt-BR")} moedas</strong></p>
+                      <p className="mt-1 text-xs text-white/65">Converta 1.000 fractais em 1 moeda de ouro. Saldo: <strong className="text-amber-300">{coinBalance.toLocaleString("pt-BR")} moedas</strong></p>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <input type="number" min={10} max={fractalBalance} step={10} inputMode="numeric" value={exchangeAmount} onChange={(event) => setExchangeAmount(event.target.value)} aria-label="Quantidade de fractais para converter" className="h-9 w-20 rounded border border-amber-300/30 bg-black/60 px-2 text-center text-xs font-bold text-amber-100 focus:outline-none focus:ring-1 focus:ring-amber-300" placeholder="FR" />
-                      <span className="text-xs font-semibold text-amber-200/80">= {Math.floor(Math.max(0, exchangeValue) / 10).toLocaleString("pt-BR")} moedas</span>
+                      <input type="number" min={1000} max={fractalBalance} step={1000} inputMode="numeric" value={exchangeAmount} onChange={(event) => setExchangeAmount(event.target.value)} aria-label="Quantidade de fractais para converter" className="h-9 w-24 rounded border border-amber-300/30 bg-black/60 px-2 text-center text-xs font-bold text-amber-100 focus:outline-none focus:ring-1 focus:ring-amber-300" placeholder="1000" />
+                      <span className="text-xs font-semibold text-amber-200/80">= {Math.floor(Math.max(0, exchangeValue) / 1000).toLocaleString("pt-BR")} moedas</span>
                       <Button size="sm" disabled={shopBusy || !exchangeValid} onClick={() => void exchangeFractals()} className="h-9 border border-amber-300 bg-gradient-to-b from-amber-300 to-amber-500 px-3 text-xs font-black text-black hover:brightness-110">CONVERTER</Button>
                     </div>
                   </div>
@@ -4296,7 +4335,12 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
   <div className="fractals-stat-tile"><Swords/><span>Dano infligido</span><b>{stats.totalDamageDealt.toLocaleString("pt-BR")}</b></div>
   <div className="fractals-stat-tile"><GemIcon/><span>Fragmentos colhidos</span><b>{stats.crystalsCollected.toLocaleString("pt-BR")}</b></div>
   <div className="fractals-stat-tile"><Timer/><span>Tempo sobrevivido</span><b>{formatTime(hud.elapsed)}</b></div>
- </div><p className="mt-2 text-[10px] font-bold uppercase tracking-wider text-amber-100/60">Nível máximo alcançado: {stats.highestLevel}</p><p className="fractals-result-note mt-3 rounded-lg border border-amber-300/30 bg-amber-400/10 p-3 text-sm font-bold text-amber-100">✦ RECOMPENSA DA FENDA · {earnedFractals !== null ? earnedFractals.toLocaleString("pt-BR") : "—"} FR</p><p className="fractals-result-note mt-2 text-xs text-amber-100/80">{rewardStatus === "pending" ? "Validando as recompensas com o servidor..." : rewardStatus === "error" ? "Não foi possível confirmar as recompensas desta expedição." : earnedFractals !== null && earnedFractals > 0 ? `Você recebeu ${earnedFractals.toLocaleString("pt-BR")} fractais nesta expedição.` : result === "victory" ? "Vitória registrada. O próximo nível foi liberado." : "Nenhum fractal extra foi concedido nesta tentativa."}</p><Button className="fractals-result-button mt-4 gap-2" onClick={()=>{setRunning(false);setResult(null);setBossMessage(false);gameRef.current=null;}}><RotateCcw className="h-4 w-4"/> Voltar à expedição</Button></div></div>}
+ </div><p className="mt-2 text-[10px] font-bold uppercase tracking-wider text-amber-100/60">Nível máximo alcançado: {stats.highestLevel}</p><p className="fractals-result-note mt-3 rounded-lg border border-amber-300/30 bg-amber-400/10 p-3 text-sm font-bold text-amber-100">✦ RECOMPENSA DA FENDA · {earnedFractals !== null ? earnedFractals.toLocaleString("pt-BR") : "—"} FR</p><p className="fractals-result-note mt-2 text-xs text-amber-100/80">{rewardStatus === "pending" ? "Validando as recompensas com o servidor..." : rewardStatus === "error" ? "Não foi possível confirmar as recompensas desta expedição." : earnedFractals !== null && earnedFractals > 0 ? `Você recebeu ${earnedFractals.toLocaleString("pt-BR")} fractais nesta expedição.` : result === "victory" ? "Vitória registrada. O próximo nível foi liberado." : "Nenhum fractal extra foi concedido nesta tentativa."}</p>
+{rewardStatus === "error" && (
+  <Button variant="outline" size="sm" onClick={retrySettleRun} className="mt-2 h-8 border-amber-300/40 bg-amber-500/10 text-xs font-bold text-amber-200 hover:bg-amber-500/20">
+    Tentar confirmar novamente
+  </Button>
+)}<Button className="fractals-result-button mt-4 gap-2" onClick={()=>{setRunning(false);setResult(null);setBossMessage(false);gameRef.current=null;}}><RotateCcw className="h-4 w-4"/> Voltar à expedição</Button></div></div>}
           </div>
           <div className="fractals-arena-footer flex flex-wrap items-center justify-between gap-2 border-t border-white/10 px-3 py-2 text-[10px] text-white/45 sm:px-4"><span>Arma automática: projétil perseguidor</span><span>Recompensas e progressão validadas no servidor</span></div>
         </Card>
