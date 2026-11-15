@@ -57,6 +57,7 @@ type Shot = {
   isAura?: boolean; active?: boolean;
   phase?: "outbound" | "spin" | "return"; travelled?: number; maxDistance?: number; spinTimer?: number; rotation?: number; trailTimer?: number;
   startX?: number; startY?: number; endX?: number; endY?: number; bloodHealTotal?: number;
+  previousX?: number; previousY?: number;
 };
 type Gem = { x: number; y: number; value: number; radius: number; previousX?: number; previousY?: number; runeCrystal?: boolean };
 type SpecialDrop = { x: number; y: number; kind: "area" | "experience" | "projectile_range" | "projectiles" | "ricochet" | "piercing" | "chain_lightning" | "crit" | "food" | "void"; radius: number };
@@ -3695,6 +3696,9 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           game.player.spriteBlend = Math.min(1, game.player.spriteBlend + dt / 0.12);
         }
         game.shots.forEach((shot) => {
+          // Guarda o segmento percorrido para evitar que projéteis rápidos atravessem alvos entre quadros.
+          shot.previousX = shot.x;
+          shot.previousY = shot.y;
           if (shot.kind === "fractal_boomerang") {
             const speed = Math.max(1, Math.hypot(shot.vx, shot.vy));
             shot.rotation = (shot.rotation ?? shot.angle ?? 0) + dt * (shot.phase === "spin" ? 25 : 13);
@@ -4343,7 +4347,17 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               hit = hitDistanceSquared <= radius * radius && Math.abs(angleDifference) <= (shot.arcSpan ?? Math.PI * 1.1) / 2;
             } else {
               const hitRadius = enemy.radius + (shot.kind === "orbital_blade" ? (shot.radius ?? 20) : shot.kind === "plasma_core" ? (shot.radius ?? 13) : shot.kind === "fractal_boomerang" ? (shot.radius ?? 17) : shot.kind === "blood_spear" ? (shot.radius ?? 13) : shot.kind === "blood_spear_rain" ? (shot.radius ?? 9) : (shot.kind === "boomerang_shard" || shot.kind === "rift_shard") ? 7 : 5);
-              hit = hitDistanceSquared < hitRadius * hitRadius;
+              // As lanças da evolução percorrem a tela em alta velocidade; testar o segmento
+              // inteiro impede tunneling quando o FPS cai ou a velocidade 2x/3x está ativa.
+              if (shot.kind === "blood_spear_rain") {
+                hit = distanceToSegmentSquared(
+                  enemy.x, enemy.y,
+                  shot.previousX ?? shot.x, shot.previousY ?? shot.y,
+                  shot.x, shot.y,
+                ) <= hitRadius * hitRadius;
+              } else {
+                hit = hitDistanceSquared < hitRadius * hitRadius;
+              }
             }
             if (hit) {
               const markedBossBonus = game.weaponId === "void_revolver"
