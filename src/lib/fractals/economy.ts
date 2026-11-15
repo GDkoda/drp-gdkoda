@@ -143,6 +143,7 @@ export const FRACTAL_SHOP = {
     sentinels: 12000,
     boomerang: 13000,
     rift_seeder: 14000,
+    blood_spear: 15000,
   },
   evolution_project: 5000,
   speed: {

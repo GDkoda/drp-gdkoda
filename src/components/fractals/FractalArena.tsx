@@ -19,9 +19,9 @@ import { toast } from "sonner";
 import { FractalHud, type FractalHudHandle, type FractalHudSnapshot, INITIAL_FRACTAL_HUD } from "./FractalHud";
 import "./fractal-arena.css";
 
-type WeaponId = "void_revolver" | "unstable_core" | "spectral_scythe" | "orbital_swords" | "gravity_shackle" | "rune_sentinels" | "fractal_boomerang" | "rift_seeder";
+type WeaponId = "void_revolver" | "unstable_core" | "spectral_scythe" | "orbital_swords" | "gravity_shackle" | "rune_sentinels" | "fractal_boomerang" | "rift_seeder" | "blood_spear";
 type OmenId = "famine" | "rupture" | "spectral_veil" | "abundance" | "revenge";
-type UpgradeId = "power" | "haste" | "vitality" | "swift" | "special_area" | "special_experience" | "special_projectile_range" | "special_projectiles" | "special_ricochet" | "special_piercing" | "special_chain_lightning" | "gift_revolver_mark" | "gift_revolver_echo" | "gift_revolver_weakpoint" | "gift_core_expansion" | "gift_core_implosion" | "gift_core_residue" | "gift_scythe_siphon" | "gift_scythe_arc" | "gift_scythe_cripple" | "gift_orbital_orbit" | "gift_orbital_edge" | "gift_orbital_velocity" | "gift_gravity_pressure" | "gift_gravity_resonance" | "gift_gravity_guard" | "gift_sentinel_focus" | "gift_sentinel_overload" | "gift_sentinel_relay" | "gift_boomerang_scar" | "gift_boomerang_shards" | "gift_boomerang_catch" | "gift_rift_shards" | "gift_rift_aftershock" | "gift_rift_network" | "gift_thorn_retaliation" | "gift_shadow_execution" | "gift_hunter_mark" | "gift_thermal_overload" | "gift_kill_gravity" | "gift_impact_resonance" | "universal_aether_shield" | "universal_vampirism" | "universal_alchemy_circle" | "special_crit" | "weapon_mastery" | "weapon_evolution" | "anchor_soul";
+type UpgradeId = "power" | "haste" | "vitality" | "swift" | "special_area" | "special_experience" | "special_projectile_range" | "special_projectiles" | "special_ricochet" | "special_piercing" | "special_chain_lightning" | "gift_revolver_mark" | "gift_revolver_echo" | "gift_revolver_weakpoint" | "gift_core_expansion" | "gift_core_implosion" | "gift_core_residue" | "gift_scythe_siphon" | "gift_scythe_arc" | "gift_scythe_cripple" | "gift_orbital_orbit" | "gift_orbital_edge" | "gift_orbital_velocity" | "gift_gravity_pressure" | "gift_gravity_resonance" | "gift_gravity_guard" | "gift_sentinel_focus" | "gift_sentinel_overload" | "gift_sentinel_relay" | "gift_boomerang_scar" | "gift_boomerang_shards" | "gift_boomerang_catch" | "gift_rift_shards" | "gift_rift_aftershock" | "gift_rift_network" | "gift_thorn_retaliation" | "gift_shadow_execution" | "gift_hunter_mark" | "gift_thermal_overload" | "gift_kill_gravity" | "gift_impact_resonance" | "gift_blood_slow" | "gift_blood_trail" | "gift_blood_ritual" | "universal_aether_shield" | "universal_vampirism" | "universal_alchemy_circle" | "special_crit" | "weapon_mastery" | "weapon_evolution" | "anchor_soul";
 type Upgrade = { id: UpgradeId; name: string; description: string; icon: typeof Zap; rarity?: "normal" | "uncommon" | "rare" | "epic" | "legendary" | "maestria" | "evolution" };
 type UpgradeCounts = Record<string, { name: string; count: number; rarity: string }>;
 
@@ -42,7 +42,11 @@ type ShotKind =
   | "boomerang_catch"
   | "rift_blast"
   | "rift_residue"
-  | "rift_shard";
+  | "rift_shard"
+  | "blood_spear"
+  | "blood_spear_rain"
+  | "blood_trail"
+  | "blood_ritual_blast";
 
 type Shot = {
   x: number; y: number; vx: number; vy: number; damage: number; life: number;
@@ -52,6 +56,7 @@ type Shot = {
   bladeIndex?: number; totalBlades?: number; pulseTimer?: number; hasDetonated?: boolean;
   isAura?: boolean; active?: boolean;
   phase?: "outbound" | "spin" | "return"; travelled?: number; maxDistance?: number; spinTimer?: number; rotation?: number; trailTimer?: number;
+  startX?: number; startY?: number; endX?: number; endY?: number; bloodHealTotal?: number;
 };
 type Gem = { x: number; y: number; value: number; radius: number; previousX?: number; previousY?: number; runeCrystal?: boolean };
 type SpecialDrop = { x: number; y: number; kind: "area" | "experience" | "projectile_range" | "projectiles" | "ricochet" | "piercing" | "chain_lightning" | "crit" | "food" | "void"; radius: number };
@@ -75,6 +80,7 @@ const WEAPON_CONFIG: Record<WeaponId, { name: string; description: string; price
   rune_sentinels: { name: "Sentinelas Rúnicas", description: "Totens rúnicos fixos perdem 1 PV por segundo e disparam feixes rápidos contra os alvos mais resistentes.", price: 12000, purchaseKey: "weapon_sentinels", masteryKey: "mastery_sentinels", projectKey: "evolution_sentinels", evolutionName: "Arsenal Ancestral" },
   fractal_boomerang: { name: "Bumerangue Fractal", description: "Lâmina crescente que atravessa os alvos e retorna. Na Coroa de Estilhaços, cada lâmina extra causa 75% do dano de uma lâmina normal.", price: 13000, purchaseKey: "weapon_boomerang", masteryKey: "mastery_boomerang", projectKey: "evolution_boomerang", evolutionName: "Serra Retornante" },
   rift_seeder: { name: "Semeador de Fendas", description: "Instala minas rúnicas que explodem quando inimigos avançam; evolui para uma rede de ruptura. Cada nível da Coroa concede +1 mina ativa e +15% de dano por mina.", price: 14000, purchaseKey: "weapon_rift_seeder", masteryKey: "mastery_rift_seeder", projectKey: "evolution_rift_seeder", evolutionName: "Matriz de Ruptura" },
+  blood_spear: { name: "Lança de Sangue", description: "Projeta uma lança carmesim perfurante. O dash dispara outra estocada e grava uma trilha que fere quem a atravessa. Na evolução, lanças aleatórias acompanham cada ataque e um pentagrama explode a cada cinco disparos.", price: 15000, purchaseKey: "weapon_blood_spear", masteryKey: "mastery_blood_spear", projectKey: "evolution_blood_spear", evolutionName: "Pentagrama Carmesim" },
 };
 
 type ShopItemInfo = {
@@ -269,6 +275,12 @@ const SHOP_ITEM_INFO: Record<string, ShopItemInfo> = {
     "Desbloqueio permanente: 14.000 FR. A maestria é concluída ao vencer uma expedição com esta arma.",
     "Após a maestria, compre o Projeto de Evolução por 5.000 FR. No nível 10, a Matriz de Ruptura conecta três núcleos por linhas de energia que detonam em sequência."
   ]},
+  weapon_blood_spear: { title: "Lança de Sangue", category: "Arma", summary: "Estocada perfurante e dash ofensivo; evolui para lanças aleatórias e ritual de pentagrama.", details: [
+    "Dispara uma lança carmesim em linha reta, atravessando os inimigos. Ao usar o dash, uma segunda lança acompanha o movimento e deixa no chão uma trilha de sangue mágico que causa dano uma vez a cada inimigo que a atravessa.",
+    "Na evolução Pentagrama Carmesim, cada ataque principal invoca três lanças adicionais que caem sobre inimigos aleatórios, cada uma causando 10% do poder original. A cada cinco ataques principais, o pentagrama se completa e explode em área, causando 50% do poder original.",
+    "A evolução não aumenta o dano, a cadência ou o poder das mecânicas já existentes. A Coroa de Estilhaços acrescenta lanças aleatórias, até duas.",
+    "Desbloqueio permanente: 15.000 FR. Vença uma expedição com esta arma para concluir a maestria. Depois, compre o Projeto de Evolução por 5.000 FR; no nível 10, a evolução Pentagrama Carmesim pode aparecer."
+  ]},
   omen_famine: { title: "Fome Insaciável", category: "Presságio", summary: "+20% de XP; inimigos surgem 20% mais rápido.", details: [
     "Bônus: +20% de experiência recebida.",
     "Ônus: +20% na frequência de surgimento de inimigos."
@@ -349,9 +361,9 @@ type PurchaseState = {
   ricochet: number; piercing: number; chain_lightning: number;
   reroll: number; oracle: number; banish: number; fortune: number; transmutation: number;
   anchor_soul: number; dash: number; extra_xp: number; crit_chance: number; crit_damage: number; greed_pact: number; crit_relic: number; omen_archive: boolean;
-  weapon_nucleus: boolean; weapon_scythe: boolean; weapon_orbitals: boolean; weapon_gravity: boolean; weapon_sentinels: boolean; weapon_boomerang: boolean; weapon_rift_seeder: boolean;
-  mastery_void_revolver: boolean; mastery_nucleus: boolean; mastery_scythe: boolean; mastery_orbitals: boolean; mastery_gravity: boolean; mastery_sentinels: boolean; mastery_boomerang: boolean; mastery_rift_seeder: boolean;
-  evolution_void_revolver: boolean; evolution_nucleus: boolean; evolution_scythe: boolean; evolution_orbitals: boolean; evolution_gravity: boolean; evolution_sentinels: boolean; evolution_boomerang: boolean; evolution_rift_seeder: boolean;
+  weapon_nucleus: boolean; weapon_scythe: boolean; weapon_orbitals: boolean; weapon_gravity: boolean; weapon_sentinels: boolean; weapon_boomerang: boolean; weapon_rift_seeder: boolean; weapon_blood_spear: boolean;
+  mastery_void_revolver: boolean; mastery_nucleus: boolean; mastery_scythe: boolean; mastery_orbitals: boolean; mastery_gravity: boolean; mastery_sentinels: boolean; mastery_boomerang: boolean; mastery_rift_seeder: boolean; mastery_blood_spear: boolean;
+  evolution_void_revolver: boolean; evolution_nucleus: boolean; evolution_scythe: boolean; evolution_orbitals: boolean; evolution_gravity: boolean; evolution_sentinels: boolean; evolution_boomerang: boolean; evolution_rift_seeder: boolean; evolution_blood_spear: boolean;
 };
 const DEFAULT_PURCHASES: PurchaseState = {
   area: 0, experience: 0, rarity: 0, speed_2x: false, speed_3x: false,
@@ -359,9 +371,9 @@ const DEFAULT_PURCHASES: PurchaseState = {
   ricochet: 0, piercing: 0, chain_lightning: 0,
   reroll: 0, oracle: 0, banish: 0, fortune: 0, transmutation: 0,
   anchor_soul: 0, dash: 0, extra_xp: 0, crit_chance: 0, crit_damage: 0, greed_pact: 0, crit_relic: 0, omen_archive: false,
-  weapon_nucleus: false, weapon_scythe: false, weapon_orbitals: false, weapon_gravity: false, weapon_sentinels: false, weapon_boomerang: false, weapon_rift_seeder: false,
-  mastery_void_revolver: false, mastery_nucleus: false, mastery_scythe: false, mastery_orbitals: false, mastery_gravity: false, mastery_sentinels: false, mastery_boomerang: false, mastery_rift_seeder: false,
-  evolution_void_revolver: false, evolution_nucleus: false, evolution_scythe: false, evolution_orbitals: false, evolution_gravity: false, evolution_sentinels: false, evolution_boomerang: false, evolution_rift_seeder: false,
+  weapon_nucleus: false, weapon_scythe: false, weapon_orbitals: false, weapon_gravity: false, weapon_sentinels: false, weapon_boomerang: false, weapon_rift_seeder: false, weapon_blood_spear: false,
+  mastery_void_revolver: false, mastery_nucleus: false, mastery_scythe: false, mastery_orbitals: false, mastery_gravity: false, mastery_sentinels: false, mastery_boomerang: false, mastery_rift_seeder: false, mastery_blood_spear: false,
+  evolution_void_revolver: false, evolution_nucleus: false, evolution_scythe: false, evolution_orbitals: false, evolution_gravity: false, evolution_sentinels: false, evolution_boomerang: false, evolution_rift_seeder: false, evolution_blood_spear: false,
 };
 const PROJECTILE_DURATION_MULTIPLIERS = [1, 1.25, 1.5, 2] as const;
 const PROJECTILE_BASE_LIFE = 0.8;
@@ -401,6 +413,7 @@ type GameState = {
   player: { x: number; y: number; hp: number; maxHp: number; speed: number; damage: number; fireRate: number; invuln: number; hitFlash: number; xp: number; nextXp: number; level: number; pickupRadius: number; xpMultiplier: number; specialAreaStacks: number; specialExperienceStacks: number; projectileRangeStacks: number; projectileRangeMultiplier: number; projectileStacks: number; relicRicochet: number; relicPiercing: number; relicChainLightning: number; specialCritStacks: number; aetherShieldCharges: number; projectileLife: number; facing: number; castFacing: number; castTimer: number; moving: boolean; dashTimer: number; dashCooldown: number; dashX: number; dashY: number; spriteAction: PlayerVisualAction; spriteDirection: number; previousSpriteAction: PlayerVisualAction; previousSpriteDirection: number; spriteBlend: number };
   enemies: Enemy[]; shots: Shot[]; gems: Gem[]; specialDrops: SpecialDrop[]; sentinelTotems: SentinelTotem[]; riftMines: RiftMine[]; nextRiftMineId: number; nextRiftGroupId: number; riftMineCheckTimer: number; sentinelRespawnTimer: number; nextSentinelTotemId: number; urns: BreakableUrn[]; obstacles: CemeteryObstacle[]; nextUrnMinute: number; nextUrnId: number; particles: Particle[]; damageNumbers: DamageNumber[]; pickupLabels: PickupLabel[]; challengeEvent: ChallengeEvent | null; nextChallengeEvent: number; kills: number; ended: boolean; upgradeCounts: UpgradeCounts; totalDamageDealt: number; crystalsCollected: number; highestLevel: number;
   weaponId: WeaponId; weaponLevel: number; evolved: boolean; rerollsRemaining: number; banishesRemaining: number; bannedUpgradeIds: string[];
+  bloodRitualProgress: number; bloodDashTrail: Shot | null;
   revolverShotCount?: number; orbitalPulseTimer?: number;
   gravityAuraActive?: boolean; gravityAuraShot?: Shot;
   gravityTethers?: { id: number; enemy: Enemy; duration: number }[]; gravityAuraTimer2?: number;
@@ -421,7 +434,7 @@ const SPECIAL_UPGRADES: Upgrade[] = [
   { id: "special_area", name: "Ímã de Fragmentos", description: "+10% de alcance de coleta por coleta (máx. +100%, 10 coletas); também amplia áreas de ataque compatíveis.", icon: Move },
   { id: "special_experience", name: "Eco do Conhecimento", description: "+5% de experiência por coleta (máx. +50%, 10 coletas).", icon: Sparkles },
   { id: "special_projectile_range", name: "Ressonância de Alcance", description: "+10% de alcance útil da arma por coleta (máx. +50%).", icon: Zap },
-  { id: "special_projectiles", name: "Coroa de Estilhaços", description: "Revólver/Núcleo: projéteis extras; Orbitais/Sentinelas: lâminas/totens extras; Foice: corte 180° atrás (60%/90% de dano); Bumerangue: lâminas extras a 75% do dano; Grilhão: +1 corrente por nível; Semeador: +1 mina ativa e +15% de dano por mina por nível (máx. 2).", icon: Swords },
+  { id: "special_projectiles", name: "Coroa de Estilhaços", description: "Revólver/Núcleo: projéteis extras; Orbitais/Sentinelas: lâminas/totens extras; Foice: corte 180° atrás (60%/90% de dano); Bumerangue: lâminas extras a 75% do dano; Grilhão: +1 corrente por nível; Semeador: +1 mina ativa e +15% de dano por mina por nível; Lança: +1 lança aleatória por nível (máx. 2).", icon: Swords },
   { id: "special_ricochet", name: "Ricochete Instável", description: "Revólver e Núcleo ganham +1 ricochete por nível (máx. 3).", icon: Orbit },
   { id: "special_piercing", name: "Perfuração Espectral", description: "Revólver e Núcleo atravessam +1 inimigo por nível (máx. 3).", icon: Target },
   { id: "special_chain_lightning", name: "Descarga em Cadeia", description: "Impactos do Revólver, Núcleo e Bumerangue saltam para +1 alvo por nível (máx. 3).", icon: Zap },
@@ -495,13 +508,22 @@ const WEAPON_GIFTS: Record<WeaponId, Upgrade[]> = {
     { id: "gift_thermal_overload", name: "Sobrecarga Térmica", description: "Acertos críticos queimam por 3s; inimigos queimados explodem ao morrer.", icon: Flame, rarity: "uncommon" },
     { id: "gift_impact_resonance", name: "Ressonância de Impacto", description: "Explosões empurram inimigos +50% por nível; impactos contra obstáculos causam dano extra.", icon: Zap, rarity: "uncommon" },
   ],
+  blood_spear: [
+    { id: "gift_blood_slow", name: "Selo Hemático", description: "As lanças reduzem a velocidade dos atingidos por 0,7s; a lentidão aumenta 6 pontos percentuais por nível (máx. 25%).", icon: Snowflake, rarity: "uncommon" },
+    { id: "gift_blood_trail", name: "Cicatriz Carmesim", description: "As trilhas do dash duram +0,3s e ficam 3px mais largas por nível.", icon: Flame, rarity: "uncommon" },
+    { id: "gift_blood_ritual", name: "Sacrifício do Pentagrama", description: "A explosão ritual ganha +12% de raio por nível e restaura vida ao atingir inimigos, até 3% da vida máxima por explosão.", icon: Heart, rarity: "uncommon" },
+    { id: "gift_hunter_mark", name: "Marcador de Caçador", description: "Acertos críticos marcam o alvo por 6s; dano contra ele +5% por nível (máx. +25%).", icon: Target, rarity: "uncommon" },
+    { id: "gift_shadow_execution", name: "Execução Sombria", description: "Elimina monstros comuns com 10% ou menos de vida.", icon: Skull, rarity: "uncommon" },
+    { id: "gift_thermal_overload", name: "Sobrecarga Térmica", description: "Acertos críticos das lanças queimam por 3s; inimigos queimados explodem ao morrer.", icon: Flame, rarity: "uncommon" },
+    { id: "gift_impact_resonance", name: "Ressonância de Impacto", description: "As lanças e a explosão ritual empurram inimigos +50% por nível; impactos contra obstáculos causam dano extra.", icon: Zap, rarity: "uncommon" },
+  ],
 };
 
 function supportsProjectileRelics(weapon: WeaponId): boolean {
   return weapon === "void_revolver" || weapon === "unstable_core";
 }
 function supportsChainLightningRelic(weapon: WeaponId): boolean {
-  return supportsProjectileRelics(weapon) || weapon === "fractal_boomerang";
+  return supportsProjectileRelics(weapon) || weapon === "fractal_boomerang" || weapon === "blood_spear";
 }
 
 function getEligibleWeaponGifts(game: GameState): Upgrade[] {
@@ -531,7 +553,7 @@ const MASTER_GIFT_OPTIONS: Upgrade[] = [
 ];
 
 function weaponProjectKey(weapon: WeaponId) {
-  return ({ void_revolver: "evolution_void_revolver", unstable_core: "evolution_nucleus", spectral_scythe: "evolution_scythe", orbital_swords: "evolution_orbitals", gravity_shackle: "evolution_gravity", rune_sentinels: "evolution_sentinels", fractal_boomerang: "evolution_boomerang", rift_seeder: "evolution_rift_seeder" } as const)[weapon];
+  return ({ void_revolver: "evolution_void_revolver", unstable_core: "evolution_nucleus", spectral_scythe: "evolution_scythe", orbital_swords: "evolution_orbitals", gravity_shackle: "evolution_gravity", rune_sentinels: "evolution_sentinels", fractal_boomerang: "evolution_boomerang", rift_seeder: "evolution_rift_seeder", blood_spear: "evolution_blood_spear" } as const)[weapon];
 }
 function getEligibleFieldRelics(game: GameState, purchases: PurchaseState): Upgrade[] {
   const oracleUnlocksFieldRelics = purchases.oracle >= 1;
@@ -587,7 +609,7 @@ function buildLevelChoices(game: GameState, purchases: PurchaseState): Upgrade[]
     const evolutionNames: Record<WeaponId, string> = {
       void_revolver: "Seis Ecos", unstable_core: "Singularidade", spectral_scythe: "Ceifador de Almas",
       orbital_swords: "Dança das Lâminas", gravity_shackle: "Prisão do Abismo", rune_sentinels: "Arsenal Ancestral",
-      fractal_boomerang: "Serra Retornante", rift_seeder: "Matriz de Ruptura",
+      fractal_boomerang: "Serra Retornante", rift_seeder: "Matriz de Ruptura", blood_spear: "Pentagrama Carmesim",
     };
     const evolutionIndex = Math.floor(Math.random() * Math.min(2, choices.length));
     const evolutionGift: Upgrade = {
@@ -1074,7 +1096,7 @@ function makeGame(width: number, height: number, purchases: PurchaseState, weapo
     width, height, last: 0, elapsed: 0, spawnTimer: 0.4, shotTimer: 0.25, bossSpawned: false,
     player: { x: 0, y: 0, hp: maxHp, maxHp, speed: 205 * (omenId === "spectral_veil" ? 1.15 : 1), damage: 22 * omenDamage, fireRate: 0.72 * (omenId === "rupture" ? 1.15 : 1), invuln: 0, hitFlash: 0, xp: 0, nextXp: 12, level: 1, pickupRadius: 85, xpMultiplier: omenId === "famine" ? 1.2 : 1, specialAreaStacks: 0, specialExperienceStacks: 0, projectileRangeStacks: 0, projectileRangeMultiplier: 1, projectileStacks: 0, relicRicochet: 0, relicPiercing: 0, relicChainLightning: 0, specialCritStacks: 0, aetherShieldCharges: 0, projectileLife, facing: 0, castFacing: 0, castTimer: 0, moving: false, dashTimer: 0, dashCooldown: 0, dashX: 1, dashY: 0, spriteAction: "idle", spriteDirection: 0, previousSpriteAction: "idle", previousSpriteDirection: 0, spriteBlend: 1 },
     enemies: [], shots: [], gems: [], specialDrops: [], sentinelTotems: [], riftMines: [], nextRiftMineId: 1, nextRiftGroupId: 1, riftMineCheckTimer: 0, sentinelRespawnTimer: 0, nextSentinelTotemId: 1, urns: [], obstacles: createCemeteryObstacles(), nextUrnMinute: 1, nextUrnId: 1, particles: [], damageNumbers: [], pickupLabels: [], challengeEvent: null, nextChallengeEvent: 0, kills: 0, ended: false, upgradeCounts: {}, totalDamageDealt: 0, crystalsCollected: 0, highestLevel: 1,
-    weaponId, weaponLevel: 1, evolved: false, rerollsRemaining: purchases.reroll, banishesRemaining: purchases.banish, bannedUpgradeIds: [],
+    weaponId, weaponLevel: 1, evolved: false, rerollsRemaining: purchases.reroll, banishesRemaining: purchases.banish, bannedUpgradeIds: [], bloodRitualProgress: 0, bloodDashTrail: null,
     revolverShotCount: 0, orbitalPulseTimer: 0, gravityAuraActive: true, gravityAuraShot: undefined, gravityTethers: [], scytheSiphonCooldown: 0, microVortices: [], alchemyCircle: null, nextAlchemyAt: 120,
     anchorReviveAvailable: false, anchorRevivesUsed: 0, dashChainRemaining: 0, dashChainWindow: 0, dashHitTargets: new Set<Enemy>(), omenId, omenSpawnMultiplier: omenId === "famine" ? 1.2 : 1,
     omenEnemyHpMultiplier: omenId === "abundance" ? 1.15 : 1, omenRewardMultiplier: omenId === "abundance" ? 1.25 : 1,
@@ -1102,7 +1124,7 @@ function spawnPlasmaPuddle(game: GameState, x: number, y: number, coreDamage: nu
 }
 
 function getEquippedWeaponStrikeDamage(game: GameState): number {
-  const weaponPower = (1 + (game.weaponLevel - 1) * 0.055) * (game.evolved ? 1.15 : 1);
+  const weaponPower = (1 + (game.weaponLevel - 1) * 0.055) * (game.evolved && game.weaponId !== "blood_spear" ? 1.15 : 1);
   const weaponMultiplier = game.weaponId === "unstable_core" ? 1.275
     : game.weaponId === "spectral_scythe" ? (game.evolved ? 1.68 : 1.32)
     : game.weaponId === "orbital_swords" ? 0.75
@@ -1434,6 +1456,72 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     const lifeRatio = clamp(shot.life / Math.max(0.01, shot.maxLife ?? game.player.projectileLife), 0.08, 1);
 
     if (shot.kind === "dash_strike") return;
+    if (shot.kind === "blood_spear" || shot.kind === "blood_spear_rain") {
+      ctx.save();
+      ctx.translate(shot.x, shot.y);
+      ctx.rotate(Math.atan2(shot.vy, shot.vx));
+      ctx.globalAlpha = lifeRatio;
+      const length = shot.kind === "blood_spear_rain" ? 36 : 56;
+      const half = shot.kind === "blood_spear_rain" ? 5 : 7;
+      const shaft = ctx.createLinearGradient(-length * 0.55, 0, length * 0.55, 0);
+      shaft.addColorStop(0, "#3f0717"); shaft.addColorStop(0.38, "#991b35"); shaft.addColorStop(0.78, "#f43f5e"); shaft.addColorStop(1, "#fff1f2");
+      ctx.fillStyle = "#3b0715";
+      ctx.beginPath(); ctx.moveTo(length * 0.58, 0); ctx.lineTo(length * 0.20, -half * 1.25);
+      ctx.lineTo(length * 0.10, -half * 0.45); ctx.lineTo(-length * 0.5, -half * 0.32);
+      ctx.lineTo(-length * 0.55, 0); ctx.lineTo(-length * 0.5, half * 0.32);
+      ctx.lineTo(length * 0.10, half * 0.45); ctx.lineTo(length * 0.20, half * 1.25); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = shaft;
+      ctx.beginPath(); ctx.moveTo(length * 0.56, 0); ctx.lineTo(length * 0.18, -half * 0.78);
+      ctx.lineTo(length * 0.08, -half * 0.28); ctx.lineTo(-length * 0.48, -half * 0.2);
+      ctx.lineTo(-length * 0.5, 0); ctx.lineTo(-length * 0.48, half * 0.2);
+      ctx.lineTo(length * 0.08, half * 0.28); ctx.lineTo(length * 0.18, half * 0.78); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = "#fff1f2"; ctx.lineWidth = 1.1;
+      ctx.beginPath(); ctx.moveTo(-length * 0.32, 0); ctx.lineTo(length * 0.38, 0); ctx.stroke();
+      ctx.restore();
+      return;
+    }
+    if (shot.kind === "blood_trail") {
+      ctx.save();
+      ctx.globalAlpha = clamp(lifeRatio * 1.25, 0, 1);
+      ctx.lineCap = "round";
+      const sx = shot.startX ?? shot.x, sy = shot.startY ?? shot.y;
+      const ex = shot.endX ?? shot.x, ey = shot.endY ?? shot.y;
+      ctx.strokeStyle = "rgba(35,4,14,.94)"; ctx.lineWidth = (shot.radius ?? 19) * 2.05;
+      ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.stroke();
+      ctx.strokeStyle = "rgba(153,27,52,.88)"; ctx.lineWidth = (shot.radius ?? 19) * 1.35;
+      ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.stroke();
+      ctx.strokeStyle = "rgba(244,63,94,.82)"; ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.stroke();
+      ctx.strokeStyle = "rgba(255,228,230,.76)"; ctx.lineWidth = 1.2;
+      ctx.setLineDash([7, 12]); ctx.lineDashOffset = -game.elapsed * 34;
+      ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+      return;
+    }
+    if (shot.kind === "blood_ritual_blast") {
+      ctx.save();
+      ctx.translate(shot.x, shot.y);
+      const progress = 1 - lifeRatio;
+      const radius = (shot.radius ?? 220) * (0.72 + progress * 0.28);
+      ctx.globalAlpha = lifeRatio;
+      const gradient = ctx.createRadialGradient(0, 0, 5, 0, 0, radius);
+      gradient.addColorStop(0, "rgba(255,225,230,.88)");
+      gradient.addColorStop(0.18, "rgba(244,63,94,.48)");
+      gradient.addColorStop(0.62, "rgba(153,27,52,.22)");
+      gradient.addColorStop(1, "rgba(127,29,29,0)");
+      ctx.fillStyle = gradient; ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI * 2); ctx.fill();
+      const star = [0, 2, 4, 1, 3, 0].map((index) => ({ x: Math.cos(-Math.PI / 2 + index * Math.PI * 2 / 5) * radius * 0.78, y: Math.sin(-Math.PI / 2 + index * Math.PI * 2 / 5) * radius * 0.78 }));
+      ctx.lineCap = "round"; ctx.lineJoin = "round";
+      ctx.strokeStyle = "rgba(69,10,24,.86)"; ctx.lineWidth = 9;
+      ctx.beginPath(); ctx.moveTo(star[0].x, star[0].y); for (let i = 1; i < star.length; i++) ctx.lineTo(star[i].x, star[i].y); ctx.stroke();
+      ctx.strokeStyle = "#fda4af"; ctx.lineWidth = 3.5;
+      ctx.beginPath(); ctx.moveTo(star[0].x, star[0].y); for (let i = 1; i < star.length; i++) ctx.lineTo(star[i].x, star[i].y); ctx.stroke();
+      ctx.strokeStyle = "rgba(255,241,242,.9)"; ctx.lineWidth = 1.3;
+      ctx.beginPath(); ctx.arc(0, 0, radius * (0.42 + progress * 0.12), 0, Math.PI * 2); ctx.stroke();
+      ctx.restore();
+      return;
+    }
     if (shot.kind === "gravity_well") {
       // A aura permanente/intermitente é desenhada fora do passe aditivo abaixo.
       // Isso mantém source-over sem alternar o modo de composição dentro da lista de tiros.
@@ -2242,6 +2330,32 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
   ctx.lineWidth = 1.3;
   ctx.beginPath(); ctx.ellipse(0, 2, 28 * auraPulse, 34 * auraPulse, 0, 0, Math.PI * 2); ctx.stroke();
   ctx.restore();
+  if (game.weaponId === "blood_spear" && game.evolved && game.bloodRitualProgress > 0) {
+    ctx.save();
+    const points = Array.from({ length: 5 }, (_, index) => ({
+      x: Math.cos(-Math.PI / 2 + index * Math.PI * 2 / 5) * 80,
+      y: Math.sin(-Math.PI / 2 + index * Math.PI * 2 / 5) * 80,
+    }));
+    const starts = [0, 2, 4, 1, 3], ends = [2, 4, 1, 3, 0];
+    ctx.lineCap = "round"; ctx.lineJoin = "round";
+    ctx.globalAlpha = 0.36 + Math.sin(game.elapsed * 9) * 0.08;
+    ctx.strokeStyle = "#4c0519"; ctx.lineWidth = 8;
+    ctx.beginPath();
+    for (let index = 0; index < game.bloodRitualProgress; index++) {
+      ctx.moveTo(points[starts[index]].x, points[starts[index]].y);
+      ctx.lineTo(points[ends[index]].x, points[ends[index]].y);
+    }
+    ctx.stroke();
+    ctx.globalAlpha = 0.88;
+    ctx.strokeStyle = "#fb7185"; ctx.lineWidth = 3;
+    ctx.beginPath();
+    for (let index = 0; index < game.bloodRitualProgress; index++) {
+      ctx.moveTo(points[starts[index]].x, points[starts[index]].y);
+      ctx.lineTo(points[ends[index]].x, points[ends[index]].y);
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
   if (player.dashTimer > 0) {
     const lvl = game.dashLevel ?? 0;
     const col = lvl >= 3 ? "#f43f5e" : lvl >= 2 ? "#facc15" : lvl >= 1 ? "#67e8f9" : "#c4b5fd";
@@ -2486,7 +2600,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
   const purchaseUpgrade = async (upgrade: string) => {
     setShopBusy(true);
     try {
-      const { data, error } = await (supabase.rpc as any)("purchase_fractal_upgrade", { _upgrade: upgrade });
+      const purchaseRpc = upgrade === "weapon_blood_spear" || upgrade === "evolution_blood_spear" ? "purchase_blood_spear_upgrade" : "purchase_fractal_upgrade";
+      const { data, error } = await (supabase.rpc as any)(purchaseRpc, { _upgrade: upgrade });
       if (error) throw error;
       setFractalBalance(Number(data?.fractals ?? 0));
       setCoinBalance(Number(data?.coins ?? coinBalance));
@@ -2705,8 +2820,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
     if (upgrade.id === "weapon_evolution" && !game.evolved && (isMaster || (game.weaponLevel >= 10 && purchases[weaponProjectKey(game.weaponId)]))) {
       if (isMaster) game.weaponLevel = 10;
       game.evolved = true;
-      game.player.damage *= 1.35;
-      game.player.fireRate /= 1.10;
+      // A evolução da Lança adiciona o ritual e as lanças de queda sem alterar o dano ou a cadência anteriores.
+      if (game.weaponId !== "blood_spear") { game.player.damage *= 1.35; game.player.fireRate /= 1.10; }
       game.rings = [...(game.rings ?? []), { x: game.player.x, y: game.player.y, r: 12, max: 230, life: 1.2, color: "#fbbf24" }];
       toast.success(`${WEAPON_CONFIG[game.weaponId].evolutionName} despertou!`);
     }
@@ -3034,6 +3149,49 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             game.player.dashY = dashY / dashLength;
             game.player.dashTimer = 0.18;
             game.dashLevel = purchasesRef.current.dash;
+            if (game.weaponId === "blood_spear") {
+              const angle = Math.atan2(game.player.dashY, game.player.dashX);
+              const speed = 760 * game.player.projectileRangeMultiplier;
+              const spearLife = Math.max(0.75, game.player.projectileLife * 1.4);
+              if (game.shots.length < 88) game.shots.push({
+                x: game.player.x, y: game.player.y,
+                vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
+                damage: getEquippedWeaponStrikeDamage(game), life: spearLife, maxLife: spearLife,
+                hitTargets: [], bouncesRemaining: 0, piercesRemaining: 999,
+                kind: "blood_spear", radius: 13, angle,
+              });
+              let activeTrails = 0;
+              for (const existingShot of game.shots) if (existingShot.kind === "blood_trail" && existingShot.life > 0) activeTrails++;
+              if (activeTrails >= 3) {
+                const oldestTrail = game.shots.findIndex((existingShot) => existingShot.kind === "blood_trail");
+                if (oldestTrail >= 0) game.shots.splice(oldestTrail, 1);
+              }
+              const trailGift = game.upgradeCounts.gift_blood_trail?.count ?? 0;
+              const trailLife = 2 + trailGift * 0.3;
+              const trail: Shot = {
+                x: game.player.x, y: game.player.y, vx: 0, vy: 0,
+                damage: getEquippedWeaponStrikeDamage(game) * 0.25,
+                life: trailLife, maxLife: trailLife, hitTargets: [], bouncesRemaining: 0, piercesRemaining: 0,
+                kind: "blood_trail", radius: 19 + trailGift * 3,
+                startX: game.player.x, startY: game.player.y, endX: game.player.x, endY: game.player.y,
+              };
+              if (game.shots.length < 88) {
+                game.shots.push(trail);
+                game.bloodDashTrail = trail;
+              } else game.bloodDashTrail = null;
+              game.player.castFacing = directionFromVector(game.player.dashX, game.player.dashY);
+              game.player.castTimer = Math.max(game.player.castTimer, 0.2);
+              if (game.particles.length < 75) for (let particle = 0; particle < 5; particle++) {
+                const side = (particle - 2) * 5;
+                game.particles.push({
+                  x: game.player.x - game.player.dashX * 10 - game.player.dashY * side,
+                  y: game.player.y - game.player.dashY * 10 + game.player.dashX * side,
+                  vx: -game.player.dashX * (30 + particle * 8),
+                  vy: -game.player.dashY * (30 + particle * 8),
+                  life: 0.28, color: particle % 2 ? "#fda4af" : "#ef4444",
+                });
+              }
+            }
             (game.rings ??= []).push({ x: game.player.x, y: game.player.y, r: 8, max: 34 + purchasesRef.current.dash * 10, life: 0.3, color: purchasesRef.current.dash >= 3 ? "#f43f5e" : purchasesRef.current.dash >= 2 ? "#facc15" : purchasesRef.current.dash >= 1 ? "#67e8f9" : "#c4b5fd" });
             game.dashHitTargets.clear();
             if (canUseFollowUp) {
@@ -3072,6 +3230,14 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         const arenaHalf = missionId === 1 ? CEMETERY_ARENA_HALF : WORLD_LIMIT;
         game.player.x = clamp(movedPlayer.x, -arenaHalf, arenaHalf);
         game.player.y = clamp(movedPlayer.y, -arenaHalf, arenaHalf);
+        if (game.weaponId === "blood_spear" && game.bloodDashTrail) {
+          if (isDashing) {
+            const trail = game.bloodDashTrail;
+            trail.endX = game.player.x; trail.endY = game.player.y;
+            trail.x = ((trail.startX ?? game.player.x) + game.player.x) * 0.5;
+            trail.y = ((trail.startY ?? game.player.y) + game.player.y) * 0.5;
+          } else game.bloodDashTrail = null;
+        }
         if (isDashing && purchasesRef.current.dash >= 2) {
           const segmentX = game.player.x - previousPlayerX;
           const segmentY = game.player.y - previousPlayerY;
@@ -3157,7 +3323,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         game.shotTimer -= dt;
         // Grilhão não procura alvos nem dispara projéteis: sua aura é atualizada abaixo.
         if (game.weaponId !== "gravity_shackle" && game.shotTimer <= 0) {
-          const maxRange = (game.weaponId === "rift_seeder" ? 360 : 280) * game.player.projectileRangeMultiplier;
+          const maxRange = (game.weaponId === "blood_spear" ? 340 : game.weaponId === "rift_seeder" ? 360 : 280) * game.player.projectileRangeMultiplier;
           const maxRangeSq = maxRange * maxRange;
           let target: Enemy | null = null;
           let bestScore = Infinity;
@@ -3166,14 +3332,14 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             const dx = enemy.x - game.player.x;
             const dy = enemy.y - game.player.y;
             const distSq = dx * dx + dy * dy;
-            if ((game.weaponId === "void_revolver" || game.weaponId === "fractal_boomerang" || game.weaponId === "rift_seeder") && distSq > maxRangeSq) continue;
+            if ((game.weaponId === "void_revolver" || game.weaponId === "fractal_boomerang" || game.weaponId === "rift_seeder" || game.weaponId === "blood_spear") && distSq > maxRangeSq) continue;
             const priority = enemy.type === "boss" ? 120 : enemy.type === "elite" ? 45 : enemy.type === "charger" ? 20 : 0;
             const score = Math.sqrt(distSq) - priority;
             if (score < bestScore) { bestScore = score; target = enemy; }
           }
           if (target) {
           const baseAngle = Math.atan2(target.y - game.player.y, target.x - game.player.x);
-          const weaponPower = (1 + (game.weaponLevel - 1) * 0.055) * (game.evolved ? 1.15 : 1);
+          const weaponPower = (1 + (game.weaponLevel - 1) * 0.055) * (game.evolved && game.weaponId !== "blood_spear" ? 1.15 : 1);
           const weaponDamage = game.player.damage * weaponPower;
 
           if (game.weaponId === "void_revolver") {
@@ -3349,6 +3515,63 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             game.player.castFacing = directionFromVector(target.x - game.player.x, target.y - game.player.y);
             game.player.castTimer = 0.24;
             game.shotTimer = game.player.fireRate * (game.evolved ? 2.5 : 1.85);
+          } else if (game.weaponId === "blood_spear") {
+            const speed = 760 * game.player.projectileRangeMultiplier;
+            const spearLife = Math.max(0.75, game.player.projectileLife * 1.4);
+            if (game.shots.length < 88) game.shots.push({
+              x: game.player.x, y: game.player.y,
+              vx: Math.cos(baseAngle) * speed, vy: Math.sin(baseAngle) * speed,
+              damage: weaponDamage, life: spearLife, maxLife: spearLife,
+              hitTargets: [], bouncesRemaining: 0, piercesRemaining: 999,
+              kind: "blood_spear", radius: 13, angle: baseAngle,
+            });
+            game.player.castFacing = directionFromVector(target.x - game.player.x, target.y - game.player.y);
+            game.player.castTimer = 0.24;
+            // A Coroa acrescenta uma lança aleatória por coleta; a evolução inicia com três.
+            const rainCount = Math.min(5, (game.evolved ? 3 : 0) + Math.min(2, game.player.projectileStacks));
+            if (rainCount > 0 && game.shots.length < 84) {
+              const rainTargets = game.enemies.filter((enemy) => enemy.hp > 0);
+              for (let rainIndex = 0; rainIndex < rainCount && rainTargets.length > 0 && game.shots.length < 88; rainIndex++) {
+                const selectedIndex = Math.floor(Math.random() * rainTargets.length);
+                const rainTarget = rainTargets.splice(selectedIndex, 1)[0];
+                const spawnX = rainTarget.x + (Math.random() - 0.5) * 72;
+                const spawnY = rainTarget.y - 132 - Math.random() * 28;
+                const dx = rainTarget.x - spawnX, dy = rainTarget.y - spawnY;
+                const travel = Math.max(1, Math.hypot(dx, dy));
+                const rainSpeed = 900 * game.player.projectileRangeMultiplier;
+                const rainLife = travel / rainSpeed + 0.18;
+                game.shots.push({
+                  x: spawnX, y: spawnY, vx: dx / travel * rainSpeed, vy: dy / travel * rainSpeed,
+                  damage: weaponDamage * 0.10, life: rainLife, maxLife: rainLife,
+                  hitTargets: [], bouncesRemaining: 0, piercesRemaining: 0,
+                  kind: "blood_spear_rain", radius: 9, targetEnemy: rainTarget,
+                });
+              }
+            }
+            if (game.evolved) {
+              const nextRitualLine = game.bloodRitualProgress + 1;
+              if (nextRitualLine >= 5) {
+                game.bloodRitualProgress = 0;
+                const ritualGift = game.upgradeCounts.gift_blood_ritual?.count ?? 0;
+                const ritualRadius = 220 * (1 + Math.min(MAX_AREA_RELIC_STACKS, game.player.specialAreaStacks) * 0.10) * (1 + ritualGift * 0.12);
+                if (game.shots.length < 88) game.shots.push({
+                  x: game.player.x, y: game.player.y, vx: 0, vy: 0,
+                  damage: weaponDamage * 0.50, life: 0.42, maxLife: 0.42,
+                  hitTargets: [], bouncesRemaining: 0, piercesRemaining: 0,
+                  kind: "blood_ritual_blast", radius: ritualRadius, bloodHealTotal: 0,
+                });
+                (game.rings ??= []).push({ x: game.player.x, y: game.player.y, r: 16, max: ritualRadius, life: 0.62, color: "#dc143c" });
+                game.shake = Math.max(game.shake ?? 0, 4.5);
+                if (game.particles.length < 75) for (let particle = 0; particle < 18; particle++) {
+                  const particleAngle = particle / 18 * Math.PI * 2;
+                  const particleSpeed = 70 + (particle % 3) * 42;
+                  game.particles.push({ x: game.player.x, y: game.player.y,
+                    vx: Math.cos(particleAngle) * particleSpeed, vy: Math.sin(particleAngle) * particleSpeed,
+                    life: 0.32 + (particle % 3) * 0.08, color: particle % 2 ? "#fda4af" : "#991b1b" });
+                }
+              } else game.bloodRitualProgress = nextRitualLine;
+            }
+            game.shotTimer = game.player.fireRate * 1.05;
           }
 
           if (game.weaponId !== "orbital_swords" && game.weaponId !== "rune_sentinels") fractalAudio.shoot();
@@ -4018,12 +4241,15 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             shot.pulseTimer = 0.4;
             shot.hitTargets.length = 0;
           }
-          const wideAttack = shot.kind === "scythe_slash" || shot.kind === "sentinel_explosion" || shot.kind === "rift_blast" || shot.kind === "rift_residue" || shot.kind === "boomerang_catch" || (shot.kind === "fractal_boomerang" && shot.phase === "spin") || isPulsingField;
+          const isBloodTrail = shot.kind === "blood_trail";
+          const wideAttack = shot.kind === "scythe_slash" || shot.kind === "sentinel_explosion" || shot.kind === "rift_blast" || shot.kind === "rift_residue" || shot.kind === "boomerang_catch" || shot.kind === "blood_ritual_blast" || isBloodTrail || (shot.kind === "fractal_boomerang" && shot.phase === "spin") || isPulsingField;
           let nearbyTargets: Enemy[];
           // As demais armas continuam consultando a grade espacial sob demanda.
           if (!collisionGrid) collisionGrid = buildEnemySpatialGrid(game.enemies);
+          const trailHalfLength = isBloodTrail ? Math.hypot((shot.endX ?? shot.x) - (shot.startX ?? shot.x), (shot.endY ?? shot.y) - (shot.startY ?? shot.y)) * 0.5 : 0;
+          const queryRadius = isBloodTrail ? trailHalfLength + (shot.radius ?? 19) + 42 : (shot.radius ?? 180) + 42;
           nearbyTargets = wideAttack
-            ? getEnemiesInRadius(shot.x, shot.y, (shot.radius ?? 180) + 42, collisionGrid)
+            ? getEnemiesInRadius(shot.x, shot.y, queryRadius, collisionGrid)
             : getNearbyEnemies(shot.x, shot.y, collisionGrid);
           if (!wideAttack && shot.targetEnemy && !nearbyTargets.includes(shot.targetEnemy)) nearbyTargets.push(shot.targetEnemy);
           for (const enemy of nearbyTargets) {
@@ -4033,7 +4259,10 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             const hitY = shot.y - enemy.y;
             const hitDistanceSquared = hitX * hitX + hitY * hitY;
             let hit = false;
-            if (shot.kind === "plasma_puddle" || shot.kind === "sentinel_explosion" || shot.kind === "rift_blast" || shot.kind === "rift_residue" || shot.kind === "boomerang_catch" || (shot.kind === "fractal_boomerang" && shot.phase === "spin")) {
+            if (shot.kind === "blood_trail") {
+              const hitRadius = (shot.radius ?? 19) + enemy.radius;
+              hit = distanceToSegmentSquared(enemy.x, enemy.y, shot.startX ?? shot.x, shot.startY ?? shot.y, shot.endX ?? shot.x, shot.endY ?? shot.y) <= hitRadius * hitRadius;
+            } else if (shot.kind === "plasma_puddle" || shot.kind === "sentinel_explosion" || shot.kind === "rift_blast" || shot.kind === "rift_residue" || shot.kind === "boomerang_catch" || shot.kind === "blood_ritual_blast" || (shot.kind === "fractal_boomerang" && shot.phase === "spin")) {
               const radius = (shot.radius ?? 90) + enemy.radius;
               hit = hitDistanceSquared <= radius * radius;
             } else if (shot.kind === "scythe_slash") {
@@ -4042,7 +4271,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               const angleDifference = Math.atan2(Math.sin(targetAngle - (shot.angle ?? 0)), Math.cos(targetAngle - (shot.angle ?? 0)));
               hit = hitDistanceSquared <= radius * radius && Math.abs(angleDifference) <= (shot.arcSpan ?? Math.PI * 1.1) / 2;
             } else {
-              const hitRadius = enemy.radius + (shot.kind === "orbital_blade" ? (shot.radius ?? 20) : shot.kind === "plasma_core" ? (shot.radius ?? 13) : shot.kind === "fractal_boomerang" ? (shot.radius ?? 17) : (shot.kind === "boomerang_shard" || shot.kind === "rift_shard") ? 7 : 5);
+              const hitRadius = enemy.radius + (shot.kind === "orbital_blade" ? (shot.radius ?? 20) : shot.kind === "plasma_core" ? (shot.radius ?? 13) : shot.kind === "fractal_boomerang" ? (shot.radius ?? 17) : shot.kind === "blood_spear" ? (shot.radius ?? 13) : shot.kind === "blood_spear_rain" ? (shot.radius ?? 9) : (shot.kind === "boomerang_shard" || shot.kind === "rift_shard") ? 7 : 5);
               hit = hitDistanceSquared < hitRadius * hitRadius;
             }
             if (hit) {
@@ -4072,7 +4301,26 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               enemy.hp -= finalHitDamage;
               game.totalDamageDealt += appliedDamage;
               if (isCrit && hunterLevel > 0) enemy.hunterMarkTimer = 6;
-              if (isCrit && (game.weaponId === "unstable_core" || game.weaponId === "rune_sentinels" || game.weaponId === "fractal_boomerang" || game.weaponId === "rift_seeder") && (game.upgradeCounts.gift_thermal_overload?.count ?? 0) > 0) {
+              if (game.weaponId === "blood_spear" && (shot.kind === "blood_spear" || shot.kind === "blood_spear_rain")) {
+                const slowLevel = game.upgradeCounts.gift_blood_slow?.count ?? 0;
+                if (slowLevel > 0) {
+                  enemy.slowTimer = Math.max(enemy.slowTimer ?? 0, 0.7);
+                  enemy.slowFactor = Math.min(enemy.slowFactor ?? 1, clamp(1 - slowLevel * 0.06, 0.75, 0.94));
+                }
+              }
+              if (shot.kind === "blood_ritual_blast") {
+                const ritualGift = game.upgradeCounts.gift_blood_ritual?.count ?? 0;
+                if (ritualGift > 0) {
+                  const healCap = game.player.maxHp * 0.03;
+                  const remainingHeal = Math.max(0, healCap - (shot.bloodHealTotal ?? 0));
+                  const heal = Math.min(game.player.maxHp * 0.0025 * ritualGift, remainingHeal, game.player.maxHp - game.player.hp);
+                  if (heal > 0) {
+                    game.player.hp += heal;
+                    shot.bloodHealTotal = (shot.bloodHealTotal ?? 0) + heal;
+                  }
+                }
+              }
+              if (isCrit && (game.weaponId === "unstable_core" || game.weaponId === "rune_sentinels" || game.weaponId === "fractal_boomerang" || game.weaponId === "rift_seeder" || game.weaponId === "blood_spear") && (game.upgradeCounts.gift_thermal_overload?.count ?? 0) > 0) {
                 enemy.thermalBurnTimer = 3;
                 enemy.thermalBurnTick = 0.5;
                 enemy.thermalBurnDamage = Math.max(enemy.thermalBurnDamage ?? 0, hitDamage * 0.12);
@@ -4102,11 +4350,12 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               const impactResonanceLevel = game.upgradeCounts.gift_impact_resonance?.count ?? 0;
               const impactCompatible = ((game.weaponId === "spectral_scythe" || game.weaponId === "orbital_swords") && (shot.kind === "scythe_slash" || shot.kind === "orbital_blade"))
                 || (game.weaponId === "fractal_boomerang" && (shot.kind === "fractal_boomerang" || shot.kind === "boomerang_catch"))
-                || (game.weaponId === "rift_seeder" && shot.kind === "rift_blast");
+                || (game.weaponId === "rift_seeder" && shot.kind === "rift_blast")
+                || (game.weaponId === "blood_spear" && (shot.kind === "blood_spear" || shot.kind === "blood_spear_rain" || shot.kind === "blood_ritual_blast"));
               const hasBaselineKnockback = shot.kind === "boomerang_catch" || shot.kind === "rift_blast";
               if (impactCompatible && (impactResonanceLevel > 0 || hasBaselineKnockback)) {
-                const originX = shot.kind === "rift_blast" ? shot.x : game.player.x;
-                const originY = shot.kind === "rift_blast" ? shot.y : game.player.y;
+                const originX = shot.kind === "rift_blast" || shot.kind === "blood_ritual_blast" ? shot.x : game.player.x;
+                const originY = shot.kind === "rift_blast" || shot.kind === "blood_ritual_blast" ? shot.y : game.player.y;
                 const awayX = enemy.x - originX, awayY = enemy.y - originY;
                 const awayLength = Math.max(1, Math.hypot(awayX, awayY));
                 const basePush = shot.kind === "rift_blast" ? 16 : 20;
@@ -4146,7 +4395,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               }
 
               // Descarga em cadeia: cada impacto do projétil original pode chamar alvos extras.
-              const supportsChainRelic = shot.kind === undefined || shot.kind === "bullet" || shot.kind === "revolver_empowered" || shot.kind === "plasma_core" || shot.kind === "fractal_boomerang" || shot.kind === "boomerang_shard";
+              const supportsChainRelic = shot.kind === undefined || shot.kind === "bullet" || shot.kind === "revolver_empowered" || shot.kind === "plasma_core" || shot.kind === "fractal_boomerang" || shot.kind === "boomerang_shard" || shot.kind === "blood_spear" || shot.kind === "blood_spear_rain";
               if (!shot.isChainLightning && supportsChainRelic && game.player.relicChainLightning > 0) {
                 const chainLevel = Math.min(3, game.player.relicChainLightning);
                 const chainCount = game.weaponId === "void_revolver" && game.evolved ? Math.min(chainLevel, 1) : chainLevel;
@@ -4232,7 +4481,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               }
 
               // Cortes, lâminas e campos atingem todos os alvos da forma durante cada pulso.
-              if (shot.kind === "fractal_boomerang" || shot.kind === "scythe_slash" || shot.kind === "orbital_blade" || shot.kind === "sentinel_explosion" || shot.kind === "rift_blast" || shot.kind === "boomerang_catch" || isPulsingField) continue;
+              if (shot.kind === "fractal_boomerang" || shot.kind === "scythe_slash" || shot.kind === "orbital_blade" || shot.kind === "sentinel_explosion" || shot.kind === "rift_blast" || shot.kind === "boomerang_catch" || shot.kind === "blood_trail" || shot.kind === "blood_ritual_blast" || isPulsingField) continue;
 
               // Perfuração prioriza inimigos alinhados à frente; ricochete busca um novo alvo quando não há alvo alinhado.
               let continued = false;
@@ -5099,6 +5348,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               if (!game) return;
               setMasterWeaponSelection(weaponId);
               game.weaponId = weaponId;
+              game.bloodRitualProgress = 0;
+              game.bloodDashTrail = null;
               game.shots = [];
               game.gravityAuraShot = undefined;
               game.gravityAuraActive = true;
