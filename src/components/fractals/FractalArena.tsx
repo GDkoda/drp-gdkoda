@@ -4971,7 +4971,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             </section>
             <section className="fractals-gold-frame fractals-gold-corners rounded-xl p-3 text-center sm:p-4">
               <p className="mb-2 text-xs text-white/75 sm:text-sm">Sobreviva por 12 minutos. O guardião desperta ao final da incursão.</p>
-              <Button onClick={start} disabled={preparingArena} aria-busy={preparingArena} className="mx-auto h-12 w-full max-w-xl rounded-xl bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-500 font-display text-base font-black tracking-wider text-[#21170b] shadow-[0_0_28px_rgba(245,158,11,0.3)] transition hover:brightness-110 active:scale-[0.98] disabled:cursor-wait disabled:opacity-80">
+              <Button onClick={() => { void start(false); }} disabled={preparingArena} aria-busy={preparingArena} className="mx-auto h-12 w-full max-w-xl rounded-xl bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-500 font-display text-base font-black tracking-wider text-[#21170b] shadow-[0_0_28px_rgba(245,158,11,0.3)] transition hover:brightness-110 active:scale-[0.98] disabled:cursor-wait disabled:opacity-80">
                 <Play className="mr-2 h-5 w-5 fill-current" /> {preparingArena ? "PREPARANDO CENÁRIO..." : "ENTRAR NA FENDA"}
               </Button>
             </section>
