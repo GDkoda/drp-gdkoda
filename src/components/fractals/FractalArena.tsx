@@ -120,6 +120,7 @@ const SHOP_ITEM_INFO: Record<string, ShopItemInfo> = {
     "Nível 1: concede invulnerabilidade durante toda a duração do dash. Sem este nível, o dash continua servindo apenas para mobilidade.",
     "Nível 2: atravessar inimigos durante o dash causa dano equivalente a 10% do dano-base do golpe da arma equipada. Cada inimigo pode ser atingido uma vez por investida.",
     "Nível 3: permite uma segunda investida em sequência, com uma janela curta para acioná-la. Você pode mudar a direção entre as investidas e também corrigir a direção enquanto estiver avançando. Depois da sequência, o dash entra em recarga.",
+    "Sinergia com a Lança de Sangue: cada dash também dispara uma estocada carmesim com 100% do dano-base e deixa uma cicatriz no chão por 2s, causando 25% do dano-base uma vez por inimigo. Até 3 trilhas podem permanecer ativas.",
     "Desbloqueio permanente em três níveis. Custos: 3.000, 8.500 e 22.000 FR."
   ]},
   reroll: { title: "Rerrolagem de Dádivas", category: "Controle das escolhas", summary: "+1 rerrolagem por nível, a cada expedição.", details: [
@@ -208,9 +209,9 @@ const SHOP_ITEM_INFO: Record<string, ShopItemInfo> = {
     "O nível 1 libera a relíquia. Os níveis 2 a 4 também contribuem para a chance geral de queda de Relíquias de Campo: 1%, 3% e 5% no maior nível comprado."
   ]},
   projectiles: { title: "Coroa de Estilhaços", category: "Relíquia de Campo", summary: "Bônus adaptados à arma; até 2 coletas.", details: [
-    "Revólver e Núcleo recebem projéteis adicionais; Espadas Orbitais e Sentinelas mantêm seus bônus de lâminas e totens adicionais.",
+    "Revólver e Núcleo recebem projéteis adicionais; Espadas Orbitais e Sentinelas mantêm seus bônus de lâminas e totens adicionais. Lança: cada nível acrescenta uma lança aleatória; a evolução começa com três.",
     "Foice: corte adicional 180° atrás, com 60% do dano no nível 1 e 90% no nível 2. Bumerangue: cada lâmina extra causa 75% do dano normal.",
-    "Grilhão: +1 corrente por nível, sem ampliar o raio. Semeador: +1 mina ativa e +15% de dano por mina por nível.",
+    "Grilhão: +1 corrente por nível, sem ampliar o raio. Semeador: +1 mina ativa e +15% de dano por mina por nível. Lança: +1 lança aleatória por nível, até duas adicionais.",
     "O efeito acumula até 2 coletas.",
     "O nível 1 da compra libera a relíquia. Os níveis 2 a 4 aumentam a chance geral de queda de Relíquias de Campo para 1%, 3% e 5%, conforme o maior nível comprado."
   ]},
@@ -225,8 +226,8 @@ const SHOP_ITEM_INFO: Record<string, ShopItemInfo> = {
     "A compra do nível 1 libera a relíquia. Os níveis 2 e 3 aumentam a chance geral de queda de Relíquias de Campo, compartilhada com as demais relíquias."
   ]},
   chain_lightning: { title: "Descarga em Cadeia", category: "Relíquia de Campo", summary: "Impactos saltam para inimigos próximos.", details: [
-    "Disponível apenas para o Revólver do Vazio e o Núcleo Instável.",
-    "Nível de coleta 1: salta para 1 alvo com 55% do dano; nível 2: 2 alvos com 65%; nível 3: 3 alvos com 75%.",
+    "Disponível para o Revólver do Vazio, Núcleo Instável, Bumerangue Fractal e Lança de Sangue.",
+    "Nível de coleta 1: salta para 1 alvo com 55% do dano; nível 2: 2 alvos com 65%; nível 3: 3 alvos com 75%. A Lança já perfura alvos em linha, mas também pode ativar os saltos.",
     "A compra do nível 1 libera a relíquia. Os níveis 2 e 3 aumentam a chance geral de queda de Relíquias de Campo, compartilhada com as demais relíquias."
   ]},
   weapon_void_revolver: { title: "Revólver do Vazio", category: "Arma", summary: "Rajadas precisas; a cada 6 tiros, uma bala dourada.", details: [
@@ -437,7 +438,7 @@ const SPECIAL_UPGRADES: Upgrade[] = [
   { id: "special_projectiles", name: "Coroa de Estilhaços", description: "Revólver/Núcleo: projéteis extras; Orbitais/Sentinelas: lâminas/totens extras; Foice: corte 180° atrás (60%/90% de dano); Bumerangue: lâminas extras a 75% do dano; Grilhão: +1 corrente por nível; Semeador: +1 mina ativa e +15% de dano por mina por nível; Lança: +1 lança aleatória por nível (máx. 2).", icon: Swords },
   { id: "special_ricochet", name: "Ricochete Instável", description: "Revólver e Núcleo ganham +1 ricochete por nível (máx. 3).", icon: Orbit },
   { id: "special_piercing", name: "Perfuração Espectral", description: "Revólver e Núcleo atravessam +1 inimigo por nível (máx. 3).", icon: Target },
-  { id: "special_chain_lightning", name: "Descarga em Cadeia", description: "Impactos do Revólver, Núcleo e Bumerangue saltam para +1 alvo por nível (máx. 3).", icon: Zap },
+  { id: "special_chain_lightning", name: "Descarga em Cadeia", description: "Impactos do Revólver, Núcleo, Bumerangue e Lança saltam para +1 alvo por nível (máx. 3).", icon: Zap },
   { id: "special_crit", name: "Olho do Predador", description: "+1% de chance crítica por coleta, até 20 acúmulos.", icon: Target },
 ];
 
@@ -509,8 +510,8 @@ const WEAPON_GIFTS: Record<WeaponId, Upgrade[]> = {
     { id: "gift_impact_resonance", name: "Ressonância de Impacto", description: "Explosões empurram inimigos +50% por nível; impactos contra obstáculos causam dano extra.", icon: Zap, rarity: "uncommon" },
   ],
   blood_spear: [
-    { id: "gift_blood_slow", name: "Selo Hemático", description: "As lanças reduzem a velocidade dos atingidos por 0,7s; a lentidão aumenta 6 pontos percentuais por nível (máx. 25%).", icon: Snowflake, rarity: "uncommon" },
-    { id: "gift_blood_trail", name: "Cicatriz Carmesim", description: "As trilhas do dash duram +0,3s e ficam 3px mais largas por nível.", icon: Flame, rarity: "uncommon" },
+    { id: "gift_blood_slow", name: "Selo Hemático", description: "As lanças reduzem a velocidade dos atingidos por 0,7s; a lentidão aumenta 6 pontos percentuais por nível (máx. 18%).", icon: Snowflake, rarity: "uncommon" },
+    { id: "gift_blood_trail", name: "Cicatriz Carmesim", description: "As trilhas do dash duram +0,3s e ganham +3px de raio por nível.", icon: Flame, rarity: "uncommon" },
     { id: "gift_blood_ritual", name: "Sacrifício do Pentagrama", description: "A explosão ritual ganha +12% de raio por nível e restaura vida ao atingir inimigos, até 3% da vida máxima por explosão.", icon: Heart, rarity: "uncommon" },
     { id: "gift_hunter_mark", name: "Marcador de Caçador", description: "Acertos críticos marcam o alvo por 6s; dano contra ele +5% por nível (máx. +25%).", icon: Target, rarity: "uncommon" },
     { id: "gift_shadow_execution", name: "Execução Sombria", description: "Elimina monstros comuns com 10% ou menos de vida.", icon: Skull, rarity: "uncommon" },
