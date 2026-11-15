@@ -342,6 +342,7 @@ export type Database = {
           game_seconds: number | null
           id: string
           kills: number | null
+          mission_id: number
           player_level: number | null
           selected_omen: string | null
           selected_weapon: string
@@ -356,6 +357,7 @@ export type Database = {
           game_seconds?: number | null
           id?: string
           kills?: number | null
+          mission_id?: number
           player_level?: number | null
           selected_omen?: string | null
           selected_weapon?: string
@@ -370,6 +372,7 @@ export type Database = {
           game_seconds?: number | null
           id?: string
           kills?: number | null
+          mission_id?: number
           player_level?: number | null
           selected_omen?: string | null
           selected_weapon?: string
@@ -1082,6 +1085,7 @@ export type Database = {
           _game_seconds: number
           _kills: number
           _level: number
+          _mission_id?: number
           _run_id: string
           _victory: boolean
         }
@@ -1124,6 +1128,7 @@ export type Database = {
           game_seconds: number
           id: string
           kills: number
+          mission_id: number
           omen: string
           player_level: number
           started_at: string
@@ -1154,7 +1159,12 @@ export type Database = {
       start_farkle_game: { Args: never; Returns: number }
       start_farkle_game_with_bet: { Args: { _wager: number }; Returns: string }
       start_fractal_run: {
-        Args: { _corruption: number; _omen?: string; _weapon?: string }
+        Args: {
+          _corruption: number
+          _mission_id?: number
+          _omen?: string
+          _weapon?: string
+        }
         Returns: string
       }
       start_puzzle: { Args: never; Returns: Json }

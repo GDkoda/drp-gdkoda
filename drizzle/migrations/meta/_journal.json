@@ -50,6 +50,13 @@
       "when": 1794616310822,
       "tag": "0006_fractal_run_validation_and_exchange",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1794703696314,
+      "tag": "0007_restrict_site_background_reads",
+      "breakpoints": true
     }
   ]
 }
