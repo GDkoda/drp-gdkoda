@@ -422,7 +422,7 @@ type GameState = {
   enemies: Enemy[]; shots: Shot[]; gems: Gem[]; specialDrops: SpecialDrop[]; sentinelTotems: SentinelTotem[]; riftMines: RiftMine[]; nextRiftMineId: number; nextRiftGroupId: number; riftMineCheckTimer: number; sentinelRespawnTimer: number; nextSentinelTotemId: number; urns: BreakableUrn[]; obstacles: CemeteryObstacle[]; nextUrnMinute: number; nextUrnId: number; particles: Particle[]; damageNumbers: DamageNumber[]; pickupLabels: PickupLabel[]; challengeEvent: ChallengeEvent | null; nextChallengeEvent: number; kills: number; ended: boolean; upgradeCounts: UpgradeCounts; totalDamageDealt: number; crystalsCollected: number; highestLevel: number;
   weaponId: WeaponId; weaponLevel: number; evolved: boolean; rerollsRemaining: number; banishesRemaining: number; bannedUpgradeIds: string[];
   bloodRitualProgress: number; bloodRitualTimer: number; bloodDashTrail: Shot | null;
-  revolverShotCount?: number; orbitalPulseTimer?: number;
+  revolverShotCount?: number; revolverAmmo?: number; revolverIsReloading?: boolean; revolverReloadTimer?: number; revolverReloadDuration?: number; orbitalPulseTimer?: number;
   gravityAuraActive?: boolean; gravityAuraShot?: Shot;
   gravityTethers?: { id: number; enemy: Enemy; duration: number }[]; gravityAuraTimer2?: number;
   gravityChains?: { sx: number; sy: number; enemy: Enemy; t: number; dur: number; dmg: number; hit: boolean; fade: number; ex: number; ey: number }[]; dashLevel?: number;
@@ -1220,7 +1220,7 @@ function makeGame(width: number, height: number, purchases: PurchaseState, weapo
     player: { x: 0, y: 0, hp: maxHp, maxHp, speed: 205 * (omenId === "spectral_veil" ? 1.15 : 1), damage: 22 * omenDamage, fireRate: 0.72 * (omenId === "rupture" ? 1.15 : 1), invuln: 0, hitFlash: 0, xp: 0, nextXp: 12, level: 1, pickupRadius: 85, xpMultiplier: omenId === "famine" ? 1.2 : 1, specialAreaStacks: 0, specialExperienceStacks: 0, projectileRangeStacks: 0, projectileRangeMultiplier: 1, projectileStacks: 0, relicRicochet: 0, relicPiercing: 0, relicChainLightning: 0, specialCritStacks: 0, aetherShieldCharges: 0, projectileLife, facing: 0, castFacing: 0, castTimer: 0, moving: false, dashTimer: 0, dashCooldown: 0, dashX: 1, dashY: 0, spriteAction: "idle", spriteDirection: 0, previousSpriteAction: "idle", previousSpriteDirection: 0, spriteBlend: 1 },
     enemies: [], shots: [], gems: [], specialDrops: [], sentinelTotems: [], riftMines: [], nextRiftMineId: 1, nextRiftGroupId: 1, riftMineCheckTimer: 0, sentinelRespawnTimer: 0, nextSentinelTotemId: 1, urns: [], obstacles: createCemeteryObstacles(), nextUrnMinute: 1, nextUrnId: 1, particles: [], damageNumbers: [], pickupLabels: [], challengeEvent: null, nextChallengeEvent: 0, kills: 0, ended: false, upgradeCounts: {}, totalDamageDealt: 0, crystalsCollected: 0, highestLevel: 1,
     weaponId, weaponLevel: 1, evolved: false, rerollsRemaining: purchases.reroll, banishesRemaining: purchases.banish, bannedUpgradeIds: [], bloodRitualProgress: 0, bloodRitualTimer: 0, bloodDashTrail: null,
-    revolverShotCount: 0, orbitalPulseTimer: 0, gravityAuraActive: true, gravityAuraShot: undefined, gravityTethers: [], scytheSiphonCooldown: 0, microVortices: [], alchemyCircle: null, nextAlchemyAt: 120,
+    revolverShotCount: 0, revolverAmmo: 6, revolverIsReloading: false, revolverReloadTimer: 0, revolverReloadDuration: 0, orbitalPulseTimer: 0, gravityAuraActive: true, gravityAuraShot: undefined, gravityTethers: [], scytheSiphonCooldown: 0, microVortices: [], alchemyCircle: null, nextAlchemyAt: 120,
     anchorReviveAvailable: false, anchorRevivesUsed: 0, dashChainRemaining: 0, dashChainWindow: 0, dashHitTargets: new Set<Enemy>(), omenId, omenSpawnMultiplier: omenId === "famine" ? 1.2 : 1,
     omenEnemyHpMultiplier: omenId === "abundance" ? 1.15 : 1, omenRewardMultiplier: omenId === "abundance" ? 1.25 : 1,
     omenRevengeCooldown: 0, lastObservedHp: maxHp,
@@ -2487,11 +2487,27 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     ctx.fillStyle="#d5a7ff";ctx.shadowColor="#bd7cff";ctx.shadowBlur = 0;ctx.beginPath();ctx.arc(18,-13,3.5,0,Math.PI*2);ctx.fill();
   }
   if(game.weaponId==="void_revolver"){
-    const cycle=(game.revolverShotCount??0)%6,loaded=cycle===0?6:6-cycle;
-    ctx.save();ctx.translate(30,11);ctx.fillStyle="rgba(8,6,15,.76)";ctx.beginPath();ctx.arc(0,0,12,0,Math.PI*2);ctx.fill();
+    const reloading=Boolean(game.revolverIsReloading);
+    const reloadDuration=game.revolverReloadDuration??(game.evolved?2:4);
+    const reloadProgress=reloading?clamp((game.revolverReloadTimer??0)/Math.max(.01,reloadDuration),0,1):1;
+    const loaded=reloading?Math.min(6,Math.floor(reloadProgress*6+1e-6)):clamp(game.revolverAmmo??6,0,6);
+    const nextRoundProgress=reloading&&loaded<6?(reloadProgress*6)%1:0;
+    ctx.save();ctx.translate(30,11);ctx.fillStyle="rgba(8,6,15,.82)";ctx.beginPath();ctx.arc(0,0,12,0,Math.PI*2);ctx.fill();
     ctx.strokeStyle="rgba(251,191,36,.65)";ctx.lineWidth=1;ctx.stroke();
-    for(let round=0;round<6;round++){const angle=-Math.PI/2+round*Math.PI/3;ctx.fillStyle=round<loaded?"#fbbf24":"rgba(148,163,184,.45)";ctx.beginPath();ctx.arc(Math.cos(angle)*7,Math.sin(angle)*7,2.3,0,Math.PI*2);ctx.fill();}
-    ctx.font="900 7px Inter,ui-sans-serif,system-ui,sans-serif";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillStyle="#fff1b3";ctx.fillText(loaded+"/6",0,19);ctx.restore();
+    for(let round=0;round<6;round++){
+      const angle=-Math.PI/2+round*Math.PI/3,dx=Math.cos(angle)*7,dy=Math.sin(angle)*7;
+      ctx.fillStyle=round<loaded?"#fbbf24":"rgba(148,163,184,.45)";
+      ctx.beginPath();ctx.arc(dx,dy,2.3,0,Math.PI*2);ctx.fill();
+      if(reloading&&round===loaded&&nextRoundProgress>0){
+        ctx.fillStyle="#fcd34d";ctx.beginPath();ctx.arc(dx,dy,2.3*nextRoundProgress,0,Math.PI*2);ctx.fill();
+      }
+    }
+    if(reloading){
+      ctx.beginPath();ctx.arc(0,0,10.4,-Math.PI/2,-Math.PI/2+Math.PI*2*reloadProgress);
+      ctx.strokeStyle="rgba(252,211,77,.95)";ctx.lineWidth=1.5;ctx.stroke();
+    }
+    ctx.font="900 7px Inter,ui-sans-serif,system-ui,sans-serif";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillStyle=reloading?"#fcd34d":"#fff1b3";
+    ctx.fillText(loaded+"/6",0,19);ctx.restore();
     if(player.castTimer>0){const aim=PLAYER_DIRECTION_VECTORS[player.castFacing]??PLAYER_DIRECTION_VECTORS[0];ctx.save();ctx.translate(aim.x*25,aim.y*21-3);ctx.rotate(Math.atan2(aim.y,aim.x));ctx.globalAlpha=clamp(player.castTimer/.24,0,1);const flash=getRevolverMuzzleFlashSprite();ctx.drawImage(flash,-17,-16,34,32);ctx.restore();}
   }
   ctx.shadowBlur = 0; ctx.globalAlpha=1;
@@ -3417,7 +3433,20 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           game.spawnTimer = spawnInterval * (0.78 + Math.random() * 0.45);
         }
         // O Guardião só desperta ao fim dos 12 minutos completos.
+        if (game.weaponId === "void_revolver" && game.revolverIsReloading) {
+          const reloadDuration = game.revolverReloadDuration ?? (game.evolved ? 2 : 4);
+          game.revolverReloadTimer = Math.min(reloadDuration, (game.revolverReloadTimer ?? 0) + dt);
+          if (game.revolverReloadTimer >= reloadDuration - 1e-6) {
+            game.revolverAmmo = 6;
+            game.revolverIsReloading = false;
+            game.revolverReloadTimer = 0;
+            game.revolverReloadDuration = 0;
+          }
+        }
         game.shotTimer -= dt;
+        if (game.weaponId === "void_revolver" && (game.revolverAmmo ?? 6) <= 0) {
+          game.shotTimer = Math.max(game.shotTimer, 0.08);
+        }
         // Grilhão não procura alvos nem dispara projéteis: sua aura é atualizada abaixo.
         if (game.weaponId !== "gravity_shackle" && game.shotTimer <= 0) {
           const maxRange = (game.weaponId === "blood_spear" ? 340 : game.weaponId === "rift_seeder" ? 360 : 280) * game.player.projectileRangeMultiplier;
@@ -3442,6 +3471,11 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           const weaponDamage = game.player.damage * weaponPower;
 
           if (game.weaponId === "void_revolver") {
+            if ((game.revolverAmmo ?? 6) <= 0) {
+              game.shotTimer = 0.08;
+              continue;
+            }
+            game.revolverAmmo = Math.max(0, (game.revolverAmmo ?? 6) - 1);
             game.revolverShotCount = (game.revolverShotCount ?? 0) + 1;
             const isEmpowered = game.revolverShotCount % 6 === 0;
             const projectileCount = game.evolved ? 6 + game.player.projectileStacks : 1 + game.player.projectileStacks;
@@ -3461,6 +3495,11 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                 piercesRemaining: game.player.relicPiercing + (isEmpowered ? 3 : 0),
                 kind: isEmpowered ? "revolver_empowered" : "bullet",
               });
+            }
+            if (game.revolverAmmo === 0) {
+              game.revolverIsReloading = true;
+              game.revolverReloadTimer = 0;
+              game.revolverReloadDuration = game.evolved ? 2 : 4;
             }
             game.player.castFacing = directionFromVector(target.x - game.player.x, target.y - game.player.y);
             game.player.castTimer = 0.24;
@@ -5522,6 +5561,10 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               game.sentinelRespawnTimer = 0;
               game.shotTimer = 0.25;
               game.revolverShotCount = 0;
+              game.revolverAmmo = 6;
+              game.revolverIsReloading = false;
+              game.revolverReloadTimer = 0;
+              game.revolverReloadDuration = 0;
               game.orbitalPulseTimer = 0;
               game.player.castTimer = 0;
               toast.info("Arma alterada para " + WEAPON_CONFIG[weaponId].name + ".");
