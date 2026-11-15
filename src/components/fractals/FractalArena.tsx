@@ -67,14 +67,14 @@ type SpriteKey = "boss" | "elite" | "wraith" | "charger" | "brute" | "playerIdle
 type SpriteMap = Partial<Record<SpriteKey, HTMLImageElement>>;
 type PlayerVisualAction = "idle" | "move" | "cast";
 const WEAPON_CONFIG: Record<WeaponId, { name: string; description: string; price: number; purchaseKey: keyof PurchaseState | null; masteryKey: keyof PurchaseState; projectKey: keyof PurchaseState; evolutionName: string }> = {
-  void_revolver: { name: "Revólver do Vazio", description: "Rajadas lineares de precisão; a cada seis disparos, uma bala dourada reforçada.", price: 0, purchaseKey: null, masteryKey: "mastery_void_revolver", projectKey: "evolution_void_revolver", evolutionName: "Seis Ecos" },
+  void_revolver: { name: "Revólver do Vazio", description: "Rajadas lineares de precisão; a cada seis disparos, uma bala dourada reforçada. Na evolução, cada projétil normal causa 30% do dano e o reforçado 100%.", price: 0, purchaseKey: null, masteryKey: "mastery_void_revolver", projectKey: "evolution_void_revolver", evolutionName: "Seis Ecos" },
   unstable_core: { name: "Núcleo Instável", description: "Orbe lento de plasma que deixa uma poça corrosiva ampliada; seus pulsos atraem inimigos para o centro.", price: 8000, purchaseKey: "weapon_nucleus", masteryKey: "mastery_nucleus", projectKey: "evolution_nucleus", evolutionName: "Singularidade" },
-  spectral_scythe: { name: "Foice Espectral", description: "Golpe em arco de 166° na forma base e 239° na forma evoluída, cortando inimigos à frente.", price: 9000, purchaseKey: "weapon_scythe", masteryKey: "mastery_scythe", projectKey: "evolution_scythe", evolutionName: "Ceifador de Almas" },
+  spectral_scythe: { name: "Foice Espectral", description: "Golpe em arco de 166° na forma base e 239° na evolução. A Coroa de Estilhaços adiciona um corte 180° atrás: 60% de dano no nível 1 e 90% no nível 2.", price: 9000, purchaseKey: "weapon_scythe", masteryKey: "mastery_scythe", projectKey: "evolution_scythe", evolutionName: "Ceifador de Almas" },
   orbital_swords: { name: "Espadas Orbitais", description: "Lâminas físicas permanecem em órbita e ferem ameaças por contato.", price: 10000, purchaseKey: "weapon_orbitals", masteryKey: "mastery_orbitals", projectKey: "evolution_orbitals", evolutionName: "Dança das Lâminas" },
-  gravity_shackle: { name: "Grilhão Gravitacional", description: "Selo permanente; correntes alcançam o dobro do raio visual. Pulsos-base de 1,8 s (1,4 s evoluído) acompanham a cadência, até o mínimo de 0,6 s. Com menos alvos que correntes, até 3 vínculos extras priorizam chefes e elites e causam 60% do dano normal.", price: 11000, purchaseKey: "weapon_gravity", masteryKey: "mastery_gravity", projectKey: "evolution_gravity", evolutionName: "Prisão do Abismo" },
+  gravity_shackle: { name: "Grilhão Gravitacional", description: "Selo permanente; correntes alcançam o dobro do raio visual. Pulsos-base de 1,8 s (1,4 s evoluído) acompanham a cadência, até o mínimo de 0,6 s. Com poucos alvos, até 3 vínculos extras priorizam chefes e elites e causam 60% do dano normal. A Coroa concede +1 corrente por nível, sem ampliar o raio.", price: 11000, purchaseKey: "weapon_gravity", masteryKey: "mastery_gravity", projectKey: "evolution_gravity", evolutionName: "Prisão do Abismo" },
   rune_sentinels: { name: "Sentinelas Rúnicas", description: "Totens rúnicos fixos perdem 1 PV por segundo e disparam feixes rápidos contra os alvos mais resistentes.", price: 12000, purchaseKey: "weapon_sentinels", masteryKey: "mastery_sentinels", projectKey: "evolution_sentinels", evolutionName: "Arsenal Ancestral" },
-  fractal_boomerang: { name: "Bumerangue Fractal", description: "Lâmina crescente que atravessa os alvos e retorna à posição atual do jogador.", price: 13000, purchaseKey: "weapon_boomerang", masteryKey: "mastery_boomerang", projectKey: "evolution_boomerang", evolutionName: "Serra Retornante" },
-  rift_seeder: { name: "Semeador de Fendas", description: "Instala minas rúnicas que explodem quando inimigos avançam; evolui para uma rede de ruptura.", price: 14000, purchaseKey: "weapon_rift_seeder", masteryKey: "mastery_rift_seeder", projectKey: "evolution_rift_seeder", evolutionName: "Matriz de Ruptura" },
+  fractal_boomerang: { name: "Bumerangue Fractal", description: "Lâmina crescente que atravessa os alvos e retorna. Na Coroa de Estilhaços, cada lâmina extra causa 75% do dano de uma lâmina normal.", price: 13000, purchaseKey: "weapon_boomerang", masteryKey: "mastery_boomerang", projectKey: "evolution_boomerang", evolutionName: "Serra Retornante" },
+  rift_seeder: { name: "Semeador de Fendas", description: "Instala minas rúnicas que explodem quando inimigos avançam; evolui para uma rede de ruptura. Cada nível da Coroa concede +1 mina ativa e +15% de dano por mina.", price: 14000, purchaseKey: "weapon_rift_seeder", masteryKey: "mastery_rift_seeder", projectKey: "evolution_rift_seeder", evolutionName: "Matriz de Ruptura" },
 };
 
 type ShopItemInfo = {
@@ -201,9 +201,10 @@ const SHOP_ITEM_INFO: Record<string, ShopItemInfo> = {
     "O efeito acumula até 5 vezes, chegando a +50%. Afeta projéteis, órbitas, áreas e feixes compatíveis.",
     "O nível 1 libera a relíquia. Os níveis 2 a 4 também contribuem para a chance geral de queda de Relíquias de Campo: 1%, 3% e 5% no maior nível comprado."
   ]},
-  projectiles: { title: "Coroa de Estilhaços", category: "Relíquia de Campo", summary: "Adapta o bônus à arma; até 2 coletas.", details: [
-    "O efeito depende da arma equipada: Revólver e Núcleo recebem projéteis adicionais; Espadas Orbitais recebem lâminas adicionais; Sentinelas recebem totens adicionais.",
-    "Com a Foice Espectral, cada coleta concede +12% de dano. Com o Grilhão Gravitacional, cada coleta aumenta o raio da aura em 6%.",
+  projectiles: { title: "Coroa de Estilhaços", category: "Relíquia de Campo", summary: "Bônus adaptados à arma; até 2 coletas.", details: [
+    "Revólver e Núcleo recebem projéteis adicionais; Espadas Orbitais e Sentinelas mantêm seus bônus de lâminas e totens adicionais.",
+    "Foice: corte adicional 180° atrás, com 60% do dano no nível 1 e 90% no nível 2. Bumerangue: cada lâmina extra causa 75% do dano normal.",
+    "Grilhão: +1 corrente por nível, sem ampliar o raio. Semeador: +1 mina ativa e +15% de dano por mina por nível.",
     "O efeito acumula até 2 coletas.",
     "O nível 1 da compra libera a relíquia. Os níveis 2 a 4 aumentam a chance geral de queda de Relíquias de Campo para 1%, 3% e 5%, conforme o maior nível comprado."
   ]},
@@ -233,7 +234,8 @@ const SHOP_ITEM_INFO: Record<string, ShopItemInfo> = {
     "Vença uma expedição com a arma para concluir a maestria. Depois, compre o Projeto de Evolução por 5.000 FR; no nível 10 da arma, a evolução Singularidade pode aparecer."
   ]},
   weapon_spectral_scythe: { title: "Foice Espectral", category: "Arma", summary: "Corte amplo em arco; evolui para um golpe circular.", details: [
-    "Executa um corte em arco de quase 200° ao redor do personagem.",
+    "Executa um corte em arco de 166° na forma base e 239° na evolução.",
+    "A Coroa de Estilhaços adiciona um corte 180° atrás: 60% do dano no nível 1 e 90% no nível 2.",
     "Desbloqueio permanente: 9.000 FR.",
     "Vença uma expedição com a arma para concluir a maestria. Depois, compre o Projeto de Evolução por 5.000 FR; no nível 10 da arma, a evolução Ceifador de Almas pode aparecer."
   ]},
@@ -244,7 +246,7 @@ const SHOP_ITEM_INFO: Record<string, ShopItemInfo> = {
   ]},
   weapon_gravity_shackle: { title: "Grilhão Gravitacional", category: "Arma", summary: "Selo permanente; correntes alcançam o dobro do raio visual.", details: [
     "O selo rúnico permanece sempre visível. O raio visual não limita o alcance: as correntes atingem alvos a até 2× essa distância.",
-    "Arremessa correntes contra até 5 alvos (8 na evolução). Quem sobreviver fica acorrentado ao chão por 1,8 s (3,2 s na evolução).",
+    "Arremessa correntes contra até 5 alvos (8 na evolução); cada nível da Coroa de Estilhaços acrescenta +1 corrente, até +2, sem aumentar o raio. Quem sobreviver fica acorrentado ao chão por 1,8 s (3,2 s na evolução).",
     "Desbloqueio permanente: 11.000 FR.",
     "Vença uma expedição com a arma para concluir a maestria. Depois, compre o Projeto de Evolução por 5.000 FR; no nível 10 da arma, a evolução Prisão do Abismo pode aparecer."
   ]},
@@ -255,11 +257,13 @@ const SHOP_ITEM_INFO: Record<string, ShopItemInfo> = {
   ]},
   weapon_fractal_boomerang: { title: "Bumerangue Fractal", category: "Arma", summary: "Lâmina crescente atravessa os inimigos e retorna.", details: [
     "Vai até o alcance máximo, atravessa os inimigos na ida e retorna em direção à posição atual do jogador.",
+    "Com a Coroa de Estilhaços, cada lâmina extra causa 75% do dano de uma lâmina normal.",
     "Desbloqueio permanente: 13.000 FR. A maestria é concluída ao vencer uma expedição com esta arma.",
     "Após a maestria, compre o Projeto de Evolução por 5.000 FR. No nível 10, a Serra Retornante acrescenta um giro cortante no ápice da trajetória."
   ]},
   weapon_rift_seeder: { title: "Semeador de Fendas", category: "Arma", summary: "Armadilhas rúnicas detonam quando inimigos se aproximam.", details: [
     "Instala minas que armam após breve atraso e explodem quando um inimigo entra no raio de detecção.",
+    "Cada nível da Coroa de Estilhaços acrescenta +1 mina ativa e +15% de dano a cada mina.",
     "Desbloqueio permanente: 14.000 FR. A maestria é concluída ao vencer uma expedição com esta arma.",
     "Após a maestria, compre o Projeto de Evolução por 5.000 FR. No nível 10, a Matriz de Ruptura conecta três núcleos por linhas de energia que detonam em sequência."
   ]},
@@ -415,7 +419,7 @@ const SPECIAL_UPGRADES: Upgrade[] = [
   { id: "special_area", name: "Ímã de Fragmentos", description: "+10% de alcance de coleta por coleta (máx. +100%, 10 coletas); também amplia áreas de ataque compatíveis.", icon: Move },
   { id: "special_experience", name: "Eco do Conhecimento", description: "+5% de experiência por coleta (máx. +50%, 10 coletas).", icon: Sparkles },
   { id: "special_projectile_range", name: "Ressonância de Alcance", description: "+10% de alcance útil da arma por coleta (máx. +50%).", icon: Zap },
-  { id: "special_projectiles", name: "Coroa de Estilhaços", description: "Adapta-se à arma: +1 bala/orbe/lâmina/totem; +12% de dano para Foice e Bumerangue; +1 mina ativa para o Semeador; o Grilhão recebe +6% de raio (máx. 2).", icon: Swords },
+  { id: "special_projectiles", name: "Coroa de Estilhaços", description: "Revólver/Núcleo: projéteis extras; Orbitais/Sentinelas: lâminas/totens extras; Foice: corte 180° atrás (60%/90% de dano); Bumerangue: lâminas extras a 75% do dano; Grilhão: +1 corrente por nível; Semeador: +1 mina ativa e +15% de dano por mina por nível (máx. 2).", icon: Swords },
   { id: "special_ricochet", name: "Ricochete Instável", description: "Revólver e Núcleo ganham +1 ricochete por nível (máx. 3).", icon: Orbit },
   { id: "special_piercing", name: "Perfuração Espectral", description: "Revólver e Núcleo atravessam +1 inimigo por nível (máx. 3).", icon: Target },
   { id: "special_chain_lightning", name: "Descarga em Cadeia", description: "Impactos do Revólver, Núcleo e Bumerangue saltam para +1 alvo por nível (máx. 3).", icon: Zap },
@@ -1102,7 +1106,7 @@ function getEquippedWeaponStrikeDamage(game: GameState): number {
     : game.weaponId === "orbital_swords" ? 0.75
     : game.weaponId === "gravity_shackle" ? (game.evolved ? 0.75 : 0.5625)
     : game.weaponId === "rune_sentinels" ? (game.evolved ? 0.75 : 0.55)
-    : game.weaponId === "void_revolver" && game.evolved ? 0.85
+    : game.weaponId === "void_revolver" && game.evolved ? 0.30
     : game.weaponId === "fractal_boomerang" ? (game.evolved ? 0.38 : 0.58)
     : game.weaponId === "rift_seeder" ? (game.evolved ? 1.12 : 1.90)
     : 1;
@@ -3178,7 +3182,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               ? Array.from({ length: projectileCount }, (_, index) => (index - (projectileCount - 1) / 2) * 0.13)
               : projectileCount === 2 ? [-0.08, 0.08] : [-0.15, 0, 0.15];
             const speed = (isEmpowered ? 580 : 470) * game.player.projectileRangeMultiplier;
-            const damageMultiplier = isEmpowered ? 2.4 : game.evolved ? 0.85 : 1;
+            const damageMultiplier = isEmpowered ? (game.evolved ? 1.0 : 2.4) : game.evolved ? 0.30 : 1;
             for (const angleOffset of spread) {
               const angle = baseAngle + angleOffset;
               const life = game.player.projectileLife * (isEmpowered ? 1.25 : 1);
@@ -3221,11 +3225,22 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             const slashAngle = Math.atan2(facingVector.y, facingVector.x);
             game.shots.push({
               x: game.player.x, y: game.player.y, vx: 0, vy: 0,
-              damage: weaponDamage * (game.evolved ? 1.68 : 1.32) * (1 + game.player.projectileStacks * 0.12),
+              damage: weaponDamage * (game.evolved ? 1.68 : 1.32),
               life: 0.28, maxLife: 0.28, hitTargets: [],
               bouncesRemaining: 0, piercesRemaining: 999,
               kind: "scythe_slash", angle: slashAngle, arcSpan, radius: slashRadius,
             });
+            const rearSlashLevel = Math.min(2, game.player.projectileStacks ?? 0);
+            const rearSlashMultiplier = rearSlashLevel >= 2 ? 0.90 : rearSlashLevel === 1 ? 0.60 : 0;
+            if (rearSlashMultiplier > 0) {
+              game.shots.push({
+                x: game.player.x, y: game.player.y, vx: 0, vy: 0,
+                damage: weaponDamage * (game.evolved ? 1.68 : 1.32) * rearSlashMultiplier,
+                life: 0.28, maxLife: 0.28, hitTargets: [],
+                bouncesRemaining: 0, piercesRemaining: 999,
+                kind: "scythe_slash", angle: slashAngle + Math.PI, arcSpan, radius: slashRadius,
+              });
+            }
             for (let p = 0; p < 8; p++) {
               const pAngle = slashAngle + (Math.random() - 0.5) * arcSpan;
               const pDist = slashRadius * (0.85 + Math.random() * 0.3);
@@ -3264,12 +3279,12 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             // que o loop genérico de armas execute repetidamente enquanto há alvos.
             game.shotTimer = game.player.fireRate * 0.8;
           } else if (game.weaponId === "fractal_boomerang") {
-            // Projéteis extras ampliam a cobertura, mas dividem o orçamento de dano do disparo.
+            // Cada lâmina extra preserva 75% do dano da lâmina principal.
             const count = 1 + Math.min(2, game.player.projectileStacks);
             const range = 238 * game.player.projectileRangeMultiplier;
-            const damagePerBlade = weaponDamage * (game.evolved ? 0.38 : 0.58)
-              * (1 + game.player.projectileStacks * 0.12) / count;
+            const bladeBaseDamage = weaponDamage * (game.evolved ? 0.55 : 0.58);
             for (let index = 0; index < count && game.shots.length < 80; index++) {
+              const damagePerBlade = index === 0 ? bladeBaseDamage : bladeBaseDamage * 0.75;
               const spread = (index - (count - 1) / 2) * 0.12;
               const angle = baseAngle + spread;
               const speed = 620 * game.player.projectileRangeMultiplier;
@@ -3282,7 +3297,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             }
             game.player.castFacing = directionFromVector(target.x - game.player.x, target.y - game.player.y);
             game.player.castTimer = 0.24;
-            game.shotTimer = game.player.fireRate * (game.evolved ? 1.22 : 1.10);
+            game.shotTimer = game.player.fireRate * 1.10;
           } else if (game.weaponId === "rift_seeder") {
             const groupId = game.nextRiftGroupId++;
             const centerDistance = (game.evolved ? 170 : 142) * game.player.projectileRangeMultiplier;
@@ -3295,8 +3310,9 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             const blastScale = (1 + game.player.specialAreaStacks * 0.10) * game.player.projectileRangeMultiplier;
             const blastRadius = (game.evolved ? 84 : 76) * blastScale;
             // A Matriz cobre três zonas: duas explosões tendem a cruzar a faixa frontal.
-            // 1.12x por mina a cada 2.5x de intervalo mantém esse par próximo da mina base (1.90x / 1.85x).
-            const mineDamage = weaponDamage * (game.evolved ? 1.12 : 1.90);
+            // Cada nível da Coroa aumenta em 15% o dano de cada mina, sem criar minas por quadro.
+            const mineDamage = weaponDamage * (game.evolved ? 1.12 : 1.90)
+              * (1 + Math.min(2, game.player.projectileStacks ?? 0) * 0.15);
             const points = game.evolved
               ? [
                   { x: centerX + Math.cos(baseAngle + Math.PI / 2) * 76, y: centerY + Math.sin(baseAngle + Math.PI / 2) * 76 },
@@ -3342,8 +3358,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         if (game.weaponId === "gravity_shackle") {
           const auraRadius = (game.evolved ? 140 : 106)
             * (1 + game.player.specialAreaStacks * 0.1)
-            * game.player.projectileRangeMultiplier
-            * (1 + game.player.projectileStacks * 0.06);
+            * game.player.projectileRangeMultiplier;
           let aura = game.gravityAuraShot;
           if (!aura) {
             aura = {
@@ -3887,12 +3902,12 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             enemy.y = resolved.y;
           }
         }
-        // Vínculos Rituais de Almas: seleciona apenas os alvos mais próximos (5/8).
+        // Vínculos Rituais de Almas: seleciona 5/8 alvos-base, +1 por nível da Coroa (máx. +2).
         // A lista de vínculos é reutilizada e a seleção não cria arrays temporários.
         const gravityAura = game.gravityAuraShot;
         if (game.weaponId === "gravity_shackle" && game.gravityAuraActive && gravityAura?.active) {
           const chains = game.gravityChains ?? (game.gravityChains = []);
-          const maxTargets = game.evolved ? 8 : 5;
+          const maxTargets = (game.evolved ? 8 : 5) + Math.min(2, game.player.projectileStacks ?? 0);
           const pulseInterval = Math.max(0.6, (game.evolved ? 1.4 : 1.8) * (game.player.fireRate / 0.72));
           const maxRange = (gravityAura.radius ?? (game.evolved ? 140 : 106)) * 2;
           const maxRangeSquared = maxRange * maxRange;
@@ -4134,7 +4149,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               const supportsChainRelic = shot.kind === undefined || shot.kind === "bullet" || shot.kind === "revolver_empowered" || shot.kind === "plasma_core" || shot.kind === "fractal_boomerang" || shot.kind === "boomerang_shard";
               if (!shot.isChainLightning && supportsChainRelic && game.player.relicChainLightning > 0) {
                 const chainLevel = Math.min(3, game.player.relicChainLightning);
-                const chainCount = chainLevel;
+                const chainCount = game.weaponId === "void_revolver" && game.evolved ? Math.min(chainLevel, 1) : chainLevel;
                 const chainDamage = [0, 0.55, 0.65, 0.75][chainLevel];
                 const chainRange = [0, 180, 215, 250][chainLevel];
                 const chainSpeed = 720;
