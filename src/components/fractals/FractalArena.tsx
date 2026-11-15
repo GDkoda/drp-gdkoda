@@ -59,7 +59,7 @@ type Shot = {
   startX?: number; startY?: number; endX?: number; endY?: number; bloodHealTotal?: number;
   previousX?: number; previousY?: number;
 };
-type Gem = { x: number; y: number; value: number; radius: number; previousX?: number; previousY?: number; runeCrystal?: boolean };
+type Gem = { x: number; y: number; value: number; radius: number; previousX?: number; previousY?: number; runeCrystal?: boolean; fragmentCount?: number };
 type SpecialDrop = { x: number; y: number; kind: "area" | "experience" | "projectile_range" | "projectiles" | "ricochet" | "piercing" | "chain_lightning" | "crit" | "food" | "void"; radius: number };
 type SentinelTotem = { id: number; x: number; y: number; hp: number; maxHp: number; attackTimer: number; radius: number };
 type RiftMine = { id: number; groupId: number; nodeIndex: number; x: number; y: number; life: number; armTimer: number; detonateTimer: number; blastRadius: number; triggerRadius: number; damage: number; triggered: boolean };
@@ -417,7 +417,7 @@ function parsePurchaseState(raw: any): PurchaseState {
 }
 
 type GameState = {
-  width: number; height: number; last: number; elapsed: number; spawnTimer: number; shotTimer: number; bossSpawned: boolean;
+  width: number; height: number; last: number; elapsed: number; spawnTimer: number; shotTimer: number; bossSpawned: boolean; gemMergeTimer: number;
   player: { x: number; y: number; hp: number; maxHp: number; speed: number; damage: number; fireRate: number; invuln: number; hitFlash: number; xp: number; nextXp: number; level: number; pickupRadius: number; xpMultiplier: number; specialAreaStacks: number; specialExperienceStacks: number; projectileRangeStacks: number; projectileRangeMultiplier: number; projectileStacks: number; relicRicochet: number; relicPiercing: number; relicChainLightning: number; specialCritStacks: number; aetherShieldCharges: number; projectileLife: number; facing: number; castFacing: number; castTimer: number; moving: boolean; dashTimer: number; dashCooldown: number; dashX: number; dashY: number; spriteAction: PlayerVisualAction; spriteDirection: number; previousSpriteAction: PlayerVisualAction; previousSpriteDirection: number; spriteBlend: number };
   enemies: Enemy[]; shots: Shot[]; gems: Gem[]; specialDrops: SpecialDrop[]; sentinelTotems: SentinelTotem[]; riftMines: RiftMine[]; nextRiftMineId: number; nextRiftGroupId: number; riftMineCheckTimer: number; sentinelRespawnTimer: number; nextSentinelTotemId: number; urns: BreakableUrn[]; obstacles: CemeteryObstacle[]; nextUrnMinute: number; nextUrnId: number; particles: Particle[]; damageNumbers: DamageNumber[]; pickupLabels: PickupLabel[]; challengeEvent: ChallengeEvent | null; nextChallengeEvent: number; kills: number; ended: boolean; upgradeCounts: UpgradeCounts; totalDamageDealt: number; crystalsCollected: number; highestLevel: number;
   weaponId: WeaponId; weaponLevel: number; evolved: boolean; rerollsRemaining: number; banishesRemaining: number; bannedUpgradeIds: string[];
@@ -711,6 +711,65 @@ function hash(x: number, y: number): number {
   return (value >>> 0) / 0x1_0000_0000;
 }
 const distance = (ax: number, ay: number, bx: number, by: number) => Math.hypot(ax - bx, ay - by);
+
+const GEM_MERGE_INTERVAL = 0.65;
+const GEM_MERGE_RADIUS = 34;
+const GEM_MERGE_CELL_SIZE = 48;
+
+// Agrupa fragmentos próximos em uma varredura espacial, sem comparar todos contra todos.
+function mergeNearbyGems(gems: Gem[]): void {
+  if (gems.length < 2) return;
+
+  const grid = new Map<string, Gem[]>();
+  const mergeRadiusSq = GEM_MERGE_RADIUS * GEM_MERGE_RADIUS;
+
+  for (let index = 0; index < gems.length; index++) {
+    const gem = gems[index];
+    if (gem.value <= 0) continue;
+
+    const cellX = Math.floor(gem.x / GEM_MERGE_CELL_SIZE);
+    const cellY = Math.floor(gem.y / GEM_MERGE_CELL_SIZE);
+    let partner: Gem | undefined;
+
+    // Como a célula é maior que o raio de fusão, basta consultar as nove células vizinhas.
+    for (let offsetY = -1; offsetY <= 1 && !partner; offsetY++) {
+      for (let offsetX = -1; offsetX <= 1 && !partner; offsetX++) {
+        const bucket = grid.get(`${cellX + offsetX}:${cellY + offsetY}`);
+        if (!bucket) continue;
+
+        for (let candidateIndex = 0; candidateIndex < bucket.length; candidateIndex++) {
+          const candidate = bucket[candidateIndex];
+          if (Boolean(candidate.runeCrystal) !== Boolean(gem.runeCrystal)) continue;
+
+          const dx = candidate.x - gem.x;
+          const dy = candidate.y - gem.y;
+          if (dx * dx + dy * dy <= mergeRadiusSq) {
+            partner = candidate;
+            break;
+          }
+        }
+      }
+    }
+
+    if (partner) {
+      // O valor e a quantidade de cristais são somados; nenhum XP é criado ou perdido.
+      partner.value += gem.value;
+      partner.fragmentCount = (partner.fragmentCount ?? 1) + (gem.fragmentCount ?? 1);
+      partner.radius = clamp(5 + Math.sqrt(partner.fragmentCount - 1) * 1.2, 5, 12);
+      partner.previousX = undefined;
+      partner.previousY = undefined;
+      gem.value = 0;
+      continue;
+    }
+
+    const key = `${cellX}:${cellY}`;
+    const bucket = grid.get(key);
+    if (bucket) bucket.push(gem);
+    else grid.set(key, [gem]);
+  }
+
+  compactInPlace(gems, (gem) => gem.value > 0);
+}
 
 // Remove objetos expirados sem criar um novo array em cada frame.
 // É usado nas listas quentes da simulação (projéteis, partículas e textos).
@@ -1112,7 +1171,7 @@ function makeGame(width: number, height: number, purchases: PurchaseState, weapo
   const projectileLife = PROJECTILE_BASE_LIFE * PROJECTILE_DURATION_MULTIPLIERS[clamp(purchases.projectile_duration, 0, 3)];
   const omenDamage = omenId === "rupture" ? 1.2 : 1;
   return {
-    width, height, last: 0, elapsed: 0, spawnTimer: 0.4, shotTimer: 0.25, bossSpawned: false,
+    width, height, last: 0, elapsed: 0, spawnTimer: 0.4, shotTimer: 0.25, bossSpawned: false, gemMergeTimer: 0.25,
     player: { x: 0, y: 0, hp: maxHp, maxHp, speed: 205 * (omenId === "spectral_veil" ? 1.15 : 1), damage: 22 * omenDamage, fireRate: 0.72 * (omenId === "rupture" ? 1.15 : 1), invuln: 0, hitFlash: 0, xp: 0, nextXp: 12, level: 1, pickupRadius: 85, xpMultiplier: omenId === "famine" ? 1.2 : 1, specialAreaStacks: 0, specialExperienceStacks: 0, projectileRangeStacks: 0, projectileRangeMultiplier: 1, projectileStacks: 0, relicRicochet: 0, relicPiercing: 0, relicChainLightning: 0, specialCritStacks: 0, aetherShieldCharges: 0, projectileLife, facing: 0, castFacing: 0, castTimer: 0, moving: false, dashTimer: 0, dashCooldown: 0, dashX: 1, dashY: 0, spriteAction: "idle", spriteDirection: 0, previousSpriteAction: "idle", previousSpriteDirection: 0, spriteBlend: 1 },
     enemies: [], shots: [], gems: [], specialDrops: [], sentinelTotems: [], riftMines: [], nextRiftMineId: 1, nextRiftGroupId: 1, riftMineCheckTimer: 0, sentinelRespawnTimer: 0, nextSentinelTotemId: 1, urns: [], obstacles: createCemeteryObstacles(), nextUrnMinute: 1, nextUrnId: 1, particles: [], damageNumbers: [], pickupLabels: [], challengeEvent: null, nextChallengeEvent: 0, kills: 0, ended: false, upgradeCounts: {}, totalDamageDealt: 0, crystalsCollected: 0, highestLevel: 1,
     weaponId, weaponLevel: 1, evolved: false, rerollsRemaining: purchases.reroll, banishesRemaining: purchases.banish, bannedUpgradeIds: [], bloodRitualProgress: 0, bloodRitualTimer: 0, bloodDashTrail: null,
@@ -1555,7 +1614,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     }
     ctx.save(); ctx.translate(gem.x, gem.y);
     const pulse = 1 + Math.sin(game.elapsed * 6 + gem.x * 0.03) * 0.08;
-    if(gem.runeCrystal){drawCachedRadialGlow(ctx,0,0,20,[[0,"rgba(255,210,255,.8)"],[.35,"rgba(217,70,239,.42)"],[1,"rgba(217,70,239,0)"]],1,"lighter");ctx.fillStyle="#d946ef";ctx.rotate(Math.PI/4);ctx.fillRect(-6,-6,12,12);ctx.fillStyle="#fff0ff";ctx.fillRect(-2,-2,4,4);ctx.restore();return;}
+    if(gem.runeCrystal){const runeSize=clamp(gem.radius*1.5,12,20);drawCachedRadialGlow(ctx,0,0,20,[[0,"rgba(255,210,255,.8)"],[.35,"rgba(217,70,239,.42)"],[1,"rgba(217,70,239,0)"]],1,"lighter");ctx.fillStyle="#d946ef";ctx.rotate(Math.PI/4);ctx.fillRect(-runeSize/2,-runeSize/2,runeSize,runeSize);ctx.fillStyle="#fff0ff";ctx.fillRect(-runeSize*.17,-runeSize*.17,runeSize*.34,runeSize*.34);ctx.restore();return;}
     ctx.scale(pulse, pulse);
     const icon = sprites.xpGem;
     if (icon?.complete && icon.naturalWidth > 0) {
@@ -4589,6 +4648,11 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           }
         }
         compactInPlace(game.enemies,(enemy)=>enemy.hp>0&&(enemy.type==="boss"||enemy.isExecutioner||distance(enemy.x,enemy.y,game.player.x,game.player.y)<Math.max(game.width,game.height)/zoomRef.current*1.45));
+        game.gemMergeTimer -= dt;
+        if (game.gemMergeTimer <= 0) {
+          mergeNearbyGems(game.gems);
+          game.gemMergeTimer = GEM_MERGE_INTERVAL;
+        }
         game.gems.forEach((gem) => {
           const previousX = gem.x, previousY = gem.y;
           const d = distance(game.player.x, game.player.y, gem.x, gem.y);
@@ -4604,7 +4668,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           if (d < 17) {
             fractalAudio.gem();
             game.player.xp += gem.value * game.player.xpMultiplier * (1 + purchasesRef.current.extra_xp * 0.10) * (alchemyActive ? 2 : 1);
-            game.crystalsCollected += gem.runeCrystal ? 5 : 1;
+            game.crystalsCollected += (gem.fragmentCount ?? 1) * (gem.runeCrystal ? 5 : 1);
             gem.value = 0;
           }
         });
