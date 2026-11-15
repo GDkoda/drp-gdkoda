@@ -1107,7 +1107,7 @@ function getEquippedWeaponStrikeDamage(game: GameState): number {
     : game.weaponId === "gravity_shackle" ? (game.evolved ? 0.75 : 0.5625)
     : game.weaponId === "rune_sentinels" ? (game.evolved ? 0.75 : 0.55)
     : game.weaponId === "void_revolver" && game.evolved ? 0.30
-    : game.weaponId === "fractal_boomerang" ? (game.evolved ? 0.38 : 0.58)
+    : game.weaponId === "fractal_boomerang" ? (game.evolved ? 0.55 : 0.58)
     : game.weaponId === "rift_seeder" ? (game.evolved ? 1.12 : 1.90)
     : 1;
   return Math.max(1, Math.round(game.player.damage * weaponPower * weaponMultiplier));
