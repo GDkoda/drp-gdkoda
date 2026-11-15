@@ -418,7 +418,7 @@ function parsePurchaseState(raw: any): PurchaseState {
 type GameState = {
   width: number; height: number; last: number; elapsed: number; spawnTimer: number; shotTimer: number; bossSpawned: boolean;
   player: { x: number; y: number; hp: number; maxHp: number; speed: number; damage: number; fireRate: number; invuln: number; hitFlash: number; xp: number; nextXp: number; level: number; pickupRadius: number; xpMultiplier: number; specialAreaStacks: number; specialExperienceStacks: number; projectileRangeStacks: number; projectileRangeMultiplier: number; projectileStacks: number; relicRicochet: number; relicPiercing: number; relicChainLightning: number; specialCritStacks: number; aetherShieldCharges: number; projectileLife: number; facing: number; castFacing: number; castTimer: number; moving: boolean; dashTimer: number; dashCooldown: number; dashX: number; dashY: number; spriteAction: PlayerVisualAction; spriteDirection: number; previousSpriteAction: PlayerVisualAction; previousSpriteDirection: number; spriteBlend: number };
-  enemies: Enemy[]; shots: Shot[]; gems: Gem[]; specialDrops: SpecialDrop[]; sentinelTotems: SentinelTotem[]; riftMines: RiftMine[]; nextRiftMineId: number; nextRiftGroupId: number; riftMineCheckTimer: number; sentinelRespawnTimer: number; nextSentinelTotemId: number; urns: BreakableUrn[]; obstacles: CemeteryObstacle[]; nextUrnMinute: number; nextUrnId: number; particles: Particle[]; damageNumbers: DamageNumber[]; pickupLabels: PickupLabel[]; challengeEvent: ChallengeEvent | null; nextChallengeEvent: number; kills: number; ended: boolean; upgradeCounts: UpgradeCounts; totalDamageDealt: number; crystalsCollected: number; highestLevel: number;
+  enemies: Enemy[]; shots: Shot[]; gems: Gem[]; specialDrops: SpecialDrop[]; sentinelTotems: SentinelTotem[]; riftMines: RiftMine[]; nextRiftMineId: number; nextRiftGroupId: number; riftMineCheckTimer: number; sentinelRespawnTimer: number; nextSentinelTotemId: number; urns: BreakableUrn[]; obstacles: CemeteryObstacle[]; nextUrnMinute: number; nextUrnId: number; particles: Particle[]; particleLimit?: number; damageNumbers: DamageNumber[]; pickupLabels: PickupLabel[]; challengeEvent: ChallengeEvent | null; nextChallengeEvent: number; kills: number; ended: boolean; upgradeCounts: UpgradeCounts; totalDamageDealt: number; crystalsCollected: number; highestLevel: number;
   weaponId: WeaponId; weaponLevel: number; evolved: boolean; rerollsRemaining: number; banishesRemaining: number; bannedUpgradeIds: string[];
   bloodRitualProgress: number; bloodRitualTimer: number; bloodDashTrail: Shot | null;
   revolverShotCount?: number; orbitalPulseTimer?: number;
@@ -733,6 +733,10 @@ function compactInPlace<T>(items: T[], keep: (item: T) => boolean): void {
     writeIndex++;
   }
   if (writeIndex !== items.length) items.length = writeIndex;
+}
+
+function pushFractalParticle(game: GameState, particle: Particle): void {
+  if (game.particles.length < (game.particleLimit ?? 200)) game.particles.push(particle);
 }
 
 const directionFromVector = (x: number, y: number) => {
@@ -1182,7 +1186,7 @@ function spawnBloodRitualBlast(game: GameState): void {
   for (let particle = 0; particle < 18 && game.particles.length < 75; particle++) {
     const particleAngle = particle / 18 * Math.PI * 2;
     const particleSpeed = 70 + (particle % 3) * 42;
-    game.particles.push({
+    pushFractalParticle(game, {
       x: game.player.x, y: game.player.y,
       vx: Math.cos(particleAngle) * particleSpeed, vy: Math.sin(particleAngle) * particleSpeed,
       life: 0.32 + (particle % 3) * 0.08, color: particle % 2 ? "#fda4af" : "#991b1b",
@@ -1909,9 +1913,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
       ctx.globalAlpha = 0.48;
       ctx.strokeStyle = accent;
       ctx.lineWidth = 1.2;
-      if (!simplifiedQuality) ctx.setLineDash([3, 5]);
       ctx.beginPath(); ctx.arc(0, 0, 23 * pulse, game.elapsed * 0.8, game.elapsed * 0.8 + Math.PI * 1.7); ctx.stroke();
-      ctx.setLineDash([]);
       ctx.globalAlpha = 1;
       ctx.strokeStyle = accent;
       ctx.lineWidth = mine.triggered ? 3.2 : 2;
@@ -2060,7 +2062,10 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     const pulse=lowQuality?1:1+Math.sin(game.elapsed*4+totem.id)*.08;
     const auraSprite=getSentinelAuraSprite(ev);
     ctx.globalAlpha=lowQuality?0.85:1;
+    ctx.shadowColor=ev?"#ef4444":"#22d3ee";
+    ctx.shadowBlur=quality==="high"?10:0;
     ctx.drawImage(auraSprite,-56,-66,112*pulse,112*pulse);
+    ctx.shadowBlur=0;
     ctx.globalAlpha=1;
     ctx.fillStyle = "rgba(0,0,0,.48)";
     ctx.beginPath(); ctx.ellipse(0, 10, 22, 8, 0, 0, Math.PI * 2); ctx.fill();
@@ -2175,7 +2180,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
       };
       const [spriteWidth, spriteHeight, anchor] = dimensions[enemy.type];
       ctx.shadowColor = bossInFury ? "#d41438" : enemy.type === "brute" ? "#9b7bce" : enemy.type === "charger" ? "#b58cff" : "#8b68ff";
-      ctx.shadowBlur = 0;
+      ctx.shadowBlur = quality === "high" ? (enemy.type === "boss" ? 14 : 6) : 0;
       // Um único passe por sprite evita a troca individual para composição aditiva.
       ctx.globalAlpha = hurt ? 0.68 : 1;
       ctx.drawImage(enemySprite, -spriteWidth / 2, -spriteHeight * anchor, spriteWidth, spriteHeight);
@@ -2373,12 +2378,15 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
   if (currentReady) {
     const baseAlpha = player.invuln > 0 && Math.floor(game.elapsed * 14) % 2 === 0 ? 0.62 : 1;
     const blend = previousReady ? clamp(player.spriteBlend, 0, 1) : 1;
+    ctx.shadowColor = hitIntensity > 0.02 ? "#ff2448" : "#a75cff";
+    ctx.shadowBlur = quality === "high" ? 8 : 0;
     ctx.globalAlpha = baseAlpha * (previousReady ? 1 - blend : 1);
     if (previousReady && blend < 1) {
       ctx.drawImage(previousSheet!, player.previousSpriteDirection * 48, 0, 48, 64, -25, -34, 50, 68);
     }
     ctx.globalAlpha = baseAlpha * (previousReady ? blend : 1);
     ctx.drawImage(currentSheet!, player.spriteDirection * 48, 0, 48, 64, -25, -34, 50, 68);
+    ctx.shadowBlur = 0;
     if (hitIntensity > 0.02) {
       ctx.save();
       ctx.globalCompositeOperation = "lighter";
@@ -2944,6 +2952,14 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
     let simulationAccumulator = 0;
     const weakHardware = typeof navigator !== "undefined" && (navigator.hardwareConcurrency || 8) <= 4;
     let autoQualityScale = weakHardware ? 0.62 : 1;
+    const gemClusterIndices = new Map<number, number>();
+    const resolveGraphicsQuality = (): "low" | "medium" | "high" => {
+      const selected = graphicsQualityRef.current;
+      if (selected !== "auto") return selected;
+      return autoQualityScale <= 0.68 ? "low" : autoQualityScale <= 0.90 ? "medium" : "high";
+    };
+    const particleCapForQuality = (quality: "low" | "medium" | "high") =>
+      quality === "low" ? 35 : quality === "medium" ? 75 : 200;
     let belowTargetSince = 0;
     let aboveTargetSince = 0;
     const resize = () => {
@@ -3045,7 +3061,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         for (let i = 0; i < count && game.particles.length < 80; i++) {
           const angle = Math.random() * Math.PI * 2;
           const speed = 50 + Math.random() * (big ? 200 : 120);
-          game.particles.push({
+          pushFractalParticle(game, {
             x: enemy.x, y: enemy.y,
             vx: Math.cos(angle) * speed,
             vy: Math.sin(angle) * speed,
@@ -3080,7 +3096,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
       }
       for (let i = 0; i < 18 && game.particles.length < 110; i++) {
         const angle = i / 18 * Math.PI * 2;
-        game.particles.push({ x: game.player.x, y: game.player.y, vx: Math.cos(angle) * 125, vy: Math.sin(angle) * 125, life: 0.28, color: "#fb7185" });
+        pushFractalParticle(game, { x: game.player.x, y: game.player.y, vx: Math.cos(angle) * 125, vy: Math.sin(angle) * 125, life: 0.28, color: "#fb7185" });
       }
     };
 
@@ -3104,6 +3120,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
     const tick = (now: number) => {
       const game = gameRef.current;
       if (!game) return;
+      game.particleLimit = particleCapForQuality(resolveGraphicsQuality());
       if (!game.last) game.last = now;
       const frameDt = Math.min(0.1, Math.max(0, (now - game.last) / 1000));
       game.last = now;
@@ -3202,7 +3219,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               game.player.castTimer = Math.max(game.player.castTimer, 0.2);
               if (game.particles.length < 75) for (let particle = 0; particle < 5; particle++) {
                 const side = (particle - 2) * 5;
-                game.particles.push({
+                pushFractalParticle(game, {
                   x: game.player.x - game.player.dashX * 10 - game.player.dashY * side,
                   y: game.player.y - game.player.dashY * 10 + game.player.dashX * side,
                   vx: -game.player.dashX * (30 + particle * 8),
@@ -3317,7 +3334,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               compactInPlace(game.enemies, (enemy) => enemy.hp > 0);
               game.rings = [...(game.rings ?? []), { x: centerX, y: centerY, r: 12, max: 460, life: 1.1, color: "#c084fc" }];
               game.shake = Math.max(game.shake ?? 0, 13);
-              for(let i=0;i<42;i++){const a=Math.random()*Math.PI*2,sp=70+Math.random()*260;game.particles.push({x:centerX,y:centerY,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:.5+Math.random()*.5,color:i%2?"#d8b4fe":"#f0abfc"});}
+              for(let i=0;i<42;i++){const a=Math.random()*Math.PI*2,sp=70+Math.random()*260;pushFractalParticle(game, {x:centerX,y:centerY,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:.5+Math.random()*.5,color:i%2?"#d8b4fe":"#f0abfc"});}
               game.challengeEvent = null; eventRewardRemainingRef.current = 2; setEventRewardStep(1); setSelectedUpgrade(null); setFlippedCardId(null);
               setLevelChoices(buildLevelChoices(game,purchasesRef.current));
               toast.success("Ritual da Fenda Rúnica concluído! A onda de choque rompeu a horda. Duas dádivas aguardam.");
@@ -3431,7 +3448,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             for (let p = 0; p < 8; p++) {
               const pAngle = slashAngle + (Math.random() - 0.5) * arcSpan;
               const pDist = slashRadius * (0.85 + Math.random() * 0.3);
-              game.particles.push({
+              pushFractalParticle(game, {
                 x: game.player.x + Math.cos(pAngle) * pDist, y: game.player.y + Math.sin(pAngle) * pDist,
                 vx: Math.cos(pAngle) * (40 + Math.random() * 80), vy: Math.sin(pAngle) * (40 + Math.random() * 80),
                 life: 0.35 + Math.random() * 0.25, color: game.evolved ? (Math.random() > 0.5 ? "#2dd4bf" : "#0b0f17") : (Math.random() > 0.4 ? "#5eead4" : "#99f6e4"),
@@ -3527,7 +3544,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               (game.rings ??= []).push({ x: position.x, y: position.y, r: 3, max: 32, life: 0.42, color: "#a78bfa" });
               if (game.particles.length < 126) for (let particle = 0; particle < 5; particle++) {
                 const particleAngle = particle / 5 * Math.PI * 2, particleSpeed = 36 + particle * 7;
-                game.particles.push({ x: position.x, y: position.y, vx: Math.cos(particleAngle) * particleSpeed,
+                pushFractalParticle(game, { x: position.x, y: position.y, vx: Math.cos(particleAngle) * particleSpeed,
                   vy: Math.sin(particleAngle) * particleSpeed, life: 0.22, color: particle % 2 ? "#c4b5fd" : "#67e8f9" });
               }
             }
@@ -3640,7 +3657,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               if (game.particles.length < 128) {
                 const trailAngle = Math.atan2(shot.vy, shot.vx) + Math.PI;
                 const trailColor = shot.phase === "return" ? "#67e8f9" : game.evolved ? "#e879f9" : "#c4b5fd";
-                game.particles.push({ x: shot.x, y: shot.y, vx: Math.cos(trailAngle) * 34, vy: Math.sin(trailAngle) * 34, life: 0.17, color: trailColor });
+                pushFractalParticle(game, { x: shot.x, y: shot.y, vx: Math.cos(trailAngle) * 34, vy: Math.sin(trailAngle) * 34, life: 0.17, color: trailColor });
               }
             }
             if (shot.phase === "outbound") {
@@ -3656,7 +3673,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                   shot.life = Math.max(shot.life, 0.85);
                   if (game.particles.length < 128) for (let particle = 0; particle < 10; particle++) {
                     const angle = particle / 10 * Math.PI * 2, particleSpeed = 65 + (particle % 3) * 24;
-                    game.particles.push({ x: shot.x, y: shot.y, vx: Math.cos(angle) * particleSpeed, vy: Math.sin(angle) * particleSpeed,
+                    pushFractalParticle(game, { x: shot.x, y: shot.y, vx: Math.cos(angle) * particleSpeed, vy: Math.sin(angle) * particleSpeed,
                       life: 0.28 + (particle % 2) * 0.08, color: particle % 2 ? "#f0abfc" : "#67e8f9" });
                   }
                 } else { shot.phase = "return"; shot.radius = 17; }
@@ -3699,7 +3716,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                     life: 0.38, color: "#a5f3fc" });
                   if (game.particles.length < 132) for (let particle = 0; particle < 8; particle++) {
                     const angle = particle / 8 * Math.PI * 2;
-                    game.particles.push({ x: game.player.x, y: game.player.y, vx: Math.cos(angle) * 90, vy: Math.sin(angle) * 90,
+                    pushFractalParticle(game, { x: game.player.x, y: game.player.y, vx: Math.cos(angle) * 90, vy: Math.sin(angle) * 90,
                       life: 0.22, color: "#a5f3fc" });
                   }
                 }
@@ -3778,7 +3795,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                 (game.rings ??= []).push({ x: mine.x, y: mine.y, r: 8, max: mine.blastRadius, life: 0.55, color: "#c084fc" });
                 if (game.particles.length < 126) for (let particle = 0; particle < 12; particle++) {
                   const angle = particle / 12 * Math.PI * 2, particleSpeed = 80 + (particle % 4) * 34;
-                  game.particles.push({ x: mine.x, y: mine.y, vx: Math.cos(angle) * particleSpeed, vy: Math.sin(angle) * particleSpeed,
+                  pushFractalParticle(game, { x: mine.x, y: mine.y, vx: Math.cos(angle) * particleSpeed, vy: Math.sin(angle) * particleSpeed,
                     life: 0.34 + (particle % 3) * 0.06, color: particle % 2 ? "#c4b5fd" : "#67e8f9" });
                 }
                 const shardLevel = game.upgradeCounts.gift_rift_shards?.count ?? 0;
@@ -3922,7 +3939,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               const burnDamage = enemy.thermalBurnDamage ?? 0;
               enemy.hp = Math.max(0, enemy.hp - burnDamage);
               game.totalDamageDealt += burnDamage;
-              if (game.particles.length < 100) game.particles.push({ x: enemy.x, y: enemy.y, vx: (Math.random() - 0.5) * 50, vy: -25 - Math.random() * 35, life: 0.3, color: "#fb923c" });
+              if (game.particles.length < 100) pushFractalParticle(game, { x: enemy.x, y: enemy.y, vx: (Math.random() - 0.5) * 50, vy: -25 - Math.random() * 35, life: 0.3, color: "#fb923c" });
               if (enemy.hp <= 0) { handleEnemyDefeat(game, enemy); continue; }
             }
             if (enemy.thermalBurnTimer <= 0) {
@@ -3954,7 +3971,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                 for (let particle = 0; particle < 26; particle++) {
                   const angle = Math.random() * Math.PI * 2;
                   const speed = 70 + Math.random() * 190;
-                  game.particles.push({ x: enemy.x, y: enemy.y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 0.45 + Math.random() * 0.45, color: particle % 2 ? "#ff4b55" : "#ff9a54" });
+                  pushFractalParticle(game, { x: enemy.x, y: enemy.y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 0.45 + Math.random() * 0.45, color: particle % 2 ? "#ff4b55" : "#ff9a54" });
                 }
                 toast.error("O GUARDIÃO ENTROU EM FÚRIA!");
               }
@@ -3984,7 +4001,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             if (inFury && !enemy.furyTriggered) {
               enemy.furyTriggered = true;
               game.shake = 14;
-              for (let i = 0; i < 26; i++) { const angle = Math.random() * Math.PI * 2; const speed = 70 + Math.random() * 190; game.particles.push({ x: enemy.x, y: enemy.y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 0.45 + Math.random() * 0.45, color: i % 2 ? "#ff4b55" : "#ff9a54" }); }
+              for (let i = 0; i < 26; i++) { const angle = Math.random() * Math.PI * 2; const speed = 70 + Math.random() * 190; pushFractalParticle(game, { x: enemy.x, y: enemy.y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 0.45 + Math.random() * 0.45, color: i % 2 ? "#ff4b55" : "#ff9a54" }); }
               toast.error("O GUARDIÃO ENTROU EM FÚRIA!");
             }
             if (enemy.windup > 0) {
@@ -4040,7 +4057,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               enemy.windup = Math.max(0, enemy.windup - dt);
               if (enemy.windup === 0) {
                 if (distance(game.player.x, game.player.y, enemy.x, enemy.y) < 78 + 12 && game.player.invuln <= 0) { applyPlayerDamage(game, enemy.damage * 1.35, .8);  }
-                for (let i=0;i<5;i++) { const a=i*Math.PI*2/5; game.particles.push({x:enemy.x,y:enemy.y,vx:Math.cos(a)*105,vy:Math.sin(a)*105,life:.35,color:"#e7a56d"}); }
+                for (let i=0;i<5;i++) { const a=i*Math.PI*2/5; pushFractalParticle(game, {x:enemy.x,y:enemy.y,vx:Math.cos(a)*105,vy:Math.sin(a)*105,life:.35,color:"#e7a56d"}); }
                 (game.rings ??= []).push({ x: enemy.x, y: enemy.y, r: 12, max: 82, life: 0.35, color: "#ffb36b" }); game.shake = Math.max(game.shake ?? 0, 4);
                 enemy.attack = 2.7;
               }
@@ -4115,7 +4132,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           (game.rings??=[]).push({x:totem.x,y:totem.y,r:12,max:burstRadius,life:.68,color:game.evolved?"#dc2626":"#38bdf8"});
           for(let particle=0;particle<14&&game.particles.length<200;particle++){
             const angle=Math.random()*Math.PI*2,speed=70+Math.random()*220;
-            game.particles.push({x:totem.x,y:totem.y,vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed,life:.4+Math.random()*.55,color:game.evolved?(particle%2?"#7f1d1d":"#ef4444"):(particle%2?"#fbbf24":"#22d3ee")});
+            pushFractalParticle(game, {x:totem.x,y:totem.y,vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed,life:.4+Math.random()*.55,color:game.evolved?(particle%2?"#7f1d1d":"#ef4444"):(particle%2?"#fbbf24":"#22d3ee")});
           }
           game.sentinelTotems.splice(totemIndex,1);
         }
@@ -4349,7 +4366,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               if (game.particles.length < 75) {
                 const bloodImpact = game.weaponId === "blood_spear"
                   && (shot.kind === "blood_spear" || shot.kind === "blood_spear_rain" || shot.kind === "blood_trail" || shot.kind === "blood_ritual_blast");
-                game.particles.push({
+                pushFractalParticle(game, {
                   x: shot.x,
                   y: shot.y,
                   vx: (Math.random() - 0.5) * 140,
@@ -4563,13 +4580,13 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             urn.hp -= 1; urn.contactCooldown = 0.35;
             for (let p = 0; p < 4; p++) {
               const angle = Math.random() * Math.PI * 2, speed = 25 + Math.random() * 85;
-              game.particles.push({ x: urn.x, y: urn.y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 0.25 + Math.random() * 0.25, color: "#b7a4b9" });
+              pushFractalParticle(game, { x: urn.x, y: urn.y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 0.25 + Math.random() * 0.25, color: "#b7a4b9" });
             }
             if (urn.hp <= 0) {
               urn.broken = true;
               for (let p = 0; p < 18; p++) {
                 const angle = Math.random() * Math.PI * 2, speed = 45 + Math.random() * 170;
-                game.particles.push({ x: urn.x, y: urn.y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 0.35 + Math.random() * 0.45, color: p % 2 ? "#c4b5c5" : "#8f7b99" });
+                pushFractalParticle(game, { x: urn.x, y: urn.y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 0.35 + Math.random() * 0.45, color: p % 2 ? "#c4b5c5" : "#8f7b99" });
               }
               const roll = Math.random(), fortuneBonus = [0, 0.10, 0.20, 0.30, 0.40, 0.50][Math.max(0, Math.min(5, purchasesRef.current.fortune))];
               const specialMultiplier = (1 + fortuneBonus) * game.omenRewardMultiplier;
@@ -4602,7 +4619,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             const pull = 260 * dt;
             gem.x += ((game.player.x - gem.x) / Math.max(1, d)) * pull;
             gem.y += ((game.player.y - gem.y) / Math.max(1, d)) * pull;
-            game.particles.push({ x: gem.x, y: gem.y, vx: (game.player.x - gem.x) * 0.16 + (Math.random() - 0.5) * 22, vy: (game.player.y - gem.y) * 0.16 + (Math.random() - 0.5) * 22, life: 0.22, color: Math.random() > 0.5 ? "#a78bfa" : "#38bdf8" });
+            pushFractalParticle(game, { x: gem.x, y: gem.y, vx: (game.player.x - gem.x) * 0.16 + (Math.random() - 0.5) * 22, vy: (game.player.y - gem.y) * 0.16 + (Math.random() - 0.5) * 22, life: 0.22, color: Math.random() > 0.5 ? "#a78bfa" : "#38bdf8" });
             // O rastro é desenhado no Canvas usando a posição anterior e a atual.
             gem.previousX = previousX;
             gem.previousY = previousY;
@@ -4666,16 +4683,33 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           if (game.rings.length > 20) game.rings.splice(0, game.rings.length - 20);
         }
         if (game.gems.length > 70) {
-          const nearby: Gem[] = [];
-          const clusters = new Map<string, Gem>();
-          for (const gem of game.gems) {
-            if (gem.runeCrystal || distance(gem.x, gem.y, game.player.x, game.player.y) < 240) { nearby.push(gem); continue; }
-            const cellX = Math.floor(gem.x / 180), cellY = Math.floor(gem.y / 180), key = cellX + ":" + cellY;
-            const cluster = clusters.get(key);
-            if (cluster) cluster.value += gem.value;
-            else clusters.set(key, { x: cellX * 180 + 90, y: cellY * 180 + 90, value: gem.value, radius: 7 });
+          gemClusterIndices.clear();
+          let writeIndex = 0;
+          for (let readIndex = 0; readIndex < game.gems.length; readIndex++) {
+            const gem = game.gems[readIndex];
+            if (gem.runeCrystal || distance(gem.x, gem.y, game.player.x, game.player.y) < 240) {
+              if (writeIndex !== readIndex) game.gems[writeIndex] = gem;
+              writeIndex++;
+              continue;
+            }
+            const cellX = Math.floor(gem.x / 180);
+            const cellY = Math.floor(gem.y / 180);
+            const key = (((cellX & 0xffff) << 16) | (cellY & 0xffff)) >>> 0;
+            const clusterIndex = gemClusterIndices.get(key);
+            if (clusterIndex !== undefined) {
+              game.gems[clusterIndex].value += gem.value;
+              continue;
+            }
+            gem.x = cellX * 180 + 90;
+            gem.y = cellY * 180 + 90;
+            gem.radius = 7;
+            gem.previousX = undefined;
+            gem.previousY = undefined;
+            if (writeIndex !== readIndex) game.gems[writeIndex] = gem;
+            gemClusterIndices.set(key, writeIndex);
+            writeIndex++;
           }
-          game.gems = [...nearby, ...clusters.values()];
+          game.gems.length = writeIndex;
         }
         if (game.player.xp >= game.player.nextXp && !game.ended && eventRewardRemainingRef.current === 0) {
           game.player.xp -= game.player.nextXp; game.player.level += 1; game.highestLevel = Math.max(game.highestLevel, game.player.level); fractalAudio.levelUp(); game.player.nextXp = Math.floor(game.player.nextXp * 1.32 + 5);
@@ -4688,8 +4722,11 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           game.omenRevengeCooldown = Math.max(0, game.omenRevengeCooldown - dt);
           if (game.player.hp < game.lastObservedHp && game.omenRevengeCooldown <= 0) {
             const radius = 145;
-            const targets = game.enemies.filter((enemy) => enemy.hp > 0 && distance(game.player.x, game.player.y, enemy.x, enemy.y) <= radius).slice(0, 10);
-            for (const enemy of targets) {
+            let retaliationTargets = 0;
+            for (const enemy of game.enemies) {
+              if (retaliationTargets >= 10) break;
+              if (enemy.hp <= 0 || distance(game.player.x, game.player.y, enemy.x, enemy.y) > radius) continue;
+              retaliationTargets++;
               const hitDistance = Math.max(1, distance(game.player.x, game.player.y, enemy.x, enemy.y));
               game.shots.push({ x: game.player.x, y: game.player.y, vx: (enemy.x - game.player.x) / hitDistance * 850, vy: (enemy.y - game.player.y) / hitDistance * 850, damage: game.player.damage * 0.55, life: hitDistance / 850 + 0.25, hitTargets: [], bouncesRemaining: 0, piercesRemaining: 0, isChainLightning: true, targetEnemy: enemy });
             }
@@ -4708,19 +4745,21 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           (game.rings ??= []).push({ x: game.player.x, y: game.player.y, r: 10, max: 220, life: 1.1, color: "#fbbf24" });
           for (let i = 0; i < 32; i++) {
             const angle = Math.random() * Math.PI * 2, speed = 45 + Math.random() * 180;
-            game.particles.push({ x: game.player.x, y: game.player.y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 0.45 + Math.random() * 0.55, color: i % 2 ? "#fbbf24" : "#f5d0fe" });
+            pushFractalParticle(game, { x: game.player.x, y: game.player.y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 0.45 + Math.random() * 0.55, color: i % 2 ? "#fbbf24" : "#f5d0fe" });
           }
 
           if (consumedAnchorNumber === 2 && purchasesRef.current.anchor_soul >= 3) {
             const burstRadius = 260;
             const burstDamage = getEquippedWeaponStrikeDamage(game);
-            const burstTargets = game.enemies.filter((enemy) => enemy.hp > 0 && distance(game.player.x, game.player.y, enemy.x, enemy.y) <= burstRadius);
+            let burstTargetCount = 0;
             (game.rings ??= []).push({ x: game.player.x, y: game.player.y, r: 18, max: burstRadius, life: 0.85, color: "#fbbf24" });
             for (let i = 0; i < 42; i++) {
               const angle = Math.random() * Math.PI * 2, speed = 70 + Math.random() * 230;
-              game.particles.push({ x: game.player.x, y: game.player.y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 0.35 + Math.random() * 0.55, color: i % 2 ? "#fbbf24" : "#fff1b3" });
+              pushFractalParticle(game, { x: game.player.x, y: game.player.y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 0.35 + Math.random() * 0.55, color: i % 2 ? "#fbbf24" : "#fff1b3" });
             }
-            for (const enemy of burstTargets) {
+            for (const enemy of game.enemies) {
+              if (enemy.hp <= 0 || distance(game.player.x, game.player.y, enemy.x, enemy.y) > burstRadius) continue;
+              burstTargetCount++;
               game.shots.push({
                 x: enemy.x, y: enemy.y, vx: 0, vy: 0, damage: burstDamage, life: 0.2,
                 hitTargets: [], bouncesRemaining: 0, piercesRemaining: 0,
@@ -4728,7 +4767,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               });
             }
             game.pickupLabels.push({ x: game.player.x, y: game.player.y - 55, text: "ÂNCORA · EXPLOSÃO", life: 1.8, maxLife: 1.8 });
-            toast.success("A segunda Âncora detonou e atingiu " + burstTargets.length + " inimigo(s)!");
+            toast.success("A segunda Âncora detonou e atingiu " + burstTargetCount + " inimigo(s)!");
           } else {
             game.pickupLabels.push({ x: game.player.x, y: game.player.y - 35, text: "ÂNCORA DA ALMA · RESSURREIÇÃO", life: 2.2, maxLife: 2.2 });
             toast.success("A Âncora da Alma impediu sua queda!");
@@ -4787,10 +4826,9 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             }
           }
         }
-        const activeQuality = graphicsQualityRef.current === "auto"
-          ? autoQualityScale <= 0.68 ? "low" : autoQualityScale <= 0.90 ? "medium" : "high"
-          : graphicsQualityRef.current;
-        const particleCap = activeQuality === "low" ? 35 : activeQuality === "medium" ? 75 : 200;
+        const activeQuality = resolveGraphicsQuality();
+        const particleCap = particleCapForQuality(activeQuality);
+        game.particleLimit = particleCap;
         if (game.particles.length > particleCap) game.particles.splice(0, game.particles.length - particleCap);
         drawGame(ctx, game, corruption, missionId, spritesRef.current, showPlayerHpRef.current, showDamageNumbersRef.current, zoomRef.current, screenShakeEnabledRef.current && activeQuality === "high", activeQuality);
       }
