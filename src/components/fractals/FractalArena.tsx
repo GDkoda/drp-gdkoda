@@ -1156,7 +1156,8 @@ function spawnBloodRitualBlast(game: GameState): void {
       shot.isChainLightning || shot.kind === "blood_spear_rain"
       || shot.kind === "boomerang_shard" || shot.kind === "rift_shard"
     );
-    if (replaceableIndex >= 0) game.shots.splice(replaceableIndex, 1);
+    // O efeito ritual não pode ser perdido por saturação: remove o projétil transitório mais antigo.
+    game.shots.splice(replaceableIndex >= 0 ? replaceableIndex : 0, 1);
   }
   if (game.shots.length < 88) game.shots.push({
     x: game.player.x, y: game.player.y, vx: 0, vy: 0,
@@ -1167,7 +1168,7 @@ function spawnBloodRitualBlast(game: GameState): void {
 
   (game.rings ??= []).push({ x: game.player.x, y: game.player.y, r: 16, max: ritualRadius, life: 0.62, color: "#dc143c" });
   game.shake = Math.max(game.shake ?? 0, 4.5);
-  if (game.particles.length < 75) for (let particle = 0; particle < 18; particle++) {
+  for (let particle = 0; particle < 18 && game.particles.length < 75; particle++) {
     const particleAngle = particle / 18 * Math.PI * 2;
     const particleSpeed = 70 + (particle % 3) * 42;
     game.particles.push({
@@ -3614,7 +3615,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               if (nextRitualLine >= 5) {
                 // Mantém os cinco traços visíveis antes de liberar a explosão.
                 game.bloodRitualProgress = 5;
-                game.bloodRitualTimer = 0.24;
+                game.bloodRitualTimer = 0.32;
               } else game.bloodRitualProgress = nextRitualLine;
             }
             game.shotTimer = game.player.fireRate * 1.05;
