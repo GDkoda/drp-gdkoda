@@ -1231,13 +1231,26 @@ function spawnEnemy(game: GameState, missionId: number, elapsed: number, corrupt
 const sharedParticleBuckets: Record<string, Particle[]> = {};
 
 type RadialGlowStop = readonly [number, string];
-const radialGlowCache = new Map<string, HTMLCanvasElement>();
+const radialGlowCache = new Map<number, HTMLCanvasElement>();
 const MAX_RADIAL_GLOW_CACHE = 96;
+
+/** Hash numérico sem map/join/string temporária no caminho quente de renderização. */
+function getRadialGlowCacheKey(radius: number, stops: readonly RadialGlowStop[]): number {
+  let hash = Math.imul(Math.max(8, Math.round(radius / 4) * 4), 0x45d9f3b);
+  for (let i = 0; i < stops.length; i++) {
+    const [offset, color] = stops[i];
+    hash = Math.imul(hash ^ Math.round(offset * 65535), 0x45d9f3b);
+    for (let j = 0; j < color.length; j++) {
+      hash = Math.imul(hash ^ color.charCodeAt(j), 0x45d9f3b);
+    }
+  }
+  return (hash ^ (hash >>> 16)) >>> 0;
+}
 
 /** Rasteriza uma combinação de brilho uma vez; quadros seguintes usam somente drawImage. */
 function getRadialGlowSprite(radius: number, stops: readonly RadialGlowStop[]): HTMLCanvasElement {
   const quantizedRadius = Math.max(8, Math.round(radius / 4) * 4);
-  const key = quantizedRadius + "|" + stops.map(([offset, color]) => offset + ":" + color).join("|");
+  const key = getRadialGlowCacheKey(quantizedRadius, stops);
   const cached = radialGlowCache.get(key);
   if (cached) return cached;
 
