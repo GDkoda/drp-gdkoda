@@ -820,8 +820,8 @@ function preloadCemeteryImages(): Promise<void> {
 }
 const groundPatternCache = new WeakMap<CanvasRenderingContext2D, CanvasPattern>();
 const RUNE_PHRASE = "ᚷᚱᛁᛚᚺᚨᛟ ᚷᚱᚨᚹᛁᛏᚨᚲᛁᛟᚾᚨᛚ · ";
-const gravityBestEnemies: (Enemy | null)[] = new Array(8).fill(null);
-const gravityBestDist: number[] = new Array(8).fill(0);
+const gravityBestEnemies: (Enemy | null)[] = new Array(10).fill(null);
+const gravityBestDist: number[] = new Array(10).fill(0);
 const runeRingCache = new Map<string, HTMLCanvasElement>();
 const wellSpriteCache = new Map<string, HTMLCanvasElement>();
 
