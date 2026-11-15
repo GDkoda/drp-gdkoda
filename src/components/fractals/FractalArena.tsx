@@ -250,10 +250,11 @@ const SHOP_ITEM_INFO: Record<string, ShopItemInfo> = {
     "Desbloqueio permanente: 11.000 FR.",
     "Vença uma expedição com a arma para concluir a maestria. Depois, compre o Projeto de Evolução por 5.000 FR; no nível 10 da arma, a evolução Prisão do Abismo pode aparecer."
   ]},
-  weapon_rune_sentinels: { title: "Sentinelas Rúnicas", category: "Arma", summary: "Totens orbitais disparam feixes contra alvos resistentes.", details: [
-    "Invoca sentinelas orbitais que disparam feixes rúnicos rápidos contra inimigos mais resistentes.",
-    "Desbloqueio permanente: 12.000 FR.",
-    "Vença uma expedição com a arma para concluir a maestria. Depois, compre o Projeto de Evolução por 5.000 FR; no nível 10 da arma, a evolução Arsenal Ancestral pode aparecer."
+  weapon_rune_sentinels: { title: "Sentinelas Rúnicas", category: "Arma", summary: "Totens fixos disparam feixes e perdem 1 PV por segundo.", details: [
+    "Invoca totens rúnicos em posições fixas ao redor do ponto de invocação. Eles não orbitam nem acompanham o personagem.",
+    "Cada totem perde 1 PV por segundo e dispara feixes rúnicos rápidos contra inimigos resistentes. Totens destruídos podem ser substituídos após o intervalo de reposição.",
+    "O limite aumenta com o nível da arma: 1 totem no início, 2 a partir do nível 5 e 3 no nível 10. A Coroa de Estilhaços acrescenta +1 totem por nível.",
+    "Desbloqueio permanente: 12.000 FR. Vença uma expedição com a arma para concluir a maestria. Depois, compre o Projeto de Evolução por 5.000 FR; no nível 10, a evolução Arsenal Ancestral pode aparecer."
   ]},
   weapon_fractal_boomerang: { title: "Bumerangue Fractal", category: "Arma", summary: "Lâmina crescente atravessa os inimigos e retorna.", details: [
     "Vai até o alcance máximo, atravessa os inimigos na ida e retorna em direção à posição atual do jogador.",
