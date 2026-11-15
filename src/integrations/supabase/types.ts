@@ -1148,6 +1148,10 @@ export type Database = {
       }
       play_combat: { Args: never; Returns: Json }
       play_dice: { Args: { _bet: number }; Returns: Json }
+      purchase_blood_spear_upgrade: {
+        Args: { _upgrade: string }
+        Returns: Json
+      }
       purchase_fractal_upgrade: { Args: { _upgrade: string }; Returns: Json }
       restore_vigor: { Args: { _amount: number }; Returns: number }
       set_lore_comment_pinned: {
@@ -1161,6 +1165,7 @@ export type Database = {
       start_fractal_run: {
         Args: {
           _corruption: number
+          _force_restart?: boolean
           _mission_id?: number
           _omen?: string
           _weapon?: string
