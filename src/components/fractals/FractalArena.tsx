@@ -714,6 +714,17 @@ const distance = (ax: number, ay: number, bx: number, by: number) => Math.hypot(
 
 // Remove objetos expirados sem criar um novo array em cada frame.
 // É usado nas listas quentes da simulação (projéteis, partículas e textos).
+function compactInPlace<T>(items: T[], keep: (item: T) => boolean): void {
+  let writeIndex = 0;
+  for (let readIndex = 0; readIndex < items.length; readIndex++) {
+    const item = items[readIndex];
+    if (!keep(item)) continue;
+    if (writeIndex !== readIndex) items[writeIndex] = item;
+    writeIndex++;
+  }
+  if (writeIndex !== items.length) items.length = writeIndex;
+}
+
 function compactAlive<T extends { life: number }>(items: T[]): void {
   let writeIndex = 0;
   for (let readIndex = 0; readIndex < items.length; readIndex++) {
@@ -1293,7 +1304,62 @@ function drawCachedRadialGlow(
   ctx.restore();
 }
 
-function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: number, missionId: number, sprites: SpriteMap = {}, showPlayerHp = true, showDamageNumbers = true, zoom = 1, screenShakeEnabled = true) {
+
+const weaponEffectSpriteCache = new Map<string, HTMLCanvasElement>();
+
+function getBloodSpearSprite(rain: boolean): HTMLCanvasElement {
+  const key = rain ? "blood-spear-rain" : "blood-spear";
+  const cached = weaponEffectSpriteCache.get(key); if (cached) return cached;
+  const length = rain ? 36 : 56, half = rain ? 5 : 7;
+  const sprite = document.createElement("canvas");
+  sprite.width = Math.ceil(length * 1.16 + 4); sprite.height = Math.ceil(half * 2.5 + 4);
+  const c = sprite.getContext("2d"); if (!c) return sprite;
+  c.translate(sprite.width / 2, sprite.height / 2);
+  const shaft = c.createLinearGradient(-length * .55, 0, length * .55, 0);
+  shaft.addColorStop(0,"#3f0717"); shaft.addColorStop(.38,"#991b35"); shaft.addColorStop(.78,"#f43f5e"); shaft.addColorStop(1,"#fff1f2");
+  c.fillStyle="#3b0715"; c.beginPath(); c.moveTo(length*.58,0); c.lineTo(length*.20,-half*1.25); c.lineTo(length*.10,-half*.45); c.lineTo(-length*.5,-half*.32); c.lineTo(-length*.55,0); c.lineTo(-length*.5,half*.32); c.lineTo(length*.10,half*.45); c.lineTo(length*.20,half*1.25); c.closePath(); c.fill();
+  c.fillStyle=shaft; c.beginPath(); c.moveTo(length*.56,0); c.lineTo(length*.18,-half*.78); c.lineTo(length*.08,-half*.28); c.lineTo(-length*.48,-half*.2); c.lineTo(-length*.5,0); c.lineTo(-length*.48,half*.2); c.lineTo(length*.08,half*.28); c.lineTo(length*.18,half*.78); c.closePath(); c.fill();
+  c.strokeStyle="#fff1f2"; c.lineWidth=1.1; c.beginPath(); c.moveTo(-length*.32,0); c.lineTo(length*.38,0); c.stroke();
+  weaponEffectSpriteCache.set(key,sprite); return sprite;
+}
+
+function getBoomerangBladeSprite(evolved:boolean, returning:boolean):HTMLCanvasElement {
+  const key="boomerang-"+Number(evolved)+"-"+Number(returning);
+  const cached=weaponEffectSpriteCache.get(key); if(cached)return cached;
+  const sprite=document.createElement("canvas"); sprite.width=88; sprite.height=88;
+  const c=sprite.getContext("2d"); if(!c)return sprite; c.translate(44,44);
+  const accent=returning?"#67e8f9":evolved?"#e879f9":"#a78bfa";
+  const grad=c.createLinearGradient(-26,-30,28,20);
+  grad.addColorStop(0,evolved?"rgba(250,232,255,.96)":"rgba(237,233,254,.94)");
+  grad.addColorStop(.28,evolved?"rgba(217,70,239,.78)":"rgba(139,92,246,.72)");
+  grad.addColorStop(.72,evolved?"rgba(88,28,135,.92)":"rgba(76,29,149,.88)"); grad.addColorStop(1,"rgba(15,10,36,.96)");
+  c.lineJoin="round";c.lineCap="round";c.beginPath();c.moveTo(-23,-13);c.quadraticCurveTo(-3,-38,25,-12);c.lineTo(11,-2);c.quadraticCurveTo(-1,-18,-13,10);c.closePath();c.fillStyle=grad;c.fill();
+  c.strokeStyle=accent;c.lineWidth=evolved?12:9;c.stroke();c.strokeStyle=evolved?"#f5d0fe":"#c4b5fd";c.lineWidth=evolved?3.4:2.8;c.stroke();
+  c.strokeStyle="#fff7ff";c.lineWidth=1.5;c.beginPath();c.moveTo(-18,-12);c.quadraticCurveTo(-2,-31,19,-12);c.stroke();c.beginPath();c.moveTo(9,-5);c.quadraticCurveTo(-2,-9,-12,8);c.stroke();
+  if(evolved){c.strokeStyle=returning?"#a5f3fc":"#f0abfc";c.lineWidth=2.2;for(let tooth=0;tooth<12;tooth++){const a=Math.PI*1.03+tooth/11*Math.PI*.94;c.beginPath();c.moveTo(Math.cos(a)*19,-4+Math.sin(a)*19);c.lineTo(Math.cos(a+.045)*30,-4+Math.sin(a+.045)*30);c.lineTo(Math.cos(a+.09)*19,-4+Math.sin(a+.09)*19);c.stroke();}c.setLineDash([3,4]);c.lineWidth=1.2;c.strokeStyle="rgba(250,232,255,.72)";c.beginPath();c.arc(0,-4,14,-Math.PI*.9,Math.PI*.9);c.stroke();c.setLineDash([]);}
+  else{c.globalAlpha=.78;c.strokeStyle="#e9d5ff";c.lineWidth=1.25;for(let rune=0;rune<3;rune++){const x=-8+rune*8,y=-15+Math.abs(rune-1)*2;c.beginPath();c.moveTo(x-2,y);c.lineTo(x,y-3);c.lineTo(x+2,y);c.lineTo(x,y+3);c.stroke();}c.globalAlpha=1;}
+  const core=c.createRadialGradient(0,-5,1,0,-5,10);core.addColorStop(0,"#fff");core.addColorStop(.36,returning?"#cffafe":"#fae8ff");core.addColorStop(.72,returning?"#0891b2":"#c026d3");core.addColorStop(1,"#581c87");
+  c.fillStyle=core;c.beginPath();c.moveTo(0,-16);c.lineTo(7,-5);c.lineTo(0,6);c.lineTo(-7,-5);c.closePath();c.fill();c.strokeStyle="#fff";c.lineWidth=1.2;c.stroke();
+  weaponEffectSpriteCache.set(key,sprite);return sprite;
+}
+
+type ProjectileTrailVariant="anchor"|"chain"|"revolver"|"plasma"|"plasma-evolved"|"sentinel"|"sentinel-evolved"|"default";
+function getProjectileTrailSprite(variant:ProjectileTrailVariant):HTMLCanvasElement {
+  const key="projectile-trail-"+variant,cached=weaponEffectSpriteCache.get(key);if(cached)return cached;
+  const colors:Record<ProjectileTrailVariant,[string,string]>={anchor:["rgba(251,191,36,0)","rgba(255,241,179,.98)"],chain:["rgba(34,211,238,0)","rgba(207,250,254,.98)"],revolver:["rgba(168,85,247,0)","rgba(253,224,71,.98)"],plasma:["rgba(239,68,68,0)","rgba(252,165,165,.95)"],"plasma-evolved":["rgba(239,68,68,0)","rgba(216,180,254,.95)"],sentinel:["rgba(45,212,191,0)","rgba(204,251,241,.98)"],"sentinel-evolved":["rgba(127,29,29,0)","rgba(248,113,113,.98)"],default:["rgba(183,122,255,0)","rgba(226,196,255,.80)"]};
+  const sprite=document.createElement("canvas");sprite.width=128;sprite.height=16;const c=sprite.getContext("2d");if(!c)return sprite;
+  const g=c.createLinearGradient(0,0,128,0);g.addColorStop(0,colors[variant][0]);g.addColorStop(1,colors[variant][1]);c.fillStyle=g;c.fillRect(0,4,128,8);
+  weaponEffectSpriteCache.set(key,sprite);return sprite;
+}
+
+function getWorldFogSprite(axis:"x"|"y",reverse=false):HTMLCanvasElement {
+  const key="world-fog-"+axis+"-"+Number(reverse),cached=weaponEffectSpriteCache.get(key);if(cached)return cached;
+  const sprite=document.createElement("canvas");sprite.width=128;sprite.height=128;const c=sprite.getContext("2d");if(!c)return sprite;
+  const g=axis==="x"?c.createLinearGradient(reverse?128:0,0,reverse?0:128,0):c.createLinearGradient(0,reverse?128:0,0,reverse?0:128);
+  g.addColorStop(0,"rgba(32,22,42,.78)");g.addColorStop(1,"rgba(32,22,42,0)");c.fillStyle=g;c.fillRect(0,0,128,128);weaponEffectSpriteCache.set(key,sprite);return sprite;
+}
+
+function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: number, missionId: number, sprites: SpriteMap = {}, showPlayerHp = true, showDamageNumbers = true, zoom = 1, screenShakeEnabled = true, quality:"low"|"medium"|"high"="high") {
   const { width, height, player } = game;
   const safeZoom = clamp(zoom, 0.6, 1.6);
   const viewWidth = width / safeZoom;
@@ -1301,10 +1367,11 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
   const cameraX = player.x - viewWidth / 2;
   const cameraY = player.y - viewHeight / 2;
   const crowded = game.enemies.length > 30;
-  ctx.clearRect(0, 0, width, height);
+  const lowQuality = quality === "low";
+  const mediumQuality = quality === "medium";
   ctx.save();
   ctx.translate(width / 2, height / 2);
-  if (game.shake && screenShakeEnabled) {
+  if (game.shake && screenShakeEnabled && quality === "high") {
     const shakePhase = game.elapsed * 42;
     ctx.translate(Math.sin(shakePhase) * game.shake * 0.52, Math.cos(shakePhase * 0.83) * game.shake * 0.38);
   }
@@ -1320,9 +1387,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     { floor: [39, 27, 53], glow: "#c08aff", crystal: "#d29aff", stone: "#654b80" },
   ] as const;
   const biome = biomes[clamp(missionId - 1, 0, biomes.length - 1)];
-  // Piso em mosaico cacheado: uma chamada de preenchimento por quadro.
-  ctx.fillStyle = "#0d0b14";
-  ctx.fillRect(cameraX, cameraY, viewWidth, viewHeight);
+  // O piso é opaco: renderizamos apenas o padrão do bioma, sem um passe preto redundante.
   const floorPattern = getFloorPattern(ctx, missionId, biome.floor, biome.glow);
   const gImg = missionId === 1 ? cemImg(groundImg) : null;
   let groundPattern = gImg ? groundPatternCache.get(ctx) : undefined;
@@ -1335,8 +1400,9 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
   }
   if (gImg && groundPattern) { ctx.fillStyle = groundPattern; ctx.fillRect(cameraX, cameraY, viewWidth, viewHeight); }
   else if (floorPattern) { ctx.fillStyle = floorPattern; ctx.fillRect(cameraX, cameraY, viewWidth, viewHeight); }
+  else { ctx.fillStyle = `rgb(${biome.floor[0]},${biome.floor[1]},${biome.floor[2]})`; ctx.fillRect(cameraX, cameraY, viewWidth, viewHeight); }
   ctx.save();ctx.strokeStyle="rgba(145,119,160,.72)";ctx.lineWidth=34;ctx.strokeRect(-WORLD_LIMIT,-WORLD_LIMIT,WORLD_LIMIT*2,WORLD_LIMIT*2);ctx.strokeStyle="rgba(215,190,231,.25)";ctx.lineWidth=5;ctx.strokeRect(-WORLD_LIMIT+17,-WORLD_LIMIT+17,WORLD_LIMIT*2-34,WORLD_LIMIT*2-34);
-  const fog=110;for(let edge=0;edge<4;edge++){const g=edge<2?ctx.createLinearGradient(edge===0?-WORLD_LIMIT:WORLD_LIMIT,0,edge===0?-WORLD_LIMIT+fog:WORLD_LIMIT-fog,0):ctx.createLinearGradient(0,edge===2?-WORLD_LIMIT:WORLD_LIMIT,0,edge===2?-WORLD_LIMIT+fog:WORLD_LIMIT-fog);g.addColorStop(0,"rgba(32,22,42,.78)");g.addColorStop(1,"rgba(32,22,42,0)");ctx.fillStyle=g;if(edge<2)ctx.fillRect(edge===0?-WORLD_LIMIT:WORLD_LIMIT-fog,-WORLD_LIMIT,fog,WORLD_LIMIT*2);else ctx.fillRect(-WORLD_LIMIT,edge===2?-WORLD_LIMIT:WORLD_LIMIT-fog,WORLD_LIMIT*2,fog);}ctx.restore();
+  const fog=110;ctx.drawImage(getWorldFogSprite("x",false),-WORLD_LIMIT,-WORLD_LIMIT,fog,WORLD_LIMIT*2);ctx.drawImage(getWorldFogSprite("x",true),WORLD_LIMIT-fog,-WORLD_LIMIT,fog,WORLD_LIMIT*2);ctx.drawImage(getWorldFogSprite("y",false),-WORLD_LIMIT,-WORLD_LIMIT,WORLD_LIMIT*2,fog);ctx.drawImage(getWorldFogSprite("y",true),-WORLD_LIMIT,WORLD_LIMIT-fog,WORLD_LIMIT*2,fog);ctx.restore();
 
   const drawPillar = (x: number, y: number, scale = 1) => {
     ctx.save(); ctx.translate(x, y); ctx.scale(scale, scale);
@@ -1376,7 +1442,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
 
   for(const prop of game.obstacles){if(prop.x<cameraX-90||prop.x>cameraX+viewWidth+90||prop.y<cameraY-90||prop.y>cameraY+viewHeight+90)continue;ctx.save();ctx.translate(prop.x,prop.y);
     {const sh=prop.kind==="mausoleum"?[60,18]:[22,8];ctx.fillStyle="rgba(0,0,0,.45)";ctx.beginPath();ctx.ellipse(0,prop.radius*.55,sh[0],sh[1],0,0,Math.PI*2);ctx.fill();}
-    if(prop.kind==="torch"){const pulse=1+Math.sin(game.elapsed*4.2+prop.x*.02)*.12;drawCachedRadialGlow(ctx,0,-22,60*pulse,[[0,"rgba(255,190,110,.35)"],[1,"rgba(255,150,60,0)"]],1,"lighter");}
+    if(prop.kind==="torch"){const pulse=lowQuality?1:1+Math.sin(game.elapsed*4.2+prop.x*.02)*(mediumQuality?.045:.12);drawCachedRadialGlow(ctx,0,-22,60*pulse,[[0,"rgba(255,190,110,.35)"],[1,"rgba(255,150,60,0)"]],1,"lighter");}
     const spS=clamp(Math.min(game.width,game.height)/720,0.72,1.15);const spr0=prop.kind==="mausoleum"?[mausoleumImg,140,40]:prop.kind==="cross"?[crossImg,62,22]:prop.kind==="torch"?[candlesImg,58,20]:[gravestoneImg,60,22];const spr=[spr0[0],(spr0[1] as number)*spS,(spr0[2] as number)*spS];
     if(drawSprite(ctx,spr[0] as string,spr[1] as number,spr[2] as number)){ctx.restore();continue;}
     if(prop.kind==="torch"){const pulse=1+Math.sin(game.elapsed*3.8+prop.x*.02)*.12;drawCachedRadialGlow(ctx,0,-14,42*pulse,[[0,"rgba(193,117,255,.42)"],[.45,"rgba(128,67,190,.16)"],[1,"rgba(128,67,190,0)"]],1,"lighter");ctx.fillStyle="#292333";ctx.strokeStyle="#746181";ctx.fillRect(-5,-4,10,21);ctx.strokeRect(-5,-4,10,21);ctx.fillStyle="#d8a8ff";ctx.beginPath();ctx.moveTo(0,-31);ctx.quadraticCurveTo(13,-18,2,-8);ctx.quadraticCurveTo(-10,-15,0,-31);ctx.fill();ctx.fillStyle="#ffd99a";ctx.beginPath();ctx.arc(0,-17,3,0,Math.PI*2);ctx.fill();}
@@ -1409,18 +1475,11 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
 
   if (game.challengeEvent?.id === 1) {
     const event = game.challengeEvent;
-    const pulse = 1 + Math.sin(game.elapsed * 3.5) * 0.035;
+    const pulse=lowQuality?1:1+Math.sin(game.elapsed*3.5)*(mediumQuality?.018:.035);
     ctx.save();
     ctx.translate(event.x, event.y);
     ctx.scale(pulse, pulse);
-    const halo = ctx.createRadialGradient(0, 0, 24, 0, 0, event.radius);
-    halo.addColorStop(0, "rgba(174,121,255,.12)");
-    halo.addColorStop(.72, "rgba(119,77,180,.07)");
-    halo.addColorStop(1, "rgba(119,77,180,0)");
-    ctx.fillStyle = halo;
-    ctx.beginPath();
-    ctx.arc(0, 0, event.radius, 0, Math.PI * 2);
-    ctx.fill();
+    drawCachedRadialGlow(ctx,0,0,event.radius,[[0,"rgba(174,121,255,.12)"],[.72,"rgba(119,77,180,.07)"],[1,"rgba(119,77,180,0)"]],1,"source-over");
     ctx.strokeStyle = "rgba(206,166,255,.78)";
     ctx.lineWidth = 3;
     ctx.setLineDash([12, 8]);
@@ -1513,28 +1572,9 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
 
     if (shot.kind === "dash_strike") return;
     if (shot.kind === "blood_spear" || shot.kind === "blood_spear_rain") {
-      ctx.save();
-      ctx.translate(shot.x, shot.y);
-      ctx.rotate(Math.atan2(shot.vy, shot.vx));
-      ctx.globalAlpha = lifeRatio;
-      const length = shot.kind === "blood_spear_rain" ? 36 : 56;
-      const half = shot.kind === "blood_spear_rain" ? 5 : 7;
-      const shaft = ctx.createLinearGradient(-length * 0.55, 0, length * 0.55, 0);
-      shaft.addColorStop(0, "#3f0717"); shaft.addColorStop(0.38, "#991b35"); shaft.addColorStop(0.78, "#f43f5e"); shaft.addColorStop(1, "#fff1f2");
-      ctx.fillStyle = "#3b0715";
-      ctx.beginPath(); ctx.moveTo(length * 0.58, 0); ctx.lineTo(length * 0.20, -half * 1.25);
-      ctx.lineTo(length * 0.10, -half * 0.45); ctx.lineTo(-length * 0.5, -half * 0.32);
-      ctx.lineTo(-length * 0.55, 0); ctx.lineTo(-length * 0.5, half * 0.32);
-      ctx.lineTo(length * 0.10, half * 0.45); ctx.lineTo(length * 0.20, half * 1.25); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = shaft;
-      ctx.beginPath(); ctx.moveTo(length * 0.56, 0); ctx.lineTo(length * 0.18, -half * 0.78);
-      ctx.lineTo(length * 0.08, -half * 0.28); ctx.lineTo(-length * 0.48, -half * 0.2);
-      ctx.lineTo(-length * 0.5, 0); ctx.lineTo(-length * 0.48, half * 0.2);
-      ctx.lineTo(length * 0.08, half * 0.28); ctx.lineTo(length * 0.18, half * 0.78); ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = "#fff1f2"; ctx.lineWidth = 1.1;
-      ctx.beginPath(); ctx.moveTo(-length * 0.32, 0); ctx.lineTo(length * 0.38, 0); ctx.stroke();
-      ctx.restore();
-      return;
+      ctx.save(); ctx.translate(shot.x,shot.y); ctx.rotate(Math.atan2(shot.vy,shot.vx)); ctx.globalAlpha=lifeRatio;
+      const spearSprite=getBloodSpearSprite(shot.kind==="blood_spear_rain");
+      ctx.drawImage(spearSprite,-spearSprite.width/2,-spearSprite.height/2);ctx.restore();return;
     }
     if (shot.kind === "blood_trail") {
       ctx.save();
@@ -1549,9 +1589,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
       ctx.strokeStyle = "rgba(244,63,94,.82)"; ctx.lineWidth = 4;
       ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.stroke();
       ctx.strokeStyle = "rgba(255,228,230,.76)"; ctx.lineWidth = 1.2;
-      ctx.setLineDash([7, 12]); ctx.lineDashOffset = -game.elapsed * 34;
-      ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.stroke();
-      ctx.setLineDash([]);
+      if (!lowQuality) { ctx.globalAlpha *= 0.82; ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.stroke(); }
       ctx.restore();
       return;
     }
@@ -1561,12 +1599,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
       const progress = 1 - lifeRatio;
       const radius = (shot.radius ?? 220) * (0.72 + progress * 0.28);
       ctx.globalAlpha = lifeRatio;
-      const gradient = ctx.createRadialGradient(0, 0, 5, 0, 0, radius);
-      gradient.addColorStop(0, "rgba(255,225,230,.88)");
-      gradient.addColorStop(0.18, "rgba(244,63,94,.48)");
-      gradient.addColorStop(0.62, "rgba(153,27,52,.22)");
-      gradient.addColorStop(1, "rgba(127,29,29,0)");
-      ctx.fillStyle = gradient; ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI * 2); ctx.fill();
+      drawCachedRadialGlow(ctx,0,0,radius,[[0,"rgba(255,225,230,.88)"],[.18,"rgba(244,63,94,.48)"],[.62,"rgba(153,27,52,.22)"],[1,"rgba(127,29,29,0)"]],lifeRatio,"source-over");
       const star = [0, 2, 4, 1, 3, 0].map((index) => ({ x: Math.cos(-Math.PI / 2 + index * Math.PI * 2 / 5) * radius * 0.78, y: Math.sin(-Math.PI / 2 + index * Math.PI * 2 / 5) * radius * 0.78 }));
       ctx.lineCap = "round"; ctx.lineJoin = "round";
       ctx.strokeStyle = "rgba(69,10,24,.86)"; ctx.lineWidth = 9;
@@ -1594,132 +1627,26 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     }
 
     if (shot.kind === "fractal_boomerang") {
-      ctx.save();
-      ctx.translate(shot.x, shot.y);
-      ctx.rotate(shot.rotation ?? shot.angle ?? 0);
-      ctx.globalAlpha = lifeRatio;
-      const evolved = game.evolved;
-      const returning = shot.phase === "return";
-      const accent = returning ? "#67e8f9" : evolved ? "#e879f9" : "#a78bfa";
-      const bladeGradient = ctx.createLinearGradient(-26, -30, 28, 20);
-      bladeGradient.addColorStop(0, evolved ? "rgba(250,232,255,.96)" : "rgba(237,233,254,.94)");
-      bladeGradient.addColorStop(0.28, evolved ? "rgba(217,70,239,.78)" : "rgba(139,92,246,.72)");
-      bladeGradient.addColorStop(0.72, evolved ? "rgba(88,28,135,.92)" : "rgba(76,29,149,.88)");
-      bladeGradient.addColorStop(1, "rgba(15,10,36,.96)");
-
-      ctx.lineJoin = "round";
-      ctx.lineCap = "round";
-      ctx.beginPath();
-      ctx.moveTo(-23, -13);
-      ctx.quadraticCurveTo(-3, -38, 25, -12);
-      ctx.lineTo(11, -2);
-      ctx.quadraticCurveTo(-1, -18, -13, 10);
-      ctx.closePath();
-      ctx.fillStyle = bladeGradient;
-      ctx.fill();
-
-      // Borda luminosa dupla: brilho obtido por traços vetoriais, sem filtros de blur por quadro.
-      ctx.globalAlpha = lifeRatio * 0.26;
-      ctx.strokeStyle = accent;
-      ctx.lineWidth = evolved ? 12 : 9;
-      ctx.stroke();
-      ctx.globalAlpha = lifeRatio;
-      ctx.strokeStyle = evolved ? "#f5d0fe" : "#c4b5fd";
-      ctx.lineWidth = evolved ? 3.4 : 2.8;
-      ctx.stroke();
-
-      ctx.strokeStyle = "#fff7ff";
-      ctx.lineWidth = 1.5;
-      ctx.globalAlpha = lifeRatio * 0.92;
-      ctx.beginPath();
-      ctx.moveTo(-18, -12);
-      ctx.quadraticCurveTo(-2, -31, 19, -12);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(9, -5);
-      ctx.quadraticCurveTo(-2, -9, -12, 8);
-      ctx.stroke();
-
-      if (evolved) {
-        // A Serra Retornante recebe dentes facetados ao redor do arco e um anel de rotação interno.
-        ctx.globalAlpha = lifeRatio;
-        ctx.strokeStyle = returning ? "#a5f3fc" : "#f0abfc";
-        ctx.lineWidth = 2.2;
-        for (let tooth = 0; tooth < 12; tooth++) {
-          const angle = Math.PI * 1.03 + tooth / 11 * Math.PI * 0.94;
-          const inner = 19, outer = 30;
-          ctx.beginPath();
-          ctx.moveTo(Math.cos(angle) * inner, -4 + Math.sin(angle) * inner);
-          ctx.lineTo(Math.cos(angle + 0.045) * outer, -4 + Math.sin(angle + 0.045) * outer);
-          ctx.lineTo(Math.cos(angle + 0.09) * inner, -4 + Math.sin(angle + 0.09) * inner);
-          ctx.stroke();
-        }
-        ctx.setLineDash([3, 4]);
-        ctx.lineWidth = 1.2;
-        ctx.strokeStyle = "rgba(250,232,255,.72)";
-        ctx.beginPath();
-        ctx.arc(0, -4, 14, -Math.PI * 0.9, Math.PI * 0.9);
-        ctx.stroke();
-        ctx.setLineDash([]);
-      } else {
-        // As três incisões rúnicas deixam a forma base reconhecível sem acrescentar sprites.
-        ctx.globalAlpha = lifeRatio * 0.78;
-        ctx.strokeStyle = "#e9d5ff";
-        ctx.lineWidth = 1.25;
-        for (let rune = 0; rune < 3; rune++) {
-          const x = -8 + rune * 8, y = -15 + Math.abs(rune - 1) * 2;
-          ctx.beginPath();
-          ctx.moveTo(x - 2, y);
-          ctx.lineTo(x, y - 3);
-          ctx.lineTo(x + 2, y);
-          ctx.lineTo(x, y + 3);
-          ctx.stroke();
-        }
-      }
-
-      const coreGradient = ctx.createRadialGradient(0, -5, 1, 0, -5, 10);
-      coreGradient.addColorStop(0, "#ffffff");
-      coreGradient.addColorStop(0.36, returning ? "#cffafe" : "#fae8ff");
-      coreGradient.addColorStop(0.72, returning ? "#0891b2" : "#c026d3");
-      coreGradient.addColorStop(1, "#581c87");
-      ctx.globalAlpha = lifeRatio;
-      ctx.fillStyle = coreGradient;
-      ctx.beginPath();
-      ctx.moveTo(0, -16);
-      ctx.lineTo(7, -5);
-      ctx.lineTo(0, 6);
-      ctx.lineTo(-7, -5);
-      ctx.closePath();
-      ctx.fill();
-      ctx.strokeStyle = "#fff";
-      ctx.lineWidth = 1.2;
-      ctx.stroke();
-      ctx.restore();
-      return;
+      ctx.save();ctx.translate(shot.x,shot.y);ctx.rotate(shot.rotation??shot.angle??0);ctx.globalAlpha=lifeRatio;
+      const blade=getBoomerangBladeSprite(game.evolved,shot.phase==="return");ctx.drawImage(blade,-44,-44);ctx.restore();return;
     }
     if (shot.kind === "boomerang_catch" || shot.kind === "rift_blast" || shot.kind === "rift_residue") {
       ctx.save(); ctx.translate(shot.x, shot.y); ctx.globalAlpha = Math.min(1, lifeRatio * (shot.kind === "rift_residue" ? 0.72 : 1.3));
-      const radius = shot.radius ?? 60, gradient = ctx.createRadialGradient(0, 0, 2, 0, 0, radius);
-      gradient.addColorStop(0, shot.kind === "rift_residue" ? "rgba(30,12,48,.12)" : shot.kind === "boomerang_catch" ? "rgba(103,232,249,.72)" : "rgba(167,139,250,.86)");
-      gradient.addColorStop(0.45, "rgba(124,58,237,.27)"); gradient.addColorStop(1, "rgba(124,58,237,0)");
-      ctx.fillStyle = gradient; ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI * 2); ctx.fill();
+      const radius = shot.radius ?? 60;
+      const radialStops = shot.kind === "rift_residue" ? [[0,"rgba(30,12,48,.12)"],[.45,"rgba(124,58,237,.27)"],[1,"rgba(124,58,237,0)"]] as const : shot.kind === "boomerang_catch" ? [[0,"rgba(103,232,249,.72)"],[.45,"rgba(124,58,237,.27)"],[1,"rgba(124,58,237,0)"]] as const : [[0,"rgba(167,139,250,.86)"],[.45,"rgba(124,58,237,.27)"],[1,"rgba(124,58,237,0)"]] as const;
+      drawCachedRadialGlow(ctx,0,0,radius,radialStops,1,"source-over");
       ctx.strokeStyle = shot.kind === "boomerang_catch" ? "#a5f3fc" : "#d8b4fe"; ctx.lineWidth = shot.kind === "rift_residue" ? 1.5 : 3;
-      ctx.setLineDash(shot.kind === "rift_residue" ? [5, 7] : []); const progress = 1 - lifeRatio;
+      const progress = 1 - lifeRatio;
       ctx.beginPath(); ctx.arc(0, 0, radius * (0.62 + progress * 0.34), game.elapsed * 2, game.elapsed * 2 + Math.PI * 1.65); ctx.stroke();
-      ctx.setLineDash([]); ctx.restore(); return;
+      ctx.restore(); return;
     }
     if (shot.kind === "sentinel_explosion") {
       ctx.save();
       ctx.translate(shot.x, shot.y);
       ctx.globalAlpha = lifeRatio;
       const radius = shot.radius ?? 140;
-      const gradient = ctx.createRadialGradient(0, 0, 4, 0, 0, radius);
-      gradient.addColorStop(0, game.evolved ? "rgba(254,226,226,.92)" : "rgba(224,242,254,.92)");
-      gradient.addColorStop(0.28, game.evolved ? "rgba(220,38,38,.6)" : "rgba(34,211,238,.58)");
-      gradient.addColorStop(0.72, "rgba(251,191,36,.18)");
-      gradient.addColorStop(1, "rgba(34,211,238,0)");
-      ctx.fillStyle = gradient;
-      ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI * 2); ctx.fill();
+      const explosionStops = game.evolved ? [[0,"rgba(254,226,226,.92)"],[.28,"rgba(220,38,38,.6)"],[.72,"rgba(251,191,36,.18)"],[1,"rgba(34,211,238,0)"]] as const : [[0,"rgba(224,242,254,.92)"],[.28,"rgba(34,211,238,.58)"],[.72,"rgba(251,191,36,.18)"],[1,"rgba(34,211,238,0)"]] as const;
+      drawCachedRadialGlow(ctx,0,0,radius,explosionStops,lifeRatio,"source-over");
       ctx.strokeStyle = "#a5f3fc"; ctx.lineWidth = 4; ctx.shadowColor = "#22d3ee"; ctx.shadowBlur = 0;
       ctx.beginPath(); ctx.arc(0, 0, radius * (0.62 + (1 - lifeRatio) * 0.25), 0, Math.PI * 2); ctx.stroke();
       ctx.restore();
@@ -1733,13 +1660,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
       const radius = (shot.radius ?? 90) * (0.92 + Math.sin(game.elapsed * 8) * 0.08);
       if (game.evolved) {
         const rot = game.elapsed * 3;
-        const grad = ctx.createRadialGradient(0, 0, radius * 0.2, 0, 0, radius);
-        grad.addColorStop(0, "rgba(5,2,10,0.98)");
-        grad.addColorStop(0.35, "rgba(112,26,117,0.72)");
-        grad.addColorStop(0.70, "rgba(192,38,211,0.28)");
-        grad.addColorStop(1, "rgba(147,51,234,0)");
-        ctx.fillStyle = grad;
-        ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI * 2); ctx.fill();
+        drawCachedRadialGlow(ctx,0,0,radius,[[0,"rgba(5,2,10,0.98)"],[.35,"rgba(112,26,117,0.72)"],[.70,"rgba(192,38,211,0.28)"],[1,"rgba(147,51,234,0)"]],1,"source-over");
         ctx.strokeStyle = "rgba(244,114,182,0.65)"; ctx.lineWidth = 2.5;
         ctx.beginPath(); ctx.arc(0, 0, radius * 0.75, rot, rot + Math.PI * 1.3); ctx.stroke();
         ctx.strokeStyle = "rgba(192,132,252,0.5)"; ctx.lineWidth = 1.5;
@@ -1748,13 +1669,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
         ctx.beginPath(); ctx.arc(0, 0, radius * 0.28, 0, Math.PI * 2); ctx.fill();
         ctx.strokeStyle = "#e879f9"; ctx.lineWidth = 1.8; ctx.stroke();
       } else {
-        const grad = ctx.createRadialGradient(0, 0, 3, 0, 0, radius);
-        grad.addColorStop(0, "rgba(254,240,138,0.95)");
-        grad.addColorStop(0.28, "rgba(249,115,22,0.85)");
-        grad.addColorStop(0.65, "rgba(220,38,38,0.42)");
-        grad.addColorStop(1, "rgba(185,28,28,0)");
-        ctx.fillStyle = grad;
-        ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI * 2); ctx.fill();
+        drawCachedRadialGlow(ctx,0,0,radius,[[0,"rgba(254,240,138,0.95)"],[.28,"rgba(249,115,22,0.85)"],[.65,"rgba(220,38,38,0.42)"],[1,"rgba(185,28,28,0)"]],1,"source-over");
         ctx.strokeStyle = "rgba(253,224,71,0.7)"; ctx.lineWidth = 2;
         ctx.beginPath(); ctx.arc(0, 0, radius * 0.68, game.elapsed * 0.5, game.elapsed * 0.5 + Math.PI * 1.4); ctx.stroke();
       }
@@ -1829,38 +1744,12 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     const trailLength = shot.kind === "sentinel_beam" ? 42 : shot.kind === "plasma_core" ? 28 : 24;
     const tailX = shot.x - shot.vx / speed * trailLength;
     const tailY = shot.y - shot.vy / speed * trailLength;
-    ctx.save();
-    ctx.lineCap = "round";
-    const trail = ctx.createLinearGradient(tailX, tailY, shot.x, shot.y);
-    if (shot.isAnchorBurst) {
-      trail.addColorStop(0, "rgba(251,191,36,0)");
-      trail.addColorStop(1, "rgba(255,241,179,.98)");
-      ctx.strokeStyle = trail; ctx.lineWidth = 4;
-    } else if (shot.isChainLightning) {
-      trail.addColorStop(0, "rgba(34,211,238,0)");
-      trail.addColorStop(1, "rgba(207,250,254,.98)");
-      ctx.strokeStyle = trail; ctx.lineWidth = 3.5;
-    } else if (shot.kind === "revolver_empowered") {
-      trail.addColorStop(0, "rgba(168,85,247,0)");
-      trail.addColorStop(1, "rgba(253,224,71,.98)");
-      ctx.strokeStyle = trail; ctx.lineWidth = 4.5;
-    } else if (shot.kind === "plasma_core") {
-      trail.addColorStop(0, "rgba(239,68,68,0)");
-      trail.addColorStop(1, game.evolved ? "rgba(216,180,254,.95)" : "rgba(252,165,165,.95)");
-      ctx.strokeStyle = trail; ctx.lineWidth = 6;
-    } else if (shot.kind === "sentinel_beam") {
-      trail.addColorStop(0, game.evolved ? "rgba(127,29,29,0)" : "rgba(45,212,191,0)");
-      trail.addColorStop(1, game.evolved ? "rgba(248,113,113,.98)" : "rgba(204,251,241,.98)");
-      ctx.strokeStyle = trail; ctx.lineWidth = 3.2;
-    } else {
-      trail.addColorStop(0, "rgba(183,122,255,0)");
-      trail.addColorStop(1, "rgba(226,196,255,.80)");
-      ctx.strokeStyle = trail; ctx.lineWidth = 3.5;
-    }
-    ctx.globalAlpha = lifeRatio;
-    ctx.beginPath(); ctx.moveTo(tailX, tailY); ctx.lineTo(shot.x, shot.y); ctx.stroke();
+    const trailWidth = shot.isAnchorBurst?4:shot.isChainLightning?3.5:shot.kind==="revolver_empowered"?4.5:shot.kind==="plasma_core"?6:shot.kind==="sentinel_beam"?3.2:3.5;
+    const trailVariant:ProjectileTrailVariant=shot.isAnchorBurst?"anchor":shot.isChainLightning?"chain":shot.kind==="revolver_empowered"?"revolver":shot.kind==="plasma_core"?(game.evolved?"plasma-evolved":"plasma"):shot.kind==="sentinel_beam"?(game.evolved?"sentinel-evolved":"sentinel"):"default";
+    ctx.save();ctx.globalAlpha=lifeRatio;
+    if(lowQuality){ctx.lineCap="round";ctx.strokeStyle=shot.isAnchorBurst?"#fff1b3":shot.isChainLightning?"#a5f3fc":shot.kind==="revolver_empowered"?"#fef08a":shot.kind==="plasma_core"?(game.evolved?"#d8b4fe":"#fca5a5"):shot.kind==="sentinel_beam"?(game.evolved?"#f87171":"#ccfbf1"):"#e2c4ff";ctx.lineWidth=trailWidth;ctx.beginPath();ctx.moveTo(tailX,tailY);ctx.lineTo(shot.x,shot.y);ctx.stroke();}
+    else{ctx.translate(shot.x,shot.y);ctx.rotate(Math.atan2(shot.vy,shot.vx));ctx.drawImage(getProjectileTrailSprite(trailVariant),-trailLength,-trailWidth/2,trailLength,trailWidth);}
     ctx.restore();
-
     ctx.save();
     ctx.translate(shot.x, shot.y);
     ctx.rotate(Math.atan2(shot.vy, shot.vx));
@@ -2570,7 +2459,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
   purchasesRef.current = purchases;
   const [showPlayerHp, setShowPlayerHp] = useState(true);
   const [showDamageNumbers, setShowDamageNumbers] = useState(true);
-  const [graphicsQuality, setGraphicsQuality] = useState<"auto" | "high" | "low">("auto");
+  const [graphicsQuality, setGraphicsQuality] = useState<"auto" | "medium" | "high" | "low">("auto");
   const graphicsQualityRef = useRef(graphicsQuality);
   graphicsQualityRef.current = graphicsQuality;
   const prefersReduced = typeof window !== "undefined"
@@ -3015,20 +2904,24 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
     let fpsWindowStart = 0;
     let measuredFps = 0;
     let bossNotified = false;
-    let autoQualityScale = 1;
-    let belowTargetSince = 0;
+    const weakMachine=typeof navigator!=="undefined"&&(navigator.hardwareConcurrency??8)<=4;
+    let autoQualityScale=weakMachine?0.68:1;
+    let simulationAccumulator=0;
+    const FIXED_STEP=1/60;
+    const bloodRainTargetScratch:Enemy[]=[];
+    let belowTargetSince=0;
     let aboveTargetSince = 0;
     const resize = () => {
       const rect = canvas.getBoundingClientRect();
       const compactDevice = window.matchMedia("(max-width: 680px)").matches;
       const deviceDpr = window.devicePixelRatio || 1;
-      const qualityMode = graphicsQualityRef.current;
-      const maxDpr = qualityMode === "high" ? 1.5 : qualityMode === "low" ? 0.9 : (compactDevice ? 1 : 1.25) * autoQualityScale;
+      const qualityMode=graphicsQualityRef.current;
+      const maxDpr=qualityMode==="high"?1.5:qualityMode==="medium"?.88:qualityMode==="low"?.62:(compactDevice?1:1.25)*autoQualityScale;
       const dpr = Math.min(deviceDpr, maxDpr);
       canvas.width = Math.max(1, Math.floor(rect.width * dpr));
       canvas.height = Math.max(1, Math.floor(rect.height * dpr));
       ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = qualityMode === "high" ? "high" : qualityMode === "low" || autoQualityScale < 0.9 ? "low" : compactDevice ? "low" : "medium";
+      ctx.imageSmoothingQuality=qualityMode==="high"?"high":qualityMode==="medium"?"medium":qualityMode==="low"||autoQualityScale<.86?"low":compactDevice?"low":"medium";
       const game = gameRef.current;
       if (game) { game.width = rect.width; game.height = rect.height; }
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -3176,11 +3069,13 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
       const game = gameRef.current;
       if (!game) return;
       if (!game.last) game.last = now;
-      const rawDt = Math.min(0.033, (now - game.last) / 1000);
-      const dt = rawDt * speedMultiplierRef.current;
-      game.last = now;
-      if (!game.ended && !paused && levelChoices.length === 0) {
-        game.elapsed += dt;
+      const frameDelta=clamp((now-game.last)/1000,0,.1);
+      game.last=now;
+      if(!game.ended&&!paused&&levelChoices.length===0){
+        simulationAccumulator=Math.min(.25,simulationAccumulator+frameDelta*speedMultiplierRef.current);
+        while(simulationAccumulator+1e-8>=FIXED_STEP&&!game.ended){
+          const dt=FIXED_STEP;simulationAccumulator-=FIXED_STEP;
+          game.elapsed+=dt;
         if (game.weaponId === "blood_spear" && game.evolved && game.bloodRitualTimer > 0) {
           game.bloodRitualTimer = Math.max(0, game.bloodRitualTimer - dt);
           if (game.bloodRitualTimer <= 0) {
@@ -3382,7 +3277,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                 if (d < 275 && enemy.type !== "boss" && enemy.hp > 0) { enemy.hp = 0; game.kills += 1; }
                 else if (d < 430) { const push = (430 - d) * 0.8; const angle = Math.atan2(enemy.y - centerY, enemy.x - centerX); enemy.x = clamp(enemy.x + Math.cos(angle) * push, -WORLD_LIMIT + enemy.radius, WORLD_LIMIT - enemy.radius); enemy.y = clamp(enemy.y + Math.sin(angle) * push, -WORLD_LIMIT + enemy.radius, WORLD_LIMIT - enemy.radius); }
               }
-              game.enemies = game.enemies.filter((enemy) => enemy.hp > 0);
+              compactInPlace(game.enemies,(enemy)=>enemy.hp>0);
               game.rings = [...(game.rings ?? []), { x: centerX, y: centerY, r: 12, max: 460, life: 1.1, color: "#c084fc" }];
               game.shake = Math.max(game.shake ?? 0, 13);
               for(let i=0;i<42;i++){const a=Math.random()*Math.PI*2,sp=70+Math.random()*260;game.particles.push({x:centerX,y:centerY,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:.5+Math.random()*.5,color:i%2?"#d8b4fe":"#f0abfc"});}
@@ -3393,7 +3288,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               game.challengeEvent = null; toast.error("O Ritual da Fenda Rúnica se dissipou antes de ser concluído.");
             }
           } else if (activeEvent.remaining <= 0) {
-            game.enemies = game.enemies.filter((enemy) => !enemy.isExecutioner);
+            compactInPlace(game.enemies,(enemy)=>!enemy.isExecutioner);
             game.challengeEvent = null; toast.error("O Algoz Espectral escapou para o Vazio.");
           }
         }
@@ -3617,7 +3512,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             // A Coroa acrescenta uma lança aleatória por coleta; a evolução inicia com três.
             const rainCount = Math.min(5, (game.evolved ? 3 : 0) + Math.min(2, game.player.projectileStacks));
             if (rainCount > 0 && game.shots.length < 84) {
-              const rainTargets = game.enemies.filter((enemy) => enemy.hp > 0);
+              bloodRainTargetScratch.length=0; for(const enemy of game.enemies)if(enemy.hp>0)bloodRainTargetScratch.push(enemy);
+              const rainTargets=bloodRainTargetScratch;
               for (let rainIndex = 0; rainIndex < rainCount && rainTargets.length > 0 && game.shots.length < 88; rainIndex++) {
                 const selectedIndex = Math.floor(Math.random() * rainTargets.length);
                 const rainTarget = rainTargets.splice(selectedIndex, 1)[0];
@@ -3816,7 +3712,9 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           shot.life -= dt;
         });
         // The Core leaves a damaging singularity either on impact or when its flight expires.
-        for (const shot of [...game.shots]) {
+        const shotsAtDetonationCheck=game.shots.length;
+        for(let shotIndex=0;shotIndex<shotsAtDetonationCheck;shotIndex++){
+          const shot=game.shots[shotIndex];
           if (shot.kind === "plasma_core" && shot.life <= 0 && !shot.hasDetonated) {
             shot.hasDetonated = true;
             spawnPlasmaPuddle(game, shot.x, shot.y, shot.damage);
@@ -4662,7 +4560,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             }
           }
         }
-        game.enemies = game.enemies.filter((enemy) => enemy.hp > 0 && (enemy.type === "boss" || enemy.isExecutioner || distance(enemy.x, enemy.y, game.player.x, game.player.y) < Math.max(game.width, game.height) / zoomRef.current * 1.45));
+        compactInPlace(game.enemies,(enemy)=>enemy.hp>0&&(enemy.type==="boss"||enemy.isExecutioner||distance(enemy.x,enemy.y,game.player.x,game.player.y)<Math.max(game.width,game.height)/zoomRef.current*1.45));
         game.gems.forEach((gem) => {
           const previousX = gem.x, previousY = gem.y;
           const d = distance(game.player.x, game.player.y, gem.x, gem.y);
@@ -4682,7 +4580,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             gem.value = 0;
           }
         });
-        game.gems = game.gems.filter((gem) => gem.value > 0 && distance(gem.x, gem.y, game.player.x, game.player.y) < Math.max(game.width, game.height) * 1.6);
+        compactInPlace(game.gems,(gem)=>gem.value>0&&distance(gem.x,gem.y,game.player.x,game.player.y)<Math.max(game.width,game.height)*1.6);
         game.specialDrops.forEach((drop) => {
           const d = distance(game.player.x, game.player.y, drop.x, drop.y);
           if (d < game.player.pickupRadius) { drop.x += ((game.player.x - drop.x) / Math.max(1, d)) * 280 * dt; drop.y += ((game.player.y - drop.y) / Math.max(1, d)) * 280 * dt; }
@@ -4718,8 +4616,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             drop.radius = 0;
           }
         });
-        game.specialDrops = game.specialDrops.filter((drop) => drop.radius > 0 && distance(drop.x, drop.y, game.player.x, game.player.y) < Math.max(game.width, game.height) * 1.6);
-        game.urns = game.urns.filter((urn) => !urn.broken);
+        compactInPlace(game.specialDrops,(drop)=>drop.radius>0&&distance(drop.x,drop.y,game.player.x,game.player.y)<Math.max(game.width,game.height)*1.6);
+        compactInPlace(game.urns,(urn)=>!urn.broken);
         if(Math.floor(game.elapsed/60)>=game.nextUrnMinute){spawnCemeteryUrns(game,8+Math.floor(Math.random()*5));game.nextUrnMinute=Math.floor(game.elapsed/60)+1;}
         game.particles.forEach((p) => { p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; });
         compactAlive(game.particles);
@@ -4818,7 +4716,9 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           hudSnapshotRef.current = nextHud;
           hudComponentRef.current?.update(nextHud);
         }
-      }
+        }
+        if(game.ended)simulationAccumulator=0;
+      }else{simulationAccumulator=0;}
       if (!paused && levelChoices.length === 0 && !game.ended) {
         fpsFrames += 1;
         if (!fpsWindowStart) fpsWindowStart = now;
@@ -4833,16 +4733,17 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             if (measuredFps < 50) {
               if (!belowTargetSince) belowTargetSince = now;
               aboveTargetSince = 0;
-              if (now - belowTargetSince >= 2000 && autoQualityScale > 0.72) {
-                autoQualityScale = Math.max(0.72, autoQualityScale - 0.14);
+              if(now-belowTargetSince>=1000&&autoQualityScale>.55){
+                autoQualityScale=Math.max(.55,autoQualityScale-(measuredFps<45?.12:.08));
                 belowTargetSince = now;
                 resize();
               }
             } else if (measuredFps >= 58) {
               if (!aboveTargetSince) aboveTargetSince = now;
               belowTargetSince = 0;
-              if (now - aboveTargetSince >= 5000 && autoQualityScale < 1) {
-                autoQualityScale = Math.min(1, autoQualityScale + 0.1);
+              const autoCeiling=weakMachine?.88:1;
+              if(now-aboveTargetSince>=5000&&autoQualityScale<autoCeiling){
+                autoQualityScale=Math.min(autoCeiling,autoQualityScale+.08);
                 aboveTargetSince = now;
                 resize();
               }
@@ -4852,7 +4753,10 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             }
           }
         }
-        drawGame(ctx, game, corruption, missionId, spritesRef.current, showPlayerHpRef.current, showDamageNumbersRef.current, zoomRef.current, screenShakeEnabledRef.current);
+        const effectiveQuality=graphicsQualityRef.current==="auto"?(autoQualityScale<=.66?"low":autoQualityScale<=.86?"medium":"high"):graphicsQualityRef.current;
+        const particleLimit=effectiveQuality==="low"?35:effectiveQuality==="medium"?75:200;
+        if(game.particles.length>particleLimit)game.particles.splice(0,game.particles.length-particleLimit);
+        drawGame(ctx,game,corruption,missionId,spritesRef.current,showPlayerHpRef.current,showDamageNumbersRef.current,zoomRef.current,screenShakeEnabledRef.current,effectiveQuality);
       }
       frame = requestAnimationFrame(tick);
     };
@@ -5426,13 +5330,13 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
   {pausePanel === "main" ? <>
    <div className="fractals-pause-actions grid grid-cols-2 gap-2"><Button variant="outline" className="h-auto justify-start gap-2 rounded-xl border-violet-100/15 bg-white/[0.055] py-3 text-white shadow-inner hover:border-violet-100/35 hover:bg-violet-300/10" onClick={() => setPausePanel("attributes")}><UserRound className="h-4 w-4"/> Atributos</Button><Button variant="outline" className="h-auto justify-start gap-2 rounded-xl border-violet-100/15 bg-white/[0.055] py-3 text-white shadow-inner hover:border-violet-100/35 hover:bg-violet-300/10" onClick={() => setPausePanel("runes")}><Sparkles className="h-4 w-4 text-amber-200"/> Dádivas &amp; Runas</Button><Button variant="outline" className="h-auto justify-start gap-2 rounded-xl border-violet-100/15 bg-white/[0.055] py-3 text-white shadow-inner hover:border-violet-100/35 hover:bg-violet-300/10" onClick={toggleFullscreen}><Maximize className="h-4 w-4"/> Tela cheia</Button><Button variant="outline" className="h-auto justify-start gap-2 rounded-xl border-violet-100/15 bg-white/[0.055] py-3 text-white shadow-inner hover:border-violet-100/35 hover:bg-violet-300/10" onClick={() => setShowPlayerHp((v) => !v)}><Heart className="h-4 w-4 text-rose-300"/> HP: {showPlayerHp ? "visível" : "oculto"}</Button><Button variant="outline" className="h-auto justify-start gap-2 rounded-xl border-violet-100/15 bg-white/[0.055] py-3 text-white shadow-inner hover:border-violet-100/35 hover:bg-violet-300/10" onClick={() => setShowDamageNumbers((v) => !v)}><Swords className="h-4 w-4 text-amber-200"/> Dano: {showDamageNumbers ? "visível" : "oculto"}</Button><Button variant="outline" className="h-auto justify-start gap-2 rounded-xl border-violet-100/15 bg-white/[0.055] py-3 text-white shadow-inner hover:border-violet-100/35 hover:bg-violet-300/10" onClick={toggleScreenShake}><SlidersHorizontal className="h-4 w-4 text-amber-200"/> Tremor: {screenShakeEnabled ? "Ativado" : "Desativado"}</Button></div>
    <Button variant="destructive" className="mt-3 h-10 w-full border border-rose-300/25 bg-rose-950/55 font-bold text-rose-100 hover:bg-rose-900/70" onClick={() => { const game = gameRef.current; if (!game || game.ended) return; game.ended = true; setStats({ totalDamageDealt: Math.round(game.totalDamageDealt), crystalsCollected: game.crystalsCollected, highestLevel: game.highestLevel }); setResult("defeat"); setPaused(false); setPausePanel("main"); fractalAudio.defeat(); finishRun(false); }}><Skull className="mr-2 h-4 w-4"/> Desistir da partida</Button>
-    <div className="fractals-pause-speed mt-3 rounded-2xl p-3"><div className="mb-2 flex items-center gap-2 text-xs font-semibold text-white/75"><Gauge className="h-4 w-4"/> Velocidade da expedição</div><div className="grid grid-cols-3 gap-2">{([1,2,3] as const).map((speed) => <Button key={speed} size="sm" variant={speedMultiplier===speed?"default":"outline"} disabled={!isMaster && (speed===2 ? !purchases.speed_2x : speed===3 ? !purchases.speed_3x : false)} className={!isMaster && speed>1?"border-white/10 opacity-45":""} onClick={()=>setSpeedMultiplier(speed)}>{speed}x{!isMaster && (speed===2 ? !purchases.speed_2x : speed===3 ? !purchases.speed_3x : false)?" 🔒":""}</Button>)}</div>{!isMaster && <p className="mt-2 text-[10px] text-white/45">Desbloqueie 2x e 3x na loja de fractais.</p>}{isMaster && <p className="mt-2 text-[10px] text-emerald-200/70">Acesso de mestre: todas as velocidades liberadas para testes.</p>}</div>
+    <div className="fractals-pause-speed mt-3 rounded-2xl p-3"><div className="mb-2 flex items-center gap-2 text-xs font-semibold text-white/75"><Gauge className="h-4 w-4"/> Velocidade da expedição</div><div className="grid grid-cols-4 gap-2">{([1,2,3] as const).map((speed) => <Button key={speed} size="sm" variant={speedMultiplier===speed?"default":"outline"} disabled={!isMaster && (speed===2 ? !purchases.speed_2x : speed===3 ? !purchases.speed_3x : false)} className={!isMaster && speed>1?"border-white/10 opacity-45":""} onClick={()=>setSpeedMultiplier(speed)}>{speed}x{!isMaster && (speed===2 ? !purchases.speed_2x : speed===3 ? !purchases.speed_3x : false)?" 🔒":""}</Button>)}</div>{!isMaster && <p className="mt-2 text-[10px] text-white/45">Desbloqueie 2x e 3x na loja de fractais.</p>}{isMaster && <p className="mt-2 text-[10px] text-emerald-200/70">Acesso de mestre: todas as velocidades liberadas para testes.</p>}</div>
     <div className="fractals-pause-speed mt-3 rounded-2xl p-3">
       <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-white/75"><SlidersHorizontal className="h-4 w-4"/> Qualidade gráfica</div>
       <div className="grid grid-cols-3 gap-2">
-        {(["auto", "high", "low"] as const).map((quality) => <Button key={quality} size="sm" variant={graphicsQuality === quality ? "default" : "outline"} onClick={() => setGraphicsQuality(quality)}>{quality === "auto" ? "Auto" : quality === "high" ? "Alta" : "Baixa"}</Button>)}
+        {(["auto","low","medium","high"] as const).map((quality)=><Button key={quality} size="sm" variant={graphicsQuality===quality?"default":"outline"} onClick={()=>setGraphicsQuality(quality)}>{quality==="auto"?"Auto":quality==="low"?"Baixa":quality==="medium"?"Média":"Alta"}</Button>)}
       </div>
-      <p className="mt-2 text-[10px] text-white/45">{graphicsQuality === "auto" ? "Auto reduz a resolução se ficar abaixo de 50 FPS por 2 segundos e recupera aos poucos." : graphicsQuality === "high" ? "Prioriza nitidez; usa até 1,5× de escala de tela." : "Prioriza desempenho; limita a escala a 0,9×."}</p>
+      <p className="mt-2 text-[10px] text-white/45">{graphicsQuality==="auto"?"Detecta CPUs com até 4 núcleos e ajusta a resolução entre 0,55× e 1,0× conforme o FPS.":graphicsQuality==="high"?"Efeitos completos, até 200 partículas, sombras e tremor de tela.":graphicsQuality==="medium"?"Até 75 partículas e efeitos intermediários para equilibrar nitidez e fluidez.":"Até 35 partículas, sem tremor ou pulsos pesados; resolução reduzida para priorizar desempenho."}</p>
     </div>
     {isMaster && <Button className="mt-3 h-12 w-full border border-amber-200/50 bg-gradient-to-r from-amber-300 via-emerald-300 to-emerald-500 font-black tracking-wide text-[#08130e] shadow-[0_0_28px_rgba(52,211,153,.22)] hover:brightness-110" onClick={() => { setMasterGiftListOpen(false); setPausePanel("master"); }}><Crown className="mr-2 h-5 w-5"/> Painel do Mestre</Button>}
     <Button className="fractals-pause-resume mt-3 h-11 w-full font-bold" onClick={() => {setPausePanel("main");setPaused(false)}}><Play className="mr-2 h-4 w-4"/> Retomar expedição</Button>
