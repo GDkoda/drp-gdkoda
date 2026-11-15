@@ -724,6 +724,17 @@ function compactAlive<T extends { life: number }>(items: T[]): void {
   if (writeIndex !== items.length) items.length = writeIndex;
 }
 
+function compactInPlace<T>(items: T[], keep: (item: T) => boolean): void {
+  let writeIndex = 0;
+  for (let readIndex = 0; readIndex < items.length; readIndex++) {
+    const item = items[readIndex];
+    if (!keep(item)) continue;
+    if (writeIndex !== readIndex) items[writeIndex] = item;
+    writeIndex++;
+  }
+  if (writeIndex !== items.length) items.length = writeIndex;
+}
+
 const directionFromVector = (x: number, y: number) => {
   if (Math.hypot(x, y) < 0.001) return 0;
   const step = Math.round((Math.atan2(y, x) - Math.PI / 2) / (Math.PI / 4));
@@ -1231,13 +1242,22 @@ function spawnEnemy(game: GameState, missionId: number, elapsed: number, corrupt
 const sharedParticleBuckets: Record<string, Particle[]> = {};
 
 type RadialGlowStop = readonly [number, string];
-const radialGlowCache = new Map<string, HTMLCanvasElement>();
+const radialGlowCache = new Map<number, HTMLCanvasElement>();
 const MAX_RADIAL_GLOW_CACHE = 96;
 
 /** Rasteriza uma combinação de brilho uma vez; quadros seguintes usam somente drawImage. */
 function getRadialGlowSprite(radius: number, stops: readonly RadialGlowStop[]): HTMLCanvasElement {
   const quantizedRadius = Math.max(8, Math.round(radius / 4) * 4);
-  const key = quantizedRadius + "|" + stops.map(([offset, color]) => offset + ":" + color).join("|");
+  let key = 0x811c9dc5;
+  key = Math.imul(key ^ quantizedRadius, 0x01000193);
+  key = Math.imul(key ^ stops.length, 0x01000193);
+  for (let stopIndex = 0; stopIndex < stops.length; stopIndex++) {
+    const stop = stops[stopIndex];
+    key = Math.imul(key ^ Math.round(stop[0] * 65535), 0x01000193);
+    const color = stop[1];
+    for (let charIndex = 0; charIndex < color.length; charIndex++) key = Math.imul(key ^ color.charCodeAt(charIndex), 0x01000193);
+  }
+  key >>>= 0;
   const cached = radialGlowCache.get(key);
   if (cached) return cached;
 
@@ -1279,15 +1299,16 @@ function drawCachedRadialGlow(
   ctx.restore();
 }
 
-function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: number, missionId: number, sprites: SpriteMap = {}, showPlayerHp = true, showDamageNumbers = true, zoom = 1, screenShakeEnabled = true) {
+function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: number, missionId: number, sprites: SpriteMap = {}, showPlayerHp = true, showDamageNumbers = true, zoom = 1, screenShakeEnabled = true, quality: "low" | "medium" | "high" = "high") {
   const { width, height, player } = game;
+  const lowQuality = quality === "low";
+  const simplifiedQuality = quality !== "high";
   const safeZoom = clamp(zoom, 0.6, 1.6);
   const viewWidth = width / safeZoom;
   const viewHeight = height / safeZoom;
   const cameraX = player.x - viewWidth / 2;
   const cameraY = player.y - viewHeight / 2;
   const crowded = game.enemies.length > 30;
-  ctx.clearRect(0, 0, width, height);
   ctx.save();
   ctx.translate(width / 2, height / 2);
   if (game.shake && screenShakeEnabled) {
@@ -1306,9 +1327,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     { floor: [39, 27, 53], glow: "#c08aff", crystal: "#d29aff", stone: "#654b80" },
   ] as const;
   const biome = biomes[clamp(missionId - 1, 0, biomes.length - 1)];
-  // Piso em mosaico cacheado: uma chamada de preenchimento por quadro.
-  ctx.fillStyle = "#0d0b14";
-  ctx.fillRect(cameraX, cameraY, viewWidth, viewHeight);
+  // Canvas opaco: o preenchimento do chão/bioma abaixo cobre a área visível uma única vez.
   const floorPattern = getFloorPattern(ctx, missionId, biome.floor, biome.glow);
   const gImg = missionId === 1 ? cemImg(groundImg) : null;
   let groundPattern = gImg ? groundPatternCache.get(ctx) : undefined;
@@ -1322,7 +1341,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
   if (gImg && groundPattern) { ctx.fillStyle = groundPattern; ctx.fillRect(cameraX, cameraY, viewWidth, viewHeight); }
   else if (floorPattern) { ctx.fillStyle = floorPattern; ctx.fillRect(cameraX, cameraY, viewWidth, viewHeight); }
   ctx.save();ctx.strokeStyle="rgba(145,119,160,.72)";ctx.lineWidth=34;ctx.strokeRect(-WORLD_LIMIT,-WORLD_LIMIT,WORLD_LIMIT*2,WORLD_LIMIT*2);ctx.strokeStyle="rgba(215,190,231,.25)";ctx.lineWidth=5;ctx.strokeRect(-WORLD_LIMIT+17,-WORLD_LIMIT+17,WORLD_LIMIT*2-34,WORLD_LIMIT*2-34);
-  const fog=110;for(let edge=0;edge<4;edge++){const g=edge<2?ctx.createLinearGradient(edge===0?-WORLD_LIMIT:WORLD_LIMIT,0,edge===0?-WORLD_LIMIT+fog:WORLD_LIMIT-fog,0):ctx.createLinearGradient(0,edge===2?-WORLD_LIMIT:WORLD_LIMIT,0,edge===2?-WORLD_LIMIT+fog:WORLD_LIMIT-fog);g.addColorStop(0,"rgba(32,22,42,.78)");g.addColorStop(1,"rgba(32,22,42,0)");ctx.fillStyle=g;if(edge<2)ctx.fillRect(edge===0?-WORLD_LIMIT:WORLD_LIMIT-fog,-WORLD_LIMIT,fog,WORLD_LIMIT*2);else ctx.fillRect(-WORLD_LIMIT,edge===2?-WORLD_LIMIT:WORLD_LIMIT-fog,WORLD_LIMIT*2,fog);}ctx.restore();
+  const fog=110;ctx.fillStyle="rgba(32,22,42,.20)";ctx.fillRect(-WORLD_LIMIT,-WORLD_LIMIT,fog,WORLD_LIMIT*2);ctx.fillRect(WORLD_LIMIT-fog,-WORLD_LIMIT,fog,WORLD_LIMIT*2);ctx.fillRect(-WORLD_LIMIT,-WORLD_LIMIT,WORLD_LIMIT*2,fog);ctx.fillRect(-WORLD_LIMIT,WORLD_LIMIT-fog,WORLD_LIMIT*2,fog);
 
   const drawPillar = (x: number, y: number, scale = 1) => {
     ctx.save(); ctx.translate(x, y); ctx.scale(scale, scale);
@@ -2556,7 +2575,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
   purchasesRef.current = purchases;
   const [showPlayerHp, setShowPlayerHp] = useState(true);
   const [showDamageNumbers, setShowDamageNumbers] = useState(true);
-  const [graphicsQuality, setGraphicsQuality] = useState<"auto" | "high" | "low">("auto");
+  const [graphicsQuality, setGraphicsQuality] = useState<"auto" | "low" | "medium" | "high">("auto");
   const graphicsQualityRef = useRef(graphicsQuality);
   graphicsQualityRef.current = graphicsQuality;
   const prefersReduced = typeof window !== "undefined"
@@ -2990,7 +3009,9 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
     let fpsWindowStart = 0;
     let measuredFps = 0;
     let bossNotified = false;
-    let autoQualityScale = 1;
+    let simulationAccumulator = 0;
+    const weakHardware = typeof navigator !== "undefined" && (navigator.hardwareConcurrency || 8) <= 4;
+    let autoQualityScale = weakHardware ? 0.62 : 1;
     let belowTargetSince = 0;
     let aboveTargetSince = 0;
     const resize = () => {
@@ -2998,7 +3019,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
       const compactDevice = window.matchMedia("(max-width: 680px)").matches;
       const deviceDpr = window.devicePixelRatio || 1;
       const qualityMode = graphicsQualityRef.current;
-      const maxDpr = qualityMode === "high" ? 1.5 : qualityMode === "low" ? 0.9 : (compactDevice ? 1 : 1.25) * autoQualityScale;
+      const maxDpr = qualityMode === "high" ? 1.25 : qualityMode === "medium" ? 0.82 : qualityMode === "low" ? 0.62 : (compactDevice ? 1 : 1.15) * autoQualityScale;
       const dpr = Math.min(deviceDpr, maxDpr);
       canvas.width = Math.max(1, Math.floor(rect.width * dpr));
       canvas.height = Math.max(1, Math.floor(rect.height * dpr));
@@ -3151,11 +3172,14 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
       const game = gameRef.current;
       if (!game) return;
       if (!game.last) game.last = now;
-      const rawDt = Math.min(0.033, (now - game.last) / 1000);
-      const dt = rawDt * speedMultiplierRef.current;
+      const frameDt = Math.min(0.1, Math.max(0, (now - game.last) / 1000));
       game.last = now;
       if (!game.ended && !paused && levelChoices.length === 0) {
-        game.elapsed += dt;
+        simulationAccumulator = Math.min(0.1, simulationAccumulator + frameDt * speedMultiplierRef.current);
+        while (simulationAccumulator >= (1 / 60) && !game.ended) {
+          const dt = 1 / 60;
+          simulationAccumulator -= dt;
+          game.elapsed += dt;
         if (game.weaponId === "blood_spear" && game.evolved && game.bloodRitualTimer > 0) {
           game.bloodRitualTimer = Math.max(0, game.bloodRitualTimer - dt);
           if (game.bloodRitualTimer <= 0) {
@@ -3357,7 +3381,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                 if (d < 275 && enemy.type !== "boss" && enemy.hp > 0) { enemy.hp = 0; game.kills += 1; }
                 else if (d < 430) { const push = (430 - d) * 0.8; const angle = Math.atan2(enemy.y - centerY, enemy.x - centerX); enemy.x = clamp(enemy.x + Math.cos(angle) * push, -WORLD_LIMIT + enemy.radius, WORLD_LIMIT - enemy.radius); enemy.y = clamp(enemy.y + Math.sin(angle) * push, -WORLD_LIMIT + enemy.radius, WORLD_LIMIT - enemy.radius); }
               }
-              game.enemies = game.enemies.filter((enemy) => enemy.hp > 0);
+              compactInPlace(game.enemies, (enemy) => enemy.hp > 0);
               game.rings = [...(game.rings ?? []), { x: centerX, y: centerY, r: 12, max: 460, life: 1.1, color: "#c084fc" }];
               game.shake = Math.max(game.shake ?? 0, 13);
               for(let i=0;i<42;i++){const a=Math.random()*Math.PI*2,sp=70+Math.random()*260;game.particles.push({x:centerX,y:centerY,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:.5+Math.random()*.5,color:i%2?"#d8b4fe":"#f0abfc"});}
@@ -3368,7 +3392,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               game.challengeEvent = null; toast.error("O Ritual da Fenda Rúnica se dissipou antes de ser concluído.");
             }
           } else if (activeEvent.remaining <= 0) {
-            game.enemies = game.enemies.filter((enemy) => !enemy.isExecutioner);
+            compactInPlace(game.enemies, (enemy) => !enemy.isExecutioner);
             game.challengeEvent = null; toast.error("O Algoz Espectral escapou para o Vazio.");
           }
         }
@@ -3385,7 +3409,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         game.shotTimer -= dt;
         // Grilhão não procura alvos nem dispara projéteis: sua aura é atualizada abaixo.
         if (game.weaponId !== "gravity_shackle" && game.shotTimer <= 0) {
-          const maxRange = (game.weaponId === "blood_spear" ? 340 : game.weaponId === "rift_seeder" ? 360 : 280) * game.player.projectileRangeMultiplier;
+          const maxRange = (game.weaponId === "unstable_core" ? 220 : game.weaponId === "blood_spear" ? 340 : game.weaponId === "rift_seeder" ? 360 : 280) * game.player.projectileRangeMultiplier;
           const maxRangeSq = maxRange * maxRange;
           let target: Enemy | null = null;
           let bestScore = Infinity;
@@ -3396,7 +3420,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             const distSq = dx * dx + dy * dy;
             if ((game.weaponId === "void_revolver" || game.weaponId === "fractal_boomerang" || game.weaponId === "rift_seeder" || game.weaponId === "blood_spear") && distSq > maxRangeSq) continue;
             const priority = enemy.type === "boss" ? 120 : enemy.type === "elite" ? 45 : enemy.type === "charger" ? 20 : 0;
-            const score = Math.sqrt(distSq) - priority;
+            const score = game.weaponId === "unstable_core" ? -distSq : Math.sqrt(distSq) - priority;
             if (score < bestScore) { bestScore = score; target = enemy; }
           }
           if (target) {
@@ -3429,8 +3453,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             game.player.castTimer = 0.24;
             game.shotTimer = game.player.fireRate * 0.95;
           } else if (game.weaponId === "unstable_core") {
-            const speed = 100 * game.player.projectileRangeMultiplier;
-            const life = game.player.projectileLife * 0.65;
+            const speed = 220 * game.player.projectileRangeMultiplier;
+            const life = Math.max(0.92, game.player.projectileLife * 1.15);
             const coreCount = 1 + Math.min(MAX_EXTRA_PROJECTILES, game.player.projectileStacks);
             for (let index = 0; index < coreCount; index++) {
               const angleOffset = (index - (coreCount - 1) / 2) * 0.18;
@@ -3488,7 +3512,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             const relicBlades = game.player.projectileStacks ?? 0;
             const evolutionBlades = game.evolved ? 4 : 0;
             const bladeCount = Math.min(14, baseBlades + relicBlades + evolutionBlades);
-            game.shots = game.shots.filter((shot) => shot.kind !== "orbital_blade" || (shot.bladeIndex ?? 0) < bladeCount);
+            compactInPlace(game.shots, (shot) => shot.kind !== "orbital_blade" || (shot.bladeIndex ?? 0) < bladeCount);
             for (let index = 0; index < bladeCount; index++) {
               const existing = game.shots.find((shot) => shot.kind === "orbital_blade" && shot.bladeIndex === index);
               if (existing) {
@@ -3788,7 +3812,10 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           shot.life -= dt;
         });
         // The Core leaves a damaging singularity either on impact or when its flight expires.
-        for (const shot of [...game.shots]) {
+        const shotsAtStart = game.shots.length;
+        for (let shotIndex = 0; shotIndex < shotsAtStart; shotIndex++) {
+          const shot = game.shots[shotIndex];
+          if (!shot) continue;
           if (shot.kind === "plasma_core" && shot.life <= 0 && !shot.hasDetonated) {
             shot.hasDetonated = true;
             spawnPlasmaPuddle(game, shot.x, shot.y, shot.damage);
@@ -3913,9 +3940,13 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             totem.attackTimer -= dt;
             if (totem.attackTimer > 0 || totem.hp <= 0) continue;
             const attackRange = (game.evolved ? 420 : 210) * (1 + game.player.specialAreaStacks * 0.1) * game.player.projectileRangeMultiplier;
-            const target = game.enemies
-              .filter((enemy) => enemy.hp > 0 && distance(totem.x, totem.y, enemy.x, enemy.y) <= attackRange)
-              .sort((a, b) => distance(totem.x, totem.y, a.x, a.y) - distance(totem.x, totem.y, b.x, b.y))[0];
+            let target: Enemy | null = null;
+            let bestTargetDistance = attackRange * attackRange;
+            for (const candidate of game.enemies) {
+              if (candidate.hp <= 0) continue;
+              const dx = candidate.x - totem.x, dy = candidate.y - totem.y, distSq = dx * dx + dy * dy;
+              if (distSq <= bestTargetDistance) { bestTargetDistance = distSq; target = candidate; }
+            }
             if (!target) continue;
             const dx = target.x - totem.x, dy = target.y - totem.y;
             const length = Math.max(1, Math.hypot(dx, dy));
@@ -3962,11 +3993,15 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           const movementFactor = (enemy.slowTimer ?? 0) > 0 ? (enemy.slowFactor ?? 0.7) : 1;
           enemy.slowTimer = Math.max(0, (enemy.slowTimer ?? 0) - dt);
           if (enemy.slowTimer <= 0) enemy.slowFactor = undefined;
-          const aggroTotem = game.weaponId === "rune_sentinels"
-            ? game.sentinelTotems
-                .filter((totem) => totem.hp > 0 && distance(enemy.x, enemy.y, totem.x, totem.y) <= 280)
-                .sort((a, b) => distance(enemy.x, enemy.y, a.x, a.y) - distance(enemy.x, enemy.y, b.x, b.y))[0]
-            : undefined;
+          let aggroTotem: SentinelTotem | undefined;
+          if (game.weaponId === "rune_sentinels") {
+            let bestTotemDistance = 280 * 280;
+            for (const totem of game.sentinelTotems) {
+              if (totem.hp <= 0) continue;
+              const dx = enemy.x - totem.x, dy = enemy.y - totem.y, distSq = dx * dx + dy * dy;
+              if (distSq <= bestTotemDistance) { bestTotemDistance = distSq; aggroTotem = totem; }
+            }
+          }
           if (aggroTotem) {
             enemy.windup = 0;
             enemy.dashTime = 0;
@@ -4152,7 +4187,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               });
             }
           }
-          game.sentinelTotems = game.sentinelTotems.filter((totem) => totem.hp > 0);
+          compactInPlace(game.sentinelTotems, (totem) => totem.hp > 0);
           game.sentinelRespawnTimer = 5;
         }
         for (let eIdx = 0; eIdx < game.enemies.length; eIdx++) {
@@ -4624,7 +4659,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             }
           }
         }
-        game.enemies = game.enemies.filter((enemy) => enemy.hp > 0 && (enemy.type === "boss" || enemy.isExecutioner || distance(enemy.x, enemy.y, game.player.x, game.player.y) < Math.max(game.width, game.height) / zoomRef.current * 1.45));
+        compactInPlace(game.enemies, (enemy) => enemy.hp > 0 && (enemy.type === "boss" || enemy.isExecutioner || distance(enemy.x, enemy.y, game.player.x, game.player.y) < Math.max(game.width, game.height) / zoomRef.current * 1.45));
         game.gems.forEach((gem) => {
           const previousX = gem.x, previousY = gem.y;
           const d = distance(game.player.x, game.player.y, gem.x, gem.y);
@@ -4644,7 +4679,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             gem.value = 0;
           }
         });
-        game.gems = game.gems.filter((gem) => gem.value > 0 && distance(gem.x, gem.y, game.player.x, game.player.y) < Math.max(game.width, game.height) * 1.6);
+        compactInPlace(game.gems, (gem) => gem.value > 0 && distance(gem.x, gem.y, game.player.x, game.player.y) < Math.max(game.width, game.height) * 1.6);
         game.specialDrops.forEach((drop) => {
           const d = distance(game.player.x, game.player.y, drop.x, drop.y);
           if (d < game.player.pickupRadius) { drop.x += ((game.player.x - drop.x) / Math.max(1, d)) * 280 * dt; drop.y += ((game.player.y - drop.y) / Math.max(1, d)) * 280 * dt; }
@@ -4680,12 +4715,12 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             drop.radius = 0;
           }
         });
-        game.specialDrops = game.specialDrops.filter((drop) => drop.radius > 0 && distance(drop.x, drop.y, game.player.x, game.player.y) < Math.max(game.width, game.height) * 1.6);
-        game.urns = game.urns.filter((urn) => !urn.broken);
+        compactInPlace(game.specialDrops, (drop) => drop.radius > 0 && distance(drop.x, drop.y, game.player.x, game.player.y) < Math.max(game.width, game.height) * 1.6);
+        compactInPlace(game.urns, (urn) => !urn.broken);
         if(Math.floor(game.elapsed/60)>=game.nextUrnMinute){spawnCemeteryUrns(game,8+Math.floor(Math.random()*5));game.nextUrnMinute=Math.floor(game.elapsed/60)+1;}
         game.particles.forEach((p) => { p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; });
         compactAlive(game.particles);
-        if (game.particles.length > 140) game.particles.splice(0, game.particles.length - 140);
+        // O limite 35/75/200 é aplicado junto da qualidade efetiva antes do desenho.
         game.shake = Math.max(0, (game.shake ?? 0) - dt * 30);
         if (game.rings) {
           game.rings.forEach((ring) => {
@@ -4780,6 +4815,9 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           hudSnapshotRef.current = nextHud;
           hudComponentRef.current?.update(nextHud);
         }
+        }
+      } else {
+        simulationAccumulator = 0;
       }
       if (!paused && levelChoices.length === 0 && !game.ended) {
         fpsFrames += 1;
@@ -4795,16 +4833,16 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             if (measuredFps < 50) {
               if (!belowTargetSince) belowTargetSince = now;
               aboveTargetSince = 0;
-              if (now - belowTargetSince >= 2000 && autoQualityScale > 0.72) {
-                autoQualityScale = Math.max(0.72, autoQualityScale - 0.14);
+              if (now - belowTargetSince >= (weakHardware ? 1200 : 1600) && autoQualityScale > 0.55) {
+                autoQualityScale = Math.max(0.55, autoQualityScale - 0.12);
                 belowTargetSince = now;
                 resize();
               }
             } else if (measuredFps >= 58) {
               if (!aboveTargetSince) aboveTargetSince = now;
               belowTargetSince = 0;
-              if (now - aboveTargetSince >= 5000 && autoQualityScale < 1) {
-                autoQualityScale = Math.min(1, autoQualityScale + 0.1);
+              if (now - aboveTargetSince >= 5000 && autoQualityScale < 1.05) {
+                autoQualityScale = Math.min(1.05, autoQualityScale + 0.08);
                 aboveTargetSince = now;
                 resize();
               }
@@ -4814,7 +4852,12 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             }
           }
         }
-        drawGame(ctx, game, corruption, missionId, spritesRef.current, showPlayerHpRef.current, showDamageNumbersRef.current, zoomRef.current, screenShakeEnabledRef.current);
+        const activeQuality = graphicsQualityRef.current === "auto"
+          ? autoQualityScale <= 0.68 ? "low" : autoQualityScale <= 0.90 ? "medium" : "high"
+          : graphicsQualityRef.current;
+        const particleCap = activeQuality === "low" ? 35 : activeQuality === "medium" ? 75 : 200;
+        if (game.particles.length > particleCap) game.particles.splice(0, game.particles.length - particleCap);
+        drawGame(ctx, game, corruption, missionId, spritesRef.current, showPlayerHpRef.current, showDamageNumbersRef.current, zoomRef.current, screenShakeEnabledRef.current && activeQuality === "high", activeQuality);
       }
       frame = requestAnimationFrame(tick);
     };
@@ -5368,9 +5411,9 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
     <div className="fractals-pause-speed mt-3 rounded-2xl p-3">
       <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-white/75"><SlidersHorizontal className="h-4 w-4"/> Qualidade gráfica</div>
       <div className="grid grid-cols-3 gap-2">
-        {(["auto", "high", "low"] as const).map((quality) => <Button key={quality} size="sm" variant={graphicsQuality === quality ? "default" : "outline"} onClick={() => setGraphicsQuality(quality)}>{quality === "auto" ? "Auto" : quality === "high" ? "Alta" : "Baixa"}</Button>)}
+        {(["auto", "low", "medium", "high"] as const).map((quality) => <Button key={quality} size="sm" variant={graphicsQuality === quality ? "default" : "outline"} onClick={() => setGraphicsQuality(quality)}>{quality === "auto" ? "Auto" : quality === "high" ? "Alta" : quality === "medium" ? "Média" : "Baixa"}</Button>)}
       </div>
-      <p className="mt-2 text-[10px] text-white/45">{graphicsQuality === "auto" ? "Auto reduz a resolução se ficar abaixo de 50 FPS por 2 segundos e recupera aos poucos." : graphicsQuality === "high" ? "Prioriza nitidez; usa até 1,5× de escala de tela." : "Prioriza desempenho; limita a escala a 0,9×."}</p>
+      <p className="mt-2 text-[10px] text-white/45">{graphicsQuality === "auto" ? "Auto detecta CPUs com até 4 núcleos e reduz a escala abaixo de 50 FPS." : graphicsQuality === "high" ? "Efeitos completos, até 200 partículas, tremor e escala de até 1,25×." : graphicsQuality === "medium" ? "Brilhos médios, até 75 partículas e escala de 0,82×." : "Até 35 partículas, sem tremor, pulsações ou tracejados pesados; escala de 0,62×."}</p>
     </div>
     {isMaster && <Button className="mt-3 h-12 w-full border border-amber-200/50 bg-gradient-to-r from-amber-300 via-emerald-300 to-emerald-500 font-black tracking-wide text-[#08130e] shadow-[0_0_28px_rgba(52,211,153,.22)] hover:brightness-110" onClick={() => { setMasterGiftListOpen(false); setPausePanel("master"); }}><Crown className="mr-2 h-5 w-5"/> Painel do Mestre</Button>}
     <Button className="fractals-pause-resume mt-3 h-11 w-full font-bold" onClick={() => {setPausePanel("main");setPaused(false)}}><Play className="mr-2 h-4 w-4"/> Retomar expedição</Button>
