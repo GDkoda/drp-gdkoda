@@ -3321,12 +3321,10 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                 ]
               : [{ x: centerX, y: centerY }];
             if (game.evolved) {
-              const groupLimit = 2 + (game.player.projectileStacks >= 2 ? 1 : 0);
-              while (game.riftMines.length + 3 > groupLimit * 3 && game.riftMines.length) {
-                const oldestGroup = game.riftMines[0].groupId;
-                for (let index = game.riftMines.length - 1; index >= 0; index--) {
-                  if (game.riftMines[index].groupId === oldestGroup) game.riftMines.splice(index, 1);
-                }
+              // Cada nível da Coroa adiciona exatamente uma vaga de mina, mesmo em grupos de três.
+              const mineLimit = 6 + Math.min(2, game.player.projectileStacks);
+              while (game.riftMines.length + points.length > mineLimit && game.riftMines.length) {
+                game.riftMines.shift();
               }
             } else {
               const mineLimit = 3 + Math.min(2, game.player.projectileStacks);
