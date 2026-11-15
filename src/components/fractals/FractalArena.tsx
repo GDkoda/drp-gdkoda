@@ -25,7 +25,7 @@ type UpgradeId = "power" | "haste" | "vitality" | "swift" | "special_area" | "sp
 type Upgrade = { id: UpgradeId; name: string; description: string; icon: typeof Zap; rarity?: "normal" | "uncommon" | "rare" | "epic" | "legendary" | "maestria" | "evolution" };
 type UpgradeCounts = Record<string, { name: string; count: number; rarity: string }>;
 
-type Enemy = { x: number; y: number; hp: number; maxHp: number; speed: number; radius: number; damage: number; color: string; xp: number; type: "wraith" | "brute" | "charger" | "elite" | "boss"; attack: number; flash: number; windup: number; targetX: number; targetY: number; dashTime: number; summonedAtHalf: boolean; furyTriggered: boolean; isExecutioner?: boolean; slowTimer?: number; slowFactor?: number; hunterMarkTimer?: number; boomerangMarkTimer?: number; thermalBurnTimer?: number; thermalBurnTick?: number; thermalBurnDamage?: number };
+type Enemy = { x: number; y: number; hp: number; maxHp: number; speed: number; radius: number; damage: number; color: string; xp: number; type: "wraith" | "brute" | "charger" | "elite" | "boss"; attack: number; flash: number; windup: number; targetX: number; targetY: number; dashTime: number; summonedAtHalf: boolean; furyTriggered: boolean; isExecutioner?: boolean; slowTimer?: number; slowFactor?: number; hunterMarkTimer?: number; boomerangMarkTimer?: number; thermalBurnTimer?: number; thermalBurnTick?: number; thermalBurnDamage?: number; bloodBleedStacks?: number; bloodBleedTimer?: number; bloodBleedDamage?: number };
 type ShotKind =
   | "bullet"
   | "revolver_empowered"
@@ -56,7 +56,7 @@ type Shot = {
   bladeIndex?: number; totalBlades?: number; pulseTimer?: number; hasDetonated?: boolean;
   isAura?: boolean; active?: boolean;
   phase?: "outbound" | "spin" | "return"; travelled?: number; maxDistance?: number; spinTimer?: number; rotation?: number; trailTimer?: number;
-  startX?: number; startY?: number; endX?: number; endY?: number; bloodHealTotal?: number;
+  startX?: number; startY?: number; endX?: number; endY?: number; bloodHealTotal?: number; bloodBleedDetonation?: boolean;
 };
 type Gem = { x: number; y: number; value: number; radius: number; previousX?: number; previousY?: number; runeCrystal?: boolean };
 type SpecialDrop = { x: number; y: number; kind: "area" | "experience" | "projectile_range" | "projectiles" | "ricochet" | "piercing" | "chain_lightning" | "crit" | "food" | "void"; radius: number };
@@ -1174,7 +1174,7 @@ function spawnBloodRitualBlast(game: GameState): void {
     x: game.player.x, y: game.player.y, vx: 0, vy: 0,
     damage: getEquippedWeaponStrikeDamage(game) * 0.50, life: 0.42, maxLife: 0.42,
     hitTargets: [], bouncesRemaining: 0, piercesRemaining: 0,
-    kind: "blood_ritual_blast", radius: ritualRadius, bloodHealTotal: 0,
+    kind: "blood_ritual_blast", radius: ritualRadius, bloodHealTotal: 0, bloodBleedDetonation: true,
   });
 
   (game.rings ??= []).push({ x: game.player.x, y: game.player.y, r: 16, max: ritualRadius, life: 0.62, color: "#dc143c" });
@@ -1299,6 +1299,129 @@ function drawCachedRadialGlow(
   ctx.restore();
 }
 
+
+const FRACTAL_EFFECT_SPRITES = new Map<string, HTMLCanvasElement>();
+function getFractalEffectSprite(key: string, width: number, height: number, paint: (ctx: CanvasRenderingContext2D) => void): HTMLCanvasElement {
+  const cached = FRACTAL_EFFECT_SPRITES.get(key);
+  if (cached) return cached;
+  const canvas = document.createElement("canvas");
+  canvas.width = width; canvas.height = height;
+  const spriteCtx = canvas.getContext("2d");
+  if (spriteCtx) paint(spriteCtx);
+  FRACTAL_EFFECT_SPRITES.set(key, canvas);
+  return canvas;
+}
+function getBloodSpearSprite(rain = false): HTMLCanvasElement {
+  const length = rain ? 36 : 56, half = rain ? 5 : 7, width = 80, height = 32;
+  return getFractalEffectSprite(rain ? "blood-spear-rain" : "blood-spear", width, height, (c) => {
+    c.translate(width / 2, height / 2);
+    const g = c.createLinearGradient(-length * 0.55, 0, length * 0.55, 0);
+    g.addColorStop(0, "#3f0717"); g.addColorStop(.38, "#991b35"); g.addColorStop(.78, "#f43f5e"); g.addColorStop(1, "#fff1f2");
+    c.fillStyle = "#3b0715"; c.beginPath(); c.moveTo(length * .58, 0); c.lineTo(length * .2, -half * 1.25);
+    c.lineTo(length * .1, -half * .45); c.lineTo(-length * .5, -half * .32); c.lineTo(-length * .55, 0);
+    c.lineTo(-length * .5, half * .32); c.lineTo(length * .1, half * .45); c.lineTo(length * .2, half * 1.25); c.closePath(); c.fill();
+    c.fillStyle = g; c.beginPath(); c.moveTo(length * .56, 0); c.lineTo(length * .18, -half * .78);
+    c.lineTo(length * .08, -half * .28); c.lineTo(-length * .48, -half * .2); c.lineTo(-length * .5, 0);
+    c.lineTo(-length * .48, half * .2); c.lineTo(length * .08, half * .28); c.lineTo(length * .18, half * .78); c.closePath(); c.fill();
+    c.strokeStyle = "#fff1f2"; c.lineWidth = 1.1; c.beginPath(); c.moveTo(-length * .32, 0); c.lineTo(length * .38, 0); c.stroke();
+  });
+}
+function getOrbitalBladeSprite(evolved: boolean): HTMLCanvasElement {
+  return getFractalEffectSprite(evolved ? "orbital-blade-e" : "orbital-blade", 40, 66, (c) => {
+    c.translate(20, 33);
+    c.fillStyle = evolved ? "rgba(236,72,153,.35)" : "rgba(250,204,21,.25)";
+    c.beginPath(); c.moveTo(0,-28); c.lineTo(9,-2); c.lineTo(5,16); c.lineTo(0,24); c.lineTo(-5,16); c.lineTo(-9,-2); c.closePath(); c.fill();
+    c.fillStyle = evolved ? "#fdf2f8" : "#fefce8";
+    c.beginPath(); c.moveTo(0,-25); c.lineTo(6,-2); c.lineTo(3.5,14); c.lineTo(0,20); c.lineTo(-3.5,14); c.lineTo(-6,-2); c.closePath(); c.fill();
+    c.fillStyle = evolved ? "#ec4899" : "#c084fc"; c.fillRect(-1.5,-12,3,10);
+    c.fillStyle = evolved ? "#f43f5e" : "#fbbf24"; c.beginPath(); c.arc(0,2,2.5,0,Math.PI*2); c.fill();
+    c.fillStyle = evolved ? "#831843" : "#6b21a8"; c.fillRect(-9,4,18,4.5);
+    c.fillStyle = "#facc15"; c.fillRect(-2.5,8.5,5,8); c.beginPath(); c.arc(0,18.5,3,0,Math.PI*2); c.fill();
+    c.strokeStyle = "#fff"; c.lineWidth = 1.2; c.beginPath(); c.moveTo(0,-24); c.lineTo(0,4); c.stroke();
+  });
+}
+function getBoomerangSprite(evolved: boolean, returning: boolean): HTMLCanvasElement {
+  return getFractalEffectSprite("boomerang-"+(evolved?"e":"n")+"-"+(returning?"r":"o"), 80, 80, (c) => {
+    c.translate(40,40);
+    const accent = returning ? "#67e8f9" : evolved ? "#e879f9" : "#a78bfa";
+    const g = c.createLinearGradient(-26,-30,28,20);
+    g.addColorStop(0,evolved?"rgba(250,232,255,.96)":"rgba(237,233,254,.94)");
+    g.addColorStop(.28,evolved?"rgba(217,70,239,.78)":"rgba(139,92,246,.72)");
+    g.addColorStop(.72,evolved?"rgba(88,28,135,.92)":"rgba(76,29,149,.88)");
+    g.addColorStop(1,"rgba(15,10,36,.96)");
+    c.lineJoin="round"; c.beginPath(); c.moveTo(-23,-13); c.quadraticCurveTo(-3,-38,25,-12);
+    c.lineTo(11,-2); c.quadraticCurveTo(-1,-18,-13,10); c.closePath(); c.fillStyle=g; c.fill();
+    c.strokeStyle=accent; c.globalAlpha=.3; c.lineWidth=evolved?9:7; c.stroke(); c.globalAlpha=1;
+    c.strokeStyle=evolved?"#f5d0fe":"#c4b5fd"; c.lineWidth=2.8; c.stroke();
+    c.strokeStyle="#fff7ff"; c.lineWidth=1.5; c.beginPath(); c.moveTo(-18,-12); c.quadraticCurveTo(-2,-31,19,-12); c.stroke();
+    c.beginPath(); c.moveTo(9,-5); c.quadraticCurveTo(-2,-9,-12,8); c.stroke();
+    const core=c.createRadialGradient(0,-5,1,0,-5,10);
+    core.addColorStop(0,"#fff"); core.addColorStop(.36,returning?"#cffafe":"#fae8ff"); core.addColorStop(.72,returning?"#0891b2":"#c026d3"); core.addColorStop(1,"#581c87");
+    c.fillStyle=core; c.beginPath(); c.moveTo(0,-16); c.lineTo(7,-5); c.lineTo(0,6); c.lineTo(-7,-5); c.closePath(); c.fill();
+  });
+}
+function getPlasmaPuddleSprite(evolved: boolean): HTMLCanvasElement {
+  return getFractalEffectSprite(evolved ? "plasma-puddle-e" : "plasma-puddle", 256, 256, (c) => {
+    c.translate(128,128); const r=116;
+    const g=c.createRadialGradient(0,0,evolved?22:3,0,0,r);
+    if(evolved){g.addColorStop(0,"rgba(5,2,10,.98)");g.addColorStop(.35,"rgba(112,26,117,.72)");g.addColorStop(.7,"rgba(192,38,211,.28)");g.addColorStop(1,"rgba(147,51,234,0)");}
+    else{g.addColorStop(0,"rgba(254,240,138,.95)");g.addColorStop(.28,"rgba(249,115,22,.85)");g.addColorStop(.65,"rgba(220,38,38,.42)");g.addColorStop(1,"rgba(185,28,28,0)");}
+    c.fillStyle=g;c.beginPath();c.arc(0,0,r,0,Math.PI*2);c.fill();
+    c.strokeStyle=evolved?"rgba(244,114,182,.65)":"rgba(253,224,71,.7)";c.lineWidth=2.4;c.beginPath();c.arc(0,0,r*(evolved?.75:.68),0,Math.PI*2);c.stroke();
+    if(evolved){c.fillStyle="#030006";c.beginPath();c.arc(0,0,r*.28,0,Math.PI*2);c.fill();c.strokeStyle="#e879f9";c.lineWidth=1.8;c.stroke();}
+  });
+}
+function getPlasmaCoreSprite(evolved: boolean): HTMLCanvasElement {
+  return getFractalEffectSprite(evolved ? "plasma-core-e" : "plasma-core", 64, 64, (c) => {
+    c.translate(32,32); const r=13;
+    if(evolved){const g=c.createRadialGradient(0,0,r*.3,0,0,r*1.8);g.addColorStop(0,"rgba(232,121,249,.9)");g.addColorStop(.5,"rgba(147,51,234,.4)");g.addColorStop(1,"rgba(88,28,135,0)");c.fillStyle=g;c.beginPath();c.arc(0,0,r*1.8,0,Math.PI*2);c.fill();c.fillStyle="#05000a";c.beginPath();c.arc(0,0,r*.85,0,Math.PI*2);c.fill();c.strokeStyle="#f0abfc";c.lineWidth=2.2;c.stroke();}
+    else{const g=c.createRadialGradient(0,0,2,0,0,r);g.addColorStop(0,"#fff");g.addColorStop(.35,"#fde047");g.addColorStop(.75,"#ea580c");g.addColorStop(1,"#b91c1c");c.fillStyle=g;c.beginPath();c.arc(0,0,r,0,Math.PI*2);c.fill();c.strokeStyle="#fef08a";c.lineWidth=1.8;c.beginPath();c.arc(0,0,r*.52,0,Math.PI*2);c.stroke();}
+  });
+}
+function getProjectileTrailSprite(kind: "gold"|"plasma"|"sentinel"|"chain"|"arcane", evolved: boolean): HTMLCanvasElement {
+  return getFractalEffectSprite("trail-"+kind+"-"+(evolved?"e":"n"), 96, 12, (c) => {
+    const g=c.createLinearGradient(0,6,96,6);
+    if(kind==="gold"){g.addColorStop(0,"rgba(180,83,9,0)");g.addColorStop(1,"rgba(253,224,71,.98)");}
+    else if(kind==="plasma"){g.addColorStop(0,"rgba(239,68,68,0)");g.addColorStop(1,evolved?"rgba(216,180,254,.95)":"rgba(252,165,165,.95)");}
+    else if(kind==="sentinel"){g.addColorStop(0,evolved?"rgba(127,29,29,0)":"rgba(45,212,191,0)");g.addColorStop(1,evolved?"rgba(248,113,113,.98)":"rgba(204,251,241,.98)");}
+    else if(kind==="chain"){g.addColorStop(0,"rgba(34,211,238,0)");g.addColorStop(1,"rgba(207,250,254,.98)");}
+    else{g.addColorStop(0,"rgba(183,122,255,0)");g.addColorStop(1,"rgba(226,196,255,.80)");}
+    c.fillStyle=g;c.fillRect(0,2,96,8);
+  });
+}
+function getRiftResidueSprite(): HTMLCanvasElement {
+  return getFractalEffectSprite("rift-residue",256,256,(c)=>{
+    c.translate(128,128);const g=c.createRadialGradient(0,0,2,0,0,118);
+    g.addColorStop(0,"rgba(30,12,48,.2)");g.addColorStop(.45,"rgba(124,58,237,.25)");g.addColorStop(1,"rgba(124,58,237,0)");
+    c.fillStyle=g;c.beginPath();c.arc(0,0,118,0,Math.PI*2);c.fill();
+    c.strokeStyle="rgba(216,180,254,.72)";c.lineWidth=2;c.beginPath();c.arc(0,0,94,0,Math.PI*1.65);c.stroke();
+  });
+}
+function getBloodTrailStamp(): HTMLCanvasElement {
+  return getFractalEffectSprite("blood-trail-stamp",24,24,(c)=>{
+    const g=c.createRadialGradient(12,12,1,12,12,12);
+    g.addColorStop(0,"rgba(255,180,195,.9)");g.addColorStop(.35,"rgba(244,63,94,.75)");g.addColorStop(1,"rgba(69,10,24,0)");
+    c.fillStyle=g;c.fillRect(0,0,24,24);
+  });
+}
+function getMuzzleFlashSprite(): HTMLCanvasElement {
+  return getFractalEffectSprite("revolver-flash",48,30,(c)=>{
+    const g=c.createLinearGradient(0,15,48,15);
+    g.addColorStop(0,"rgba(255,191,36,0)");g.addColorStop(.42,"rgba(251,191,36,.65)");g.addColorStop(1,"rgba(255,250,205,.95)");
+    c.fillStyle=g;c.beginPath();c.moveTo(0,15);c.lineTo(30,4);c.lineTo(47,15);c.lineTo(30,26);c.closePath();c.fill();
+    c.fillStyle="#fff7cc";c.beginPath();c.arc(31,15,5,0,Math.PI*2);c.fill();
+  });
+}
+function prewarmFractalEffectSprites(): void {
+  getBloodSpearSprite(false);getBloodSpearSprite(true);
+  getOrbitalBladeSprite(false);getOrbitalBladeSprite(true);
+  getBoomerangSprite(false,false);getBoomerangSprite(false,true);getBoomerangSprite(true,false);getBoomerangSprite(true,true);
+  getPlasmaPuddleSprite(false);getPlasmaPuddleSprite(true);getPlasmaCoreSprite(false);getPlasmaCoreSprite(true);
+  getRiftResidueSprite();getBloodTrailStamp();getMuzzleFlashSprite();
+  getProjectileTrailSprite("gold",false);getProjectileTrailSprite("plasma",false);getProjectileTrailSprite("sentinel",false);
+  getProjectileTrailSprite("chain",false);getProjectileTrailSprite("arcane",false);
+}
+
 function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: number, missionId: number, sprites: SpriteMap = {}, showPlayerHp = true, showDamageNumbers = true, zoom = 1, screenShakeEnabled = true, quality: "low" | "medium" | "high" = "high") {
   const { width, height, player } = game;
   const lowQuality = quality === "low";
@@ -1381,10 +1504,10 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
 
   for(const prop of game.obstacles){if(prop.x<cameraX-90||prop.x>cameraX+viewWidth+90||prop.y<cameraY-90||prop.y>cameraY+viewHeight+90)continue;ctx.save();ctx.translate(prop.x,prop.y);
     {const sh=prop.kind==="mausoleum"?[60,18]:[22,8];ctx.fillStyle="rgba(0,0,0,.45)";ctx.beginPath();ctx.ellipse(0,prop.radius*.55,sh[0],sh[1],0,0,Math.PI*2);ctx.fill();}
-    if(prop.kind==="torch"){const pulse=1+Math.sin(game.elapsed*4.2+prop.x*.02)*.12;drawCachedRadialGlow(ctx,0,-22,60*pulse,[[0,"rgba(255,190,110,.35)"],[1,"rgba(255,150,60,0)"]],1,"lighter");}
+    if(prop.kind==="torch"&&!lowQuality){const pulse=1+Math.sin(game.elapsed*4.2+prop.x*.02)*.12;drawCachedRadialGlow(ctx,0,-22,60*pulse,[[0,"rgba(255,190,110,.35)"],[1,"rgba(255,150,60,0)"]],1,"lighter");}
     const spS=clamp(Math.min(game.width,game.height)/720,0.72,1.15);const spr0=prop.kind==="mausoleum"?[mausoleumImg,140,40]:prop.kind==="cross"?[crossImg,62,22]:prop.kind==="torch"?[candlesImg,58,20]:[gravestoneImg,60,22];const spr=[spr0[0],(spr0[1] as number)*spS,(spr0[2] as number)*spS];
     if(drawSprite(ctx,spr[0] as string,spr[1] as number,spr[2] as number)){ctx.restore();continue;}
-    if(prop.kind==="torch"){const pulse=1+Math.sin(game.elapsed*3.8+prop.x*.02)*.12;drawCachedRadialGlow(ctx,0,-14,42*pulse,[[0,"rgba(193,117,255,.42)"],[.45,"rgba(128,67,190,.16)"],[1,"rgba(128,67,190,0)"]],1,"lighter");ctx.fillStyle="#292333";ctx.strokeStyle="#746181";ctx.fillRect(-5,-4,10,21);ctx.strokeRect(-5,-4,10,21);ctx.fillStyle="#d8a8ff";ctx.beginPath();ctx.moveTo(0,-31);ctx.quadraticCurveTo(13,-18,2,-8);ctx.quadraticCurveTo(-10,-15,0,-31);ctx.fill();ctx.fillStyle="#ffd99a";ctx.beginPath();ctx.arc(0,-17,3,0,Math.PI*2);ctx.fill();}
+    if(prop.kind==="torch"){if(!lowQuality){const pulse=1+Math.sin(game.elapsed*3.8+prop.x*.02)*.12;drawCachedRadialGlow(ctx,0,-14,42*pulse,[[0,"rgba(193,117,255,.42)"],[.45,"rgba(128,67,190,.16)"],[1,"rgba(128,67,190,0)"]],1,"lighter");}ctx.fillStyle="#292333";ctx.strokeStyle="#746181";ctx.fillRect(-5,-4,10,21);ctx.strokeRect(-5,-4,10,21);ctx.fillStyle="#d8a8ff";ctx.beginPath();ctx.moveTo(0,-31);ctx.quadraticCurveTo(13,-18,2,-8);ctx.quadraticCurveTo(-10,-15,0,-31);ctx.fill();ctx.fillStyle="#ffd99a";ctx.beginPath();ctx.arc(0,-17,3,0,Math.PI*2);ctx.fill();}
     else if(prop.kind==="mausoleum"){ctx.fillStyle="rgba(0,0,0,.45)";ctx.beginPath();ctx.ellipse(0,18,54,17,0,0,Math.PI*2);ctx.fill();ctx.fillStyle="#25212d";ctx.strokeStyle="#75677e";ctx.lineWidth=3;ctx.fillRect(-42,-22,84,42);ctx.strokeRect(-42,-22,84,42);ctx.beginPath();ctx.moveTo(-48,-22);ctx.lineTo(-35,-48);ctx.lineTo(35,-48);ctx.lineTo(48,-22);ctx.closePath();ctx.fill();ctx.stroke();ctx.fillStyle="#100e17";ctx.fillRect(-12,-5,24,25);ctx.strokeStyle="#9a83a5";ctx.strokeRect(-12,-5,24,25);}
     else if(prop.kind==="cross"){ctx.fillStyle="#272330";ctx.strokeStyle="#786a83";ctx.lineWidth=3;ctx.fillRect(-4,-23,8,43);ctx.fillRect(-14,-14,28,7);ctx.strokeRect(-4,-23,8,43);ctx.strokeRect(-14,-14,28,7);}
     else{ctx.fillStyle="rgba(0,0,0,.4)";ctx.beginPath();ctx.ellipse(2,15,21,8,0,0,Math.PI*2);ctx.fill();ctx.fillStyle="#282330";ctx.strokeStyle="#81758a";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-16,13);ctx.lineTo(-13,-13);ctx.lineTo(-8,-23);ctx.lineTo(8,-23);ctx.lineTo(15,-12);ctx.lineTo(16,13);ctx.closePath();ctx.fill();ctx.stroke();ctx.fillStyle="#9c83a9";ctx.fillRect(-10,-17,20,3);}ctx.restore();}
@@ -1428,7 +1551,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     ctx.fill();
     ctx.strokeStyle = "rgba(206,166,255,.78)";
     ctx.lineWidth = 3;
-    ctx.setLineDash([12, 8]);
+    if (!simplifiedQuality) ctx.setLineDash([12, 8]);
     ctx.lineDashOffset = -game.elapsed * 22;
     ctx.beginPath();
     ctx.arc(0, 0, event.radius, 0, Math.PI * 2);
@@ -1518,47 +1641,19 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
 
     if (shot.kind === "dash_strike") return;
     if (shot.kind === "blood_spear" || shot.kind === "blood_spear_rain") {
-      ctx.save();
-      ctx.translate(shot.x, shot.y);
-      ctx.rotate(Math.atan2(shot.vy, shot.vx));
-      ctx.globalAlpha = lifeRatio;
-      const length = shot.kind === "blood_spear_rain" ? 36 : 56;
-      const half = shot.kind === "blood_spear_rain" ? 5 : 7;
-      const shaft = ctx.createLinearGradient(-length * 0.55, 0, length * 0.55, 0);
-      shaft.addColorStop(0, "#3f0717"); shaft.addColorStop(0.38, "#991b35"); shaft.addColorStop(0.78, "#f43f5e"); shaft.addColorStop(1, "#fff1f2");
-      ctx.fillStyle = "#3b0715";
-      ctx.beginPath(); ctx.moveTo(length * 0.58, 0); ctx.lineTo(length * 0.20, -half * 1.25);
-      ctx.lineTo(length * 0.10, -half * 0.45); ctx.lineTo(-length * 0.5, -half * 0.32);
-      ctx.lineTo(-length * 0.55, 0); ctx.lineTo(-length * 0.5, half * 0.32);
-      ctx.lineTo(length * 0.10, half * 0.45); ctx.lineTo(length * 0.20, half * 1.25); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = shaft;
-      ctx.beginPath(); ctx.moveTo(length * 0.56, 0); ctx.lineTo(length * 0.18, -half * 0.78);
-      ctx.lineTo(length * 0.08, -half * 0.28); ctx.lineTo(-length * 0.48, -half * 0.2);
-      ctx.lineTo(-length * 0.5, 0); ctx.lineTo(-length * 0.48, half * 0.2);
-      ctx.lineTo(length * 0.08, half * 0.28); ctx.lineTo(length * 0.18, half * 0.78); ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = "#fff1f2"; ctx.lineWidth = 1.1;
-      ctx.beginPath(); ctx.moveTo(-length * 0.32, 0); ctx.lineTo(length * 0.38, 0); ctx.stroke();
-      ctx.restore();
-      return;
+      const sprite = getBloodSpearSprite(shot.kind === "blood_spear_rain");
+      ctx.save(); ctx.translate(shot.x, shot.y); ctx.rotate(Math.atan2(shot.vy, shot.vx));
+      ctx.globalAlpha = lifeRatio; ctx.drawImage(sprite, -sprite.width / 2, -sprite.height / 2);
+      ctx.restore(); return;
     }
     if (shot.kind === "blood_trail") {
-      ctx.save();
-      ctx.globalAlpha = clamp(lifeRatio * 1.25, 0, 1);
-      ctx.lineCap = "round";
-      const sx = shot.startX ?? shot.x, sy = shot.startY ?? shot.y;
-      const ex = shot.endX ?? shot.x, ey = shot.endY ?? shot.y;
-      ctx.strokeStyle = "rgba(35,4,14,.94)"; ctx.lineWidth = (shot.radius ?? 19) * 2.05;
-      ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.stroke();
-      ctx.strokeStyle = "rgba(153,27,52,.88)"; ctx.lineWidth = (shot.radius ?? 19) * 1.35;
-      ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.stroke();
-      ctx.strokeStyle = "rgba(244,63,94,.82)"; ctx.lineWidth = 4;
-      ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.stroke();
-      ctx.strokeStyle = "rgba(255,228,230,.76)"; ctx.lineWidth = 1.2;
-      ctx.setLineDash([7, 12]); ctx.lineDashOffset = -game.elapsed * 34;
-      ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.restore();
-      return;
+      const sx=shot.startX??shot.x, sy=shot.startY??shot.y, ex=shot.endX??shot.x, ey=shot.endY??shot.y;
+      const dx=ex-sx,dy=ey-sy,len=Math.hypot(dx,dy),stamp=getBloodTrailStamp();
+      ctx.save();ctx.globalAlpha=clamp(lifeRatio*1.25,0,1);ctx.lineCap="round";
+      ctx.strokeStyle="rgba(35,4,14,.94)";ctx.lineWidth=(shot.radius??19)*2.0;ctx.beginPath();ctx.moveTo(sx,sy);ctx.lineTo(ex,ey);ctx.stroke();
+      ctx.strokeStyle="rgba(153,27,52,.88)";ctx.lineWidth=(shot.radius??19)*1.25;ctx.beginPath();ctx.moveTo(sx,sy);ctx.lineTo(ex,ey);ctx.stroke();
+      if(!lowQuality){const count=Math.min(10,Math.max(2,Math.ceil(len/42)));for(let i=0;i<=count;i++){const t=i/count;ctx.drawImage(stamp,sx+dx*t-8,sy+dy*t-8,16,16);}}
+      ctx.restore();return;
     }
     if (shot.kind === "blood_ritual_blast") {
       ctx.save();
@@ -1599,132 +1694,34 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     }
 
     if (shot.kind === "fractal_boomerang") {
-      ctx.save();
-      ctx.translate(shot.x, shot.y);
-      ctx.rotate(shot.rotation ?? shot.angle ?? 0);
-      ctx.globalAlpha = lifeRatio;
-      const evolved = game.evolved;
-      const returning = shot.phase === "return";
-      const accent = returning ? "#67e8f9" : evolved ? "#e879f9" : "#a78bfa";
-      const bladeGradient = ctx.createLinearGradient(-26, -30, 28, 20);
-      bladeGradient.addColorStop(0, evolved ? "rgba(250,232,255,.96)" : "rgba(237,233,254,.94)");
-      bladeGradient.addColorStop(0.28, evolved ? "rgba(217,70,239,.78)" : "rgba(139,92,246,.72)");
-      bladeGradient.addColorStop(0.72, evolved ? "rgba(88,28,135,.92)" : "rgba(76,29,149,.88)");
-      bladeGradient.addColorStop(1, "rgba(15,10,36,.96)");
-
-      ctx.lineJoin = "round";
-      ctx.lineCap = "round";
-      ctx.beginPath();
-      ctx.moveTo(-23, -13);
-      ctx.quadraticCurveTo(-3, -38, 25, -12);
-      ctx.lineTo(11, -2);
-      ctx.quadraticCurveTo(-1, -18, -13, 10);
-      ctx.closePath();
-      ctx.fillStyle = bladeGradient;
-      ctx.fill();
-
-      // Borda luminosa dupla: brilho obtido por traços vetoriais, sem filtros de blur por quadro.
-      ctx.globalAlpha = lifeRatio * 0.26;
-      ctx.strokeStyle = accent;
-      ctx.lineWidth = evolved ? 12 : 9;
-      ctx.stroke();
-      ctx.globalAlpha = lifeRatio;
-      ctx.strokeStyle = evolved ? "#f5d0fe" : "#c4b5fd";
-      ctx.lineWidth = evolved ? 3.4 : 2.8;
-      ctx.stroke();
-
-      ctx.strokeStyle = "#fff7ff";
-      ctx.lineWidth = 1.5;
-      ctx.globalAlpha = lifeRatio * 0.92;
-      ctx.beginPath();
-      ctx.moveTo(-18, -12);
-      ctx.quadraticCurveTo(-2, -31, 19, -12);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(9, -5);
-      ctx.quadraticCurveTo(-2, -9, -12, 8);
-      ctx.stroke();
-
-      if (evolved) {
-        // A Serra Retornante recebe dentes facetados ao redor do arco e um anel de rotação interno.
-        ctx.globalAlpha = lifeRatio;
-        ctx.strokeStyle = returning ? "#a5f3fc" : "#f0abfc";
-        ctx.lineWidth = 2.2;
-        for (let tooth = 0; tooth < 12; tooth++) {
-          const angle = Math.PI * 1.03 + tooth / 11 * Math.PI * 0.94;
-          const inner = 19, outer = 30;
-          ctx.beginPath();
-          ctx.moveTo(Math.cos(angle) * inner, -4 + Math.sin(angle) * inner);
-          ctx.lineTo(Math.cos(angle + 0.045) * outer, -4 + Math.sin(angle + 0.045) * outer);
-          ctx.lineTo(Math.cos(angle + 0.09) * inner, -4 + Math.sin(angle + 0.09) * inner);
-          ctx.stroke();
-        }
-        ctx.setLineDash([3, 4]);
-        ctx.lineWidth = 1.2;
-        ctx.strokeStyle = "rgba(250,232,255,.72)";
-        ctx.beginPath();
-        ctx.arc(0, -4, 14, -Math.PI * 0.9, Math.PI * 0.9);
-        ctx.stroke();
-        ctx.setLineDash([]);
-      } else {
-        // As três incisões rúnicas deixam a forma base reconhecível sem acrescentar sprites.
-        ctx.globalAlpha = lifeRatio * 0.78;
-        ctx.strokeStyle = "#e9d5ff";
-        ctx.lineWidth = 1.25;
-        for (let rune = 0; rune < 3; rune++) {
-          const x = -8 + rune * 8, y = -15 + Math.abs(rune - 1) * 2;
-          ctx.beginPath();
-          ctx.moveTo(x - 2, y);
-          ctx.lineTo(x, y - 3);
-          ctx.lineTo(x + 2, y);
-          ctx.lineTo(x, y + 3);
-          ctx.stroke();
-        }
-      }
-
-      const coreGradient = ctx.createRadialGradient(0, -5, 1, 0, -5, 10);
-      coreGradient.addColorStop(0, "#ffffff");
-      coreGradient.addColorStop(0.36, returning ? "#cffafe" : "#fae8ff");
-      coreGradient.addColorStop(0.72, returning ? "#0891b2" : "#c026d3");
-      coreGradient.addColorStop(1, "#581c87");
-      ctx.globalAlpha = lifeRatio;
-      ctx.fillStyle = coreGradient;
-      ctx.beginPath();
-      ctx.moveTo(0, -16);
-      ctx.lineTo(7, -5);
-      ctx.lineTo(0, 6);
-      ctx.lineTo(-7, -5);
-      ctx.closePath();
-      ctx.fill();
-      ctx.strokeStyle = "#fff";
-      ctx.lineWidth = 1.2;
-      ctx.stroke();
-      ctx.restore();
-      return;
+      const sprite=getBoomerangSprite(game.evolved,shot.phase==="return");
+      ctx.save();ctx.translate(shot.x,shot.y);ctx.rotate(shot.rotation??shot.angle??0);
+      ctx.globalAlpha=lifeRatio;ctx.drawImage(sprite,-40,-40,80,80);ctx.restore();return;
     }
     if (shot.kind === "boomerang_catch" || shot.kind === "rift_blast" || shot.kind === "rift_residue") {
-      ctx.save(); ctx.translate(shot.x, shot.y); ctx.globalAlpha = Math.min(1, lifeRatio * (shot.kind === "rift_residue" ? 0.72 : 1.3));
-      const radius = shot.radius ?? 60, gradient = ctx.createRadialGradient(0, 0, 2, 0, 0, radius);
-      gradient.addColorStop(0, shot.kind === "rift_residue" ? "rgba(30,12,48,.12)" : shot.kind === "boomerang_catch" ? "rgba(103,232,249,.72)" : "rgba(167,139,250,.86)");
-      gradient.addColorStop(0.45, "rgba(124,58,237,.27)"); gradient.addColorStop(1, "rgba(124,58,237,0)");
-      ctx.fillStyle = gradient; ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = shot.kind === "boomerang_catch" ? "#a5f3fc" : "#d8b4fe"; ctx.lineWidth = shot.kind === "rift_residue" ? 1.5 : 3;
-      ctx.setLineDash(shot.kind === "rift_residue" ? [5, 7] : []); const progress = 1 - lifeRatio;
-      ctx.beginPath(); ctx.arc(0, 0, radius * (0.62 + progress * 0.34), game.elapsed * 2, game.elapsed * 2 + Math.PI * 1.65); ctx.stroke();
-      ctx.setLineDash([]); ctx.restore(); return;
+      ctx.save();ctx.translate(shot.x,shot.y);
+      const radius=shot.radius??60,progress=1-lifeRatio;
+      ctx.globalAlpha=Math.min(1,lifeRatio*(shot.kind==="rift_residue"?.72:1.3));
+      if(shot.kind==="rift_residue"){const sprite=getRiftResidueSprite();ctx.drawImage(sprite,-radius,-radius,radius*2,radius*2);}
+      else {
+        const stops:readonly RadialGlowStop[]=shot.kind==="boomerang_catch"
+          ? [[0,"rgba(103,232,249,.72)"],[.45,"rgba(124,58,237,.27)"],[1,"rgba(124,58,237,0)"]]
+          : [[0,"rgba(167,139,250,.86)"],[.45,"rgba(124,58,237,.27)"],[1,"rgba(124,58,237,0)"]];
+        drawCachedRadialGlow(ctx,0,0,radius,stops,1,"lighter");
+      }
+      ctx.strokeStyle=shot.kind==="boomerang_catch"?"#a5f3fc":"#d8b4fe";ctx.lineWidth=shot.kind==="rift_residue"?1.5:3;
+      ctx.beginPath();ctx.arc(0,0,radius*(.62+progress*.34),game.elapsed*2,game.elapsed*2+Math.PI*1.65);ctx.stroke();
+      ctx.restore();return;
     }
     if (shot.kind === "sentinel_explosion") {
       ctx.save();
       ctx.translate(shot.x, shot.y);
       ctx.globalAlpha = lifeRatio;
       const radius = shot.radius ?? 140;
-      const gradient = ctx.createRadialGradient(0, 0, 4, 0, 0, radius);
-      gradient.addColorStop(0, game.evolved ? "rgba(254,226,226,.92)" : "rgba(224,242,254,.92)");
-      gradient.addColorStop(0.28, game.evolved ? "rgba(220,38,38,.6)" : "rgba(34,211,238,.58)");
-      gradient.addColorStop(0.72, "rgba(251,191,36,.18)");
-      gradient.addColorStop(1, "rgba(34,211,238,0)");
-      ctx.fillStyle = gradient;
-      ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI * 2); ctx.fill();
+      const stops:readonly RadialGlowStop[]=game.evolved
+        ? [[0,"rgba(254,226,226,.92)"],[.28,"rgba(220,38,38,.6)"],[.72,"rgba(251,191,36,.18)"],[1,"rgba(34,211,238,0)"]]
+        : [[0,"rgba(224,242,254,.92)"],[.28,"rgba(34,211,238,.58)"],[.72,"rgba(251,191,36,.18)"],[1,"rgba(34,211,238,0)"]];
+      drawCachedRadialGlow(ctx,0,0,radius,stops,1,"lighter");
       ctx.strokeStyle = "#a5f3fc"; ctx.lineWidth = 4; ctx.shadowColor = "#22d3ee"; ctx.shadowBlur = 0;
       ctx.beginPath(); ctx.arc(0, 0, radius * (0.62 + (1 - lifeRatio) * 0.25), 0, Math.PI * 2); ctx.stroke();
       ctx.restore();
@@ -1732,39 +1729,11 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     }
 
     if (shot.kind === "plasma_puddle") {
-      ctx.save();
-      ctx.translate(shot.x, shot.y);
-      ctx.globalAlpha = Math.min(1, lifeRatio * 1.35);
-      const radius = (shot.radius ?? 90) * (0.92 + Math.sin(game.elapsed * 8) * 0.08);
-      if (game.evolved) {
-        const rot = game.elapsed * 3;
-        const grad = ctx.createRadialGradient(0, 0, radius * 0.2, 0, 0, radius);
-        grad.addColorStop(0, "rgba(5,2,10,0.98)");
-        grad.addColorStop(0.35, "rgba(112,26,117,0.72)");
-        grad.addColorStop(0.70, "rgba(192,38,211,0.28)");
-        grad.addColorStop(1, "rgba(147,51,234,0)");
-        ctx.fillStyle = grad;
-        ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI * 2); ctx.fill();
-        ctx.strokeStyle = "rgba(244,114,182,0.65)"; ctx.lineWidth = 2.5;
-        ctx.beginPath(); ctx.arc(0, 0, radius * 0.75, rot, rot + Math.PI * 1.3); ctx.stroke();
-        ctx.strokeStyle = "rgba(192,132,252,0.5)"; ctx.lineWidth = 1.5;
-        ctx.beginPath(); ctx.arc(0, 0, radius * 0.45, -rot * 1.4, -rot * 1.4 + Math.PI * 1.1); ctx.stroke();
-        ctx.fillStyle = "#030006";
-        ctx.beginPath(); ctx.arc(0, 0, radius * 0.28, 0, Math.PI * 2); ctx.fill();
-        ctx.strokeStyle = "#e879f9"; ctx.lineWidth = 1.8; ctx.stroke();
-      } else {
-        const grad = ctx.createRadialGradient(0, 0, 3, 0, 0, radius);
-        grad.addColorStop(0, "rgba(254,240,138,0.95)");
-        grad.addColorStop(0.28, "rgba(249,115,22,0.85)");
-        grad.addColorStop(0.65, "rgba(220,38,38,0.42)");
-        grad.addColorStop(1, "rgba(185,28,28,0)");
-        ctx.fillStyle = grad;
-        ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI * 2); ctx.fill();
-        ctx.strokeStyle = "rgba(253,224,71,0.7)"; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.arc(0, 0, radius * 0.68, game.elapsed * 0.5, game.elapsed * 0.5 + Math.PI * 1.4); ctx.stroke();
-      }
-      ctx.restore();
-      return;
+      ctx.save();ctx.translate(shot.x,shot.y);ctx.globalAlpha=Math.min(1,lifeRatio*1.35);
+      const radius=(shot.radius??90)*(lowQuality?1:.92+Math.sin(game.elapsed*8)*.08),sprite=getPlasmaPuddleSprite(game.evolved);
+      ctx.drawImage(sprite,-radius,-radius,radius*2,radius*2);
+      if(!lowQuality){ctx.strokeStyle=game.evolved?"rgba(244,114,182,.55)":"rgba(253,224,71,.58)";ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,0,radius*(game.evolved?.75:.68),game.elapsed*.5,game.elapsed*.5+Math.PI*1.35);ctx.stroke();}
+      ctx.restore();return;
     }
 
     if (shot.kind === "scythe_slash") {
@@ -1799,71 +1768,20 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     }
 
     if (shot.kind === "orbital_blade") {
-      ctx.save();
-      ctx.translate(shot.x, shot.y);
-      ctx.rotate((shot.angle ?? 0) + Math.PI / 2);
-      const isOuter = game.evolved && (shot.bladeIndex ?? 0) >= 8;
-      const bladeScale = isOuter ? 0.9 : 1.1;
-      ctx.scale(bladeScale, bladeScale);
-      ctx.fillStyle = game.evolved ? "rgba(236,72,153,0.35)" : "rgba(250,204,21,0.25)";
-      ctx.beginPath();
-      ctx.moveTo(0, -28); ctx.lineTo(9, -2); ctx.lineTo(5, 16);
-      ctx.lineTo(0, 24); ctx.lineTo(-5, 16); ctx.lineTo(-9, -2);
-      ctx.closePath(); ctx.fill();
-      ctx.fillStyle = game.evolved ? "#fdf2f8" : "#fefce8";
-      ctx.beginPath();
-      ctx.moveTo(0, -25); ctx.lineTo(6, -2); ctx.lineTo(3.5, 14);
-      ctx.lineTo(0, 20); ctx.lineTo(-3.5, 14); ctx.lineTo(-6, -2);
-      ctx.closePath(); ctx.fill();
-      ctx.fillStyle = game.evolved ? "#ec4899" : "#c084fc";
-      ctx.fillRect(-1.5, -12, 3, 10);
-      ctx.fillStyle = game.evolved ? "#f43f5e" : "#fbbf24";
-      ctx.beginPath(); ctx.arc(0, 2, 2.5, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = game.evolved ? "#831843" : "#6b21a8";
-      ctx.fillRect(-9, 4, 18, 4.5);
-      ctx.fillStyle = "#facc15";
-      ctx.fillRect(-2.5, 8.5, 5, 8);
-      ctx.beginPath(); ctx.arc(0, 18.5, 3, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 1.2;
-      ctx.beginPath(); ctx.moveTo(0, -24); ctx.lineTo(0, 4); ctx.stroke();
-      ctx.restore();
-      return;
+      const bladeScale=game.evolved&&(shot.bladeIndex??0)>=8?.9:1.1,sprite=getOrbitalBladeSprite(game.evolved);
+      ctx.save();ctx.translate(shot.x,shot.y);ctx.rotate((shot.angle??0)+Math.PI/2);ctx.scale(bladeScale,bladeScale);
+      ctx.globalAlpha=lifeRatio;ctx.drawImage(sprite,-20,-33,40,66);ctx.restore();return;
     }
 
-    const speed = Math.hypot(shot.vx, shot.vy) || 1;
-    const trailLength = shot.kind === "sentinel_beam" ? 42 : shot.kind === "plasma_core" ? 28 : 24;
-    const tailX = shot.x - shot.vx / speed * trailLength;
-    const tailY = shot.y - shot.vy / speed * trailLength;
-    ctx.save();
-    ctx.lineCap = "round";
-    const trail = ctx.createLinearGradient(tailX, tailY, shot.x, shot.y);
-    if (shot.isAnchorBurst) {
-      trail.addColorStop(0, "rgba(251,191,36,0)");
-      trail.addColorStop(1, "rgba(255,241,179,.98)");
-      ctx.strokeStyle = trail; ctx.lineWidth = 4;
-    } else if (shot.isChainLightning) {
-      trail.addColorStop(0, "rgba(34,211,238,0)");
-      trail.addColorStop(1, "rgba(207,250,254,.98)");
-      ctx.strokeStyle = trail; ctx.lineWidth = 3.5;
-    } else if (shot.kind === "revolver_empowered") {
-      trail.addColorStop(0, "rgba(168,85,247,0)");
-      trail.addColorStop(1, "rgba(253,224,71,.98)");
-      ctx.strokeStyle = trail; ctx.lineWidth = 4.5;
-    } else if (shot.kind === "plasma_core") {
-      trail.addColorStop(0, "rgba(239,68,68,0)");
-      trail.addColorStop(1, game.evolved ? "rgba(216,180,254,.95)" : "rgba(252,165,165,.95)");
-      ctx.strokeStyle = trail; ctx.lineWidth = 6;
-    } else if (shot.kind === "sentinel_beam") {
-      trail.addColorStop(0, game.evolved ? "rgba(127,29,29,0)" : "rgba(45,212,191,0)");
-      trail.addColorStop(1, game.evolved ? "rgba(248,113,113,.98)" : "rgba(204,251,241,.98)");
-      ctx.strokeStyle = trail; ctx.lineWidth = 3.2;
-    } else {
-      trail.addColorStop(0, "rgba(183,122,255,0)");
-      trail.addColorStop(1, "rgba(226,196,255,.80)");
-      ctx.strokeStyle = trail; ctx.lineWidth = 3.5;
-    }
-    ctx.globalAlpha = lifeRatio;
-    ctx.beginPath(); ctx.moveTo(tailX, tailY); ctx.lineTo(shot.x, shot.y); ctx.stroke();
+    const speed=Math.hypot(shot.vx,shot.vy)||1;
+    const trailLength=shot.kind==="sentinel_beam"?42:shot.kind==="plasma_core"?28:24;
+    const tailX=shot.x-shot.vx/speed*trailLength,tailY=shot.y-shot.vy/speed*trailLength;
+    const trailKind:"gold"|"plasma"|"sentinel"|"chain"|"arcane"=shot.isChainLightning?"chain":shot.kind==="revolver_empowered"||shot.kind==="bullet"?"gold":shot.kind==="plasma_core"?"plasma":shot.kind==="sentinel_beam"?"sentinel":"arcane";
+    ctx.save();ctx.translate((tailX+shot.x)*.5,(tailY+shot.y)*.5);ctx.rotate(Math.atan2(shot.vy,shot.vx));ctx.globalAlpha=lifeRatio;
+    if(lowQuality||quality==="medium"){
+      ctx.strokeStyle=trailKind==="gold"?"#fbbf24":trailKind==="plasma"?(game.evolved?"#d8b4fe":"#fb7185"):trailKind==="sentinel"?(game.evolved?"#ef4444":"#22d3ee"):trailKind==="chain"?"#a5f3fc":"#c4b5fd";
+      ctx.lineWidth=trailKind==="plasma"?5:3;ctx.beginPath();ctx.moveTo(-trailLength/2,0);ctx.lineTo(trailLength/2,0);ctx.stroke();
+    }else{const sprite=getProjectileTrailSprite(trailKind,game.evolved);ctx.drawImage(sprite,-trailLength/2,-6,trailLength,12);}
     ctx.restore();
 
     ctx.save();
@@ -1888,47 +1806,14 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
       ctx.strokeStyle = "#c084fc"; ctx.lineWidth = 2.2;
       ctx.beginPath(); ctx.moveTo(12, 0); ctx.lineTo(-8, 0); ctx.stroke();
     } else if (shot.kind === "plasma_core") {
-      const coreRadius = shot.radius ?? 14;
-      const pulse = 1 + Math.sin(game.elapsed * 18) * 0.12;
-      const r = coreRadius * pulse;
-      if (game.evolved) {
-        const halo = ctx.createRadialGradient(0, 0, r * 0.3, 0, 0, r * 1.8);
-        halo.addColorStop(0, "rgba(232,121,249,0.9)");
-        halo.addColorStop(0.5, "rgba(147,51,234,0.4)");
-        halo.addColorStop(1, "rgba(88,28,135,0)");
-        ctx.fillStyle = halo;
-        ctx.beginPath(); ctx.arc(0, 0, r * 1.8, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = "#05000a";
-        ctx.beginPath(); ctx.arc(0, 0, r * 0.85, 0, Math.PI * 2); ctx.fill();
-        ctx.strokeStyle = "#f0abfc"; ctx.lineWidth = 2.2; ctx.stroke();
-        ctx.rotate(game.elapsed * 8);
-        ctx.strokeStyle = "rgba(250,232,255,0.8)"; ctx.lineWidth = 1.4;
-        ctx.strokeRect(-r * 0.6, -r * 0.6, r * 1.2, r * 1.2);
-      } else {
-        const grad = ctx.createRadialGradient(0, 0, 2, 0, 0, r);
-        grad.addColorStop(0, "#ffffff");
-        grad.addColorStop(0.35, "#fde047");
-        grad.addColorStop(0.75, "#ea580c");
-        grad.addColorStop(1, "#b91c1c");
-        ctx.fillStyle = grad;
-        ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
-        ctx.strokeStyle = "#fef08a"; ctx.lineWidth = 1.8;
-        ctx.beginPath(); ctx.arc(0, 0, r * 0.52, 0, Math.PI * 2); ctx.stroke();
-      }
+      const r=(shot.radius??14)*(lowQuality?1:1+Math.sin(game.elapsed*18)*.08),sprite=getPlasmaCoreSprite(game.evolved);
+      ctx.drawImage(sprite,-r*2.25,-r*2.25,r*4.5,r*4.5);
     } else if (shot.kind === "sentinel_beam") {
-      const ev = game.evolved;
-      ctx.fillStyle = ev ? "rgba(239,68,68,0.38)" : "rgba(34,211,238,0.35)";
-      ctx.beginPath();
-      ctx.moveTo(18, 0); ctx.lineTo(-16, -5); ctx.lineTo(-16, 5);
-      ctx.closePath(); ctx.fill();
-      ctx.fillStyle = ev ? "#dc2626" : "#06b6d4";
-      ctx.beginPath();
-      ctx.moveTo(16, 0); ctx.lineTo(-14, -2.8); ctx.lineTo(-14, 2.8);
-      ctx.closePath(); ctx.fill();
-      ctx.fillStyle = "#ffffff";
-      ctx.beginPath();
-      ctx.moveTo(13, 0); ctx.lineTo(-10, -1.2); ctx.lineTo(-10, 1.2);
-      ctx.closePath(); ctx.fill();
+      const ev=game.evolved;
+      ctx.strokeStyle=ev?"#ef4444":"#22d3ee";ctx.lineWidth=lowQuality?3:4;
+      ctx.beginPath();ctx.moveTo(-16,0);ctx.lineTo(16,0);ctx.stroke();
+      ctx.fillStyle=ev?"#dc2626":"#06b6d4";ctx.beginPath();ctx.moveTo(16,0);ctx.lineTo(-14,-2.8);ctx.lineTo(-14,2.8);ctx.closePath();ctx.fill();
+      ctx.fillStyle="#fff";ctx.beginPath();ctx.moveTo(13,0);ctx.lineTo(-10,-1.2);ctx.lineTo(-10,1.2);ctx.closePath();ctx.fill();
     } else if (shot.kind === "boomerang_shard" || shot.kind === "rift_shard") {
       const shardColor = shot.kind === "rift_shard" ? "#67e8f9" : "#e9d5ff";
       ctx.fillStyle = shot.kind === "rift_shard" ? "rgba(103,232,249,.45)" : "rgba(216,180,254,.5)";
@@ -1936,11 +1821,11 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
       ctx.fillStyle = shardColor; ctx.beginPath(); ctx.moveTo(10, 0); ctx.lineTo(-4, -2); ctx.lineTo(-7, 0); ctx.lineTo(-4, 2); ctx.closePath(); ctx.fill();
     } else if (shot.kind === "bullet") {
       const ev = game.evolved;
-      ctx.fillStyle = ev ? "#f0abfc" : "#e9d5ff";
+      ctx.fillStyle = ev ? "#fbbf24" : "#f59e0b";
       ctx.beginPath();
       ctx.moveTo(14, 0); ctx.lineTo(-7, -4); ctx.lineTo(-3, 0); ctx.lineTo(-7, 4);
       ctx.closePath(); ctx.fill();
-      ctx.fillStyle = ev ? "#fdf4ff" : "#fffbeb";
+      ctx.fillStyle = ev ? "#fff7cc" : "#fef3c7";
       ctx.beginPath();
       ctx.moveTo(9, 0); ctx.lineTo(1, -1.8); ctx.lineTo(-3, 0); ctx.lineTo(1, 1.8);
       ctx.closePath(); ctx.fill();
@@ -1981,7 +1866,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
         ctx.globalAlpha = 1;
         ctx.strokeStyle = energized ? "rgba(254,243,199,.98)" : "rgba(196,181,253,.88)";
         ctx.lineWidth = energized ? 2.8 : 2.1;
-        ctx.setLineDash([9, 7]); ctx.lineDashOffset = -game.elapsed * 35;
+        if (!simplifiedQuality) ctx.setLineDash([9, 7]); ctx.lineDashOffset = -game.elapsed * 35;
         ctx.beginPath(); ctx.moveTo(aMine.x, aMine.y); ctx.lineTo(bMine.x, bMine.y); ctx.stroke();
         ctx.restore();
       }
@@ -2000,7 +1885,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
       ctx.globalAlpha = 0.48;
       ctx.strokeStyle = accent;
       ctx.lineWidth = 1.2;
-      ctx.setLineDash([3, 5]);
+      if (!simplifiedQuality) ctx.setLineDash([3, 5]);
       ctx.beginPath(); ctx.arc(0, 0, 23 * pulse, game.elapsed * 0.8, game.elapsed * 0.8 + Math.PI * 1.7); ctx.stroke();
       ctx.setLineDash([]);
       ctx.globalAlpha = 1;
@@ -2115,7 +2000,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     ctx.globalAlpha = alpha * 0.72;
     ctx.strokeStyle = "#c4b5fd"; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.arc(vortex.x, vortex.y, vortex.radius * (0.92 + Math.sin(game.elapsed * 12) * 0.04), 0, Math.PI * 2); ctx.stroke();
-    ctx.strokeStyle = "#8b5cf6"; ctx.lineWidth = 4; ctx.setLineDash([8, 7]);
+    ctx.strokeStyle = "#8b5cf6"; ctx.lineWidth = 4; if (!simplifiedQuality) ctx.setLineDash([8, 7]);
     ctx.beginPath(); ctx.arc(vortex.x, vortex.y, vortex.radius * 0.56, game.elapsed * 2, game.elapsed * 2 + Math.PI * 1.7); ctx.stroke();
     ctx.setLineDash([]);
     const glow = ctx.createRadialGradient(vortex.x, vortex.y, 2, vortex.x, vortex.y, vortex.radius * 0.4);
@@ -2129,7 +2014,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     const gradient = ctx.createRadialGradient(game.alchemyCircle.x, game.alchemyCircle.y, 8, game.alchemyCircle.x, game.alchemyCircle.y, game.alchemyCircle.radius);
     gradient.addColorStop(0, "rgba(52,211,153,.22)"); gradient.addColorStop(0.82, "rgba(52,211,153,.09)"); gradient.addColorStop(1, "rgba(52,211,153,0)");
     ctx.fillStyle = gradient; ctx.beginPath(); ctx.arc(game.alchemyCircle.x, game.alchemyCircle.y, game.alchemyCircle.radius, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = "rgba(110,231,183,.72)"; ctx.lineWidth = 2; ctx.setLineDash([9, 7]);
+    ctx.strokeStyle = "rgba(110,231,183,.72)"; ctx.lineWidth = 2; if (!simplifiedQuality) ctx.setLineDash([9, 7]);
     ctx.beginPath(); ctx.arc(game.alchemyCircle.x, game.alchemyCircle.y, game.alchemyCircle.radius, 0, Math.PI * 2); ctx.stroke();
     ctx.setLineDash([]);
     ctx.restore();
@@ -2502,6 +2387,23 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     ctx.fillStyle = "rgba(104,33,55,.95)"; ctx.fillRect(-barW / 2, barY, barW, 4);
     ctx.fillStyle = "#f06480"; ctx.fillRect(-barW / 2, barY, barW * ratio, 4);
     ctx.strokeStyle = "rgba(255,225,232,.68)"; ctx.lineWidth = 0.7; ctx.strokeRect(-barW / 2, barY, barW, 4);
+  }
+  if(game.weaponId==="void_revolver"){
+    const cylinder=(game.revolverShotCount??0)%6;
+    ctx.save();ctx.translate(0,30);
+    ctx.fillStyle="rgba(10,8,18,.78)";ctx.beginPath();ctx.arc(0,0,15,0,Math.PI*2);ctx.fill();
+    for(let chamber=0;chamber<6;chamber++){
+      const angle=-Math.PI/2+chamber*Math.PI/3,x=Math.cos(angle)*9,y=Math.sin(angle)*9;
+      ctx.fillStyle=chamber<cylinder?"#fbbf24":"rgba(245,158,11,.22)";
+      ctx.strokeStyle="rgba(255,241,179,.7)";ctx.lineWidth=.7;ctx.beginPath();ctx.arc(x,y,2.4,0,Math.PI*2);ctx.fill();ctx.stroke();
+    }
+    ctx.font="700 7px sans-serif";ctx.textAlign="center";ctx.fillStyle="#fff1b3";ctx.fillText(cylinder+"/6",0,25);
+    ctx.restore();
+    if(player.castTimer>0){
+      const aim=PLAYER_DIRECTION_VECTORS[player.castFacing]??PLAYER_DIRECTION_VECTORS[0],flash=getMuzzleFlashSprite();
+      ctx.save();ctx.translate(aim.x*24,aim.y*21-2);ctx.globalAlpha=clamp(player.castTimer/.24,0,1);
+      ctx.drawImage(flash,-flash.width/2,-flash.height/2);ctx.restore();
+    }
   }
   ctx.restore();
   game.pickupLabels.forEach((label) => {
@@ -3029,6 +2931,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
       if (game) { game.width = rect.width; game.height = rect.height; }
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     };
+    prewarmFractalEffectSprites();
     resize();
     window.addEventListener("resize", resize);
     const onKeyDown = (event: KeyboardEvent) => {
@@ -3974,6 +3877,10 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           enemy.attack = Math.max(0, enemy.attack - dt);
           enemy.hunterMarkTimer = Math.max(0, (enemy.hunterMarkTimer ?? 0) - dt);
           enemy.boomerangMarkTimer = Math.max(0, (enemy.boomerangMarkTimer ?? 0) - dt);
+          if((enemy.bloodBleedTimer??0)>0){
+            enemy.bloodBleedTimer=Math.max(0,(enemy.bloodBleedTimer??0)-dt);
+            if(enemy.bloodBleedTimer<=0){enemy.bloodBleedStacks=0;enemy.bloodBleedDamage=0;}
+          }
           if ((enemy.thermalBurnTimer ?? 0) > 0) {
             enemy.thermalBurnTimer = Math.max(0, (enemy.thermalBurnTimer ?? 0) - dt);
             enemy.thermalBurnTick = (enemy.thermalBurnTick ?? 0.5) - dt;
@@ -4374,7 +4281,9 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               const hunterMarkBonus = (enemy.hunterMarkTimer ?? 0) > 0 ? 1 + hunterLevel * 0.05 : 1;
               const scarLevel = game.weaponId === "fractal_boomerang" && shot.kind === "fractal_boomerang" && shot.phase === "return" && (enemy.boomerangMarkTimer ?? 0) > 0 ? (game.upgradeCounts.gift_boomerang_scar?.count ?? 0) : 0;
               const returnScarBonus = 1 + scarLevel * 0.15;
-              const hitDamage = shot.damage * markedBossBonus * weakpointBonus * hunterMarkBonus * returnScarBonus * (isCrit ? baseCritMult : 1) * (alchemyActive ? 1.25 : 1);
+              const bleedBurst = shot.bloodBleedDetonation ? (enemy.bloodBleedDamage ?? 0) * (enemy.bloodBleedStacks ?? 0) * 2.5 : 0;
+              const hitDamage = (shot.damage + bleedBurst) * markedBossBonus * weakpointBonus * hunterMarkBonus * returnScarBonus * (isCrit ? baseCritMult : 1) * (alchemyActive ? 1.25 : 1);
+              if(shot.bloodBleedDetonation&&(enemy.bloodBleedStacks??0)>0){enemy.bloodBleedStacks=0;enemy.bloodBleedTimer=0;enemy.bloodBleedDamage=0;}
               if (game.weaponId === "fractal_boomerang" && shot.kind === "fractal_boomerang" && shot.phase === "outbound" && (game.upgradeCounts.gift_boomerang_scar?.count ?? 0) > 0) enemy.boomerangMarkTimer = 2.5;
               const shadowExecution = game.upgradeCounts.gift_shadow_execution?.count ?? 0;
               const canExecute = shadowExecution > 0 && enemy.type !== "boss" && enemy.type !== "elite" && enemy.hp <= enemy.maxHp * 0.10;
@@ -4384,6 +4293,9 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               game.totalDamageDealt += appliedDamage;
               if (isCrit && hunterLevel > 0) enemy.hunterMarkTimer = 6;
               if (game.weaponId === "blood_spear" && (shot.kind === "blood_spear" || shot.kind === "blood_spear_rain")) {
+                enemy.bloodBleedStacks = Math.min(5, (enemy.bloodBleedStacks ?? 0) + 1);
+                enemy.bloodBleedTimer = 5;
+                enemy.bloodBleedDamage = Math.max(enemy.bloodBleedDamage ?? 0, hitDamage * 0.08);
                 const slowLevel = game.upgradeCounts.gift_blood_slow?.count ?? 0;
                 if (slowLevel > 0) {
                   enemy.slowTimer = Math.max(enemy.slowTimer ?? 0, 0.7);
