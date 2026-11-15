@@ -755,7 +755,8 @@ function mergeNearbyGems(gems: Gem[]): void {
       // O valor e a quantidade de cristais são somados; nenhum XP é criado ou perdido.
       partner.value += gem.value;
       partner.fragmentCount = (partner.fragmentCount ?? 1) + (gem.fragmentCount ?? 1);
-      partner.radius = clamp(5 + Math.sqrt(partner.fragmentCount - 1) * 1.2, 5, 12);
+      const baseRadius = partner.runeCrystal ? 8 : 5;
+      partner.radius = clamp(baseRadius + Math.sqrt(partner.fragmentCount - 1) * 1.2, baseRadius, partner.runeCrystal ? 15 : 12);
       partner.previousX = undefined;
       partner.previousY = undefined;
       gem.value = 0;
