@@ -246,8 +246,9 @@ const SHOP_ITEM_INFO: Record<string, ShopItemInfo> = {
   ]},
   weapon_gravity_shackle: { title: "Grilhão Gravitacional", category: "Arma", summary: "Selo permanente; correntes alcançam o dobro do raio visual.", details: [
     "O selo rúnico permanece sempre visível. O raio visual não limita o alcance: as correntes atingem alvos a até 2× essa distância.",
-    "Arremessa correntes contra até 5 alvos (8 na evolução); cada nível da Coroa de Estilhaços acrescenta +1 corrente, até +2, sem aumentar o raio. Quem sobreviver fica acorrentado ao chão por 1,8 s (3,2 s na evolução).",
-    "Desbloqueio permanente: 11.000 FR.",
+    "Os pulsos-base ocorrem a cada 1,8 s (1,4 s na evolução), acompanham a cadência da arma e respeitam o mínimo de 0,6 s. Sem alvos no alcance, a busca é retomada após 0,2 s.",
+    "Cada pulso seleciona até 5 alvos (8 na evolução); cada nível da Coroa acrescenta +1 corrente, até +2, sem aumentar o raio. Quando há menos alvos que correntes, até 3 vínculos extras priorizam chefes e elites — ou o inimigo de maior PV máximo — e causam 60% do dano normal.",
+    "Quem sobreviver fica acorrentado ao chão por 1,8 s (3,2 s na evolução). Desbloqueio permanente: 11.000 FR.",
     "Vença uma expedição com a arma para concluir a maestria. Depois, compre o Projeto de Evolução por 5.000 FR; no nível 10 da arma, a evolução Prisão do Abismo pode aparecer."
   ]},
   weapon_rune_sentinels: { title: "Sentinelas Rúnicas", category: "Arma", summary: "Totens fixos disparam feixes e perdem 1 PV por segundo.", details: [
