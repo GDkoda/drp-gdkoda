@@ -25,7 +25,7 @@ type UpgradeId = "power" | "haste" | "vitality" | "swift" | "special_area" | "sp
 type Upgrade = { id: UpgradeId; name: string; description: string; icon: typeof Zap; rarity?: "normal" | "uncommon" | "rare" | "epic" | "legendary" | "maestria" | "evolution" };
 type UpgradeCounts = Record<string, { name: string; count: number; rarity: string }>;
 
-type Enemy = { x: number; y: number; hp: number; maxHp: number; speed: number; radius: number; damage: number; color: string; xp: number; type: "wraith" | "brute" | "charger" | "elite" | "boss"; attack: number; flash: number; windup: number; targetX: number; targetY: number; dashTime: number; summonedAtHalf: boolean; furyTriggered: boolean; isExecutioner?: boolean; slowTimer?: number; slowFactor?: number; hunterMarkTimer?: number; boomerangMarkTimer?: number; thermalBurnTimer?: number; thermalBurnTick?: number; thermalBurnDamage?: number };
+type Enemy = { x: number; y: number; hp: number; maxHp: number; speed: number; radius: number; damage: number; color: string; xp: number; type: "wraith" | "brute" | "charger" | "elite" | "boss"; attack: number; flash: number; windup: number; targetX: number; targetY: number; dashTime: number; summonedAtHalf: boolean; furyTriggered: boolean; isExecutioner?: boolean; slowTimer?: number; slowFactor?: number; hunterMarkTimer?: number; boomerangMarkTimer?: number; thermalBurnTimer?: number; thermalBurnTick?: number; thermalBurnDamage?: number; bloodStacks?: number; bloodStackDamage?: number };
 type ShotKind =
   | "bullet"
   | "revolver_empowered"
@@ -1323,6 +1323,22 @@ function getBloodSpearSprite(rain: boolean): HTMLCanvasElement {
   weaponEffectSpriteCache.set(key,sprite); return sprite;
 }
 
+function getOrbitalBladeSprite(evolved:boolean):HTMLCanvasElement {
+  const key="orbital-blade-"+Number(evolved),cached=weaponEffectSpriteCache.get(key);if(cached)return cached;
+  const sprite=document.createElement("canvas");sprite.width=48;sprite.height=64;
+  const c=sprite.getContext("2d");if(!c)return sprite;c.translate(24,32);
+  c.fillStyle=evolved?"rgba(236,72,153,0.35)":"rgba(250,204,21,0.25)";
+  c.beginPath();c.moveTo(0,-28);c.lineTo(9,-2);c.lineTo(5,16);c.lineTo(0,24);c.lineTo(-5,16);c.lineTo(-9,-2);c.closePath();c.fill();
+  c.fillStyle=evolved?"#fdf2f8":"#fefce8";
+  c.beginPath();c.moveTo(0,-25);c.lineTo(6,-2);c.lineTo(3.5,14);c.lineTo(0,20);c.lineTo(-3.5,14);c.lineTo(-6,-2);c.closePath();c.fill();
+  c.fillStyle=evolved?"#ec4899":"#c084fc";c.fillRect(-1.5,-12,3,10);
+  c.fillStyle=evolved?"#f43f5e":"#fbbf24";c.beginPath();c.arc(0,2,2.5,0,Math.PI*2);c.fill();
+  c.fillStyle=evolved?"#831843":"#6b21a8";c.fillRect(-9,4,18,4.5);
+  c.fillStyle="#facc15";c.fillRect(-2.5,8.5,5,8);c.beginPath();c.arc(0,18.5,3,0,Math.PI*2);c.fill();
+  c.strokeStyle="#ffffff";c.lineWidth=1.2;c.beginPath();c.moveTo(0,-24);c.lineTo(0,4);c.stroke();
+  weaponEffectSpriteCache.set(key,sprite);return sprite;
+}
+
 function getBoomerangBladeSprite(evolved:boolean, returning:boolean):HTMLCanvasElement {
   const key="boomerang-"+Number(evolved)+"-"+Number(returning);
   const cached=weaponEffectSpriteCache.get(key); if(cached)return cached;
@@ -1722,32 +1738,13 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
 
     if (shot.kind === "orbital_blade") {
       ctx.save();
-      ctx.translate(shot.x, shot.y);
-      ctx.rotate((shot.angle ?? 0) + Math.PI / 2);
-      const isOuter = game.evolved && (shot.bladeIndex ?? 0) >= 8;
-      const bladeScale = isOuter ? 0.9 : 1.1;
-      ctx.scale(bladeScale, bladeScale);
-      ctx.fillStyle = game.evolved ? "rgba(236,72,153,0.35)" : "rgba(250,204,21,0.25)";
-      ctx.beginPath();
-      ctx.moveTo(0, -28); ctx.lineTo(9, -2); ctx.lineTo(5, 16);
-      ctx.lineTo(0, 24); ctx.lineTo(-5, 16); ctx.lineTo(-9, -2);
-      ctx.closePath(); ctx.fill();
-      ctx.fillStyle = game.evolved ? "#fdf2f8" : "#fefce8";
-      ctx.beginPath();
-      ctx.moveTo(0, -25); ctx.lineTo(6, -2); ctx.lineTo(3.5, 14);
-      ctx.lineTo(0, 20); ctx.lineTo(-3.5, 14); ctx.lineTo(-6, -2);
-      ctx.closePath(); ctx.fill();
-      ctx.fillStyle = game.evolved ? "#ec4899" : "#c084fc";
-      ctx.fillRect(-1.5, -12, 3, 10);
-      ctx.fillStyle = game.evolved ? "#f43f5e" : "#fbbf24";
-      ctx.beginPath(); ctx.arc(0, 2, 2.5, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = game.evolved ? "#831843" : "#6b21a8";
-      ctx.fillRect(-9, 4, 18, 4.5);
-      ctx.fillStyle = "#facc15";
-      ctx.fillRect(-2.5, 8.5, 5, 8);
-      ctx.beginPath(); ctx.arc(0, 18.5, 3, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 1.2;
-      ctx.beginPath(); ctx.moveTo(0, -24); ctx.lineTo(0, 4); ctx.stroke();
+      ctx.translate(shot.x,shot.y);
+      ctx.rotate((shot.angle??0)+Math.PI/2);
+      const isOuter=game.evolved&&(shot.bladeIndex??0)>=8;
+      const bladeScale=isOuter ? 0.9 : 1.1;
+      ctx.scale(bladeScale,bladeScale);
+      const bladeSprite=getOrbitalBladeSprite(game.evolved);
+      ctx.drawImage(bladeSprite,-24,-32);
       ctx.restore();
       return;
     }
@@ -1864,11 +1861,14 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
         ctx.lineWidth = energized ? 9 : 7;
         ctx.setLineDash([]);
         ctx.beginPath(); ctx.moveTo(aMine.x, aMine.y); ctx.lineTo(bMine.x, bMine.y); ctx.stroke();
-        ctx.globalAlpha = 1;
-        ctx.strokeStyle = energized ? "rgba(254,243,199,.98)" : "rgba(196,181,253,.88)";
-        ctx.lineWidth = energized ? 2.8 : 2.1;
-        ctx.setLineDash([9, 7]); ctx.lineDashOffset = -game.elapsed * 35;
-        ctx.beginPath(); ctx.moveTo(aMine.x, aMine.y); ctx.lineTo(bMine.x, bMine.y); ctx.stroke();
+        if (quality !== "low") {
+          ctx.globalAlpha = 1;
+          ctx.strokeStyle = energized ? "rgba(254,243,199,.98)" : "rgba(196,181,253,.88)";
+          ctx.lineWidth = quality === "high" ? (energized ? 2.8 : 2.1) : 1.6;
+          if (quality === "high") { ctx.setLineDash([9,7]); ctx.lineDashOffset = -game.elapsed*35; }
+          ctx.beginPath(); ctx.moveTo(aMine.x,aMine.y); ctx.lineTo(bMine.x,bMine.y); ctx.stroke();
+          if (quality === "high") ctx.setLineDash([]);
+        }
         ctx.restore();
       }
     }
@@ -1886,9 +1886,9 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
       ctx.globalAlpha = 0.48;
       ctx.strokeStyle = accent;
       ctx.lineWidth = 1.2;
-      ctx.setLineDash([3, 5]);
-      ctx.beginPath(); ctx.arc(0, 0, 23 * pulse, game.elapsed * 0.8, game.elapsed * 0.8 + Math.PI * 1.7); ctx.stroke();
-      ctx.setLineDash([]);
+      if (quality === "high") ctx.setLineDash([3,5]);
+      ctx.beginPath(); ctx.arc(0,0,23*pulse,game.elapsed*.8,game.elapsed*.8+Math.PI*1.7); ctx.stroke();
+      if (quality === "high") ctx.setLineDash([]);
       ctx.globalAlpha = 1;
       ctx.strokeStyle = accent;
       ctx.lineWidth = mine.triggered ? 3.2 : 2;
@@ -2277,10 +2277,9 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     ctx.globalAlpha = (progress === 5 ? 0.68 : 0.28) * pulse;
     ctx.strokeStyle = progress === 5 ? "#fecdd3" : "#9f1239";
     ctx.lineWidth = progress === 5 ? 2.2 : 1.5;
-    ctx.setLineDash(progress === 5 ? [3, 5] : [2, 8]);
-    ctx.lineDashOffset = -game.elapsed * 18;
+    if (quality === "high") { ctx.setLineDash(progress === 5 ? [3,5] : [2,8]); ctx.lineDashOffset = -game.elapsed*18; }
     ctx.beginPath(); ctx.arc(0, 0, 96, 0, Math.PI * 2); ctx.stroke();
-    ctx.setLineDash([]);
+    if (quality === "high") ctx.setLineDash([]);
     ctx.globalAlpha = progress === 5 ? 0.62 : 0.36;
     ctx.strokeStyle = "#4c0519"; ctx.lineWidth = progress === 5 ? 10 : 8;
     ctx.beginPath();
@@ -4297,7 +4296,10 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               const hunterMarkBonus = (enemy.hunterMarkTimer ?? 0) > 0 ? 1 + hunterLevel * 0.05 : 1;
               const scarLevel = game.weaponId === "fractal_boomerang" && shot.kind === "fractal_boomerang" && shot.phase === "return" && (enemy.boomerangMarkTimer ?? 0) > 0 ? (game.upgradeCounts.gift_boomerang_scar?.count ?? 0) : 0;
               const returnScarBonus = 1 + scarLevel * 0.15;
-              const hitDamage = shot.damage * markedBossBonus * weakpointBonus * hunterMarkBonus * returnScarBonus * (isCrit ? baseCritMult : 1) * (alchemyActive ? 1.25 : 1);
+              const bloodDetonationBonus = shot.kind === "blood_ritual_blast"
+                ? (enemy.bloodStacks ?? 0) * (enemy.bloodStackDamage ?? 0)
+                : 0;
+              const hitDamage = (shot.damage + bloodDetonationBonus) * markedBossBonus * weakpointBonus * hunterMarkBonus * returnScarBonus * (isCrit ? baseCritMult : 1) * (alchemyActive ? 1.25 : 1);
               if (game.weaponId === "fractal_boomerang" && shot.kind === "fractal_boomerang" && shot.phase === "outbound" && (game.upgradeCounts.gift_boomerang_scar?.count ?? 0) > 0) enemy.boomerangMarkTimer = 2.5;
               const shadowExecution = game.upgradeCounts.gift_shadow_execution?.count ?? 0;
               const canExecute = shadowExecution > 0 && enemy.type !== "boss" && enemy.type !== "elite" && enemy.hp <= enemy.maxHp * 0.10;
@@ -4307,6 +4309,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               game.totalDamageDealt += appliedDamage;
               if (isCrit && hunterLevel > 0) enemy.hunterMarkTimer = 6;
               if (game.weaponId === "blood_spear" && (shot.kind === "blood_spear" || shot.kind === "blood_spear_rain")) {
+                enemy.bloodStacks = Math.min(5, (enemy.bloodStacks ?? 0) + 1);
+                enemy.bloodStackDamage = Math.max(enemy.bloodStackDamage ?? 0, getEquippedWeaponStrikeDamage(game) * 0.10);
                 const slowLevel = game.upgradeCounts.gift_blood_slow?.count ?? 0;
                 if (slowLevel > 0) {
                   enemy.slowTimer = Math.max(enemy.slowTimer ?? 0, 0.7);
@@ -4314,6 +4318,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                 }
               }
               if (shot.kind === "blood_ritual_blast") {
+                enemy.bloodStacks = 0;
+                enemy.bloodStackDamage = 0;
                 const ritualGift = game.upgradeCounts.gift_blood_ritual?.count ?? 0;
                 if (ritualGift > 0) {
                   const healCap = game.player.maxHp * 0.03;
