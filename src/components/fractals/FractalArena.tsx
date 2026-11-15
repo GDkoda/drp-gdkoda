@@ -3441,6 +3441,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             game.revolverIsReloading = false;
             game.revolverReloadTimer = 0;
             game.revolverReloadDuration = 0;
+            game.shotTimer = 0;
           }
         }
         game.shotTimer -= dt;
