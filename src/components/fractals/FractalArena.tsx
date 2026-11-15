@@ -3471,10 +3471,6 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           const weaponDamage = game.player.damage * weaponPower;
 
           if (game.weaponId === "void_revolver") {
-            if ((game.revolverAmmo ?? 6) <= 0) {
-              game.shotTimer = 0.08;
-              continue;
-            }
             game.revolverAmmo = Math.max(0, (game.revolverAmmo ?? 6) - 1);
             game.revolverShotCount = (game.revolverShotCount ?? 0) + 1;
             const isEmpowered = game.revolverShotCount % 6 === 0;
