@@ -57,6 +57,13 @@
       "when": 1794703696314,
       "tag": "0007_restrict_site_background_reads",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1794786019784,
+      "tag": "0008_scope_catalog_reads",
+      "breakpoints": true
     }
   ]
 }
