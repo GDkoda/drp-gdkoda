@@ -1412,12 +1412,51 @@ function getMuzzleFlashSprite(): HTMLCanvasElement {
     c.fillStyle="#fff7cc";c.beginPath();c.arc(31,15,5,0,Math.PI*2);c.fill();
   });
 }
+
+function getSentinelAuraSprite(evolved: boolean): HTMLCanvasElement {
+  return getFractalEffectSprite(evolved ? "sentinel-aura-e" : "sentinel-aura", 112, 112, (c) => {
+    const g=c.createRadialGradient(56,56,3,56,56,54);
+    if(evolved){g.addColorStop(0,"rgba(220,38,38,.38)");g.addColorStop(.55,"rgba(127,29,29,.16)");g.addColorStop(1,"rgba(14,165,233,0)");}
+    else{g.addColorStop(0,"rgba(34,211,238,.34)");g.addColorStop(.55,"rgba(14,165,233,.14)");g.addColorStop(1,"rgba(14,165,233,0)");}
+    c.fillStyle=g;c.fillRect(0,0,112,112);
+  });
+}
+function getBloodRitualGlowSprite(): HTMLCanvasElement {
+  return getFractalEffectSprite("blood-ritual-glow",256,256,(c)=>{
+    const g=c.createRadialGradient(128,128,5,128,128,124);
+    g.addColorStop(0,"rgba(255,225,230,.88)");g.addColorStop(.18,"rgba(244,63,94,.48)");
+    g.addColorStop(.62,"rgba(153,27,52,.22)");g.addColorStop(1,"rgba(127,29,29,0)");
+    c.fillStyle=g;c.fillRect(0,0,256,256);
+  });
+}
+function getChallengeHaloSprite(): HTMLCanvasElement {
+  return getFractalEffectSprite("challenge-halo",256,256,(c)=>{
+    const g=c.createRadialGradient(128,128,24,128,128,126);
+    g.addColorStop(0,"rgba(174,121,255,.12)");g.addColorStop(.72,"rgba(119,77,180,.07)");g.addColorStop(1,"rgba(119,77,180,0)");
+    c.fillStyle=g;c.fillRect(0,0,256,256);
+  });
+}
+function getExecutionerAuraSprite(): HTMLCanvasElement {
+  return getFractalEffectSprite("executioner-aura",160,160,(c)=>{
+    const g=c.createRadialGradient(80,80,8,80,80,76);
+    g.addColorStop(0,"rgba(58,17,83,.62)");g.addColorStop(.55,"rgba(104,38,143,.25)");g.addColorStop(1,"rgba(104,38,143,0)");
+    c.fillStyle=g;c.fillRect(0,0,160,160);
+  });
+}
+function getBossFuryAuraSprite(): HTMLCanvasElement {
+  return getFractalEffectSprite("boss-fury-aura",164,164,(c)=>{
+    const g=c.createRadialGradient(82,82,12,82,82,78);
+    g.addColorStop(0,"rgba(255,75,65,.28)");g.addColorStop(.55,"rgba(151,18,42,.24)");g.addColorStop(1,"rgba(151,18,42,0)");
+    c.fillStyle=g;c.fillRect(0,0,164,164);
+  });
+}
 function prewarmFractalEffectSprites(): void {
   getBloodSpearSprite(false);getBloodSpearSprite(true);
   getOrbitalBladeSprite(false);getOrbitalBladeSprite(true);
   getBoomerangSprite(false,false);getBoomerangSprite(false,true);getBoomerangSprite(true,false);getBoomerangSprite(true,true);
   getPlasmaPuddleSprite(false);getPlasmaPuddleSprite(true);getPlasmaCoreSprite(false);getPlasmaCoreSprite(true);
   getRiftResidueSprite();getBloodTrailStamp();getMuzzleFlashSprite();
+  getSentinelAuraSprite(false);getSentinelAuraSprite(true);getBloodRitualGlowSprite();getChallengeHaloSprite();getExecutionerAuraSprite();getBossFuryAuraSprite();
   getProjectileTrailSprite("gold",false);getProjectileTrailSprite("plasma",false);getProjectileTrailSprite("sentinel",false);
   getProjectileTrailSprite("chain",false);getProjectileTrailSprite("arcane",false);
 }
@@ -1541,14 +1580,8 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     ctx.save();
     ctx.translate(event.x, event.y);
     ctx.scale(pulse, pulse);
-    const halo = ctx.createRadialGradient(0, 0, 24, 0, 0, event.radius);
-    halo.addColorStop(0, "rgba(174,121,255,.12)");
-    halo.addColorStop(.72, "rgba(119,77,180,.07)");
-    halo.addColorStop(1, "rgba(119,77,180,0)");
-    ctx.fillStyle = halo;
-    ctx.beginPath();
-    ctx.arc(0, 0, event.radius, 0, Math.PI * 2);
-    ctx.fill();
+    const haloSprite=getChallengeHaloSprite();
+    ctx.globalAlpha=.85;ctx.drawImage(haloSprite,-event.radius,-event.radius,event.radius*2,event.radius*2);ctx.globalAlpha=1;
     ctx.strokeStyle = "rgba(206,166,255,.78)";
     ctx.lineWidth = 3;
     if (!simplifiedQuality) ctx.setLineDash([12, 8]);
@@ -1656,27 +1689,18 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
       ctx.restore();return;
     }
     if (shot.kind === "blood_ritual_blast") {
-      ctx.save();
-      ctx.translate(shot.x, shot.y);
-      const progress = 1 - lifeRatio;
-      const radius = (shot.radius ?? 220) * (0.72 + progress * 0.28);
-      ctx.globalAlpha = lifeRatio;
-      const gradient = ctx.createRadialGradient(0, 0, 5, 0, 0, radius);
-      gradient.addColorStop(0, "rgba(255,225,230,.88)");
-      gradient.addColorStop(0.18, "rgba(244,63,94,.48)");
-      gradient.addColorStop(0.62, "rgba(153,27,52,.22)");
-      gradient.addColorStop(1, "rgba(127,29,29,0)");
-      ctx.fillStyle = gradient; ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI * 2); ctx.fill();
-      const star = [0, 2, 4, 1, 3, 0].map((index) => ({ x: Math.cos(-Math.PI / 2 + index * Math.PI * 2 / 5) * radius * 0.78, y: Math.sin(-Math.PI / 2 + index * Math.PI * 2 / 5) * radius * 0.78 }));
-      ctx.lineCap = "round"; ctx.lineJoin = "round";
-      ctx.strokeStyle = "rgba(69,10,24,.86)"; ctx.lineWidth = 9;
-      ctx.beginPath(); ctx.moveTo(star[0].x, star[0].y); for (let i = 1; i < star.length; i++) ctx.lineTo(star[i].x, star[i].y); ctx.stroke();
-      ctx.strokeStyle = "#fda4af"; ctx.lineWidth = 3.5;
-      ctx.beginPath(); ctx.moveTo(star[0].x, star[0].y); for (let i = 1; i < star.length; i++) ctx.lineTo(star[i].x, star[i].y); ctx.stroke();
-      ctx.strokeStyle = "rgba(255,241,242,.9)"; ctx.lineWidth = 1.3;
-      ctx.beginPath(); ctx.arc(0, 0, radius * (0.42 + progress * 0.12), 0, Math.PI * 2); ctx.stroke();
-      ctx.restore();
-      return;
+      ctx.save();ctx.translate(shot.x,shot.y);
+      const progress=1-lifeRatio,radius=(shot.radius??220)*(.72+progress*.28);
+      ctx.globalAlpha=lifeRatio;
+      const glow=getBloodRitualGlowSprite();ctx.drawImage(glow,-radius,-radius,radius*2,radius*2);
+      ctx.lineCap="round";ctx.lineJoin="round";
+      for(let pass=0;pass<2;pass++){
+        ctx.strokeStyle=pass===0?"rgba(69,10,24,.86)":"#fda4af";ctx.lineWidth=pass===0?9:3.5;ctx.beginPath();
+        for(let i=0;i<6;i++){const index=i===0||i===5?0:i===1?2:i===2?4:i===3?1:3;const angle=-Math.PI/2+index*Math.PI*2/5;const x=Math.cos(angle)*radius*.78,y=Math.sin(angle)*radius*.78;if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);}
+        ctx.stroke();
+      }
+      ctx.strokeStyle="rgba(255,241,242,.9)";ctx.lineWidth=1.3;ctx.beginPath();ctx.arc(0,0,radius*(.42+progress*.12),0,Math.PI*2);ctx.stroke();
+      ctx.restore();return;
     }
     if (shot.kind === "gravity_well") {
       // A aura permanente/intermitente é desenhada fora do passe aditivo abaixo.
@@ -1866,7 +1890,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
         ctx.globalAlpha = 1;
         ctx.strokeStyle = energized ? "rgba(254,243,199,.98)" : "rgba(196,181,253,.88)";
         ctx.lineWidth = energized ? 2.8 : 2.1;
-        if (!simplifiedQuality) ctx.setLineDash([9, 7]); ctx.lineDashOffset = -game.elapsed * 35;
+        if (!simplifiedQuality) { ctx.setLineDash([9, 7]); ctx.lineDashOffset = -game.elapsed * 35; }
         ctx.beginPath(); ctx.moveTo(aMine.x, aMine.y); ctx.lineTo(bMine.x, bMine.y); ctx.stroke();
         ctx.restore();
       }
@@ -1940,51 +1964,64 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
       Math.min(1, lifeRatio * 1.25) * 0.85,
     );
 
-    const chainList = game.gravityChains;
-    if (chainList && chainList.length > 0) {
-      // Lote único: todos os elos de todas as correntes em 2 paths (escuro + claro), sem save/rotate por corrente.
-      const chainColor = game.evolved ? "#fb7185" : "#d8b4fe";
-      const chainDark = game.evolved ? "#7f1d1d" : "#4c1d95";
-      ctx.globalAlpha = 1;
-      for (let pass = 0; pass < 2; pass++) {
-        ctx.strokeStyle = pass === 0 ? chainDark : chainColor;
-        ctx.lineWidth = pass === 0 ? 4 : 1.6;
+
+    const chainList=game.gravityChains;
+    if(chainList&&chainList.length>0){
+      const chainColor=game.evolved?"#fb7185":"#d8b4fe";
+      if(simplifiedQuality){
+        ctx.strokeStyle=chainColor;ctx.lineWidth=lowQuality?2:2.8;ctx.beginPath();
+        for(let i=0;i<chainList.length;i++){
+          const c=chainList[i];if(c.hit&&c.fade<.11)continue;
+          const progress=c.hit?1:clamp(c.t/c.dur,0,1);
+          ctx.moveTo(c.sx,c.sy);ctx.lineTo(c.sx+(c.ex-c.sx)*progress,c.sy+(c.ey-c.sy)*progress);
+        }
+        ctx.stroke();
+      }else{
+        // Lote único: todos os elos de todas as correntes em 2 paths (escuro + claro), sem save/rotate por corrente.
+        const chainColor = game.evolved ? "#fb7185" : "#d8b4fe";
+        const chainDark = game.evolved ? "#7f1d1d" : "#4c1d95";
+        ctx.globalAlpha = 1;
+        for (let pass = 0; pass < 2; pass++) {
+          ctx.strokeStyle = pass === 0 ? chainDark : chainColor;
+          ctx.lineWidth = pass === 0 ? 4 : 1.6;
+          ctx.beginPath();
+          for (let i = 0; i < chainList.length; i++) {
+            const c = chainList[i];
+            if (c.hit && c.fade < 0.11) continue;
+            const prog = c.hit ? 1 : clamp(c.t / c.dur, 0, 1);
+            const dx = (c.ex - c.sx) * prog, dy = (c.ey - c.sy) * prog;
+            const len = Math.sqrt(dx * dx + dy * dy);
+            if (len < 2) continue;
+            const ux = dx / len, uy = dy / len, nx = -uy * 2.6, ny = ux * 2.6;
+            const links = Math.min(30, Math.floor(len / 10));
+            for (let k = 0; k < links; k++) {
+              const cx = c.sx + ux * (k * 10 + 5), cy = c.sy + uy * (k * 10 + 5);
+              const ax = ux * 5, ay = uy * 5;
+              if (k % 2 === 0) {
+                ctx.moveTo(cx - ax + nx, cy - ay + ny); ctx.lineTo(cx + ax + nx, cy + ay + ny);
+                ctx.lineTo(cx + ax - nx, cy + ay - ny); ctx.lineTo(cx - ax - nx, cy - ay - ny); ctx.closePath();
+              } else { ctx.moveTo(cx - ax, cy - ay); ctx.lineTo(cx + ax, cy + ay); }
+            }
+          }
+          ctx.stroke();
+        }
+        ctx.fillStyle = chainColor;
         ctx.beginPath();
         for (let i = 0; i < chainList.length; i++) {
           const c = chainList[i];
-          if (c.hit && c.fade < 0.11) continue;
-          const prog = c.hit ? 1 : clamp(c.t / c.dur, 0, 1);
-          const dx = (c.ex - c.sx) * prog, dy = (c.ey - c.sy) * prog;
-          const len = Math.sqrt(dx * dx + dy * dy);
-          if (len < 2) continue;
-          const ux = dx / len, uy = dy / len, nx = -uy * 2.6, ny = ux * 2.6;
-          const links = Math.min(30, Math.floor(len / 10));
-          for (let k = 0; k < links; k++) {
-            const cx = c.sx + ux * (k * 10 + 5), cy = c.sy + uy * (k * 10 + 5);
-            const ax = ux * 5, ay = uy * 5;
-            if (k % 2 === 0) {
-              ctx.moveTo(cx - ax + nx, cy - ay + ny); ctx.lineTo(cx + ax + nx, cy + ay + ny);
-              ctx.lineTo(cx + ax - nx, cy + ay - ny); ctx.lineTo(cx - ax - nx, cy - ay - ny); ctx.closePath();
-            } else { ctx.moveTo(cx - ax, cy - ay); ctx.lineTo(cx + ax, cy + ay); }
-          }
+          if (c.hit) continue;
+          const prog = clamp(c.t / c.dur, 0, 1);
+          const tx = c.sx + (c.ex - c.sx) * prog, ty = c.sy + (c.ey - c.sy) * prog;
+          const dx = tx - c.sx, dy = ty - c.sy, len = Math.sqrt(dx * dx + dy * dy) || 1;
+          const ux = dx / len, uy = dy / len;
+          ctx.moveTo(tx + ux * 7, ty + uy * 7); ctx.lineTo(tx - ux * 3 - uy * 5, ty - uy * 3 + ux * 5);
+          ctx.lineTo(tx, ty); ctx.lineTo(tx - ux * 3 + uy * 5, ty - uy * 3 - ux * 5); ctx.closePath();
         }
-        ctx.stroke();
+        ctx.fill();
       }
-      ctx.fillStyle = chainColor;
-      ctx.beginPath();
-      for (let i = 0; i < chainList.length; i++) {
-        const c = chainList[i];
-        if (c.hit) continue;
-        const prog = clamp(c.t / c.dur, 0, 1);
-        const tx = c.sx + (c.ex - c.sx) * prog, ty = c.sy + (c.ey - c.sy) * prog;
-        const dx = tx - c.sx, dy = ty - c.sy, len = Math.sqrt(dx * dx + dy * dy) || 1;
-        const ux = dx / len, uy = dy / len;
-        ctx.moveTo(tx + ux * 7, ty + uy * 7); ctx.lineTo(tx - ux * 3 - uy * 5, ty - uy * 3 + ux * 5);
-        ctx.lineTo(tx, ty); ctx.lineTo(tx - ux * 3 + uy * 5, ty - uy * 3 - ux * 5); ctx.closePath();
+  
       }
-      ctx.fill();
-    }
-    ctx.restore();
+    }    ctx.restore();
   }
 
   ctx.save();
@@ -2003,17 +2040,13 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     ctx.strokeStyle = "#8b5cf6"; ctx.lineWidth = 4; if (!simplifiedQuality) ctx.setLineDash([8, 7]);
     ctx.beginPath(); ctx.arc(vortex.x, vortex.y, vortex.radius * 0.56, game.elapsed * 2, game.elapsed * 2 + Math.PI * 1.7); ctx.stroke();
     ctx.setLineDash([]);
-    const glow = ctx.createRadialGradient(vortex.x, vortex.y, 2, vortex.x, vortex.y, vortex.radius * 0.4);
-    glow.addColorStop(0, "rgba(221,214,254,.35)"); glow.addColorStop(1, "rgba(139,92,246,0)");
-    ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(vortex.x, vortex.y, vortex.radius * 0.4, 0, Math.PI * 2); ctx.fill();
+    drawCachedRadialGlow(ctx,vortex.x,vortex.y,vortex.radius*.4,[[0,"rgba(221,214,254,.35)"],[1,"rgba(139,92,246,0)"]],1,"lighter");
     ctx.restore();
   });
   if (game.alchemyCircle) {
     ctx.save();
     ctx.globalAlpha = 0.18 + 0.12 * (game.alchemyCircle.life / game.alchemyCircle.maxLife);
-    const gradient = ctx.createRadialGradient(game.alchemyCircle.x, game.alchemyCircle.y, 8, game.alchemyCircle.x, game.alchemyCircle.y, game.alchemyCircle.radius);
-    gradient.addColorStop(0, "rgba(52,211,153,.22)"); gradient.addColorStop(0.82, "rgba(52,211,153,.09)"); gradient.addColorStop(1, "rgba(52,211,153,0)");
-    ctx.fillStyle = gradient; ctx.beginPath(); ctx.arc(game.alchemyCircle.x, game.alchemyCircle.y, game.alchemyCircle.radius, 0, Math.PI * 2); ctx.fill();
+    drawCachedRadialGlow(ctx,game.alchemyCircle.x,game.alchemyCircle.y,game.alchemyCircle.radius,[[0,"rgba(52,211,153,.22)"],[.82,"rgba(52,211,153,.09)"],[1,"rgba(52,211,153,0)"]],1,"source-over");
     ctx.strokeStyle = "rgba(110,231,183,.72)"; ctx.lineWidth = 2; if (!simplifiedQuality) ctx.setLineDash([9, 7]);
     ctx.beginPath(); ctx.arc(game.alchemyCircle.x, game.alchemyCircle.y, game.alchemyCircle.radius, 0, Math.PI * 2); ctx.stroke();
     ctx.setLineDash([]);
@@ -2023,14 +2056,12 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     if (totem.x < cameraX - 65 || totem.x > cameraX + viewWidth + 65 || totem.y < cameraY - 85 || totem.y > cameraY + viewHeight + 45) return;
     ctx.save();
     ctx.translate(totem.x, totem.y);
-    const pulse = 1 + Math.sin(game.elapsed * 4 + totem.id) * 0.08;
-    const aura = ctx.createRadialGradient(0, -10, 3, 0, -10, 48 * pulse);
-    const ev = game.evolved;
-    aura.addColorStop(0, ev ? "rgba(220,38,38,.38)" : "rgba(34,211,238,.34)");
-    aura.addColorStop(0.55, ev ? "rgba(127,29,29,.16)" : "rgba(14,165,233,.14)");
-    aura.addColorStop(1, "rgba(14,165,233,0)");
-    ctx.fillStyle = aura;
-    ctx.beginPath(); ctx.arc(0, -10, 48 * pulse, 0, Math.PI * 2); ctx.fill();
+    const ev=game.evolved;
+    const pulse=lowQuality?1:1+Math.sin(game.elapsed*4+totem.id)*.08;
+    const auraSprite=getSentinelAuraSprite(ev);
+    ctx.globalAlpha=lowQuality?0.85:1;
+    ctx.drawImage(auraSprite,-56,-66,112*pulse,112*pulse);
+    ctx.globalAlpha=1;
     ctx.fillStyle = "rgba(0,0,0,.48)";
     ctx.beginPath(); ctx.ellipse(0, 10, 22, 8, 0, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = ev ? "#2a0707" : "#0b2633"; ctx.strokeStyle = ev ? "#ef4444" : "#67e8f9"; ctx.lineWidth = 2;
@@ -2064,13 +2095,12 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     const hover = enemy.type === "wraith" || enemy.type === "elite" ? secondaryWave * 1.7 : Math.abs(distortion) * 0.55;
     ctx.translate(enemy.x, enemy.y + hover);
     ctx.transform(1 + distortion * 0.035, secondaryWave * 0.028, Math.sin(motionPhase * 0.43) * 0.022, 1 - distortion * 0.03, 0, 0);
-    if(enemy.isExecutioner){const aura=ctx.createRadialGradient(0,0,8,0,0,76);aura.addColorStop(0,"rgba(58,17,83,.62)");aura.addColorStop(.55,"rgba(104,38,143,.25)");aura.addColorStop(1,"rgba(104,38,143,0)");ctx.fillStyle=aura;ctx.beginPath();ctx.arc(0,0,76,0,Math.PI*2);ctx.fill();ctx.strokeStyle="rgba(197,142,255,.8)";ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,0,38+Math.sin(game.elapsed*7)*4,0,Math.PI*2);ctx.stroke();ctx.strokeStyle="#d8c4ff";ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(14,-8);ctx.lineTo(42,-40);ctx.stroke();ctx.fillStyle="#e9d5ff";ctx.beginPath();ctx.moveTo(42,-40);ctx.lineTo(49,-55);ctx.lineTo(37,-45);ctx.closePath();ctx.fill();}
+    if(enemy.isExecutioner){const aura=getExecutionerAuraSprite();ctx.drawImage(aura,-80,-80,160,160);ctx.strokeStyle="rgba(197,142,255,.8)";ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,0,38+Math.sin(game.elapsed*7)*4,0,Math.PI*2);ctx.stroke();ctx.strokeStyle="#d8c4ff";ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(14,-8);ctx.lineTo(42,-40);ctx.stroke();ctx.fillStyle="#e9d5ff";ctx.beginPath();ctx.moveTo(42,-40);ctx.lineTo(49,-55);ctx.lineTo(37,-45);ctx.closePath();ctx.fill();}
     const bossInFury = enemy.type === "boss" && enemy.hp <= enemy.maxHp * 0.30;
     if (bossInFury) {
-      const firePulse = 1 + Math.sin(game.elapsed * 17) * 0.08;
-      const fireAura = ctx.createRadialGradient(0, 0, 12, 0, 0, 78 * firePulse);
-      fireAura.addColorStop(0, "rgba(255,75,65,.28)"); fireAura.addColorStop(.55, "rgba(151,18,42,.24)"); fireAura.addColorStop(1, "rgba(151,18,42,0)");
-      ctx.fillStyle = fireAura; ctx.beginPath(); ctx.arc(0, 0, 78 * firePulse, 0, Math.PI * 2); ctx.fill();
+      const firePulse=lowQuality?1:1+Math.sin(game.elapsed*17)*.08;
+      const fireAura=getBossFuryAuraSprite();
+      ctx.globalAlpha=firePulse;ctx.drawImage(fireAura,-82*firePulse,-82*firePulse,164*firePulse,164*firePulse);ctx.globalAlpha=1;
       for (let flame = 0; flame < 6; flame++) { const angle = game.elapsed * 2.8 + flame * Math.PI / 3; const radius = 49 + Math.sin(game.elapsed * 13 + flame) * 8; ctx.fillStyle = "rgba(255,75,55,.72)"; ctx.beginPath(); ctx.arc(Math.cos(angle) * radius, Math.sin(angle) * radius, 3 + (flame % 2), 0, Math.PI * 2); ctx.fill(); }
     }
     if (enemy.type === "charger" && enemy.dashTime > 0) {
@@ -2284,7 +2314,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     ctx.globalAlpha = (progress === 5 ? 0.68 : 0.28) * pulse;
     ctx.strokeStyle = progress === 5 ? "#fecdd3" : "#9f1239";
     ctx.lineWidth = progress === 5 ? 2.2 : 1.5;
-    ctx.setLineDash(progress === 5 ? [3, 5] : [2, 8]);
+    if(!simplifiedQuality)ctx.setLineDash(progress===5?[3,5]:[2,8]);
     ctx.lineDashOffset = -game.elapsed * 18;
     ctx.beginPath(); ctx.arc(0, 0, 96, 0, Math.PI * 2); ctx.stroke();
     ctx.setLineDash([]);
@@ -3321,7 +3351,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             const dx = enemy.x - game.player.x;
             const dy = enemy.y - game.player.y;
             const distSq = dx * dx + dy * dy;
-            if ((game.weaponId === "void_revolver" || game.weaponId === "fractal_boomerang" || game.weaponId === "rift_seeder" || game.weaponId === "blood_spear") && distSq > maxRangeSq) continue;
+            if ((game.weaponId === "void_revolver" || game.weaponId === "unstable_core" || game.weaponId === "fractal_boomerang" || game.weaponId === "rift_seeder" || game.weaponId === "blood_spear") && distSq > maxRangeSq) continue;
             const priority = enemy.type === "boss" ? 120 : enemy.type === "elite" ? 45 : enemy.type === "charger" ? 20 : 0;
             const score = game.weaponId === "unstable_core" ? -distSq : Math.sqrt(distSq) - priority;
             if (score < bestScore) { bestScore = score; target = enemy; }
@@ -3519,10 +3549,13 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             // A Coroa acrescenta uma lança aleatória por coleta; a evolução inicia com três.
             const rainCount = Math.min(5, (game.evolved ? 3 : 0) + Math.min(2, game.player.projectileStacks));
             if (rainCount > 0 && game.shots.length < 84) {
-              const rainTargets = game.enemies.filter((enemy) => enemy.hp > 0);
-              for (let rainIndex = 0; rainIndex < rainCount && rainTargets.length > 0 && game.shots.length < 88; rainIndex++) {
-                const selectedIndex = Math.floor(Math.random() * rainTargets.length);
-                const rainTarget = rainTargets.splice(selectedIndex, 1)[0];
+              let remainingTargets=0;
+              for(let i=0;i<game.enemies.length;i++)if(game.enemies[i].hp>0)remainingTargets++;
+              for (let rainIndex = 0; rainIndex < rainCount && remainingTargets > 0 && game.shots.length < 88; rainIndex++) {
+                let selectedIndex=Math.floor(Math.random()*remainingTargets),rainTarget:Enemy|undefined;
+                for(let i=0;i<game.enemies.length;i++){const candidate=game.enemies[i];if(candidate.hp<=0)continue;if(selectedIndex--===0){rainTarget=candidate;break;}}
+                if(!rainTarget)break;
+                remainingTargets--;
                 const spawnX = rainTarget.x + (Math.random() - 0.5) * 72;
                 const spawnY = rainTarget.y - 132 - Math.random() * 28;
                 const dx = rainTarget.x - spawnX, dy = rainTarget.y - spawnY;
@@ -4069,34 +4102,24 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             enemy.y += (dy / d) * pull;
           }
         }
-        const destroyedTotems = game.sentinelTotems.filter((totem) => totem.hp <= 0);
-        if (destroyedTotems.length > 0) {
-          for (const totem of destroyedTotems) {
-            const overloadLevel = game.upgradeCounts.gift_sentinel_overload?.count ?? 0;
-            const burstRadius = 140 * (1 + overloadLevel * 0.12);
-            const weaponPower = (1 + (game.weaponLevel - 1) * 0.055) * (game.evolved ? 1.15 : 1);
-            const burstDamage = game.player.damage * weaponPower * 2.5 * (1 + overloadLevel * 0.15);
-            game.shots.push({
-              x: totem.x, y: totem.y, vx: 0, vy: 0,
-              damage: burstDamage, life: 0.18, maxLife: 0.18,
-              hitTargets: [], bouncesRemaining: 0, piercesRemaining: 0,
-              kind: "sentinel_explosion", radius: burstRadius,
-            });
-            (game.rings ??= []).push({ x: totem.x, y: totem.y, r: 12, max: burstRadius, life: 0.68, color: game.evolved ? "#dc2626" : "#38bdf8" });
-            for (let particle = 0; particle < 14; particle++) {
-              const angle = Math.random() * Math.PI * 2;
-              const speed = 70 + Math.random() * 220;
-              game.particles.push({
-                x: totem.x, y: totem.y,
-                vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
-                life: 0.4 + Math.random() * 0.55,
-                color: game.evolved ? (particle % 2 ? "#7f1d1d" : "#ef4444") : (particle % 2 ? "#fbbf24" : "#22d3ee"),
-              });
-            }
+        let destroyedTotems = false;
+        for(let totemIndex=game.sentinelTotems.length-1;totemIndex>=0;totemIndex--){
+          const totem=game.sentinelTotems[totemIndex];
+          if(totem.hp>0)continue;
+          destroyedTotems=true;
+          const overloadLevel=game.upgradeCounts.gift_sentinel_overload?.count??0;
+          const burstRadius=140*(1+overloadLevel*.12);
+          const weaponPower=(1+(game.weaponLevel-1)*.055)*(game.evolved?1.15:1);
+          const burstDamage=game.player.damage*weaponPower*2.5*(1+overloadLevel*.15);
+          game.shots.push({x:totem.x,y:totem.y,vx:0,vy:0,damage:burstDamage,life:.18,maxLife:.18,hitTargets:[],bouncesRemaining:0,piercesRemaining:0,kind:"sentinel_explosion",radius:burstRadius});
+          (game.rings??=[]).push({x:totem.x,y:totem.y,r:12,max:burstRadius,life:.68,color:game.evolved?"#dc2626":"#38bdf8"});
+          for(let particle=0;particle<14&&game.particles.length<200;particle++){
+            const angle=Math.random()*Math.PI*2,speed=70+Math.random()*220;
+            game.particles.push({x:totem.x,y:totem.y,vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed,life:.4+Math.random()*.55,color:game.evolved?(particle%2?"#7f1d1d":"#ef4444"):(particle%2?"#fbbf24":"#22d3ee")});
           }
-          compactInPlace(game.sentinelTotems, (totem) => totem.hp > 0);
-          game.sentinelRespawnTimer = 5;
+          game.sentinelTotems.splice(totemIndex,1);
         }
+        if(destroyedTotems)game.sentinelRespawnTimer=5;
         for (let eIdx = 0; eIdx < game.enemies.length; eIdx++) {
           const enemy = game.enemies[eIdx];
           let nearObstacle = false;
@@ -4670,7 +4693,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               const hitDistance = Math.max(1, distance(game.player.x, game.player.y, enemy.x, enemy.y));
               game.shots.push({ x: game.player.x, y: game.player.y, vx: (enemy.x - game.player.x) / hitDistance * 850, vy: (enemy.y - game.player.y) / hitDistance * 850, damage: game.player.damage * 0.55, life: hitDistance / 850 + 0.25, hitTargets: [], bouncesRemaining: 0, piercesRemaining: 0, isChainLightning: true, targetEnemy: enemy });
             }
-            game.rings = [...(game.rings ?? []), { x: game.player.x, y: game.player.y, r: 18, max: radius, life: 0.35, color: "#fb7185" }];
+            (game.rings ??= []).push({ x: game.player.x, y: game.player.y, r: 18, max: radius, life: 0.35, color: "#fb7185" });
             game.omenRevengeCooldown = 4;
           }
           game.lastObservedHp = game.player.hp;
@@ -4682,7 +4705,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           const improvedAnchor = purchasesRef.current.anchor_soul >= 2;
           game.player.hp = Math.max(1, game.player.maxHp * (improvedAnchor ? 0.60 : 0.40));
           game.player.invuln = improvedAnchor ? 6 : 3;
-          game.rings = [...(game.rings ?? []), { x: game.player.x, y: game.player.y, r: 10, max: 220, life: 1.1, color: "#fbbf24" }];
+          (game.rings ??= []).push({ x: game.player.x, y: game.player.y, r: 10, max: 220, life: 1.1, color: "#fbbf24" });
           for (let i = 0; i < 32; i++) {
             const angle = Math.random() * Math.PI * 2, speed = 45 + Math.random() * 180;
             game.particles.push({ x: game.player.x, y: game.player.y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 0.45 + Math.random() * 0.55, color: i % 2 ? "#fbbf24" : "#f5d0fe" });
@@ -4692,7 +4715,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             const burstRadius = 260;
             const burstDamage = getEquippedWeaponStrikeDamage(game);
             const burstTargets = game.enemies.filter((enemy) => enemy.hp > 0 && distance(game.player.x, game.player.y, enemy.x, enemy.y) <= burstRadius);
-            game.rings = [...(game.rings ?? []), { x: game.player.x, y: game.player.y, r: 18, max: burstRadius, life: 0.85, color: "#fbbf24" }];
+            (game.rings ??= []).push({ x: game.player.x, y: game.player.y, r: 18, max: burstRadius, life: 0.85, color: "#fbbf24" });
             for (let i = 0; i < 42; i++) {
               const angle = Math.random() * Math.PI * 2, speed = 70 + Math.random() * 230;
               game.particles.push({ x: game.player.x, y: game.player.y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 0.35 + Math.random() * 0.55, color: i % 2 ? "#fbbf24" : "#fff1b3" });
