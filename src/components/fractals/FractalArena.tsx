@@ -59,7 +59,7 @@ type Shot = {
   startX?: number; startY?: number; endX?: number; endY?: number; bloodHealTotal?: number;
   previousX?: number; previousY?: number;
 };
-type Gem = { x: number; y: number; value: number; radius: number; previousX?: number; previousY?: number; runeCrystal?: boolean; fragmentCount?: number };
+type Gem = { x: number; y: number; value: number; radius: number; previousX?: number; previousY?: number; runeCrystal?: boolean; redCrystal?: boolean; fragmentCount?: number; runeCrystalCount?: number };
 type SpecialDrop = { x: number; y: number; kind: "area" | "experience" | "projectile_range" | "projectiles" | "ricochet" | "piercing" | "chain_lightning" | "crit" | "food" | "void"; radius: number };
 type SentinelTotem = { id: number; x: number; y: number; hp: number; maxHp: number; attackTimer: number; radius: number };
 type RiftMine = { id: number; groupId: number; nodeIndex: number; x: number; y: number; life: number; armTimer: number; detonateTimer: number; blastRadius: number; triggerRadius: number; damage: number; triggered: boolean };
@@ -712,6 +712,7 @@ function hash(x: number, y: number): number {
 }
 const distance = (ax: number, ay: number, bx: number, by: number) => Math.hypot(ax - bx, ay - by);
 
+const MAX_GROUND_GEMS = 30;
 const GEM_MERGE_INTERVAL = 0.65;
 const GEM_MERGE_RADIUS = 34;
 const GEM_MERGE_CELL_SIZE = 48;
@@ -739,7 +740,7 @@ function mergeNearbyGems(gems: Gem[]): void {
 
         for (let candidateIndex = 0; candidateIndex < bucket.length; candidateIndex++) {
           const candidate = bucket[candidateIndex];
-          if (Boolean(candidate.runeCrystal) !== Boolean(gem.runeCrystal)) continue;
+          if (Boolean(candidate.runeCrystal) !== Boolean(gem.runeCrystal) || Boolean(candidate.redCrystal) !== Boolean(gem.redCrystal)) continue;
 
           const dx = candidate.x - gem.x;
           const dy = candidate.y - gem.y;
@@ -755,8 +756,9 @@ function mergeNearbyGems(gems: Gem[]): void {
       // O valor e a quantidade de cristais são somados; nenhum XP é criado ou perdido.
       partner.value += gem.value;
       partner.fragmentCount = (partner.fragmentCount ?? 1) + (gem.fragmentCount ?? 1);
-      const baseRadius = partner.runeCrystal ? 8 : 5;
-      partner.radius = clamp(baseRadius + Math.sqrt(partner.fragmentCount - 1) * 1.2, baseRadius, partner.runeCrystal ? 15 : 12);
+      partner.runeCrystalCount = (partner.runeCrystalCount ?? (partner.runeCrystal ? partner.fragmentCount - (gem.fragmentCount ?? 1) : 0)) + (gem.runeCrystalCount ?? (gem.runeCrystal ? gem.fragmentCount ?? 1 : 0));
+      const baseRadius = partner.redCrystal ? 10 : partner.runeCrystal ? 8 : 5;
+      partner.radius = clamp(baseRadius + Math.sqrt(partner.fragmentCount - 1) * (partner.redCrystal ? 1.5 : 1.2), baseRadius, partner.redCrystal ? 22 : partner.runeCrystal ? 15 : 12);
       partner.previousX = undefined;
       partner.previousY = undefined;
       gem.value = 0;
@@ -770,6 +772,44 @@ function mergeNearbyGems(gems: Gem[]): void {
   }
 
   compactInPlace(gems, (gem) => gem.value > 0);
+}
+
+// Limita os fragmentos comuns no chão. A XP excedente é armazenada em um único cristal vermelho.
+function addGroundGem(game: GameState, x: number, y: number, value: number, runeCrystal = false): void {
+  if (!(value > 0)) return;
+
+  let groundGemCount = 0;
+  let redCrystal: Gem | undefined;
+  for (const gem of game.gems) {
+    if (gem.value <= 0) continue;
+    if (gem.redCrystal) redCrystal = gem;
+    else groundGemCount++;
+  }
+
+  if (groundGemCount < MAX_GROUND_GEMS) {
+    game.gems.push({
+      x, y, value, radius: runeCrystal ? 8 : 5,
+      runeCrystal: runeCrystal || undefined,
+      fragmentCount: 1,
+      runeCrystalCount: runeCrystal ? 1 : 0,
+    });
+    return;
+  }
+
+  if (!redCrystal) {
+    game.gems.push({
+      x, y, value, radius: 12, redCrystal: true,
+      fragmentCount: 1, runeCrystalCount: runeCrystal ? 1 : 0,
+    });
+    return;
+  }
+
+  redCrystal.value += value;
+  redCrystal.fragmentCount = (redCrystal.fragmentCount ?? 0) + 1;
+  redCrystal.runeCrystalCount = (redCrystal.runeCrystalCount ?? 0) + (runeCrystal ? 1 : 0);
+  redCrystal.radius = clamp(10 + Math.sqrt(redCrystal.fragmentCount) * 1.5, 10, 22);
+  redCrystal.previousX = undefined;
+  redCrystal.previousY = undefined;
 }
 
 // Remove objetos expirados sem criar um novo array em cada frame.
@@ -1615,6 +1655,16 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     }
     ctx.save(); ctx.translate(gem.x, gem.y);
     const pulse = 1 + Math.sin(game.elapsed * 6 + gem.x * 0.03) * 0.08;
+    if(gem.redCrystal){
+      const crystalSize = clamp(gem.radius * 1.45, 15, 32);
+      drawCachedRadialGlow(ctx,0,0,crystalSize*1.7,[[0,"rgba(255,112,112,.72)"],[.36,"rgba(220,38,38,.42)"],[1,"rgba(127,29,29,0)"]],1,"lighter");
+      ctx.scale(pulse,pulse); ctx.rotate(Math.PI/4);
+      ctx.fillStyle="#7f1d1d"; ctx.strokeStyle="#fecaca"; ctx.lineWidth=1.5;
+      ctx.beginPath();ctx.moveTo(0,-crystalSize*.78);ctx.lineTo(crystalSize*.57,-crystalSize*.2);ctx.lineTo(crystalSize*.43,crystalSize*.65);ctx.lineTo(0,crystalSize*.92);ctx.lineTo(-crystalSize*.43,crystalSize*.65);ctx.lineTo(-crystalSize*.57,-crystalSize*.2);ctx.closePath();ctx.fill();ctx.stroke();
+      ctx.fillStyle="#ef4444";ctx.beginPath();ctx.moveTo(0,-crystalSize*.65);ctx.lineTo(crystalSize*.38,-crystalSize*.18);ctx.lineTo(0,crystalSize*.62);ctx.lineTo(-crystalSize*.16,crystalSize*.1);ctx.closePath();ctx.fill();
+      ctx.fillStyle="rgba(255,255,255,.75)";ctx.beginPath();ctx.moveTo(-crystalSize*.34,-crystalSize*.18);ctx.lineTo(0,-crystalSize*.65);ctx.lineTo(-crystalSize*.16,crystalSize*.1);ctx.closePath();ctx.fill();
+      ctx.restore();return;
+    }
     if(gem.runeCrystal){const runeSize=clamp(gem.radius*1.5,12,20);drawCachedRadialGlow(ctx,0,0,20,[[0,"rgba(255,210,255,.8)"],[.35,"rgba(217,70,239,.42)"],[1,"rgba(217,70,239,0)"]],1,"lighter");ctx.fillStyle="#d946ef";ctx.rotate(Math.PI/4);ctx.fillRect(-runeSize/2,-runeSize/2,runeSize,runeSize);ctx.fillStyle="#fff0ff";ctx.fillRect(-runeSize*.17,-runeSize*.17,runeSize*.34,runeSize*.34);ctx.restore();return;}
     ctx.scale(pulse, pulse);
     const icon = sprites.xpGem;
@@ -3036,7 +3086,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
       }
       fractalAudio.kill(enemy.type === "boss" || enemy.type === "elite");
       if (enemy.type !== "boss") {
-        game.gems.push({ x: enemy.x, y: enemy.y, value: enemy.xp, radius: 5 });
+        addGroundGem(game, enemy.x, enemy.y, enemy.xp);
         const fortuneBonus = [0, 0.10, 0.20, 0.30, 0.40, 0.50][Math.max(0, Math.min(5, purchasesRef.current.fortune))];
         const highestFieldRelicLevel = Math.max(purchasesRef.current.area, purchasesRef.current.experience, purchasesRef.current.projectile_range, purchasesRef.current.projectiles, purchasesRef.current.ricochet, purchasesRef.current.piercing, purchasesRef.current.chain_lightning, purchasesRef.current.crit_relic > 0 ? Math.max(2, purchasesRef.current.crit_relic) : 0);
         const baseRelicDropChance = [0, 0, 0.01, 0.03, 0.05][Math.max(0, Math.min(4, highestFieldRelicLevel))];
@@ -4641,7 +4691,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               if (projectileRelicsSupported && purchasesRef.current.piercing >= 1 && game.player.relicPiercing < 3) eligibleRelics.push("piercing");
               if (supportsChainLightningRelic(game.weaponId) && purchasesRef.current.chain_lightning >= 1 && game.player.relicChainLightning < 3) eligibleRelics.push("chain_lightning");
               if (purchasesRef.current.crit_relic >= 1 && game.player.specialCritStacks < MAX_SPECIAL_CRIT_STACKS) eligibleRelics.push("crit");
-              if (roll < 0.20) game.gems.push({ x: urn.x, y: urn.y, value: 15, radius: 8, runeCrystal: true });
+              if (roll < 0.20) addGroundGem(game, urn.x, urn.y, 15, true);
               else if (eligibleRelics.length && roll < 0.20 + relicChance) game.specialDrops.push({ x: urn.x, y: urn.y, kind: eligibleRelics[Math.floor(Math.random() * eligibleRelics.length)], radius: 13 });
               else if (roll < 0.20 + relicChance + foodChance) game.specialDrops.push({ x: urn.x, y: urn.y, kind: "food", radius: 14 });
               else if (roll < 0.20 + relicChance + foodChance + voidChance) game.specialDrops.push({ x: urn.x, y: urn.y, kind: "void", radius: 14 });
@@ -4669,11 +4719,13 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           if (d < 17) {
             fractalAudio.gem();
             game.player.xp += gem.value * game.player.xpMultiplier * (1 + purchasesRef.current.extra_xp * 0.10) * (alchemyActive ? 2 : 1);
-            game.crystalsCollected += (gem.fragmentCount ?? 1) * (gem.runeCrystal ? 5 : 1);
+            const fragmentCount = gem.fragmentCount ?? 1;
+            const runeCrystalCount = gem.runeCrystalCount ?? (gem.runeCrystal ? fragmentCount : 0);
+            game.crystalsCollected += fragmentCount + runeCrystalCount * 4;
             gem.value = 0;
           }
         });
-        compactInPlace(game.gems,(gem)=>gem.value>0&&distance(gem.x,gem.y,game.player.x,game.player.y)<Math.max(game.width,game.height)*1.6);
+        compactInPlace(game.gems,(gem)=>gem.value>0);
         game.specialDrops.forEach((drop) => {
           const d = distance(game.player.x, game.player.y, drop.x, drop.y);
           if (d < game.player.pickupRadius) { drop.x += ((game.player.x - drop.x) / Math.max(1, d)) * 280 * dt; drop.y += ((game.player.y - drop.y) / Math.max(1, d)) * 280 * dt; }
@@ -4727,18 +4779,6 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           });
           compactAlive(game.rings);
           if (game.rings.length > 20) game.rings.splice(0, game.rings.length - 20);
-        }
-        if (game.gems.length > 70) {
-          const nearby: Gem[] = [];
-          const clusters = new Map<string, Gem>();
-          for (const gem of game.gems) {
-            if (gem.runeCrystal || distance(gem.x, gem.y, game.player.x, game.player.y) < 240) { nearby.push(gem); continue; }
-            const cellX = Math.floor(gem.x / 180), cellY = Math.floor(gem.y / 180), key = cellX + ":" + cellY;
-            const cluster = clusters.get(key);
-            if (cluster) cluster.value += gem.value;
-            else clusters.set(key, { x: cellX * 180 + 90, y: cellY * 180 + 90, value: gem.value, radius: 7 });
-          }
-          game.gems = [...nearby, ...clusters.values()];
         }
         if (game.player.xp >= game.player.nextXp && !game.ended && eventRewardRemainingRef.current === 0) {
           game.player.xp -= game.player.nextXp; game.player.level += 1; game.highestLevel = Math.max(game.highestLevel, game.player.level); fractalAudio.levelUp(); game.player.nextXp = Math.floor(game.player.nextXp * 1.32 + 5);
