@@ -2610,6 +2610,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
   const [masterWeaponSelection, setMasterWeaponSelection] = useState<WeaponId | null>(null);
   const [selectedOmen, setSelectedOmen] = useState<OmenId | null>(null);
   const [runId, setRunId] = useState<string | null>(null);
+  const [forceRestartDialog, setForceRestartDialog] = useState(false);
   const [isMuted, setIsMuted] = useState(() => fractalAudio.isMuted());
   const [earnedFractals, setEarnedFractals] = useState<number | null>(null);
   const [rewardStatus, setRewardStatus] = useState<"pending" | "confirmed" | "error">("pending");
@@ -2705,7 +2706,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
     }
   };
 
-  const start = useCallback(async () => {
+  const start = useCallback(async (forceRestart = false) => {
     if (!desktopSupported || preparingArenaRef.current) return;
     preparingArenaRef.current = true;
     setPreparingArena(true);
@@ -2722,8 +2723,18 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         getWellSprite(140, true);
       }
       lastRunSettlementRef.current = null;
-      const { data: newRunId, error: runError } = await (supabase.rpc as any)("start_fractal_run", { _corruption: corruption, _weapon: selectedWeapon, _omen: corruption >= 4 && purchases.omen_archive ? selectedOmen : null, _mission_id: missionId });
-      if (runError) { toast.error(runError.message); return; }
+      const { data: newRunId, error: runError } = await (supabase.rpc as any)("start_fractal_run", { _corruption: corruption, _weapon: selectedWeapon, _omen: corruption >= 4 && purchases.omen_archive ? selectedOmen : null, _mission_id: missionId, _force_restart: forceRestart });
+      if (runError) {
+        if (!forceRestart && String(runError.message ?? "").includes("ACTIVE_FRACTAL_RUN")) {
+          setForceRestartDialog(true);
+          return;
+        }
+        if (runError.code === "PGRST202") toast.error("Atualize o banco com a migração de encerramento forçado de expedições.");
+        else toast.error(runError.message ?? "Não foi possível iniciar a expedição.");
+        return;
+      }
+      setForceRestartDialog(false);
+      if (forceRestart) toast.success("A expedição anterior foi encerrada. Sua nova jornada começa agora!");
       setRunId(newRunId);
       dashRequestRef.current = false;
       keysRef.current.clear();
@@ -5329,6 +5340,30 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                   )}
                 </div>
               )}
+              <Dialog open={forceRestartDialog} onOpenChange={(open) => { if (!preparingArena) setForceRestartDialog(open); }}>
+                <DialogContent className="max-w-md rounded-2xl border-amber-500/20">
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2 text-lg">
+                      <AlertTriangle className="h-5 w-5 text-amber-500" />
+                      Uma jornada ainda está aberta
+                    </DialogTitle>
+                    <DialogDescription className="pt-2 text-sm leading-relaxed">
+                      Encontramos uma expedição anterior que ainda aparece como ativa. Se você já terminou ou prefere começar de novo, podemos encerrá-la e abrir esta nova expedição.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="rounded-xl border border-amber-500/15 bg-amber-500/5 p-3 text-sm leading-relaxed text-muted-foreground">
+                    <strong className="text-foreground">Só para você saber:</strong> a expedição anterior será marcada como abandonada. O progresso daquela tentativa não será convertido em recompensa. Seus fractais, moedas, melhorias e demais dados permanentes permanecem intactos.
+                  </div>
+                  <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end">
+                    <Button type="button" variant="outline" disabled={preparingArena} onClick={() => setForceRestartDialog(false)}>
+                      Voltar
+                    </Button>
+                    <Button type="button" disabled={preparingArena} onClick={() => { setForceRestartDialog(false); void start(true); }} className="bg-amber-500 font-semibold text-black hover:bg-amber-400">
+                      {preparingArena ? "Preparando..." : "Encerrar anterior e iniciar"}
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
               <Dialog open={Boolean(shopInfo)} onOpenChange={(open) => { if (!open) setShopInfo(null); }}>
                 <DialogContent className="fractals-shop-info-dialog max-h-[82vh] overflow-y-auto sm:max-w-[520px]">
                   {shopInfo && <>
