@@ -1343,12 +1343,25 @@ function getBoomerangBladeSprite(evolved:boolean, returning:boolean):HTMLCanvasE
   weaponEffectSpriteCache.set(key,sprite);return sprite;
 }
 
-type ProjectileTrailVariant="anchor"|"chain"|"revolver"|"plasma"|"plasma-evolved"|"sentinel"|"sentinel-evolved"|"default";
+type ProjectileTrailVariant="anchor"|"chain"|"revolver"|"revolver-normal"|"plasma"|"plasma-evolved"|"sentinel"|"sentinel-evolved"|"default";
 function getProjectileTrailSprite(variant:ProjectileTrailVariant):HTMLCanvasElement {
   const key="projectile-trail-"+variant,cached=weaponEffectSpriteCache.get(key);if(cached)return cached;
-  const colors:Record<ProjectileTrailVariant,[string,string]>={anchor:["rgba(251,191,36,0)","rgba(255,241,179,.98)"],chain:["rgba(34,211,238,0)","rgba(207,250,254,.98)"],revolver:["rgba(168,85,247,0)","rgba(253,224,71,.98)"],plasma:["rgba(239,68,68,0)","rgba(252,165,165,.95)"],"plasma-evolved":["rgba(239,68,68,0)","rgba(216,180,254,.95)"],sentinel:["rgba(45,212,191,0)","rgba(204,251,241,.98)"],"sentinel-evolved":["rgba(127,29,29,0)","rgba(248,113,113,.98)"],default:["rgba(183,122,255,0)","rgba(226,196,255,.80)"]};
+  const colors:Record<ProjectileTrailVariant,[string,string]>={anchor:["rgba(251,191,36,0)","rgba(255,241,179,.98)"],chain:["rgba(34,211,238,0)","rgba(207,250,254,.98)"],revolver:["rgba(168,85,247,0)","rgba(253,224,71,.98)"],"revolver-normal":["rgba(146,64,14,0)","rgba(251,191,36,.98)"],plasma:["rgba(239,68,68,0)","rgba(252,165,165,.95)"],"plasma-evolved":["rgba(239,68,68,0)","rgba(216,180,254,.95)"],sentinel:["rgba(45,212,191,0)","rgba(204,251,241,.98)"],"sentinel-evolved":["rgba(127,29,29,0)","rgba(248,113,113,.98)"],default:["rgba(183,122,255,0)","rgba(226,196,255,.80)"]};
   const sprite=document.createElement("canvas");sprite.width=128;sprite.height=16;const c=sprite.getContext("2d");if(!c)return sprite;
   const g=c.createLinearGradient(0,0,128,0);g.addColorStop(0,colors[variant][0]);g.addColorStop(1,colors[variant][1]);c.fillStyle=g;c.fillRect(0,4,128,8);
+  weaponEffectSpriteCache.set(key,sprite);return sprite;
+}
+
+function getRevolverMuzzleFlashSprite():HTMLCanvasElement {
+  const key="revolver-muzzle-flash",cached=weaponEffectSpriteCache.get(key);if(cached)return cached;
+  const sprite=document.createElement("canvas");sprite.width=48;sprite.height=32;
+  const c=sprite.getContext("2d");if(!c)return sprite;
+  const glow=c.createRadialGradient(24,16,1,24,16,15);
+  glow.addColorStop(0,"rgba(255,255,230,1)");glow.addColorStop(.25,"rgba(253,224,71,.95)");
+  glow.addColorStop(.62,"rgba(245,158,11,.58)");glow.addColorStop(1,"rgba(245,158,11,0)");
+  c.fillStyle=glow;c.fillRect(0,0,48,32);c.fillStyle="#fff7cc";
+  c.beginPath();c.moveTo(46,16);c.lineTo(29,10);c.lineTo(33,16);c.lineTo(29,22);c.closePath();c.fill();
+  c.strokeStyle="rgba(255,247,204,.95)";c.lineWidth=2;c.beginPath();c.moveTo(12,16);c.lineTo(33,16);c.stroke();
   weaponEffectSpriteCache.set(key,sprite);return sprite;
 }
 
@@ -1482,12 +1495,11 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     drawCachedRadialGlow(ctx,0,0,event.radius,[[0,"rgba(174,121,255,.12)"],[.72,"rgba(119,77,180,.07)"],[1,"rgba(119,77,180,0)"]],1,"source-over");
     ctx.strokeStyle = "rgba(206,166,255,.78)";
     ctx.lineWidth = 3;
-    ctx.setLineDash([12, 8]);
-    ctx.lineDashOffset = -game.elapsed * 22;
+    if(quality==="high"){ctx.setLineDash([12,8]);ctx.lineDashOffset=-game.elapsed*22;}
     ctx.beginPath();
     ctx.arc(0, 0, event.radius, 0, Math.PI * 2);
     ctx.stroke();
-    ctx.setLineDash([]);
+    if(quality==="high")ctx.setLineDash([]);
     ctx.strokeStyle = "rgba(241,213,255,.4)";
     ctx.lineWidth = 1;
     ctx.beginPath();
@@ -1745,7 +1757,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     const tailX = shot.x - shot.vx / speed * trailLength;
     const tailY = shot.y - shot.vy / speed * trailLength;
     const trailWidth = shot.isAnchorBurst?4:shot.isChainLightning?3.5:shot.kind==="revolver_empowered"?4.5:shot.kind==="plasma_core"?6:shot.kind==="sentinel_beam"?3.2:3.5;
-    const trailVariant:ProjectileTrailVariant=shot.isAnchorBurst?"anchor":shot.isChainLightning?"chain":shot.kind==="revolver_empowered"?"revolver":shot.kind==="plasma_core"?(game.evolved?"plasma-evolved":"plasma"):shot.kind==="sentinel_beam"?(game.evolved?"sentinel-evolved":"sentinel"):"default";
+    const trailVariant:ProjectileTrailVariant=shot.isAnchorBurst?"anchor":shot.isChainLightning?"chain":shot.kind==="revolver_empowered"?"revolver":game.weaponId==="void_revolver"&&shot.kind==="bullet"?"revolver-normal":shot.kind==="plasma_core"?(game.evolved?"plasma-evolved":"plasma"):shot.kind==="sentinel_beam"?(game.evolved?"sentinel-evolved":"sentinel"):"default";
     ctx.save();ctx.globalAlpha=lifeRatio;
     if(lowQuality){ctx.lineCap="round";ctx.strokeStyle=shot.isAnchorBurst?"#fff1b3":shot.isChainLightning?"#a5f3fc":shot.kind==="revolver_empowered"?"#fef08a":shot.kind==="plasma_core"?(game.evolved?"#d8b4fe":"#fca5a5"):shot.kind==="sentinel_beam"?(game.evolved?"#f87171":"#ccfbf1"):"#e2c4ff";ctx.lineWidth=trailWidth;ctx.beginPath();ctx.moveTo(tailX,tailY);ctx.lineTo(shot.x,shot.y);ctx.stroke();}
     else{ctx.translate(shot.x,shot.y);ctx.rotate(Math.atan2(shot.vy,shot.vx));ctx.drawImage(getProjectileTrailSprite(trailVariant),-trailLength,-trailWidth/2,trailLength,trailWidth);}
@@ -1776,12 +1788,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
       const pulse = 1 + Math.sin(game.elapsed * 18) * 0.12;
       const r = coreRadius * pulse;
       if (game.evolved) {
-        const halo = ctx.createRadialGradient(0, 0, r * 0.3, 0, 0, r * 1.8);
-        halo.addColorStop(0, "rgba(232,121,249,0.9)");
-        halo.addColorStop(0.5, "rgba(147,51,234,0.4)");
-        halo.addColorStop(1, "rgba(88,28,135,0)");
-        ctx.fillStyle = halo;
-        ctx.beginPath(); ctx.arc(0, 0, r * 1.8, 0, Math.PI * 2); ctx.fill();
+        drawCachedRadialGlow(ctx,0,0,r*1.8,[[0,"rgba(232,121,249,0.9)"],[.5,"rgba(147,51,234,0.4)"],[1,"rgba(88,28,135,0)"]],1,"source-over");
         ctx.fillStyle = "#05000a";
         ctx.beginPath(); ctx.arc(0, 0, r * 0.85, 0, Math.PI * 2); ctx.fill();
         ctx.strokeStyle = "#f0abfc"; ctx.lineWidth = 2.2; ctx.stroke();
@@ -1789,13 +1796,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
         ctx.strokeStyle = "rgba(250,232,255,0.8)"; ctx.lineWidth = 1.4;
         ctx.strokeRect(-r * 0.6, -r * 0.6, r * 1.2, r * 1.2);
       } else {
-        const grad = ctx.createRadialGradient(0, 0, 2, 0, 0, r);
-        grad.addColorStop(0, "#ffffff");
-        grad.addColorStop(0.35, "#fde047");
-        grad.addColorStop(0.75, "#ea580c");
-        grad.addColorStop(1, "#b91c1c");
-        ctx.fillStyle = grad;
-        ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+        drawCachedRadialGlow(ctx,0,0,r,[[0,"#ffffff"],[.35,"#fde047"],[.75,"#ea580c"],[1,"#b91c1c"]],1,"source-over");
         ctx.strokeStyle = "#fef08a"; ctx.lineWidth = 1.8;
         ctx.beginPath(); ctx.arc(0, 0, r * 0.52, 0, Math.PI * 2); ctx.stroke();
       }
@@ -1820,11 +1821,12 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
       ctx.fillStyle = shardColor; ctx.beginPath(); ctx.moveTo(10, 0); ctx.lineTo(-4, -2); ctx.lineTo(-7, 0); ctx.lineTo(-4, 2); ctx.closePath(); ctx.fill();
     } else if (shot.kind === "bullet") {
       const ev = game.evolved;
-      ctx.fillStyle = ev ? "#f0abfc" : "#e9d5ff";
+      const isRevolverShot = game.weaponId === "void_revolver";
+      ctx.fillStyle = isRevolverShot ? "#f59e0b" : ev ? "#f0abfc" : "#e9d5ff";
       ctx.beginPath();
       ctx.moveTo(14, 0); ctx.lineTo(-7, -4); ctx.lineTo(-3, 0); ctx.lineTo(-7, 4);
       ctx.closePath(); ctx.fill();
-      ctx.fillStyle = ev ? "#fdf4ff" : "#fffbeb";
+      ctx.fillStyle = isRevolverShot ? "#fff7cc" : ev ? "#fdf4ff" : "#fffbeb";
       ctx.beginPath();
       ctx.moveTo(9, 0); ctx.lineTo(1, -1.8); ctx.lineTo(-3, 0); ctx.lineTo(1, 1.8);
       ctx.closePath(); ctx.fill();
@@ -1945,9 +1947,10 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
       const chainColor = game.evolved ? "#fb7185" : "#d8b4fe";
       const chainDark = game.evolved ? "#7f1d1d" : "#4c1d95";
       ctx.globalAlpha = 1;
-      for (let pass = 0; pass < 2; pass++) {
-        ctx.strokeStyle = pass === 0 ? chainDark : chainColor;
-        ctx.lineWidth = pass === 0 ? 4 : 1.6;
+      const chainPasses=quality==="high"?2:1;
+      for(let pass=0;pass<chainPasses;pass++){
+        ctx.strokeStyle=quality==="high"?(pass===0?chainDark:chainColor):chainColor;
+        ctx.lineWidth=quality==="high"?(pass===0?4:1.6):quality==="low"?2.2:2.8;
         ctx.beginPath();
         for (let i = 0; i < chainList.length; i++) {
           const c = chainList[i];
@@ -1957,6 +1960,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
           const len = Math.sqrt(dx * dx + dy * dy);
           if (len < 2) continue;
           const ux = dx / len, uy = dy / len, nx = -uy * 2.6, ny = ux * 2.6;
+          if(quality!=="high"){ctx.moveTo(c.sx,c.sy);ctx.lineTo(c.sx+dx,c.sy+dy);continue;}
           const links = Math.min(30, Math.floor(len / 10));
           for (let k = 0; k < links; k++) {
             const cx = c.sx + ux * (k * 10 + 5), cy = c.sy + uy * (k * 10 + 5);
@@ -1999,37 +2003,29 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     ctx.globalAlpha = alpha * 0.72;
     ctx.strokeStyle = "#c4b5fd"; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.arc(vortex.x, vortex.y, vortex.radius * (0.92 + Math.sin(game.elapsed * 12) * 0.04), 0, Math.PI * 2); ctx.stroke();
-    ctx.strokeStyle = "#8b5cf6"; ctx.lineWidth = 4; ctx.setLineDash([8, 7]);
+    ctx.strokeStyle = "#8b5cf6"; ctx.lineWidth = 4; if(quality==="high")ctx.setLineDash([8,7]);
     ctx.beginPath(); ctx.arc(vortex.x, vortex.y, vortex.radius * 0.56, game.elapsed * 2, game.elapsed * 2 + Math.PI * 1.7); ctx.stroke();
-    ctx.setLineDash([]);
-    const glow = ctx.createRadialGradient(vortex.x, vortex.y, 2, vortex.x, vortex.y, vortex.radius * 0.4);
-    glow.addColorStop(0, "rgba(221,214,254,.35)"); glow.addColorStop(1, "rgba(139,92,246,0)");
-    ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(vortex.x, vortex.y, vortex.radius * 0.4, 0, Math.PI * 2); ctx.fill();
+    if(quality==="high")ctx.setLineDash([]);
+    drawCachedRadialGlow(ctx,vortex.x,vortex.y,vortex.radius*.4,[[0,"rgba(221,214,254,.35)"],[1,"rgba(139,92,246,0)"]],1,"source-over");
     ctx.restore();
   });
   if (game.alchemyCircle) {
     ctx.save();
     ctx.globalAlpha = 0.18 + 0.12 * (game.alchemyCircle.life / game.alchemyCircle.maxLife);
-    const gradient = ctx.createRadialGradient(game.alchemyCircle.x, game.alchemyCircle.y, 8, game.alchemyCircle.x, game.alchemyCircle.y, game.alchemyCircle.radius);
-    gradient.addColorStop(0, "rgba(52,211,153,.22)"); gradient.addColorStop(0.82, "rgba(52,211,153,.09)"); gradient.addColorStop(1, "rgba(52,211,153,0)");
-    ctx.fillStyle = gradient; ctx.beginPath(); ctx.arc(game.alchemyCircle.x, game.alchemyCircle.y, game.alchemyCircle.radius, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = "rgba(110,231,183,.72)"; ctx.lineWidth = 2; ctx.setLineDash([9, 7]);
+    drawCachedRadialGlow(ctx,game.alchemyCircle.x,game.alchemyCircle.y,game.alchemyCircle.radius,[[0,"rgba(52,211,153,.22)"],[.82,"rgba(52,211,153,.09)"],[1,"rgba(52,211,153,0)"]],1,"source-over");
+    ctx.strokeStyle = "rgba(110,231,183,.72)"; ctx.lineWidth = 2; if(quality==="high")ctx.setLineDash([9,7]);
     ctx.beginPath(); ctx.arc(game.alchemyCircle.x, game.alchemyCircle.y, game.alchemyCircle.radius, 0, Math.PI * 2); ctx.stroke();
-    ctx.setLineDash([]);
+    if(quality==="high")ctx.setLineDash([]);
     ctx.restore();
   }
   game.sentinelTotems.forEach((totem) => {
     if (totem.x < cameraX - 65 || totem.x > cameraX + viewWidth + 65 || totem.y < cameraY - 85 || totem.y > cameraY + viewHeight + 45) return;
     ctx.save();
     ctx.translate(totem.x, totem.y);
-    const pulse = 1 + Math.sin(game.elapsed * 4 + totem.id) * 0.08;
-    const aura = ctx.createRadialGradient(0, -10, 3, 0, -10, 48 * pulse);
-    const ev = game.evolved;
-    aura.addColorStop(0, ev ? "rgba(220,38,38,.38)" : "rgba(34,211,238,.34)");
-    aura.addColorStop(0.55, ev ? "rgba(127,29,29,.16)" : "rgba(14,165,233,.14)");
-    aura.addColorStop(1, "rgba(14,165,233,0)");
-    ctx.fillStyle = aura;
-    ctx.beginPath(); ctx.arc(0, -10, 48 * pulse, 0, Math.PI * 2); ctx.fill();
+    const pulse=lowQuality?1:1+Math.sin(game.elapsed*4+totem.id)*(mediumQuality?.035:.08);
+    const ev=game.evolved;
+    const totemStops=ev?[[0,"rgba(220,38,38,.38)"],[.55,"rgba(127,29,29,.16)"],[1,"rgba(14,165,233,0)"]] as const:[[0,"rgba(34,211,238,.34)"],[.55,"rgba(14,165,233,.14)"],[1,"rgba(14,165,233,0)"]] as const;
+    drawCachedRadialGlow(ctx,0,-10,48*pulse,totemStops,1,"source-over");
     ctx.fillStyle = "rgba(0,0,0,.48)";
     ctx.beginPath(); ctx.ellipse(0, 10, 22, 8, 0, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = ev ? "#2a0707" : "#0b2633"; ctx.strokeStyle = ev ? "#ef4444" : "#67e8f9"; ctx.lineWidth = 2;
@@ -2063,13 +2059,11 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     const hover = enemy.type === "wraith" || enemy.type === "elite" ? secondaryWave * 1.7 : Math.abs(distortion) * 0.55;
     ctx.translate(enemy.x, enemy.y + hover);
     ctx.transform(1 + distortion * 0.035, secondaryWave * 0.028, Math.sin(motionPhase * 0.43) * 0.022, 1 - distortion * 0.03, 0, 0);
-    if(enemy.isExecutioner){const aura=ctx.createRadialGradient(0,0,8,0,0,76);aura.addColorStop(0,"rgba(58,17,83,.62)");aura.addColorStop(.55,"rgba(104,38,143,.25)");aura.addColorStop(1,"rgba(104,38,143,0)");ctx.fillStyle=aura;ctx.beginPath();ctx.arc(0,0,76,0,Math.PI*2);ctx.fill();ctx.strokeStyle="rgba(197,142,255,.8)";ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,0,38+Math.sin(game.elapsed*7)*4,0,Math.PI*2);ctx.stroke();ctx.strokeStyle="#d8c4ff";ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(14,-8);ctx.lineTo(42,-40);ctx.stroke();ctx.fillStyle="#e9d5ff";ctx.beginPath();ctx.moveTo(42,-40);ctx.lineTo(49,-55);ctx.lineTo(37,-45);ctx.closePath();ctx.fill();}
+    if(enemy.isExecutioner){drawCachedRadialGlow(ctx,0,0,76,[[0,"rgba(58,17,83,.62)"],[.55,"rgba(104,38,143,.25)"],[1,"rgba(104,38,143,0)"]],1,"source-over");ctx.strokeStyle="rgba(197,142,255,.8)";ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,0,38+Math.sin(game.elapsed*7)*4,0,Math.PI*2);ctx.stroke();ctx.strokeStyle="#d8c4ff";ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(14,-8);ctx.lineTo(42,-40);ctx.stroke();ctx.fillStyle="#e9d5ff";ctx.beginPath();ctx.moveTo(42,-40);ctx.lineTo(49,-55);ctx.lineTo(37,-45);ctx.closePath();ctx.fill();}
     const bossInFury = enemy.type === "boss" && enemy.hp <= enemy.maxHp * 0.30;
     if (bossInFury) {
-      const firePulse = 1 + Math.sin(game.elapsed * 17) * 0.08;
-      const fireAura = ctx.createRadialGradient(0, 0, 12, 0, 0, 78 * firePulse);
-      fireAura.addColorStop(0, "rgba(255,75,65,.28)"); fireAura.addColorStop(.55, "rgba(151,18,42,.24)"); fireAura.addColorStop(1, "rgba(151,18,42,0)");
-      ctx.fillStyle = fireAura; ctx.beginPath(); ctx.arc(0, 0, 78 * firePulse, 0, Math.PI * 2); ctx.fill();
+      const firePulse=lowQuality?1:1+Math.sin(game.elapsed*17)*(mediumQuality?.035:.08);
+      drawCachedRadialGlow(ctx,0,0,78*firePulse,[[0,"rgba(255,75,65,.28)"],[.55,"rgba(151,18,42,.24)"],[1,"rgba(151,18,42,0)"]],1,"source-over");
       for (let flame = 0; flame < 6; flame++) { const angle = game.elapsed * 2.8 + flame * Math.PI / 3; const radius = 49 + Math.sin(game.elapsed * 13 + flame) * 8; ctx.fillStyle = "rgba(255,75,55,.72)"; ctx.beginPath(); ctx.arc(Math.cos(angle) * radius, Math.sin(angle) * radius, 3 + (flame % 2), 0, Math.PI * 2); ctx.fill(); }
     }
     if (enemy.type === "charger" && enemy.dashTime > 0) {
@@ -2378,6 +2372,14 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     ctx.fillStyle="#d9c4ff";ctx.fillRect(-4,-7,2.5,2);ctx.fillRect(2,-7,2.5,2);
     ctx.strokeStyle="#d7b5ff";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(8,-1);ctx.lineTo(17,-12);ctx.stroke();
     ctx.fillStyle="#d5a7ff";ctx.shadowColor="#bd7cff";ctx.shadowBlur = 0;ctx.beginPath();ctx.arc(18,-13,3.5,0,Math.PI*2);ctx.fill();
+  }
+  if(game.weaponId==="void_revolver"){
+    const cycle=(game.revolverShotCount??0)%6,loaded=cycle===0?6:6-cycle;
+    ctx.save();ctx.translate(30,11);ctx.fillStyle="rgba(8,6,15,.76)";ctx.beginPath();ctx.arc(0,0,12,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle="rgba(251,191,36,.65)";ctx.lineWidth=1;ctx.stroke();
+    for(let round=0;round<6;round++){const angle=-Math.PI/2+round*Math.PI/3;ctx.fillStyle=round<loaded?"#fbbf24":"rgba(148,163,184,.45)";ctx.beginPath();ctx.arc(Math.cos(angle)*7,Math.sin(angle)*7,2.3,0,Math.PI*2);ctx.fill();}
+    ctx.font="900 7px Inter,ui-sans-serif,system-ui,sans-serif";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillStyle="#fff1b3";ctx.fillText(loaded+"/6",0,19);ctx.restore();
+    if(player.castTimer>0){const aim=PLAYER_DIRECTION_VECTORS[player.castFacing]??PLAYER_DIRECTION_VECTORS[0];ctx.save();ctx.translate(aim.x*25,aim.y*21-3);ctx.rotate(Math.atan2(aim.y,aim.x));ctx.globalAlpha=clamp(player.castTimer/.24,0,1);const flash=getRevolverMuzzleFlashSprite();ctx.drawImage(flash,-17,-16,34,32);ctx.restore();}
   }
   ctx.shadowBlur = 0; ctx.globalAlpha=1;
   if (showPlayerHp) {
@@ -3316,7 +3318,9 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             const distSq = dx * dx + dy * dy;
             if ((game.weaponId === "void_revolver" || game.weaponId === "fractal_boomerang" || game.weaponId === "rift_seeder" || game.weaponId === "blood_spear") && distSq > maxRangeSq) continue;
             const priority = enemy.type === "boss" ? 120 : enemy.type === "elite" ? 45 : enemy.type === "charger" ? 20 : 0;
-            const score = Math.sqrt(distSq) - priority;
+            if(game.weaponId==="unstable_core"&&distSq>Math.pow(320*game.player.projectileRangeMultiplier,2))continue;
+            const enemyDistance=Math.sqrt(distSq);
+            const score=game.weaponId==="unstable_core"?-enemyDistance-priority:enemyDistance-priority;
             if (score < bestScore) { bestScore = score; target = enemy; }
           }
           if (target) {
@@ -3349,8 +3353,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             game.player.castTimer = 0.24;
             game.shotTimer = game.player.fireRate * 0.95;
           } else if (game.weaponId === "unstable_core") {
-            const speed = 100 * game.player.projectileRangeMultiplier;
-            const life = game.player.projectileLife * 0.65;
+            const speed = 190 * game.player.projectileRangeMultiplier;
+            const life = Math.max(1.05,game.player.projectileLife*0.65);
             const coreCount = 1 + Math.min(MAX_EXTRA_PROJECTILES, game.player.projectileStacks);
             for (let index = 0; index < coreCount; index++) {
               const angleOffset = (index - (coreCount - 1) / 2) * 0.18;
@@ -5333,10 +5337,10 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
     <div className="fractals-pause-speed mt-3 rounded-2xl p-3"><div className="mb-2 flex items-center gap-2 text-xs font-semibold text-white/75"><Gauge className="h-4 w-4"/> Velocidade da expedição</div><div className="grid grid-cols-4 gap-2">{([1,2,3] as const).map((speed) => <Button key={speed} size="sm" variant={speedMultiplier===speed?"default":"outline"} disabled={!isMaster && (speed===2 ? !purchases.speed_2x : speed===3 ? !purchases.speed_3x : false)} className={!isMaster && speed>1?"border-white/10 opacity-45":""} onClick={()=>setSpeedMultiplier(speed)}>{speed}x{!isMaster && (speed===2 ? !purchases.speed_2x : speed===3 ? !purchases.speed_3x : false)?" 🔒":""}</Button>)}</div>{!isMaster && <p className="mt-2 text-[10px] text-white/45">Desbloqueie 2x e 3x na loja de fractais.</p>}{isMaster && <p className="mt-2 text-[10px] text-emerald-200/70">Acesso de mestre: todas as velocidades liberadas para testes.</p>}</div>
     <div className="fractals-pause-speed mt-3 rounded-2xl p-3">
       <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-white/75"><SlidersHorizontal className="h-4 w-4"/> Qualidade gráfica</div>
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-4 gap-2">
         {(["auto","low","medium","high"] as const).map((quality)=><Button key={quality} size="sm" variant={graphicsQuality===quality?"default":"outline"} onClick={()=>setGraphicsQuality(quality)}>{quality==="auto"?"Auto":quality==="low"?"Baixa":quality==="medium"?"Média":"Alta"}</Button>)}
       </div>
-      <p className="mt-2 text-[10px] text-white/45">{graphicsQuality==="auto"?"Detecta CPUs com até 4 núcleos e ajusta a resolução entre 0,55× e 1,0× conforme o FPS.":graphicsQuality==="high"?"Efeitos completos, até 200 partículas, sombras e tremor de tela.":graphicsQuality==="medium"?"Até 75 partículas e efeitos intermediários para equilibrar nitidez e fluidez.":"Até 35 partículas, sem tremor ou pulsos pesados; resolução reduzida para priorizar desempenho."}</p>
+      <p className="mt-2 text-[10px] text-white/45">{graphicsQuality==="auto"?"Detecta CPUs com até 4 núcleos; ajusta a resolução entre 0,55× e 0,88× nesses equipamentos, conforme o FPS (até 1,0× nos demais).":graphicsQuality==="high"?"Efeitos completos, até 200 partículas e tremor de tela.":graphicsQuality==="medium"?"Até 75 partículas e efeitos intermediários para equilibrar nitidez e fluidez.":"Até 35 partículas, sem tremor ou pulsos pesados; resolução reduzida para priorizar desempenho."}</p>
     </div>
     {isMaster && <Button className="mt-3 h-12 w-full border border-amber-200/50 bg-gradient-to-r from-amber-300 via-emerald-300 to-emerald-500 font-black tracking-wide text-[#08130e] shadow-[0_0_28px_rgba(52,211,153,.22)] hover:brightness-110" onClick={() => { setMasterGiftListOpen(false); setPausePanel("master"); }}><Crown className="mr-2 h-5 w-5"/> Painel do Mestre</Button>}
     <Button className="fractals-pause-resume mt-3 h-11 w-full font-bold" onClick={() => {setPausePanel("main");setPaused(false)}}><Play className="mr-2 h-4 w-4"/> Retomar expedição</Button>
