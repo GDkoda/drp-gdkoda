@@ -87,7 +87,7 @@ function nextEnemy(g: Game): Game {
   const index = g.enemyIndex + 1;
   if (index >= ENEMIES.length) return { ...g, phase: "victory" };
   const enemy = ENEMIES[index];
-  const next = { ...g, phase: "battle" as Phase, enemyIndex: index, enemyHp: enemy.hp, enemyMaxHp: enemy.hp, enemyName: enemy.name, turn: 1, mana: 3, manaSpent: 0, block: 0, bleed: 0, intent: makeIntent(index, 1), draw: shuffle([...g.draw, ...g.discard]), discard: [], hand: [], rewardChoices: [], hannaUsed: false, skullUsed: false, lastPlayedCard: null };
+  const next = { ...g, phase: "battle" as Phase, enemyIndex: index, enemyHp: enemy.hp, enemyMaxHp: enemy.hp, enemyName: enemy.name, turn: 1, mana: 3, manaSpent: 0, block: 0, bleed: 0, corruptionUsed: 0, dragonUnlocked: false, intent: makeIntent(index, 1), draw: shuffle([...g.draw, ...g.discard]), discard: [], hand: [], rewardChoices: [], hannaUsed: false, skullUsed: false, lastPlayedCard: null };
   return drawCards(next, 5);
 }
 function cardColor(id: CardId) {
@@ -126,7 +126,7 @@ export function BloodCardGame() {
     if (id === "last_second") { g.block += 12; g = drawCards(g, 1); }
     if (id === "corruption") { g = destroyLife(g, 2); g.corruptionUsed += 1; if (g.corruptionUsed >= 6 && !g.dragonUnlocked) { g.dragonUnlocked = true; g.hand.push("mad_draconate"); g = addLog(g, "SEGREDO DESBLOQUEADO: Draconato Louco!"); } }
     if (id === "mad_draconate") { const damage = g.manaSpent * 10; g.enemyHp -= damage; g = addLog(g, `O Draconato Louco libera ${damage} de dano em área!`); }
-    g.discard.push(id === "mad_draconate" ? "strike" : id);
+    if (id !== "corruption" && id !== "mad_draconate") g.discard.push(id);
     g = addLog(g, `${card.name}: ${id === "mad_draconate" ? g.manaSpent * 10 + " de dano em área" : card.text}`);
     if (g.enemyHp <= 0) {
       g.enemyHp = 0; g.kills += 1;
