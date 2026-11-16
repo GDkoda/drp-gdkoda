@@ -15,6 +15,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedBauRouteImport } from './routes/_authenticated/bau'
 import { Route as AuthenticatedGrimorioRouteImport } from './routes/_authenticated/grimorio'
 import { Route as AuthenticatedJogosRouteImport } from './routes/_authenticated/jogos'
+import { Route as AuthenticatedCartasRouteImport } from './routes/_authenticated/cartas'
 import { Route as AuthenticatedLojaRouteImport } from './routes/_authenticated/loja'
 import { Route as AuthenticatedLoreRouteImport } from './routes/_authenticated/lore'
 import { Route as AuthenticatedMestreRouteImport } from './routes/_authenticated/mestre'
@@ -49,6 +50,11 @@ const AuthenticatedGrimorioRoute = AuthenticatedGrimorioRouteImport.update({
 const AuthenticatedJogosRoute = AuthenticatedJogosRouteImport.update({
   id: '/jogos',
   path: '/jogos',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedCartasRoute = AuthenticatedCartasRouteImport.update({
+  id: '/cartas',
+  path: '/cartas',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedLojaRoute = AuthenticatedLojaRouteImport.update({
@@ -87,6 +93,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/bau': typeof AuthenticatedBauRoute
+  '/cartas': typeof AuthenticatedCartasRoute
   '/grimorio': typeof AuthenticatedGrimorioRoute
   '/jogos': typeof AuthenticatedJogosRoute
   '/loja': typeof AuthenticatedLojaRoute
@@ -100,6 +107,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/bau': typeof AuthenticatedBauRoute
+  '/cartas': typeof AuthenticatedCartasRoute
   '/grimorio': typeof AuthenticatedGrimorioRoute
   '/jogos': typeof AuthenticatedJogosRoute
   '/loja': typeof AuthenticatedLojaRoute
@@ -115,6 +123,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/bau': typeof AuthenticatedBauRoute
+  '/_authenticated/cartas': typeof AuthenticatedCartasRoute
   '/_authenticated/grimorio': typeof AuthenticatedGrimorioRoute
   '/_authenticated/jogos': typeof AuthenticatedJogosRoute
   '/_authenticated/loja': typeof AuthenticatedLojaRoute
@@ -130,6 +139,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/bau'
+    | '/cartas'
     | '/grimorio'
     | '/jogos'
     | '/loja'
@@ -157,6 +167,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/_authenticated/bau'
+    | '/_authenticated/cartas'
     | '/_authenticated/grimorio'
     | '/_authenticated/jogos'
     | '/_authenticated/loja'
@@ -201,6 +212,13 @@ declare module '@tanstack/react-router' {
       path: '/bau'
       fullPath: '/bau'
       preLoaderRoute: typeof AuthenticatedBauRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/cartas': {
+      id: '/_authenticated/cartas'
+      path: '/cartas'
+      fullPath: '/cartas'
+      preLoaderRoute: typeof AuthenticatedCartasRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/grimorio': {
@@ -266,6 +284,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedBauRoute: typeof AuthenticatedBauRoute
   AuthenticatedGrimorioRoute: typeof AuthenticatedGrimorioRoute
   AuthenticatedJogosRoute: typeof AuthenticatedJogosRoute
+  AuthenticatedCartasRoute: typeof AuthenticatedCartasRoute
   AuthenticatedLojaRoute: typeof AuthenticatedLojaRoute
   AuthenticatedLoreRoute: typeof AuthenticatedLoreRoute
   AuthenticatedMestreRoute: typeof AuthenticatedMestreRoute
@@ -278,6 +297,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedBauRoute: AuthenticatedBauRoute,
   AuthenticatedGrimorioRoute: AuthenticatedGrimorioRoute,
   AuthenticatedJogosRoute: AuthenticatedJogosRoute,
+  AuthenticatedCartasRoute: AuthenticatedCartasRoute,
   AuthenticatedLojaRoute: AuthenticatedLojaRoute,
   AuthenticatedLoreRoute: AuthenticatedLoreRoute,
   AuthenticatedMestreRoute: AuthenticatedMestreRoute,
