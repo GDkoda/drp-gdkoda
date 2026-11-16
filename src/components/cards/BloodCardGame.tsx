@@ -53,16 +53,22 @@ const ENCOUNTERS: { name: string; hp: number; attack: number; kind: string }[][]
     { name: "Carniçal das Fendas", hp: 29, attack: 5, kind: "Ghoul" },
     { name: "Larvas do Véu", hp: 15, attack: 3, kind: "Swarm" },
     { name: "Cão de Cinzas", hp: 24, attack: 4, kind: "Hound" },
+    { name: "Viúva do Breu", hp: 21, attack: 5, kind: "Widow" },
+    { name: "Coveiro Errante", hp: 34, attack: 4, kind: "Gravedigger" },
   ],
   [
     { name: "Cavaleiro sem Rosto", hp: 43, attack: 7, kind: "Knight" },
     { name: "Monge Oco", hp: 31, attack: 5, kind: "Cultist" },
     { name: "Aracnídeo Rubro", hp: 27, attack: 6, kind: "Spider" },
+    { name: "Carrilhão Profano", hp: 38, attack: 6, kind: "Bell" },
+    { name: "Dama do Véu", hp: 35, attack: 8, kind: "Veil" },
   ],
   [
     { name: "Arauto da Ruína", hp: 60, attack: 9, kind: "Herald" },
     { name: "Sentinela Partida", hp: 44, attack: 7, kind: "Sentinel" },
     { name: "Devorador de Ecos", hp: 51, attack: 8, kind: "Devourer" },
+    { name: "Arauto das Mil Vozes", hp: 56, attack: 9, kind: "Voices" },
+    { name: "Carrasco da Catedral", hp: 66, attack: 8, kind: "Executioner" },
   ],
 ];
 const ZONES = ["Campos das Cinzas", "Catedral do Sangue", "Abismo Sem Lua"];
@@ -135,7 +141,7 @@ function startBattle(g: Game, node: NodeType): Game {
     ? [newEnemy("A Morte", 125, 9, "death", true)]
     : node === "elite"
       ? [newEnemy(["Carrasco de Cinzas", "Bispo Rubro", "Arauto Corrompido"][tier], 70 + tier * 16, 9 + tier * 2, "elite")]
-      : ENCOUNTERS[tier].slice(0, node === "monster" && g.step % 2 === 0 ? 2 : 1).map((e, i) => newEnemy(e.name, e.hp + tier * 15, e.attack + tier * 2, e.kind + i));
+      : shuffle(ENCOUNTERS[tier]).slice(0, node === "monster" && g.step % 2 === 0 ? 2 : 1).map((e, i) => newEnemy(e.name, e.hp + tier * 15, e.attack + tier * 2, e.kind + i));
   let next: Game = { ...g, phase: "battle", node, enemies: enemies.map(e => intentFor(e, 1)), hand: [], mana: 3, manaSpent: 0, block: 0, turn: 1, corruptionUsed: 0, dragonUnlocked: false, hannaUsed: false, skullUsed: false, bleed: 0 };
   next = drawCards(next, 5);
   return log(next, node === "boss" ? "A Morte alcançou você. Não existe mais fuga." : node === "elite" ? "Uma presença poderosa bloqueia o caminho." : "As criaturas avançam!");
@@ -185,20 +191,20 @@ function CardArt({ id, compact = false }: { id: CardId; compact?: boolean }) {
 }
 function CardFace({ id, onClick, disabled, selected = false }: { id: CardId; onClick?: () => void; disabled?: boolean; selected?: boolean }) {
   const c = CARDS[id];
-  const content = <div className={`relative flex h-full min-h-[245px] flex-col overflow-hidden rounded-[18px] border-2 bg-gradient-to-b p-3 shadow-[0_16px_36px_rgba(0,0,0,.45)] transition-all duration-200 ${cardTheme(id)} ${selected ? "ring-2 ring-amber-200 ring-offset-2 ring-offset-[#0b0810]" : ""} ${disabled ? "opacity-45 grayscale-[.55]" : "hover:-translate-y-2 hover:shadow-[0_22px_48px_rgba(0,0,0,.6)]"}`}>
+  const content = <div className={`relative flex h-full min-h-[178px] flex-col overflow-hidden rounded-[14px] border-2 bg-gradient-to-b p-2 shadow-[0_16px_36px_rgba(0,0,0,.45)] transition-all duration-200 ${cardTheme(id)} ${selected ? "ring-2 ring-amber-200 ring-offset-2 ring-offset-[#0b0810]" : ""} ${disabled ? "opacity-45 grayscale-[.55]" : "hover:-translate-y-2 hover:shadow-[0_22px_48px_rgba(0,0,0,.6)]"}`}>
     <div className="pointer-events-none absolute inset-1 rounded-[13px] border border-white/15"/>
     <div className="relative flex items-center justify-between gap-2">
-      <span className="rounded-full border border-white/20 bg-black/55 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-white">{c.rarity}</span>
-      <span className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-amber-200/70 bg-black/70 font-display text-lg font-black text-amber-100 shadow-[0_0_16px_rgba(251,191,36,.25)]">{c.cost}</span>
+      <span className="rounded-full border border-white/20 bg-black/55 px-2 py-0.5 text-[8px] font-black uppercase tracking-widest text-white">{c.rarity}</span>
+      <span className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-amber-200/70 bg-black/70 font-display text-sm font-black text-amber-100 shadow-[0_0_16px_rgba(251,191,36,.25)]">{c.cost}</span>
     </div>
-    <div className="relative my-2 flex flex-1 items-center justify-center overflow-hidden rounded-xl border border-white/15 bg-black/35">
+    <div className="relative my-1 flex h-[76px] items-center justify-center overflow-hidden rounded-xl border border-white/15 bg-black/35">
       <div className="absolute inset-0 opacity-30" style={{ backgroundImage: "radial-gradient(circle at 50% 45%,rgba(255,255,255,.35),transparent 55%),repeating-linear-gradient(135deg,transparent 0 10px,rgba(255,255,255,.06) 10px 11px)" }}/>
-      <CardArt id={id}/>
+      <CardArt id={id} compact/>
       <span className="absolute bottom-1 right-2 text-[8px] font-black uppercase tracking-[.3em] text-white/35">GD · FENDAS</span>
     </div>
-    <h4 className="relative font-display text-center text-[15px] font-bold leading-tight text-white drop-shadow">{c.name}</h4>
-    <p className="relative mt-1.5 min-h-[48px] text-center text-[10px] leading-[1.45] text-white/75">{c.text}</p>
-    <div className="relative mt-2 flex items-center justify-between border-t border-white/15 pt-2">
+    <h4 className="relative font-display text-center text-[12px] font-bold leading-tight text-white drop-shadow">{c.name}</h4>
+    <p className="relative mt-1 min-h-[34px] text-center text-[9px] leading-[1.45] text-white/75">{c.text}</p>
+    <div className="relative mt-1 flex items-center justify-between border-t border-white/15 pt-1">
       <span className="text-[9px] font-black uppercase tracking-[.2em] text-white/55">{c.type}</span>
       <span className="text-[9px] font-bold uppercase tracking-widest text-white/45">{id === "corruption" ? "Maldição" : id === "mad_draconate" ? "Única" : "Fenda"}</span>
     </div>
@@ -234,7 +240,7 @@ export function BloodCardGame() {
     if (!game) return;
     if (node === "escape") { setGame({ ...game, phase: "victory", escaped: true, log: ["Você abandonou a última rota e escapou da Morte."] }); return; }
     if (node === "event") {
-      const eventId = Math.floor(Math.random() * 4);
+      const eventId = Math.floor(Math.random() * 8);
       const choices = [
         ["Entregar 2 cartas de vida e receber 3 fragmentos", "Recusar a oferta"],
         ["Sacrificar 1 vida e reorganizar até 5 cartas do descarte", "Sair sem tocar no altar"],
