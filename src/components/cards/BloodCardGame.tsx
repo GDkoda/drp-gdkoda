@@ -174,11 +174,9 @@ export function BloodCardGame() {
     if (lost > 0) g = destroyLife(g, lost);
     if (lost >= 3 && g.artifacts.includes("Crânio de Rogério") && !g.skullUsed && g.lastPlayedCard) {
       const recoveredIndex = g.discard.lastIndexOf(g.lastPlayedCard);
-      if (recoveredIndex >= 0) {
-        const [recovered] = g.discard.splice(recoveredIndex, 1);
-        g.hand.push(recovered); g.skullUsed = true;
-        g = addLog(g, `O Crânio de Rogério devolveu ${CARD_INFO[recovered].name} à sua mão.`);
-      }
+      const recovered = recoveredIndex >= 0 ? g.discard.splice(recoveredIndex, 1)[0] : g.lastPlayedCard;
+      g.hand.push(recovered); g.skullUsed = true;
+      g = addLog(g, `O Crânio de Rogério devolveu ${CARD_INFO[recovered].name} à sua mão.`);
     }
     g = addLog(g, absorbed > 0 ? `Defesa absorveu ${absorbed}; ${lost} cartas de vida perdidas.` : `O inimigo atingiu você: ${lost} cartas de vida perdidas.`);
     if (g.phase === "defeat") { setGame(g); return; }
