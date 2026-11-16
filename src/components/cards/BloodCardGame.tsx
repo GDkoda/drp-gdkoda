@@ -126,6 +126,7 @@ export function BloodCardGame() {
     if (id === "last_second") { g.block += 12; g = drawCards(g, 1); }
     if (id === "corruption") { g = destroyLife(g, 2); g.corruptionUsed += 1; if (g.corruptionUsed >= 6 && !g.dragonUnlocked) { g.dragonUnlocked = true; g.hand.push("mad_draconate"); g = addLog(g, "SEGREDO DESBLOQUEADO: Draconato Louco!"); } }
     if (id === "mad_draconate") { const damage = g.manaSpent * 10; g.enemyHp -= damage; g = addLog(g, `O Draconato Louco libera ${damage} de dano em área!`); }
+    if (g.phase === "defeat") { setGame(g); return; }
     if (id !== "corruption" && id !== "mad_draconate") g.discard.push(id);
     g = addLog(g, `${card.name}: ${id === "mad_draconate" ? g.manaSpent * 10 + " de dano em área" : card.text}`);
     if (g.enemyHp <= 0) {
