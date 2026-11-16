@@ -5,7 +5,7 @@ type CardId = "strike" | "guard" | "water_blade" | "blood_lance" | "ardil" | "co
 type Phase = "intro" | "battle" | "reward" | "victory" | "defeat";
 type Intent = { kind: "attack" | "heavy" | "guard"; value: number };
 type Game = {
-  phase: Phase; draw: CardId[]; hand: CardId[]; discard: CardId[];
+  phase: Phase; draw: CardId[]; hand: CardId[]; discard: CardId[]; exhausted: CardId[];
   enemyIndex: number; enemyHp: number; enemyMaxHp: number; enemyName: string;
   mana: number; manaSpent: number; block: number; turn: number; intent: Intent;
   log: string[]; seed: boolean; corruptionUsed: number; dragonUnlocked: boolean;
@@ -38,7 +38,7 @@ const shuffle = <T,>(items: T[]) => {
   for (let i = result.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [result[i], result[j]] = [result[j], result[i]]; }
   return result;
 };
-const lifeCount = (g: Game) => g.draw.length + g.hand.length + g.discard.length;
+const lifeCount = (g: Game) => g.draw.length + g.hand.length + g.discard.length + g.exhausted.length;
 const addLog = (g: Game, message: string): Game => ({ ...g, log: [message, ...g.log].slice(0, 7) });
 
 function drawCards(g: Game, count: number): Game {
@@ -51,12 +51,13 @@ function drawCards(g: Game, count: number): Game {
   return next;
 }
 function destroyLife(g: Game, amount: number): Game {
-  let next = { ...g, draw: [...g.draw], discard: [...g.discard], hand: [...g.hand] };
+  let next = { ...g, draw: [...g.draw], discard: [...g.discard], hand: [...g.hand], exhausted: [...g.exhausted] };
   let left = amount;
   while (left > 0) {
     if (next.draw.length) next.draw.pop();
     else if (next.discard.length) next.discard.pop();
     else if (next.hand.length) next.hand.pop();
+    else if (next.exhausted.length) next.exhausted.pop();
     else break;
     left--;
   }
@@ -75,7 +76,7 @@ function makeGame(seed: boolean, artifacts: string[], progress: { kills: number;
   if (progress.bladeEvolved) deck[13] = "blood_lance";
   const initial: Game = {
     phase: "battle", draw: shuffle(seed ? [...deck, ...Array(6).fill("corruption" as CardId)] : deck),
-    hand: [], discard: [], enemyIndex: 0, enemyHp: enemy.hp, enemyMaxHp: enemy.hp, enemyName: enemy.name,
+    hand: [], discard: [], exhausted: [], enemyIndex: 0, enemyHp: enemy.hp, enemyMaxHp: enemy.hp, enemyName: enemy.name,
     mana: 3, manaSpent: 0, block: 0, turn: 1, intent: makeIntent(0, 1), log: ["A expedição começou. O baralho é sua vida."],
     seed, corruptionUsed: 0, dragonUnlocked: false, artifacts, kills: progress.kills, bladeKills: progress.bladeKills,
     bladeEvolved: progress.bladeEvolved, bleed: 0, lastSecond: false, rewardChoices: [],
@@ -124,10 +125,11 @@ export function BloodCardGame() {
     if (id === "chain") { g.enemyHp -= 4; g.intent = { ...g.intent, value: Math.ceil(g.intent.value / 2) }; }
     if (id === "impure_heart") { g = destroyLife(g, 1); g.enemyHp -= 12; }
     if (id === "last_second") { g.block += 12; g = drawCards(g, 1); }
-    if (id === "corruption") { g = destroyLife(g, 2); g.corruptionUsed += 1; if (g.corruptionUsed >= 6 && !g.dragonUnlocked) { g.dragonUnlocked = true; g.hand.push("mad_draconate"); g = addLog(g, "SEGREDO DESBLOQUEADO: Draconato Louco!"); } }
+    if (id === "corruption") { g.exhausted.push(id); g = destroyLife(g, 2); g.corruptionUsed += 1; if (g.corruptionUsed >= 6 && !g.dragonUnlocked) { g.dragonUnlocked = true; g.hand.push("mad_draconate"); g = addLog(g, "SEGREDO DESBLOQUEADO: Draconato Louco!"); } }
     if (id === "mad_draconate") { const damage = g.manaSpent * 10; g.enemyHp -= damage; g = addLog(g, `O Draconato Louco libera ${damage} de dano em área!`); }
     if (g.phase === "defeat") { setGame(g); return; }
-    if (id !== "corruption" && id !== "mad_draconate") g.discard.push(id);
+    if (id === "mad_draconate") { /* carta temporária: não integra o baralho de vida */ }
+    else if (id !== "corruption") g.discard.push(id);
     g = addLog(g, `${card.name}: ${id === "mad_draconate" ? g.manaSpent * 10 + " de dano em área" : card.text}`);
     if (g.enemyHp <= 0) {
       g.enemyHp = 0; g.kills += 1;
@@ -143,7 +145,7 @@ export function BloodCardGame() {
     if (!game || game.phase !== "battle") return;
     let g: Game = { ...game, hand: [...game.hand], discard: [...game.discard], draw: [...game.draw] };
     const unusedCorruption = g.hand.filter(c => c === "corruption").length;
-    if (unusedCorruption) { g = destroyLife(g, unusedCorruption * 4); g = addLog(g, `A Corrupção puniu você: ${unusedCorruption * 4} cartas de vida perdidas.`); }
+    if (unusedCorruption) { g.exhausted.push(...g.hand.filter(c => c === "corruption")); g = destroyLife(g, unusedCorruption * 4); g = addLog(g, `A Corrupção puniu você: ${unusedCorruption * 4} cartas de vida perdidas.`); }
     g.discard.push(...g.hand.filter(c => c !== "corruption")); g.hand = [];
     if (g.phase === "defeat") { setGame(g); return; }
     if (g.bleed > 0) { g.enemyHp -= 3; g.bleed -= 1; g = addLog(g, "Sangramento: 3 de dano."); }
