@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { BookOpen, Droplets, Flame, Heart, Layers, Shield, Skull, Sparkles, Swords, WandSparkles, ArrowRight, RotateCcw, Eye, Zap } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Heart, Skull, Sparkles, Swords, ArrowRight, Eye, Zap } from "lucide-react";
 
 type CardId = "strike" | "guard" | "water_blade" | "blood_lance" | "ardil" | "corruption" | "mad_draconate" | "chain" | "impure_heart" | "last_second";
 type Phase = "intro" | "battle" | "reward" | "victory" | "defeat";
@@ -223,6 +223,7 @@ export function BloodCardGame() {
       </section>}
 
       {game && <section className="space-y-4">
+        {notice && <p role="status" className="rounded-xl border border-amber-300/20 bg-amber-950/30 px-4 py-2 text-xs text-amber-100">{notice}</p>}
         <header className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-rose-200/15 bg-[#110d14] p-4">
           <div><p className="text-[10px] font-bold uppercase tracking-[.25em] text-rose-300/70">Expedição · Encontro {game.enemyIndex + 1}/4</p><h2 className="font-display text-2xl text-rose-50">Sangue das Fendas</h2></div>
           <div className="flex flex-wrap gap-2 text-xs"><span className="rounded-lg border border-rose-300/20 bg-rose-950/40 px-3 py-2 text-rose-100"><Heart className="mr-1 inline h-3.5 w-3.5"/> {totalLife} cartas de vida</span><span className="rounded-lg border border-amber-300/20 bg-amber-950/30 px-3 py-2 text-amber-100"><Zap className="mr-1 inline h-3.5 w-3.5"/> {game.mana}/3 mana</span><span className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-white/70">Turno {game.turn}</span></div>
