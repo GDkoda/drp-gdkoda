@@ -172,7 +172,7 @@ export function BloodCardGame() {
     }
     const lost = actual;
     if (lost > 0) g = destroyLife(g, lost);
-    if (lost >= 3 && g.artifacts.includes("Crânio de Rogério") && !g.skullUsed && g.lastPlayedCard) {
+    if (lost >= 3 && g.artifacts.includes("Crânio de Rogério") && !g.skullUsed && g.lastPlayedCard && g.lastPlayedCard !== "corruption" && g.lastPlayedCard !== "mad_draconate") {
       const recoveredIndex = g.discard.lastIndexOf(g.lastPlayedCard);
       const recovered = recoveredIndex >= 0 ? g.discard.splice(recoveredIndex, 1)[0] : g.lastPlayedCard;
       g.hand.push(recovered); g.skullUsed = true;
