@@ -282,7 +282,7 @@ export function BloodCardGame() {
     if (id === "water_blade") damageTarget(9);
     if (id === "blood_lance") { damageTarget(15); g.bleed = 2; }
     if (id === "guard") g.block += 9;
-    if (id === "ardil") { const incoming = g.enemies.reduce((sum, e) => sum + (e.hp > 0 ? e.intent : 0), 0); g.block += incoming; g.enemies = g.enemies.map(e => ({ ...e, hp: e.hp > 0 ? Math.max(0, e.hp - e.intent) : e.hp, intent: 0 })); }
+    if (id === "ardil") { const incoming = g.enemies.reduce((sum, e) => sum + (e.hp > 0 ? e.intent : 0), 0); g.block += incoming; g.enemies = g.enemies.map(e => ({ ...e, hp: e.hp > 0 ? Math.max(0, e.hp - e.intent) : e.hp })); }
     if (id === "chain") { damageTarget(5); g.enemies = g.enemies.map(e => ({ ...e, intent: Math.ceil(e.intent / 2) })); }
     if (id === "impure_heart") { g = removeLife(g, 1); damageTarget(13); }
     if (id === "last_second") { g.block += 11; g = drawCards(g, 1); }
