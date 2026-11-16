@@ -11,7 +11,7 @@ type CardId =
   | "blood_siphon" | "soul_bastion" | "rift_step" | "execution";
 type CardType = "Ataque" | "Defesa" | "Maldição" | "Magia" | "Lendária";
 type CardDef = { name: string; cost: number; type: CardType; text: string; rarity: string; art: string };
-type Enemy = { id: string; name: string; hp: number; maxHp: number; intent: number; intentType: "attack" | "heavy" | "guard"; boss?: boolean };
+type Enemy = { id: string; name: string; hp: number; maxHp: number; attack: number; intent: number; intentType: "attack" | "heavy" | "guard"; boss?: boolean };
 type NodeType = "monster" | "elite" | "event" | "shop" | "boss" | "escape";
 type Phase = "intro" | "map" | "battle" | "reward" | "event" | "shop" | "victory" | "defeat";
 type Game = {
@@ -74,7 +74,7 @@ const shuffle = <T,>(arr: T[]): T[] => {
 const totalLife = (g: Game) => g.draw.length + g.hand.filter(c => c !== "mad_draconate").length + g.discard.length;
 const log = (g: Game, message: string): Game => ({ ...g, log: [message, ...g.log].slice(0, 8) });
 const newEnemy = (name: string, hp: number, attack: number, id: string, boss = false): Enemy => ({
-  id, name, hp, maxHp: hp, intent: attack, intentType: "attack", boss,
+  id, name, hp, maxHp: hp, attack, intent: attack, intentType: "attack", boss,
 });
 function freshDeck(progress: Progress, seed: boolean): CardId[] {
   const deck: CardId[] = [
@@ -110,7 +110,7 @@ function removeLife(g: Game, amount: number): Game {
 function intentFor(enemy: Enemy, turn: number): Enemy {
   const cycle = turn % 3;
   const intentType = cycle === 0 ? "heavy" : cycle === 2 ? "guard" : "attack";
-  const intent = cycle === 0 ? Math.ceil(enemy.maxHp * 0.11) + 2 : cycle === 2 ? Math.max(1, Math.ceil(enemy.maxHp * 0.04)) : Math.max(2, Math.ceil(enemy.maxHp * 0.07));
+  const intent = cycle === 0 ? enemy.attack + 4 : cycle === 2 ? Math.max(2, Math.ceil(enemy.attack * 0.5)) : enemy.attack;
   return { ...enemy, intentType, intent };
 }
 function routeOptions(step: number): NodeType[] {
@@ -132,7 +132,7 @@ function makeGame(artifacts: string[], progress: Progress): Game {
 function startBattle(g: Game, node: NodeType): Game {
   const tier = Math.min(2, Math.floor(g.step / 3));
   let enemies = node === "boss"
-    ? [newEnemy("A Morte", 155, 12, "death", true)]
+    ? [newEnemy("A Morte", 125, 9, "death", true)]
     : node === "elite"
       ? [newEnemy(["Carrasco de Cinzas", "Bispo Rubro", "Arauto Corrompido"][tier], 70 + tier * 16, 9 + tier * 2, "elite")]
       : ENCOUNTERS[tier].slice(0, node === "monster" && g.step % 2 === 0 ? 2 : 1).map((e, i) => newEnemy(e.name, e.hp + tier * 15, e.attack + tier * 2, e.kind + i));
