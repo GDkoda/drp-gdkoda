@@ -471,7 +471,7 @@ export function BloodCardGame() {
       else if (cardId === "cycle_strike") { if (target) damageEnemy(target, 5); g = drawCards(g, 1); }
       else if (cardId === "defensive_stance") { g.block += 6; g.spikes += 2; }
       else if (cardId === "water_blade") { if (target) damageEnemy(target, 9); }
-      else if (cardId === "blood_lance") { if (target) damageEnemy(target, 16); g.bleed = Math.max(g.bleed, 2); }
+      else if (cardId === "blood_lance") { if (target) damageEnemy(target, 16); g.bleed += 5; }
       else if (cardId === "impure_heart") { g = removeLife(g, 1); if (target) damageEnemy(target, 14); }
       else if (cardId === "blood_siphon") {
         if (target) {
