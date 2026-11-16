@@ -122,6 +122,7 @@ function intentFor(enemy: Enemy, turn: number): Enemy {
 function routeOptions(step: number): NodeType[] {
   if (step >= 9) return ["boss", "escape"];
   const pool: NodeType[] = ["monster", "monster", "event", "shop", "elite"];
+  if (step >= 6) pool.push("boss");
   return shuffle(pool).slice(0, 3);
 }
 function makeGame(artifacts: string[], progress: Progress): Game {
@@ -246,6 +247,10 @@ export function BloodCardGame() {
         ["Sacrificar 1 vida e reorganizar até 5 cartas do descarte", "Sair sem tocar no altar"],
         ["Remover uma carta comum do baralho", "Receber 2 fragmentos"],
         ["Ganhar 1 carta rara e sofrer 4 de dano", "Ignorar a visão"],
+        ["Entregar 2 cartas de vida para obter Sentença", "Deixar os livros em paz"],
+        ["Pagar 3 cartas de vida e receber o Véu de Hanna", "Recusar o pacto"],
+        ["Pagar 3 fragmentos para transformar Golpe em Correntes", "Receber 2 fragmentos"],
+        ["Receber Sifão Carmesim e perder 3 cartas de vida", "Fechar o espelho"],
       ][eventId];
       setGame({ ...game, phase: "event", node, eventId, eventChoices: choices });
     } else if (node === "shop") {
@@ -369,6 +374,11 @@ export function BloodCardGame() {
     if (g.eventId === 2 && choice === 0) { const i = g.draw.findIndex(c => c === "strike" || c === "guard"); if (i >= 0) g.draw.splice(i, 1); }
     if (g.eventId === 2 && choice === 1) g.shards += 2;
     if (g.eventId === 3 && choice === 0) { g.draw.push("blood_siphon"); g = removeLife(g, 4); }
+    if (g.eventId === 4 && choice === 0) { g = removeLife(g, 2); if (g.phase !== "defeat") g.draw.push("execution"); }
+    if (g.eventId === 5 && choice === 0) { g = removeLife(g, 3); if (g.phase !== "defeat" && !g.artifacts.includes("Véu de Hanna")) g.artifacts.push("Véu de Hanna"); }
+    if (g.eventId === 6 && choice === 0 && g.shards >= 3) { g.shards -= 3; const convert = (cards: CardId[]) => cards.map(card => card === "strike" ? "chain" as CardId : card); g.draw = convert(g.draw); g.discard = convert(g.discard); g.hand = convert(g.hand); }
+    else if (g.eventId === 6 && choice === 1) g.shards += 2;
+    if (g.eventId === 7 && choice === 0) { g.draw.push("blood_siphon"); g = removeLife(g, 3); }
     if (g.phase === "defeat") { setGame(g); return; }
     setGame(nextMap({ ...g, phase: "map" }));
   };
@@ -415,7 +425,7 @@ export function BloodCardGame() {
         </div>
         <div className="relative mt-5 flex items-center justify-center gap-2 text-[10px] uppercase tracking-[.2em] text-white/35"><Footprints className="h-4 w-4"/> Escolha seu próximo caminho</div>
       </div>
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-xs text-white/45"><span>Passo {game.step+1}/9 · {game.step>=6?"A Morte já sente seu cheiro":"A Morte avança a cada região"}</span><span>Baralho: {game.draw.length} compra · {game.discard.length} descarte</span></div>
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-xs text-white/45"><span>Passo {game.step+1}/9 · {game.step>=6?"A Morte pode surgir no mapa":"A Morte avança a cada região"}</span><span>Baralho: {game.draw.length} compra · {game.discard.length} descarte</span></div>
     </section>}
 
     {game?.phase === "battle" && <section className="space-y-4">
@@ -461,7 +471,7 @@ export function BloodCardGame() {
 
     {game?.phase === "reward" && <section className="rounded-[26px] border border-amber-200/20 bg-[radial-gradient(ellipse_at_top,rgba(180,83,9,.22),transparent_60%),#100d12] p-5 text-center sm:p-7"><Sparkles className="mx-auto h-9 w-9 text-amber-300"/><p className="mt-2 text-[10px] font-black uppercase tracking-[.3em] text-amber-200/60">Recompensa da expedição</p><h3 className="mt-1 font-display text-3xl text-white">Escolha uma carta</h3><p className="mt-2 text-xs text-white/50">Adicionar cartas aumenta suas opções, mas também aumenta sua vida máxima.</p><div className="mt-5 grid gap-3 sm:grid-cols-3">{rewardChoices.map((id,i)=><CardFace key={`${id}-${i}`} id={id} onClick={()=>chooseReward(id)}/>)}</div><button onClick={()=>chooseReward(null)} className="mt-4 text-xs text-white/45 underline">Seguir sem recompensa</button></section>}
 
-    {game?.phase === "event" && <section className="rounded-[26px] border border-violet-200/20 bg-[radial-gradient(ellipse_at_top,rgba(109,40,217,.22),transparent_60%),#100d15] p-6 text-center"><Moon className="mx-auto h-10 w-10 text-violet-200"/><p className="mt-2 text-[10px] font-black uppercase tracking-[.3em] text-violet-200/60">Encontro desconhecido</p><h3 className="mt-2 font-display text-3xl text-white">{["A Oferta do Sussurrante","Fonte das Memórias","Altar de Cinzas","Visão do Dragão"][game.eventId]}</h3><p className="mx-auto mt-2 max-w-lg text-sm text-white/55">Uma presença antiga oferece poder em troca de lembranças. Toda escolha deixa uma marca no baralho.</p><div className="mx-auto mt-5 grid max-w-xl gap-3 sm:grid-cols-2">{game.eventChoices.map((choice,i)=><button key={choice} onClick={()=>chooseEvent(i)} className="rounded-xl border border-violet-200/20 bg-violet-950/35 p-4 text-sm text-violet-50 transition hover:border-amber-200/50 hover:bg-violet-900/40">{choice}</button>)}</div></section>}
+    {game?.phase === "event" && <section className="rounded-[26px] border border-violet-200/20 bg-[radial-gradient(ellipse_at_top,rgba(109,40,217,.22),transparent_60%),#100d15] p-6 text-center"><Moon className="mx-auto h-10 w-10 text-violet-200"/><p className="mt-2 text-[10px] font-black uppercase tracking-[.3em] text-violet-200/60">Encontro desconhecido</p><h3 className="mt-2 font-display text-3xl text-white">{["A Oferta do Sussurrante","Fonte das Memórias","Altar de Cinzas","Visão do Dragão","Biblioteca Profanada","Pacto de Hanna","Forja de Ecos","Espelho do Duplo"][game.eventId]}</h3><p className="mx-auto mt-2 max-w-lg text-sm text-white/55">Uma presença antiga oferece poder em troca de lembranças. Toda escolha deixa uma marca no baralho.</p><div className="mx-auto mt-5 grid max-w-xl gap-3 sm:grid-cols-2">{game.eventChoices.map((choice,i)=><button key={choice} onClick={()=>chooseEvent(i)} className="rounded-xl border border-violet-200/20 bg-violet-950/35 p-4 text-sm text-violet-50 transition hover:border-amber-200/50 hover:bg-violet-900/40">{choice}</button>)}</div></section>}
 
     {game?.phase === "shop" && <section className="rounded-[26px] border border-amber-200/20 bg-[radial-gradient(ellipse_at_top,rgba(120,53,15,.25),transparent_60%),#100d12] p-6"><div className="text-center"><Store className="mx-auto h-9 w-9 text-amber-200"/><p className="mt-2 text-[10px] font-black uppercase tracking-[.3em] text-amber-200/60">Mercador das Fendas</p><h3 className="mt-1 font-display text-3xl text-white">Troque fragmentos</h3><p className="mt-2 text-xs text-white/50">Você tem {game.shards} fragmentos de sangue.</p></div><div className="mt-5 grid gap-3 sm:grid-cols-3">{[{id:"heal" as const,cost:3,title:"Recuperar memórias",desc:"Devolve até 4 cartas do descarte ao baralho."},{id:"remove" as const,cost:4,title:"Apagar uma fraqueza",desc:"Remove uma carta comum do seu baralho."},{id:"card" as const,cost:5,title:"Sentença antiga",desc:"Adiciona Sentença ao baralho."}].map(item=><button key={item.id} disabled={game.shards<item.cost || (item.id==="heal" && game.discard.length===0) || (item.id==="remove" && game.draw.length<=1)} onClick={()=>shopBuy(item.id)} className="rounded-xl border border-amber-200/15 bg-black/30 p-4 text-left transition hover:border-amber-200/50 disabled:opacity-35"><b className="text-sm text-amber-100">{item.title}</b><p className="mt-1 text-xs text-white/45">{item.desc}</p><span className="mt-3 inline-block text-xs font-bold text-amber-300">{item.cost} fragmentos</span></button>)}</div><div className="mt-5 text-center"><button onClick={()=>setGame(nextMap(game))} className="rounded-xl bg-amber-500 px-5 py-3 text-sm font-bold text-black">Sair da loja <ArrowRight className="ml-1 inline h-4 w-4"/></button></div></section>}
 
