@@ -249,7 +249,7 @@ export function BloodCardGame() {
         ["Ganhar 1 carta rara e sofrer 4 de dano", "Ignorar a visão"],
         ["Entregar 2 cartas de vida para obter Sentença", "Deixar os livros em paz"],
         ["Pagar 3 cartas de vida e receber o Véu de Hanna", "Recusar o pacto"],
-        ["Pagar 3 fragmentos para transformar Golpe em Correntes", "Receber 2 fragmentos"],
+        game.shards >= 3 ? "Pagar 3 fragmentos para transformar Golpe em Correntes" : "Sem fragmentos: receber 2 fragmentos", "Receber 2 fragmentos"],
         ["Receber Sifão Carmesim e perder 3 cartas de vida", "Fechar o espelho"],
       ][eventId];
       setGame({ ...game, phase: "event", node, eventId, eventChoices: choices });
@@ -348,9 +348,11 @@ export function BloodCardGame() {
     if (lost > 0 && g.artifacts.includes("Véu de Hanna") && !g.hannaUsed) { lost = Math.max(0, lost - 1); g.hannaUsed = true; g = log(g, "O Véu de Hanna anulou 1 dano."); }
     if (lost > 0 && g.artifacts.includes("Crânio de Rogério") && !g.skullUsed && lost >= 3 && g.lastPlayed) {
       const i = g.discard.lastIndexOf(g.lastPlayed);
-      const card = i >= 0 ? g.discard.splice(i, 1)[0] : g.lastPlayed;
-      g.hand.push(card); g.skullUsed = true;
-      g = log(g, `O Crânio de Rogério devolveu ${CARDS[card].name} à sua mão.`);
+      if (i >= 0) {
+        const card = g.discard.splice(i, 1)[0];
+        g.hand.push(card); g.skullUsed = true;
+        g = log(g, `O Crânio de Rogério devolveu ${CARDS[card].name} à sua mão.`);
+      }
     }
     if (lost > 0) g = removeLife(g, lost);
     g.block = 0;
@@ -377,6 +379,7 @@ export function BloodCardGame() {
     if (g.eventId === 4 && choice === 0) { g = removeLife(g, 2); if (g.phase !== "defeat") g.draw.push("execution"); }
     if (g.eventId === 5 && choice === 0) { g = removeLife(g, 3); if (g.phase !== "defeat" && !g.artifacts.includes("Véu de Hanna")) g.artifacts.push("Véu de Hanna"); }
     if (g.eventId === 6 && choice === 0 && g.shards >= 3) { g.shards -= 3; const convert = (cards: CardId[]) => cards.map(card => card === "strike" ? "chain" as CardId : card); g.draw = convert(g.draw); g.discard = convert(g.discard); g.hand = convert(g.hand); }
+    else if (g.eventId === 6 && choice === 0 && g.shards < 3) g.shards += 2;
     else if (g.eventId === 6 && choice === 1) g.shards += 2;
     if (g.eventId === 7 && choice === 0) { g.draw.push("blood_siphon"); g = removeLife(g, 3); }
     if (g.phase === "defeat") { setGame(g); return; }
@@ -479,7 +482,7 @@ export function BloodCardGame() {
           <div className="rounded-xl border border-violet-300/20 bg-violet-950/30 p-3">
             <div className="flex items-center justify-between"><Gem className="h-4 w-4 text-violet-300"/><b className="font-display text-2xl tabular-nums text-violet-100">{game.shards}</b></div>
             <p className="mt-1 text-[9px] font-bold uppercase tracking-wider text-violet-100/55">Fragmentos</p>
-            <p className="mt-2 text-[9px] text-violet-100/40">Mana gasta: {game.manaSpent}</p>
+            <p className="mt-2 text-[9px] text-violet-100/40">Mana gasta: {game.manaSpent} · Sangramento: {game.bleed}</p>
           </div>
         </div>
         <div className="mt-3 grid grid-cols-3 gap-2">
