@@ -109,7 +109,9 @@ function removeLife(g: Game, amount: number): Game {
 }
 function intentFor(enemy: Enemy, turn: number): Enemy {
   const cycle = turn % 3;
-  return { ...enemy, intentType: cycle === 0 ? "heavy" : cycle === 2 ? "guard" : "attack", intent: cycle === 0 ? Math.ceil(enemy.maxHp * 0.18) + 4 : cycle === 2 ? Math.max(2, Math.floor(enemy.maxHp * 0.06)) : Math.ceil(enemy.maxHp * 0.12) };
+  const intentType = cycle === 0 ? "heavy" : cycle === 2 ? "guard" : "attack";
+  const intent = cycle === 0 ? Math.ceil(enemy.maxHp * 0.11) + 2 : cycle === 2 ? Math.max(1, Math.ceil(enemy.maxHp * 0.04)) : Math.max(2, Math.ceil(enemy.maxHp * 0.07));
+  return { ...enemy, intentType, intent };
 }
 function routeOptions(step: number): NodeType[] {
   if (step >= 9) return ["boss"];
@@ -280,7 +282,7 @@ export function BloodCardGame() {
     if (id === "water_blade") damageTarget(9);
     if (id === "blood_lance") { damageTarget(15); g.bleed = 2; }
     if (id === "guard") g.block += 9;
-    if (id === "ardil") { const incoming = g.enemies.reduce((sum, e) => sum + (e.hp > 0 ? e.intent : 0), 0); g.block += incoming; damageAll(incoming); g.enemies = g.enemies.map(e => ({ ...e, intent: 0 })); }
+    if (id === "ardil") { const incoming = g.enemies.reduce((sum, e) => sum + (e.hp > 0 ? e.intent : 0), 0); g.block += incoming; g.enemies = g.enemies.map(e => ({ ...e, hp: e.hp > 0 ? Math.max(0, e.hp - e.intent) : e.hp, intent: 0 })); }
     if (id === "chain") { damageTarget(5); g.enemies = g.enemies.map(e => ({ ...e, intent: Math.ceil(e.intent / 2) })); }
     if (id === "impure_heart") { g = removeLife(g, 1); damageTarget(13); }
     if (id === "last_second") { g.block += 11; g = drawCards(g, 1); }
