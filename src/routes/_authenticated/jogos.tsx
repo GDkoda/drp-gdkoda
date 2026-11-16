@@ -45,7 +45,7 @@ function Jogos() {
         <div><p className="page-eyebrow">Ações da mesa</p><h1 className="mt-1 text-3xl text-gold">{text("jogos_title")}</h1></div>
         <span className="flex items-center gap-1 font-display text-mana"><Zap className="h-4 w-4" />{vigor ?? "…"}/{settings?.vigor_daily ?? 5} vigor</span>
       </div>
-      <p className="text-sm text-muted-foreground">Combate tático, 21 com cartas, Farkle, enigmas e sobrevivência roguelike.</p>
+      <p className="text-sm text-muted-foreground">Combate tático, 21, Farkle, enigmas, Fractais e o deckbuilder Sangue das Fendas.</p>
       <VigorRestore vigor={vigor} />
       <Tabs defaultValue="combat">
         <TabsList className="grid h-auto w-full grid-cols-2 gap-1.5 rounded-xl sm:grid-cols-6 border border-border bg-muted/70 p-1.5">
