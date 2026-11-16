@@ -12,7 +12,7 @@ type CardId =
 type CardType = "Ataque" | "Defesa" | "Maldição" | "Magia" | "Lendária";
 type CardDef = { name: string; cost: number; type: CardType; text: string; rarity: string; art: string };
 type Enemy = { id: string; name: string; hp: number; maxHp: number; intent: number; intentType: "attack" | "heavy" | "guard"; boss?: boolean };
-type NodeType = "monster" | "elite" | "event" | "shop" | "boss";
+type NodeType = "monster" | "elite" | "event" | "shop" | "boss" | "escape";
 type Phase = "intro" | "map" | "battle" | "reward" | "event" | "shop" | "victory" | "defeat";
 type Game = {
   phase: Phase; zone: number; step: number; node: NodeType | null;
@@ -21,7 +21,7 @@ type Game = {
   log: string[]; artifacts: string[]; corruptionUsed: number; dragonUnlocked: boolean;
   bleed: number; lastPlayed: CardId | null; hannaUsed: boolean; skullUsed: boolean;
   kills: number; bladeKills: number; bladeEvolved: boolean; shards: number; mapOptions: NodeType[];
-  eventId: number; eventChoices: string[];
+  eventId: number; eventChoices: string[]; escaped: boolean;
 };
 type Progress = { kills: number; bladeKills: number; bladeEvolved: boolean };
 
@@ -114,7 +114,7 @@ function intentFor(enemy: Enemy, turn: number): Enemy {
   return { ...enemy, intentType, intent };
 }
 function routeOptions(step: number): NodeType[] {
-  if (step >= 9) return ["boss"];
+  if (step >= 9) return ["boss", "escape"];
   const pool: NodeType[] = ["monster", "monster", "event", "shop", "elite"];
   return shuffle(pool).slice(0, 3);
 }
@@ -125,7 +125,7 @@ function makeGame(artifacts: string[], progress: Progress): Game {
     enemies: [], mana: 3, manaSpent: 0, block: 0, turn: 1, log: ["A expedição começou. Seu baralho é sua vida."],
     artifacts, corruptionUsed: 0, dragonUnlocked: false, bleed: 0, lastPlayed: null, hannaUsed: false,
     skullUsed: false, kills: progress.kills, bladeKills: progress.bladeKills, bladeEvolved: progress.bladeEvolved,
-    shards: 0, mapOptions: routeOptions(0), eventId: 0, eventChoices: [],
+    shards: 0, mapOptions: routeOptions(0), eventId: 0, eventChoices: [], escaped: false,
   };
   return g;
 }
@@ -210,6 +210,7 @@ function NodeIcon({ type }: { type: NodeType }) {
   if (type === "elite") return <Skull className="h-5 w-5"/>;
   if (type === "event") return <ScrollText className="h-5 w-5"/>;
   if (type === "shop") return <Store className="h-5 w-5"/>;
+  if (type === "escape") return <Footprints className="h-5 w-5"/>;
   return <Crown className="h-5 w-5"/>;
 }
 
@@ -231,6 +232,7 @@ export function BloodCardGame() {
   const begin = () => { setNotice(""); setGame(makeGame(selectedArtifacts, progress)); };
   const enterNode = (node: NodeType) => {
     if (!game) return;
+    if (node === "escape") { setGame({ ...game, phase: "victory", escaped: true, log: ["Você abandonou a última rota e escapou da Morte."] }); return; }
     if (node === "event") {
       const eventId = Math.floor(Math.random() * 4);
       const choices = [
@@ -373,8 +375,8 @@ export function BloodCardGame() {
     setGame(g);
   };
   const total = game ? totalLife(game) : 0;
-  const nodeLabel: Record<NodeType, string> = { monster: "Encontro", elite: "Elite", event: "Evento", shop: "Mercador", boss: "A Morte" };
-  const rewardChoices = useMemo(() => shuffle(["water_blade", "blood_lance", "ardil", "chain", "impure_heart", "blood_siphon", "soul_bastion", "rift_step", "execution", "last_second", "guard", "strike"] as CardId[]).filter(id => !(game?.bladeEvolved && id === "water_blade")).slice(0, 3), [game?.phase, game?.step, game?.bladeEvolved]);
+  const nodeLabel: Record<NodeType, string> = { monster: "Encontro", elite: "Elite", event: "Evento", shop: "Mercador", boss: "A Morte", escape: "Fugir da Morte" };
+  const rewardChoices = useMemo(() => shuffle(["water_blade", "blood_lance", "ardil", "chain", "impure_heart", "blood_siphon", "soul_bastion", "rift_step", "execution", "last_second", "guard", "strike"] as CardId[]).filter(id => !(game?.bladeEvolved && id === "water_blade") && !(!game?.bladeEvolved && id === "blood_lance")).slice(0, 3), [game?.phase, game?.step, game?.bladeEvolved]);
 
   return <div className="space-y-5 text-foreground">
     {!game && <section className="relative overflow-hidden rounded-[28px] border border-rose-300/20 bg-[radial-gradient(ellipse_at_15%_0%,rgba(190,24,93,.28),transparent_40%),radial-gradient(ellipse_at_90%_90%,rgba(67,56,202,.22),transparent_40%),linear-gradient(145deg,#1a101b,#08070c)] p-5 shadow-[0_25px_80px_rgba(0,0,0,.55)] sm:p-8">
@@ -457,7 +459,7 @@ export function BloodCardGame() {
 
     {game?.phase === "shop" && <section className="rounded-[26px] border border-amber-200/20 bg-[radial-gradient(ellipse_at_top,rgba(120,53,15,.25),transparent_60%),#100d12] p-6"><div className="text-center"><Store className="mx-auto h-9 w-9 text-amber-200"/><p className="mt-2 text-[10px] font-black uppercase tracking-[.3em] text-amber-200/60">Mercador das Fendas</p><h3 className="mt-1 font-display text-3xl text-white">Troque fragmentos</h3><p className="mt-2 text-xs text-white/50">Você tem {game.shards} fragmentos de sangue.</p></div><div className="mt-5 grid gap-3 sm:grid-cols-3">{[{id:"heal" as const,cost:3,title:"Recuperar memórias",desc:"Devolve até 4 cartas do descarte ao baralho."},{id:"remove" as const,cost:4,title:"Apagar uma fraqueza",desc:"Remove uma carta comum do seu baralho."},{id:"card" as const,cost:5,title:"Sentença antiga",desc:"Adiciona Sentença ao baralho."}].map(item=><button key={item.id} disabled={game.shards<item.cost} onClick={()=>shopBuy(item.id)} className="rounded-xl border border-amber-200/15 bg-black/30 p-4 text-left transition hover:border-amber-200/50 disabled:opacity-35"><b className="text-sm text-amber-100">{item.title}</b><p className="mt-1 text-xs text-white/45">{item.desc}</p><span className="mt-3 inline-block text-xs font-bold text-amber-300">{item.cost} fragmentos</span></button>)}</div><div className="mt-5 text-center"><button onClick={()=>setGame(nextMap(game))} className="rounded-xl bg-amber-500 px-5 py-3 text-sm font-bold text-black">Sair da loja <ArrowRight className="ml-1 inline h-4 w-4"/></button></div></section>}
 
-    {game?.phase === "victory" && <section className="overflow-hidden rounded-[28px] border border-amber-200/25 bg-[radial-gradient(ellipse_at_center,rgba(217,119,6,.2),transparent_60%),#100d12] p-8 text-center"><Crown className="mx-auto h-14 w-14 text-amber-300"/><p className="mt-3 text-[10px] font-black uppercase tracking-[.35em] text-amber-200/60">A última fenda se fechou</p><h3 className="mt-2 font-display text-4xl text-amber-50">A Morte foi vencida</h3><p className="mt-2 text-sm text-white/55">Você terminou a expedição com {total} cartas de vida e {game.kills} criaturas derrotadas.</p><button onClick={()=>setGame(null)} className="mt-6 rounded-xl bg-amber-500 px-6 py-3 font-bold text-black">Voltar ao santuário</button></section>}
+    {game?.phase === "victory" && <section className="overflow-hidden rounded-[28px] border border-amber-200/25 bg-[radial-gradient(ellipse_at_center,rgba(217,119,6,.2),transparent_60%),#100d12] p-8 text-center"><Crown className="mx-auto h-14 w-14 text-amber-300"/><p className="mt-3 text-[10px] font-black uppercase tracking-[.35em] text-amber-200/60">A última fenda se fechou</p><h3 className="mt-2 font-display text-4xl text-amber-50">{game.escaped?"Você escapou da Morte":"A Morte foi vencida"}</h3><p className="mt-2 text-sm text-white/55">{game.escaped?"Você escolheu abandonar a última rota e sobreviveu para lutar outro dia.":`Você terminou a expedição com ${total} cartas de vida e ${game.kills} criaturas derrotadas.`}</p><button onClick={()=>setGame(null)} className="mt-6 rounded-xl bg-amber-500 px-6 py-3 font-bold text-black">Voltar ao santuário</button></section>}
     {game?.phase === "defeat" && <section className="rounded-[28px] border border-rose-300/20 bg-[radial-gradient(ellipse_at_center,rgba(159,18,57,.2),transparent_60%),#10080e] p-8 text-center"><Skull className="mx-auto h-14 w-14 text-rose-300"/><p className="mt-3 text-[10px] font-black uppercase tracking-[.35em] text-rose-200/60">Todas as lembranças foram consumidas</p><h3 className="mt-2 font-display text-4xl text-rose-50">A Fenda venceu</h3><p className="mt-2 text-sm text-white/55">Sua expedição terminou após {game.kills} abates. A Morte não precisou sequer desembainhar a foice.</p><button onClick={()=>setGame(null)} className="mt-6 rounded-xl bg-rose-700 px-6 py-3 font-bold text-white">Voltar ao santuário</button></section>}
     {notice && <p role="status" className="rounded-xl border border-amber-300/20 bg-amber-950/30 px-4 py-2 text-xs text-amber-100">{notice}</p>}
   </div>;
