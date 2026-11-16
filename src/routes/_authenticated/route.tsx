@@ -3,7 +3,7 @@ import { createFileRoute, Link, Outlet, redirect, useNavigate } from "@tanstack/
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useMe } from "@/lib/game";
-import { Beer, ScrollText, Store, Package, Crown, LogOut, Coins, Swords, BookOpen, Menu, X } from "lucide-react";
+import { Beer, ScrollText, Store, Package, Crown, LogOut, Coins, Swords, BookOpen, Layers, Menu, X } from "lucide-react";
 import { useCustomization } from "@/lib/app-customization";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { AionEmblem } from "@/components/aion-emblem";
@@ -28,6 +28,7 @@ function Layout() {
     { to: "/taverna", label: text("nav_taverna"), icon: Beer },
     { to: "/fichas", label: text("nav_fichas"), icon: ScrollText },
     { to: "/jogos", label: text("nav_jogos"), icon: Swords },
+    { to: "/cartas", label: "Sangue das Fendas", icon: Layers },
     { to: "/grimorio", label: "Grimório", icon: BookOpen },
     { to: "/lore", label: "Lore", icon: BookOpen },
     { to: "/loja", label: text("nav_loja"), icon: Store },
