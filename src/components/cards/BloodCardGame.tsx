@@ -233,7 +233,7 @@ export function BloodCardGame() {
       const eventId = Math.floor(Math.random() * 4);
       const choices = [
         ["Entregar 2 cartas de vida e receber 3 fragmentos", "Recusar a oferta"],
-        ["Perder 1 carta de vida e curar 5 cartas", "Sair sem tocar no altar"],
+        ["Sacrificar 1 vida e reorganizar até 5 cartas do descarte", "Sair sem tocar no altar"],
         ["Remover uma carta comum do baralho", "Receber 2 fragmentos"],
         ["Ganhar 1 carta rara e sofrer 4 de dano", "Ignorar a visão"],
       ][eventId];
@@ -284,7 +284,7 @@ export function BloodCardGame() {
     if (id === "chain") { damageTarget(5); g.enemies = g.enemies.map(e => ({ ...e, intent: Math.ceil(e.intent / 2) })); }
     if (id === "impure_heart") { g = removeLife(g, 1); damageTarget(13); }
     if (id === "last_second") { g.block += 11; g = drawCards(g, 1); }
-    if (id === "blood_siphon") damageTarget(6);
+    if (id === "blood_siphon") { const before = target?.hp ?? 0; damageTarget(6); if (before > 0 && target?.hp === 0) { g.draw.push("strike"); g = log(g, "Sifão Carmesim recuperou uma carta de vida."); } }
     if (id === "soul_bastion") { g.block += 15; g.enemies = g.enemies.map(e => ({ ...e, intent: Math.max(0, e.intent - 2) })); }
     if (id === "rift_step") { g.block += 4; g = drawCards(g, 1); }
     if (id === "execution") { const e = g.enemies.find(x => x.hp > 0); damageTarget(e && e.hp / e.maxHp <= .3 ? 26 : 18); }
@@ -316,7 +316,8 @@ export function BloodCardGame() {
       g = removeLife(g, unused * 3);
       g = log(g, `A Corrupção cobrou ${unused * 4} cartas de vida.`);
     }
-    g.discard.push(...g.hand);
+    g.exhaust.push(...g.hand.filter(c => c === "mad_draconate"));
+    g.discard.push(...g.hand.filter(c => c !== "mad_draconate"));
     g.hand = [];
     if (g.phase === "defeat") { setGame(g); return; }
     if (g.bleed > 0) {
@@ -358,6 +359,7 @@ export function BloodCardGame() {
     if (g.eventId === 2 && choice === 0) { const i = g.draw.findIndex(c => c === "strike" || c === "guard"); if (i >= 0) g.draw.splice(i, 1); }
     if (g.eventId === 2 && choice === 1) g.shards += 2;
     if (g.eventId === 3 && choice === 0) { g.draw.push("blood_siphon"); g = removeLife(g, 4); }
+    if (g.phase === "defeat") { setGame(g); return; }
     setGame(nextMap({ ...g, phase: "map" }));
   };
   const shopBuy = (item: "heal" | "remove" | "card") => {
@@ -370,7 +372,7 @@ export function BloodCardGame() {
   };
   const total = game ? totalLife(game) : 0;
   const nodeLabel: Record<NodeType, string> = { monster: "Encontro", elite: "Elite", event: "Evento", shop: "Mercador", boss: "A Morte" };
-  const rewardChoices = useMemo(() => shuffle(["blood_siphon", "soul_bastion", "rift_step", "execution", "chain", "last_second", "guard", "strike"] as CardId[]).slice(0, 3), [game?.phase, game?.step]);
+  const rewardChoices = useMemo(() => shuffle(["water_blade", "blood_lance", "ardil", "chain", "impure_heart", "blood_siphon", "soul_bastion", "rift_step", "execution", "last_second", "guard", "strike"] as CardId[]).filter(id => !(game?.bladeEvolved && id === "water_blade")).slice(0, 3), [game?.phase, game?.step, game?.bladeEvolved]);
 
   return <div className="space-y-5 text-foreground">
     {!game && <section className="relative overflow-hidden rounded-[28px] border border-rose-300/20 bg-[radial-gradient(ellipse_at_15%_0%,rgba(190,24,93,.28),transparent_40%),radial-gradient(ellipse_at_90%_90%,rgba(67,56,202,.22),transparent_40%),linear-gradient(145deg,#1a101b,#08070c)] p-5 shadow-[0_25px_80px_rgba(0,0,0,.55)] sm:p-8">
@@ -420,7 +422,7 @@ export function BloodCardGame() {
               <p className="relative mt-2 text-[9px] font-black uppercase tracking-[.25em] text-rose-300/60">{enemy.boss?"A Morte · Chefe final":"Criatura das Fendas"}</p>
               <h3 className="relative font-display text-xl text-white">{enemy.name}</h3>
               <div className="relative mx-auto mt-3 max-w-sm"><div className="mb-1 flex justify-between text-[11px] text-white/60"><span>Vitalidade</span><b>{enemy.hp}/{enemy.maxHp}</b></div><div className="h-2.5 overflow-hidden rounded-full bg-black/70"><div className="h-full rounded-full bg-gradient-to-r from-rose-900 via-red-600 to-orange-300 transition-all" style={{width:`${Math.max(0,enemy.hp/enemy.maxHp*100)}%`}}/></div></div>
-              <div className="relative mt-3 inline-flex items-center gap-2 rounded-full border border-amber-300/20 bg-amber-950/40 px-3 py-1.5 text-[10px] text-amber-100"><Eye className="h-3.5 w-3.5"/>{enemy.intentType==="heavy"?"Ataque pesado":enemy.intentType==="guard"?"Postura defensiva":"Atacará"} · {enemy.intent}</div>
+              <div className="relative mt-3 inline-flex items-center gap-2 rounded-full border border-amber-300/20 bg-amber-950/40 px-3 py-1.5 text-[10px] text-amber-100"><Eye className="h-3.5 w-3.5"/>{enemy.intentType==="heavy"?"Ataque pesado":enemy.intentType==="guard"?"Ataque enfraquecido":"Atacará"} · {enemy.intent}</div>
             </div>)}
           </div>
         </div>
