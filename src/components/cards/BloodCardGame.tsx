@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import {
-  ArrowRight, Crown, Heart, Moon, Skull, Sparkles, Swords, Store, Eye, Zap,
+  ArrowRight, Crown, Heart, Moon, Skull, Sparkles, Swords, Store, Eye, Zap, Shield,
   Footprints, ScrollText, Gem, Compass,
 } from "lucide-react";
 
@@ -433,7 +433,7 @@ export function BloodCardGame() {
         <div><p className="text-[10px] font-black uppercase tracking-[.3em] text-rose-300/70">{nodeLabel[game.node!]} · {ZONES[game.zone]}</p><h2 className="font-display text-2xl text-white">A Fenda está aberta</h2></div>
         <div className="flex flex-wrap gap-2 text-xs"><span className="rounded-lg border border-rose-300/20 bg-rose-950/40 px-3 py-2 text-rose-100"><Heart className="mr-1 inline h-3.5 w-3.5"/> {total} vida</span><span className="rounded-lg border border-amber-300/20 bg-amber-950/30 px-3 py-2 text-amber-100"><Zap className="mr-1 inline h-3.5 w-3.5"/> {game.mana}/3 mana</span><span className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-white/70">Turno {game.turn}</span></div>
       </header>
-      <div className="grid gap-3 lg:grid-cols-[1fr_230px]">
+      <div className="space-y-3">
         <div className="rounded-[24px] border border-rose-200/10 bg-[radial-gradient(ellipse_at_50%_0%,rgba(127,29,29,.25),transparent_60%),linear-gradient(160deg,#17101b,#09070c)] p-4 sm:p-6">
           <div className={`grid gap-3 ${game.enemies.length>1?"sm:grid-cols-2":"grid-cols-1"}`}>
             {game.enemies.map((enemy,i)=><div key={enemy.id} className={`relative overflow-hidden rounded-2xl border p-4 text-center transition ${enemy.hp<=0?"border-white/5 bg-black/40 opacity-35 grayscale":"border-rose-200/20 bg-black/35"}`}>
@@ -446,26 +446,55 @@ export function BloodCardGame() {
             </div>)}
           </div>
         </div>
-        <aside className="rounded-2xl border border-white/10 bg-[#100d14] p-4">
-          <p className="text-[10px] font-black uppercase tracking-[.2em] text-white/45">Estado do jogador</p>
-          <div className="mt-4 space-y-3">
-            <div><div className="flex justify-between text-xs"><span className="text-white/55">Vida do baralho</span><b className="text-rose-200">{total}</b></div><div className="mt-1 h-2 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-gradient-to-r from-rose-800 to-rose-400" style={{width:`${Math.min(100,total/24*100)}%`}}/></div></div>
-            <div className="flex justify-between text-xs"><span className="text-white/50">Bloqueio</span><b className="text-sky-300">{game.block}</b></div>
-            <div className="flex justify-between text-xs"><span className="text-white/50">Compra / descarte</span><b>{game.draw.length} / {game.discard.length}</b></div>
-            <div className="flex justify-between text-xs"><span className="text-white/50">Exaustão</span><b>{game.exhaust.length}</b></div>
-            <div className="flex justify-between text-xs"><span className="text-white/50">Mana gasta</span><b className="text-amber-200">{game.manaSpent}</b></div>
-            <div className="flex justify-between text-xs"><span className="text-white/50">Fragmentos</span><b className="text-amber-200">{game.shards}</b></div>
-          </div>
-          {game.artifacts.length>0&&<div className="mt-4 border-t border-white/10 pt-3"><p className="text-[9px] uppercase tracking-widest text-white/40">Relíquias</p><div className="mt-2 flex flex-wrap gap-1">{game.artifacts.map(a=><span key={a} className="rounded-md border border-amber-200/10 bg-amber-950/30 px-2 py-1 text-[9px] text-amber-100">{a}</span>)}</div></div>}
-        </aside>
       </div>
       <div className="rounded-[24px] border border-white/10 bg-[linear-gradient(145deg,#15101a,#08070b)] p-4 sm:p-5">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2"><div><p className="text-[10px] font-black uppercase tracking-[.25em] text-rose-200/55">Sua mão</p><p className="text-xs text-white/40">Cada carta possui uma identidade visual própria. Escolha sua sequência.</p></div><span className="rounded-lg border border-amber-200/15 bg-amber-950/30 px-3 py-1.5 text-xs text-amber-100">{game.hand.length} cartas na mão</span></div>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5 2xl:grid-cols-6">
           {game.hand.map((id,index)=><CardFace key={`${id}-${index}`} id={id} disabled={CARDS[id].cost>game.mana} onClick={()=>playCard(index)}/>)}
         </div>
         <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-4"><div className="text-[11px] text-white/45">Compra: {game.draw.length} · Descarte: {game.discard.length} · Exaustão: {game.exhaust.length}</div><button onClick={endTurn} className="inline-flex h-11 items-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-400 px-5 text-sm font-black text-black shadow-[0_8px_25px_rgba(245,158,11,.18)] transition hover:brightness-110">Encerrar turno <ArrowRight className="h-4 w-4"/></button></div>
       </div>
+
+      <section className="rounded-[22px] border border-white/10 bg-[linear-gradient(145deg,#17111d,#09070c)] p-4 shadow-[0_16px_38px_rgba(0,0,0,.28)]">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <div><p className="text-[9px] font-black uppercase tracking-[.28em] text-violet-200/55">Painel de combate</p><h3 className="font-display text-lg text-white">Seus recursos</h3></div>
+          <span className="rounded-full border border-white/10 bg-black/30 px-3 py-1 text-[10px] text-white/55">Turno {game.turn}</span>
+        </div>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <div className="rounded-xl border border-rose-300/20 bg-rose-950/35 p-3">
+            <div className="flex items-center justify-between"><Heart className="h-4 w-4 text-rose-300"/><b className="font-display text-2xl tabular-nums text-rose-100">{total}</b></div>
+            <p className="mt-1 text-[9px] font-bold uppercase tracking-wider text-rose-100/55">Vida · cartas</p>
+            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-black/45"><div className="h-full rounded-full bg-gradient-to-r from-rose-800 to-rose-300" style={{width: Math.min(100,total/24*100)+"%"}}/></div>
+          </div>
+          <div className="rounded-xl border border-amber-300/20 bg-amber-950/30 p-3">
+            <div className="flex items-center justify-between"><Zap className="h-4 w-4 text-amber-300"/><b className="font-display text-2xl tabular-nums text-amber-100">{game.mana}<span className="text-sm text-amber-100/40">/3</span></b></div>
+            <p className="mt-1 text-[9px] font-bold uppercase tracking-wider text-amber-100/55">Mana disponível</p>
+            <div className="mt-2 flex gap-1">{[0,1,2].map(i=><span key={i} className={"h-1.5 flex-1 rounded-full "+(i<game.mana?"bg-amber-300":"bg-white/10")}/>)}</div>
+          </div>
+          <div className="rounded-xl border border-sky-300/20 bg-sky-950/30 p-3">
+            <div className="flex items-center justify-between"><Shield className="h-4 w-4 text-sky-300"/><b className="font-display text-2xl tabular-nums text-sky-100">{game.block}</b></div>
+            <p className="mt-1 text-[9px] font-bold uppercase tracking-wider text-sky-100/55">Bloqueio ativo</p>
+            <p className="mt-2 text-[9px] text-sky-100/40">Absorve ataques neste turno</p>
+          </div>
+          <div className="rounded-xl border border-violet-300/20 bg-violet-950/30 p-3">
+            <div className="flex items-center justify-between"><Gem className="h-4 w-4 text-violet-300"/><b className="font-display text-2xl tabular-nums text-violet-100">{game.shards}</b></div>
+            <p className="mt-1 text-[9px] font-bold uppercase tracking-wider text-violet-100/55">Fragmentos</p>
+            <p className="mt-2 text-[9px] text-violet-100/40">Mana gasta: {game.manaSpent}</p>
+          </div>
+        </div>
+        <div className="mt-3 grid grid-cols-3 gap-2">
+          <div className="rounded-lg border border-white/10 bg-black/25 px-3 py-2 text-center"><b className="block text-lg tabular-nums text-white">{game.draw.length}</b><span className="text-[9px] uppercase tracking-wider text-white/40">Compra</span></div>
+          <div className="rounded-lg border border-white/10 bg-black/25 px-3 py-2 text-center"><b className="block text-lg tabular-nums text-white">{game.discard.length}</b><span className="text-[9px] uppercase tracking-wider text-white/40">Descarte</span></div>
+          <div className="rounded-lg border border-white/10 bg-black/25 px-3 py-2 text-center"><b className="block text-lg tabular-nums text-white">{game.exhaust.length}</b><span className="text-[9px] uppercase tracking-wider text-white/40">Exaustão</span></div>
+        </div>
+        <details className="mt-3 rounded-xl border border-white/10 bg-black/20 p-3">
+          <summary className="cursor-pointer text-[10px] font-bold uppercase tracking-wider text-white/65">Inspecionar baralho e relíquias</summary>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <div><p className="mb-2 text-[9px] font-black uppercase tracking-widest text-white/40">Cartas por zona</p><div className="space-y-1 text-xs text-white/65"><p>Na compra: <b>{game.draw.length}</b></p><p>Na mão: <b>{game.hand.length}</b></p><p>No descarte: <b>{game.discard.length}</b></p><p>Exauridas: <b>{game.exhaust.length}</b></p><p className="border-t border-white/10 pt-1">Total de vida: <b className="text-rose-200">{total}</b></p></div></div>
+            <div><p className="mb-2 text-[9px] font-black uppercase tracking-widest text-white/40">Relíquias ativas</p><div className="flex flex-wrap gap-1">{game.artifacts.length?game.artifacts.map(a=><span key={a} className="rounded-md border border-amber-200/15 bg-amber-950/30 px-2 py-1 text-[9px] text-amber-100">{a}</span>):<span className="text-xs text-white/35">Nenhuma relíquia equipada</span>}</div><p className="mt-3 text-[10px] leading-4 text-white/40">Jogar cartas move-as para o descarte. Elas continuam no baralho. Dano e efeitos de sacrifício removem cartas de vida; Corrupções e cartas com exaustão são removidas da batalha.</p></div>
+          </div>
+        </details>
+      </section>
       <div className="rounded-xl border border-white/10 bg-black/25 p-3"><p className="mb-2 text-[9px] font-black uppercase tracking-[.2em] text-white/35">Crônica da batalha</p>{game.log.map((line,i)=><p key={i} className={`text-xs leading-5 ${i===0?"text-rose-100":"text-white/40"}`}>{line}</p>)}</div>
     </section>}
 
