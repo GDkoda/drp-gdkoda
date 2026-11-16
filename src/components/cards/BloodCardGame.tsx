@@ -88,8 +88,8 @@ function freshDeck(progress: Progress, seed: boolean): CardId[] {
     "water_blade", "ardil", "chain", "last_second", "impure_heart", "blood_siphon",
     "soul_bastion", "rift_step", "execution",
   ];
-  if (progress.bladeEvolved) return deck.map(c => c === "water_blade" ? "blood_lance" : c);
-  return seed ? [...deck, ...Array(6).fill("corruption" as CardId)] : deck;
+  const evolvedDeck = progress.bladeEvolved ? deck.map(c => c === "water_blade" ? "blood_lance" as CardId : c) : deck;
+  return seed ? [...evolvedDeck, ...Array(6).fill("corruption" as CardId)] : evolvedDeck;
 }
 function drawCards(g: Game, amount: number): Game {
   const n = { ...g, draw: [...g.draw], discard: [...g.discard], hand: [...g.hand] };
@@ -104,9 +104,13 @@ function removeLife(g: Game, amount: number): Game {
   const n = { ...g, draw: [...g.draw], discard: [...g.discard], hand: [...g.hand] };
   let remaining = amount;
   while (remaining > 0) {
-    if (n.draw.length) n.draw.splice(Math.floor(Math.random() * n.draw.length), 1);
-    else if (n.discard.length) n.discard.splice(Math.floor(Math.random() * n.discard.length), 1);
-    else if (n.hand.some(c => c !== "mad_draconate")) { const candidates = n.hand.map((c,i)=>c!=="mad_draconate"?i:-1).filter(i=>i>=0); n.hand.splice(candidates[Math.floor(Math.random()*candidates.length)],1); }
+    // O custo de uma Corrupção não pode destruir outras Corrupções ainda não usadas.
+    const drawCandidates = n.draw.map((c,i) => c !== "corruption" && c !== "mad_draconate" ? i : -1).filter(i => i >= 0);
+    const discardCandidates = n.discard.map((c,i) => c !== "corruption" && c !== "mad_draconate" ? i : -1).filter(i => i >= 0);
+    const handCandidates = n.hand.map((c,i) => c !== "corruption" && c !== "mad_draconate" ? i : -1).filter(i => i >= 0);
+    if (drawCandidates.length) n.draw.splice(drawCandidates[Math.floor(Math.random() * drawCandidates.length)], 1);
+    else if (discardCandidates.length) n.discard.splice(discardCandidates[Math.floor(Math.random() * discardCandidates.length)], 1);
+    else if (handCandidates.length) n.hand.splice(handCandidates[Math.floor(Math.random() * handCandidates.length)], 1);
     else break;
     remaining--;
   }
@@ -139,13 +143,13 @@ function makeGame(artifacts: string[], progress: Progress): Game {
 function startBattle(g: Game, node: NodeType): Game {
   const tier = Math.min(2, Math.floor(g.step / 3));
   let enemies = node === "boss"
-    ? [newEnemy("A Morte", 125, 9, "death", true)]
+    ? [newEnemy("Hanna, Deusa da Morte", 125, 9, "hanna", true)]
     : node === "elite"
       ? [newEnemy(["Carrasco de Cinzas", "Bispo Rubro", "Arauto Corrompido"][tier], 70 + tier * 16, 9 + tier * 2, "elite")]
       : shuffle(ENCOUNTERS[tier]).slice(0, node === "monster" && g.step % 2 === 0 ? 2 : 1).map((e, i) => newEnemy(e.name, e.hp + tier * 15, e.attack + tier * 2, e.kind + i));
   let next: Game = { ...g, phase: "battle", node, enemies: enemies.map(e => intentFor(e, 1)), hand: [], mana: 3, manaSpent: 0, block: 0, turn: 1, corruptionUsed: 0, dragonUnlocked: false, hannaUsed: false, skullUsed: false, bleed: 0 };
   next = drawCards(next, 5);
-  return log(next, node === "boss" ? "A Morte alcançou você. Não existe mais fuga." : node === "elite" ? "Uma presença poderosa bloqueia o caminho." : "As criaturas avançam!");
+  return log(next, node === "boss" ? "Hanna, a Deusa da Morte, alcançou você. Não existe mais fuga." : node === "elite" ? "Uma presença poderosa bloqueia o caminho." : "As criaturas avançam!");
 }
 function nextMap(g: Game): Game {
   const step = g.step + 1;
@@ -239,7 +243,7 @@ export function BloodCardGame() {
   const begin = () => { setNotice(""); setGame(makeGame(selectedArtifacts, progress)); };
   const enterNode = (node: NodeType) => {
     if (!game) return;
-    if (node === "escape") { setGame({ ...game, phase: "victory", escaped: true, log: ["Você abandonou a última rota e escapou da Morte."] }); return; }
+    if (node === "escape") { setGame({ ...game, phase: "victory", escaped: true, log: ["Você abandonou a última rota e escapou de Hanna."] }); return; }
     if (node === "event") {
       const eventId = Math.floor(Math.random() * 8);
       const choices = [
@@ -307,10 +311,11 @@ export function BloodCardGame() {
       g.exhaust.push(id);
       g = removeLife(g, 1);
       g.corruptionUsed += 1;
+      g = log(g, `Corrupção consumida: ${g.corruptionUsed}/6 neste combate.`);
       if (g.corruptionUsed >= 6 && !g.dragonUnlocked) {
         g.dragonUnlocked = true;
         g.hand.push("mad_draconate");
-        g = log(g, "SEGREDO DESBLOQUEADO — DRACONATO LOUCO!");
+        g = log(g, "SEGREDO DESBLOQUEADO — DRACONATO LOUCO! A carta foi adicionada à sua mão.");
       }
     }
     if (id === "mad_draconate") { damageAll(g.manaSpent * 10); g.exhaust.push(id); g = log(g, `O Draconato libera ${g.manaSpent * 10} de dano elétrico em área!`); }
@@ -394,7 +399,7 @@ export function BloodCardGame() {
     setGame(g);
   };
   const total = game ? totalLife(game) : 0;
-  const nodeLabel: Record<NodeType, string> = { monster: "Encontro", elite: "Elite", event: "Evento", shop: "Mercador", boss: "A Morte", escape: "Fugir da Morte" };
+  const nodeLabel: Record<NodeType, string> = { monster: "Encontro", elite: "Elite", event: "Evento", shop: "Mercador", boss: "Hanna", escape: "Fugir de Hanna" };
   const rewardChoices = useMemo(() => shuffle(["water_blade", "blood_lance", "ardil", "chain", "impure_heart", "blood_siphon", "soul_bastion", "rift_step", "execution", "last_second", "guard", "strike"] as CardId[]).filter(id => !(game?.bladeEvolved && id === "water_blade") && !(!game?.bladeEvolved && id === "blood_lance")).slice(0, 3), [game?.phase, game?.step, game?.bladeEvolved]);
 
   return <div className="space-y-5 text-foreground">
@@ -428,7 +433,7 @@ export function BloodCardGame() {
         </div>
         <div className="relative mt-5 flex items-center justify-center gap-2 text-[10px] uppercase tracking-[.2em] text-white/35"><Footprints className="h-4 w-4"/> Escolha seu próximo caminho</div>
       </div>
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-xs text-white/45"><span>Passo {game.step+1}/9 · {game.step>=6?"A Morte pode surgir no mapa":"A Morte avança a cada região"}</span><span>Baralho: {game.draw.length} compra · {game.discard.length} descarte</span></div>
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-xs text-white/45"><span>Passo {game.step+1}/9 · {game.step>=6?"Hanna pode surgir no mapa":"Hanna avança a cada região"}</span><span>Baralho: {game.draw.length} compra · {game.discard.length} descarte</span></div>
     </section>}
 
     {game?.phase === "battle" && <section className="space-y-4">
