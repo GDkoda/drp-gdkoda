@@ -11,6 +11,7 @@ type Game = {
   log: string[]; seed: boolean; corruptionUsed: number; dragonUnlocked: boolean;
   artifacts: string[]; kills: number; bladeKills: number; bladeEvolved: boolean;
   bleed: number; lastSecond: boolean; rewardChoices: CardId[];
+  hannaUsed: boolean; skullUsed: boolean; lastPlayedCard: CardId | null;
 };
 
 const CARD_INFO: Record<CardId, { name: string; cost: number; type: string; text: string; power: string }> = {
@@ -65,7 +66,7 @@ function destroyLife(g: Game, amount: number): Game {
 function makeIntent(index: number, turn: number): Intent {
   const base = ENEMIES[index].attack;
   if (turn % 3 === 0) return { kind: "heavy", value: base + 5 };
-  if (turn % 2 === 0) return { kind: "guard", value: 4 };
+  if (turn % 2 === 0) return { kind: "guard", value: Math.max(2, base - 2) };
   return { kind: "attack", value: base };
 }
 function makeGame(seed: boolean, artifacts: string[], progress: { kills: number; bladeKills: number; bladeEvolved: boolean }): Game {
@@ -78,6 +79,7 @@ function makeGame(seed: boolean, artifacts: string[], progress: { kills: number;
     mana: 3, manaSpent: 0, block: 0, turn: 1, intent: makeIntent(0, 1), log: ["A expedição começou. O baralho é sua vida."],
     seed, corruptionUsed: 0, dragonUnlocked: false, artifacts, kills: progress.kills, bladeKills: progress.bladeKills,
     bladeEvolved: progress.bladeEvolved, bleed: 0, lastSecond: false, rewardChoices: [],
+    hannaUsed: false, skullUsed: false, lastPlayedCard: null,
   };
   return drawCards(initial, 5);
 }
@@ -85,7 +87,7 @@ function nextEnemy(g: Game): Game {
   const index = g.enemyIndex + 1;
   if (index >= ENEMIES.length) return { ...g, phase: "victory" };
   const enemy = ENEMIES[index];
-  const next = { ...g, phase: "battle" as Phase, enemyIndex: index, enemyHp: enemy.hp, enemyMaxHp: enemy.hp, enemyName: enemy.name, turn: 1, mana: 3, manaSpent: 0, block: 0, bleed: 0, intent: makeIntent(index, 1), draw: shuffle([...g.draw, ...g.discard]), discard: [], hand: [], rewardChoices: [] };
+  const next = { ...g, phase: "battle" as Phase, enemyIndex: index, enemyHp: enemy.hp, enemyMaxHp: enemy.hp, enemyName: enemy.name, turn: 1, mana: 3, manaSpent: 0, block: 0, bleed: 0, intent: makeIntent(index, 1), draw: shuffle([...g.draw, ...g.discard]), discard: [], hand: [], rewardChoices: [], hannaUsed: false, skullUsed: false, lastPlayedCard: null };
   return drawCards(next, 5);
 }
 function cardColor(id: CardId) {
@@ -113,7 +115,7 @@ export function BloodCardGame() {
     const id = game.hand[index];
     const card = CARD_INFO[id];
     if (!card || card.cost > game.mana) { setNotice("Mana insuficiente."); return; }
-    let g: Game = { ...game, hand: game.hand.filter((_, i) => i !== index), mana: game.mana - card.cost, manaSpent: game.manaSpent + card.cost };
+    let g: Game = { ...game, hand: game.hand.filter((_, i) => i !== index), mana: game.mana - card.cost, manaSpent: game.manaSpent + card.cost, lastPlayedCard: id };
     if (id === "strike") g.enemyHp -= 6;
     if (id === "water_blade") g.enemyHp -= 8;
     if (id === "blood_lance") { g.enemyHp -= 16; g.bleed = Math.max(g.bleed, 2); }
@@ -146,16 +148,38 @@ export function BloodCardGame() {
     if (g.bleed > 0) { g.enemyHp -= 3; g.bleed -= 1; g = addLog(g, "Sangramento: 3 de dano."); }
     if (g.enemyHp <= 0) {
       g.enemyHp = 0; g.kills += 1;
+      if (!g.bladeEvolved && (g.draw.includes("water_blade") || g.discard.includes("water_blade") || g.hand.includes("water_blade"))) {
+        g.bladeKills += 1;
+        if (g.bladeKills >= 100) {
+          g.bladeEvolved = true;
+          g.draw = g.draw.map(c => c === "water_blade" ? "blood_lance" : c);
+          g.discard = g.discard.map(c => c === "water_blade" ? "blood_lance" : c);
+          g.hand = g.hand.map(c => c === "water_blade" ? "blood_lance" : c);
+        }
+      }
       if (g.enemyIndex === ENEMIES.length - 1) g.phase = "victory";
       else { g.phase = "reward"; g.rewardChoices = shuffle(["strike", "guard", "chain", "last_second", "impure_heart", "ardil"] as CardId[]).slice(0, 3); }
       setProgress({ kills: g.kills, bladeKills: g.bladeKills, bladeEvolved: g.bladeEvolved }); setGame(g); return;
     }
     const incoming = g.intent.value;
     const absorbed = Math.min(g.block, incoming);
-    const actual = Math.max(0, incoming - g.block);
+    let actual = Math.max(0, incoming - g.block);
     g.block = 0;
-    if (actual > 0) g = destroyLife(g, actual);
-    g = addLog(g, absorbed > 0 ? `Defesa absorveu ${absorbed}; ${actual} cartas de vida perdidas.` : `O inimigo atingiu você: ${actual} cartas de vida perdidas.`);
+    if (actual > 0 && g.artifacts.includes("Véu de Hanna") && !g.hannaUsed) {
+      actual -= 1; g.hannaUsed = true;
+      g = addLog(g, "Hanna tomou uma lembrança para si e impediu a perda de 1 carta.");
+    }
+    const lost = actual;
+    if (lost > 0) g = destroyLife(g, lost);
+    if (lost >= 3 && g.artifacts.includes("Crânio de Rogério") && !g.skullUsed && g.lastPlayedCard) {
+      const recoveredIndex = g.discard.lastIndexOf(g.lastPlayedCard);
+      if (recoveredIndex >= 0) {
+        const [recovered] = g.discard.splice(recoveredIndex, 1);
+        g.hand.push(recovered); g.skullUsed = true;
+        g = addLog(g, `O Crânio de Rogério devolveu ${CARD_INFO[recovered].name} à sua mão.`);
+      }
+    }
+    g = addLog(g, absorbed > 0 ? `Defesa absorveu ${absorbed}; ${lost} cartas de vida perdidas.` : `O inimigo atingiu você: ${lost} cartas de vida perdidas.`);
     if (g.phase === "defeat") { setGame(g); return; }
     g.turn += 1; g.mana = 3; g.manaSpent = 0; g.intent = makeIntent(g.enemyIndex, g.turn);
     g = drawCards(g, 5);
@@ -214,7 +238,7 @@ export function BloodCardGame() {
                 <div className="mb-1 flex justify-between text-xs text-rose-100/70"><span>Vitalidade</span><b>{game.enemyHp}/{game.enemyMaxHp}</b></div>
                 <div className="h-3 overflow-hidden rounded-full bg-black/60"><div className="h-full rounded-full bg-gradient-to-r from-rose-800 to-red-400 transition-all" style={{ width: `${Math.max(0, game.enemyHp / game.enemyMaxHp * 100)}%` }}/></div>
               </div>
-              <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-amber-300/20 bg-amber-950/40 px-4 py-2 text-xs text-amber-100"><Eye className="h-4 w-4"/>{game.intent.kind === "guard" ? `Preparando defesa: ${game.intent.value}` : game.intent.kind === "heavy" ? `Ataque pesado: ${game.intent.value}` : `Pretende atacar: ${game.intent.value} cartas`}</div>
+              <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-amber-300/20 bg-amber-950/40 px-4 py-2 text-xs text-amber-100"><Eye className="h-4 w-4"/>{game.intent.kind === "guard" ? `Ataque enfraquecido: ${game.intent.value}` : game.intent.kind === "heavy" ? `Ataque pesado: ${game.intent.value}` : `Pretende atacar: ${game.intent.value} cartas`}</div>
               {game.bleed > 0 && <p className="mt-2 text-xs text-rose-300">Sangramento ativo · próximo turno</p>}
             </div>
             <aside className="rounded-2xl border border-white/10 bg-[#100d14] p-4">
