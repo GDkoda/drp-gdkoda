@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import {
-  ArrowRight, BookOpen, Crown, Flame, Heart, Map, Moon, Shield, Skull,
-  Sparkles, Swords, Store, Tent, Eye, Zap, Droplets, Footprints, ScrollText,
-  ChevronRight, RotateCcw, Gem, Lock, Compass, Hourglass,
+  ArrowRight, Crown, Heart, Moon, Skull, Sparkles, Swords, Store, Eye, Zap,
+  Footprints, ScrollText, Gem, Compass,
 } from "lucide-react";
 
 type CardId =
@@ -71,7 +71,7 @@ const shuffle = <T,>(arr: T[]): T[] => {
   for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
   return a;
 };
-const totalLife = (g: Game) => g.draw.length + g.hand.length + g.discard.length;
+const totalLife = (g: Game) => g.draw.length + g.hand.filter(c => c !== "mad_draconate").length + g.discard.length;
 const log = (g: Game, message: string): Game => ({ ...g, log: [message, ...g.log].slice(0, 8) });
 const newEnemy = (name: string, hp: number, attack: number, id: string, boss = false): Enemy => ({
   id, name, hp, maxHp: hp, intent: attack, intentType: "attack", boss,
@@ -100,7 +100,7 @@ function removeLife(g: Game, amount: number): Game {
   while (remaining > 0) {
     if (n.draw.length) n.draw.splice(Math.floor(Math.random() * n.draw.length), 1);
     else if (n.discard.length) n.discard.splice(Math.floor(Math.random() * n.discard.length), 1);
-    else if (n.hand.length) n.hand.splice(Math.floor(Math.random() * n.hand.length), 1);
+    else if (n.hand.some(c => c !== "mad_draconate")) { const candidates = n.hand.map((c,i)=>c!=="mad_draconate"?i:-1).filter(i=>i>=0); n.hand.splice(candidates[Math.floor(Math.random()*candidates.length)],1); }
     else break;
     remaining--;
   }
@@ -118,7 +118,6 @@ function routeOptions(step: number): NodeType[] {
 }
 function makeGame(artifacts: string[], progress: Progress): Game {
   const deck = shuffle(freshDeck(progress, artifacts.includes("Semente do Mal")));
-  const first = ENCOUNTERS[0];
   const g: Game = {
     phase: "map", zone: 0, step: 0, node: null, draw: deck, hand: [], discard: [], exhaust: [],
     enemies: [], mana: 3, manaSpent: 0, block: 0, turn: 1, log: ["A expedição começou. Seu baralho é sua vida."],
@@ -164,7 +163,7 @@ function cardTheme(id: CardId) {
   return themes[id];
 }
 function CardArt({ id, compact = false }: { id: CardId; compact?: boolean }) {
-  const shapes: Record<CardId, JSX.Element> = {
+  const shapes: Record<CardId, ReactNode> = {
     strike: <><path d="M50 10 62 39 88 50 62 61 50 90 38 61 12 50 38 39Z" fill="#dbeafe" opacity=".2"/><path d="M20 74 76 18M31 84 87 28" stroke="#e2e8f0" strokeWidth="5" strokeLinecap="round"/><path d="m65 18 12-5-5 12" fill="none" stroke="#fff" strokeWidth="3"/></>,
     guard: <><path d="M50 9 82 22 78 57Q72 79 50 91 28 79 22 57L18 22Z" fill="#0e7490" stroke="#a5f3fc" strokeWidth="4"/><path d="m50 23 18 8-3 25-15 18-15-18-3-25Z" fill="#cffafe" opacity=".22"/><path d="m37 50 9 9 19-22" fill="none" stroke="#ecfeff" strokeWidth="5" strokeLinecap="round"/></>,
     water_blade: <><path d="M12 70Q32 10 54 30T90 24Q65 52 79 80Q49 61 28 88Z" fill="#38bdf8" opacity=".75"/><path d="M17 70Q48 18 83 20" fill="none" stroke="#e0f2fe" strokeWidth="5" strokeLinecap="round"/><circle cx="30" cy="40" r="5" fill="#fff"/><circle cx="67" cy="58" r="3" fill="#bae6fd"/></>,
@@ -281,7 +280,7 @@ export function BloodCardGame() {
     if (id === "water_blade") damageTarget(9);
     if (id === "blood_lance") { damageTarget(15); g.bleed = 2; }
     if (id === "guard") g.block += 9;
-    if (id === "ardil") { const incoming = g.enemies.reduce((sum, e) => sum + (e.hp > 0 ? e.intent : 0), 0); g.block += incoming; damageAll(incoming); }
+    if (id === "ardil") { const incoming = g.enemies.reduce((sum, e) => sum + (e.hp > 0 ? e.intent : 0), 0); g.block += incoming; damageAll(incoming); g.enemies = g.enemies.map(e => ({ ...e, intent: 0 })); }
     if (id === "chain") { damageTarget(5); g.enemies = g.enemies.map(e => ({ ...e, intent: Math.ceil(e.intent / 2) })); }
     if (id === "impure_heart") { g = removeLife(g, 1); damageTarget(13); }
     if (id === "last_second") { g.block += 11; g = drawCards(g, 1); }
@@ -348,8 +347,8 @@ export function BloodCardGame() {
   };
   const chooseReward = (id: CardId | null) => {
     if (!game) return;
-    if (id) game.draw.push(id);
-    setGame(nextMap({ ...game, phase: "map", draw: id ? shuffle([...game.draw]) : game.draw, mapOptions: routeOptions(game.step + 1) }));
+    const draw = id ? shuffle([...game.draw, id]) : [...game.draw];
+    setGame(nextMap({ ...game, phase: "map", draw }));
   };
   const chooseEvent = (choice: number) => {
     if (!game) return;
