@@ -249,7 +249,7 @@ export function BloodCardGame() {
         ["Ganhar 1 carta rara e sofrer 4 de dano", "Ignorar a visão"],
         ["Entregar 2 cartas de vida para obter Sentença", "Deixar os livros em paz"],
         ["Pagar 3 cartas de vida e receber o Véu de Hanna", "Recusar o pacto"],
-        game.shards >= 3 ? "Pagar 3 fragmentos para transformar Golpe em Correntes" : "Sem fragmentos: receber 2 fragmentos", "Receber 2 fragmentos"],
+        [game.shards >= 3 ? "Pagar 3 fragmentos para transformar Golpe em Correntes" : "Sem fragmentos: receber 2 fragmentos", "Receber 2 fragmentos"],
         ["Receber Sifão Carmesim e perder 3 cartas de vida", "Fechar o espelho"],
       ][eventId];
       setGame({ ...game, phase: "event", node, eventId, eventChoices: choices });
