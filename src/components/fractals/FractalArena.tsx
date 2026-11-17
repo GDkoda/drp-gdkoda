@@ -3783,7 +3783,9 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         } else if (game.player.spriteBlend < 1) {
           game.player.spriteBlend = Math.min(1, game.player.spriteBlend + dt / 0.12);
         }
-        game.shots.forEach((shot) => {
+        const shotsToUpdate = game.shots.length;
+        for (let shotIndex = 0; shotIndex < shotsToUpdate; shotIndex++) {
+          const shot = game.shots[shotIndex];
           // Guarda o segmento percorrido para evitar que projéteis rápidos atravessem alvos entre quadros.
           shot.previousX = shot.x;
           shot.previousY = shot.y;
@@ -3886,7 +3888,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             shot.y = game.player.y;
           } else if (shot.kind !== "plasma_puddle") {
             if (shot.targetEnemy) {
-              if (shot.targetEnemy.hp <= 0) { shot.life = 0; return; }
+              if (shot.targetEnemy.hp <= 0) { shot.life = 0; continue; }
               const dx = shot.targetEnemy.x - shot.x, dy = shot.targetEnemy.y - shot.y;
               const d = Math.max(1, Math.hypot(dx, dy));
               const speed = Math.max(1, Math.hypot(shot.vx, shot.vy));
@@ -3900,7 +3902,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             shot.pulseTimer = (shot.pulseTimer ?? 0) - dt;
           }
           shot.life -= dt;
-        });
+        }
         // The Core leaves a damaging singularity either on impact or when its flight expires.
         const shotsAtDetonationCheck=game.shots.length;
         for(let shotIndex=0;shotIndex<shotsAtDetonationCheck;shotIndex++){
