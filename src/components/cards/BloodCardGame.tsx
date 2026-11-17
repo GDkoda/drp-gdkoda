@@ -256,25 +256,52 @@ function nextMap(g: Game): Game {
 // ARTE E ILUSTRAÇÃO SVG DAS CRIATURAS
 // ==========================================
 
-function MonsterGraphic({ kind, boss = false }: { kind: string; boss?: boolean }) {
-  if (boss) return (
-    <svg viewBox="0 0 120 120" className="h-28 w-28 drop-shadow-[0_0_24px_rgba(225,29,72,.6)]" aria-hidden="true">
-      <circle cx="60" cy="60" r="50" fill="#180710" stroke="#f43f5e" strokeWidth="2" strokeDasharray="4 6" opacity=".5"/>
-      <path d="M25 95 C 40 40, 70 20, 105 18 C 85 35, 75 55, 60 70 L 25 95 Z" fill="#e11d48" opacity=".8"/>
-      <path d="M20 100 L 70 50" stroke="#fecdd3" strokeWidth="4" strokeLinecap="round"/>
-      <path d="M40 50 Q 60 22 80 50 Q 88 85 60 92 Q 32 85 40 50 Z" fill="#09050d" stroke="#f43f5e" strokeWidth="2.5"/>
-      <ellipse cx="52" cy="54" rx="4" ry="2" fill="#fda4af"/><ellipse cx="68" cy="54" rx="4" ry="2" fill="#fda4af"/>
-      <circle cx="52" cy="54" r="1.5" fill="#fff"/><circle cx="68" cy="54" r="1.5" fill="#fff"/>
-      <path d="M45 76 Q 60 84 75 76" stroke="#f43f5e" strokeWidth="1.5" fill="none"/>
-    </svg>
-  );
-  switch (kind) {
-    case "ghoul": return <svg viewBox="0 0 100 100" className="h-20 w-20 text-rose-400" aria-hidden="true"><path d="M35 30 Q 50 15 65 30 Q 75 55 60 80 Q 40 80 35 30 Z" fill="#1f101b" stroke="#fb7185" strokeWidth="2"/><path d="M25 45 L 35 55 M75 45 L 65 55" stroke="#f43f5e" strokeWidth="3" strokeLinecap="round"/><circle cx="43" cy="38" r="3" fill="#ffe4e6"/><circle cx="57" cy="38" r="3" fill="#ffe4e6"/><path d="M42 55 L 45 62 L 50 55 L 55 62 L 58 55" fill="#fff"/></svg>;
-    case "swarm": case "parasite": return <svg viewBox="0 0 100 100" className="h-20 w-20 text-purple-400" aria-hidden="true"><circle cx="35" cy="40" r="12" fill="#2e1065" stroke="#c084fc" strokeWidth="2"/><circle cx="65" cy="45" r="14" fill="#2e1065" stroke="#c084fc" strokeWidth="2"/><circle cx="48" cy="68" r="16" fill="#3b0764" stroke="#e879f9" strokeWidth="2.5"/><circle cx="48" cy="66" r="3" fill="#fff"/><circle cx="35" cy="39" r="2" fill="#fff"/><circle cx="65" cy="44" r="2" fill="#fff"/><path d="M30 75 Q 48 90 66 75" stroke="#f0abfc" strokeWidth="2" fill="none"/></svg>;
-    case "hound": return <svg viewBox="0 0 100 100" className="h-20 w-20 text-amber-500" aria-hidden="true"><path d="M20 65 L 40 30 L 60 30 L 80 50 L 70 75 L 45 70 Z" fill="#1c120c" stroke="#f59e0b" strokeWidth="2"/><polygon points="35,20 45,30 30,35" fill="#d97706"/><polygon points="55,20 65,30 50,35" fill="#d97706"/><circle cx="60" cy="45" r="3" fill="#fde68a"/><path d="M65 60 L 78 58 L 70 68 Z" fill="#b45309"/></svg>;
-    case "knight": case "executioner": return <svg viewBox="0 0 100 100" className="h-20 w-20 text-slate-300" aria-hidden="true"><rect x="30" y="25" width="40" height="50" rx="8" fill="#18181b" stroke="#cbd5e1" strokeWidth="2.5"/><line x1="50" y1="30" x2="50" y2="65" stroke="#f43f5e" strokeWidth="3"/><line x1="36" y1="42" x2="64" y2="42" stroke="#f43f5e" strokeWidth="3"/><path d="M25 80 L 75 80 L 65 95 L 35 95 Z" fill="#09090b" stroke="#94a3b8" strokeWidth="2"/></svg>;
-    default: return <svg viewBox="0 0 100 100" className="h-20 w-20 text-violet-400" aria-hidden="true"><circle cx="50" cy="50" r="32" fill="#170f26" stroke="#a855f7" strokeWidth="2.5"/><ellipse cx="50" cy="50" rx="20" ry="10" fill="#3b0764"/><circle cx="50" cy="50" r="6" fill="#f43f5e"/><circle cx="52" cy="48" r="2" fill="#fff"/><path d="M20 50 Q 50 15 80 50 Q 50 85 20 50" fill="none" stroke="#d8b4fe" strokeWidth="2" strokeDasharray="3 4"/></svg>;
-  }
+type SpriteAction = "idle" | "attack" | "hurt" | "death";
+type SpriteActor = "blood-monster" | "demon" | "orc" | "soldier";
+const SPRITE_ROWS: Record<SpriteActor, { rowBase: number; frames: Record<SpriteAction, number> }> = {
+  "blood-monster": { rowBase: 0, frames: { idle: 6, attack: 8, hurt: 4, death: 4 } },
+  demon: { rowBase: 4, frames: { idle: 6, attack: 7, hurt: 4, death: 4 } },
+  orc: { rowBase: 8, frames: { idle: 6, attack: 6, hurt: 4, death: 4 } },
+  soldier: { rowBase: 12, frames: { idle: 6, attack: 6, hurt: 4, death: 4 } },
+};
+function actorForMonster(kind: string): SpriteActor {
+  const value = kind.toLowerCase();
+  if (["ghoul", "swarm", "widow", "spider", "devourer", "voices", "parasite", "bell"].some(x => value.includes(x))) return "blood-monster";
+  if (["cultist", "herald", "veil", "executioner"].some(x => value.includes(x))) return "demon";
+  if (["hound", "gravedigger", "sentinel"].some(x => value.includes(x))) return "orc";
+  return "soldier";
+}
+function SpriteCharacter({ actor, action = "idle" }: { actor: SpriteActor; action?: SpriteAction }) {
+  const config = SPRITE_ROWS[actor];
+  const frames = config.frames[action];
+  const row = config.rowBase + (action === "idle" ? 0 : action === "attack" ? 1 : action === "hurt" ? 2 : 3);
+  const animation = action === "idle" ? `bc-sprite-${frames} 1050ms steps(${frames}) infinite` : `bc-sprite-${frames} 520ms steps(${frames - 1}) forwards`;
+  return <div role="img" aria-label={actor.replace("-", " ")} className="h-24 w-24 shrink-0"
+    style={{
+      imageRendering: "pixelated",
+      backgroundImage: "url(/assets/minigames/bloodcard/sprites/characters-atlas.webp)",
+      backgroundRepeat: "no-repeat", backgroundSize: "800% 1600%",
+      backgroundPositionY: `${(row / 15) * 100}%`, animation,
+    }}/>;
+}
+function MonsterGraphic({ kind, boss = false, action = "idle" }: { kind: string; boss?: boolean; action?: SpriteAction }) {
+  if (boss) return <div className="relative flex h-28 w-28 items-center justify-center overflow-hidden">
+    <div className="absolute inset-0 rounded-full bg-fuchsia-700/15 blur-xl"/>
+    <img src="/assets/minigames/bloodcard/hanna-sigil.webp" alt="Símbolo de Hanna, Deusa da Morte"
+      className="relative h-28 w-28 object-contain mix-blend-screen drop-shadow-[0_0_22px_rgba(217,70,239,.55)]"
+      loading="eager" draggable={false}/>
+  </div>;
+  return <SpriteCharacter actor={actorForMonster(kind)} action={action}/>;
+}
+function CombatFx({ kind }: { kind: "slash" | "spark" | "magic" | "flame" }) {
+  const positions = { slash: "0% 0%", spark: "100% 0%", magic: "0% 100%", flame: "100% 100%" };
+  return <div aria-hidden="true" className="bc-fx-burst pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
+    <div className="h-28 w-28" style={{
+      backgroundImage: "url(/assets/minigames/bloodcard/fx/kenney-fx-atlas.webp)",
+      backgroundRepeat: "no-repeat", backgroundSize: "200% 200%", backgroundPosition: positions[kind],
+      imageRendering: "pixelated", filter: "drop-shadow(0 0 10px rgba(236,72,153,.65))",
+    }}/>
+  </div>;
 }
 
 // ==========================================
@@ -392,6 +419,8 @@ export function BloodCardGame() {
   const [game, setGame] = useState<Game | null>(null);
   const [progress, setProgress] = useState<Progress>({ kills: 0, bladeKills: 0, bladeEvolved: false, wins: 0 });
   const [notice, setNotice] = useState("");
+  const [enemyAnimation, setEnemyAnimation] = useState<{ ids: string[]; action: "attack" | "hurt" } | null>(null);
+  const [combatFx, setCombatFx] = useState<{ target: string | "all" | "player"; kind: "slash" | "spark" | "magic" | "flame"; nonce: number } | null>(null);
 
   useEffect(() => {
     try {
@@ -402,6 +431,12 @@ export function BloodCardGame() {
   useEffect(() => {
     try { localStorage.setItem("gd-koda-bloodcard-v3", JSON.stringify(progress)); } catch { /* Ignora erro de storage */ }
   }, [progress]);
+
+  useEffect(() => {
+    if (!enemyAnimation && !combatFx) return;
+    const timer = window.setTimeout(() => { setEnemyAnimation(null); setCombatFx(null); }, 720);
+    return () => window.clearTimeout(timer);
+  }, [enemyAnimation?.ids.join("|"), enemyAnimation?.action, combatFx?.nonce]);
 
   const begin = () => { setNotice(""); setGame(makeGame(selectedArchetype, selectedArtifacts, progress)); };
 
@@ -532,6 +567,12 @@ export function BloodCardGame() {
     resolveCardEffect(id);
     if (id !== "corruption" && id !== "mad_draconate" && id !== "veil_parasite") g.discard.push(id);
     if (g.phase === "defeat") { setGame(g); return; }
+    const allTargets = ["chain", "mad_draconate", "ardil"].includes(id);
+    const visualTargets = (allTargets ? g.enemies : (target ? [target] : [])).map(e => e.id);
+    const visualKind = id === "chain" || id === "mad_draconate" ? "magic" : ["impure_heart", "rend_flesh", "blood_lance"].includes(id) ? "flame" : ["guard", "defensive_stance", "soul_bastion", "iron_spikes", "unyielding", "last_second", "rift_step"].includes(id) ? "spark" : "slash";
+    const visualNonce = Date.now();
+    setEnemyAnimation(visualTargets.length ? { ids: visualTargets, action: "hurt" } : null);
+    setCombatFx({ target: visualTargets.length ? (allTargets ? "all" : visualTargets[0]) : "player", kind: visualKind, nonce: visualNonce });
     if (g.enemies.every(e => e.hp <= 0)) g = finishBattle(g);
     setGame(g);
   };
@@ -563,6 +604,12 @@ export function BloodCardGame() {
       g.bleed = Math.max(0, g.bleed - 1);
     }
     if (g.enemies.every(e => e.hp <= 0)) { setGame(finishBattle(g)); return; }
+    const attackers = g.enemies.filter(e => e.hp > 0 && e.intentType !== "guard" && e.intentType !== "buff");
+    if (attackers.length) {
+      const visualNonce = Date.now();
+      setEnemyAnimation({ ids: attackers.map(e => e.id), action: "attack" });
+      setCombatFx({ target: "player", kind: "flame", nonce: visualNonce });
+    }
     let totalIncomingDamage = 0;
     for (const enemy of g.enemies) {
       if (enemy.hp <= 0) continue;
@@ -685,6 +732,7 @@ export function BloodCardGame() {
 
   return (
     <div className="space-y-4 text-foreground">
+      <style>{`\n        @keyframes bc-sprite-4 { from { background-position-x: 0%; } to { background-position-x: 42.857%; } }\n        @keyframes bc-sprite-6 { from { background-position-x: 0%; } to { background-position-x: 71.429%; } }\n        @keyframes bc-sprite-7 { from { background-position-x: 0%; } to { background-position-x: 85.714%; } }\n        @keyframes bc-sprite-8 { from { background-position-x: 0%; } to { background-position-x: 100%; } }\n        @keyframes bc-fx-burst { 0% { opacity: 0; transform: scale(.35) rotate(-12deg); } 18% { opacity: 1; } 100% { opacity: 0; transform: scale(1.35) rotate(14deg); } }\n        .bc-fx-burst { animation: bc-fx-burst 620ms ease-out forwards; }\n      `}</style>
       {!game && (
         <section className="relative overflow-hidden rounded-[26px] border border-rose-400/20 bg-[radial-gradient(ellipse_at_top,rgba(190,24,93,.25),transparent_50%),linear-gradient(160deg,#19101b,#0a070e)] p-5 shadow-2xl sm:p-8">
           <div className="pointer-events-none absolute -right-10 -top-10 text-[200px] opacity-[.03]">☠</div>
@@ -767,7 +815,10 @@ export function BloodCardGame() {
                 return <div key={enemy.id} onClick={() => !isDead && setGame({ ...game, selectedEnemyId: enemy.id })}
                   className={`relative cursor-pointer overflow-hidden rounded-xl border p-3 text-center transition-all ${isDead ? "border-white/5 bg-black/40 opacity-30 grayscale" : isSelected ? "border-amber-300 bg-amber-950/20 shadow-[0_0_20px_rgba(251,191,36,.2)] scale-[1.01]" : "border-rose-400/20 bg-black/40 hover:border-rose-300/50"}`}>
                   {isSelected && !isDead && <div className="absolute right-2 top-2 flex items-center gap-1 rounded-full border border-amber-300/40 bg-amber-400/20 px-2 py-0.5 text-[9px] font-bold text-amber-200"><Crosshair className="h-3 w-3"/> ALVO</div>}
-                  <div className="mx-auto flex h-20 items-center justify-center"><MonsterGraphic kind={enemy.kind} boss={enemy.boss}/></div>
+                  <div className="relative mx-auto flex h-24 items-center justify-center">
+                    <MonsterGraphic kind={enemy.kind} boss={enemy.boss} action={isDead ? "death" : enemyAnimation?.ids.includes(enemy.id) ? enemyAnimation.action : "idle"}/>
+                    {combatFx && (combatFx.target === "all" || combatFx.target === enemy.id) && <CombatFx key={combatFx.nonce} kind={combatFx.kind}/>}
+                  </div>
                   <h3 className="mt-1 font-display text-sm font-bold text-white">{enemy.name}</h3>
                   <div className="mx-auto mt-2 max-w-xs">
                     <div className="mb-1 flex justify-between text-[10px] text-white/70"><span>Vitalidade</span><span className="font-mono font-bold">{enemy.hp}/{enemy.maxHp} {enemy.block > 0 && <b className="text-sky-300">(+{enemy.block})</b>}</span></div>
@@ -783,7 +834,8 @@ export function BloodCardGame() {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-white/10 bg-[linear-gradient(150deg,#140d18,#07060a)] p-3 sm:p-4">
+          <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-[linear-gradient(150deg,#140d18,#07060a)] p-3 sm:p-4">
+            {combatFx?.target === "player" && <CombatFx key={combatFx.nonce} kind={combatFx.kind}/>} 
             <div className="mb-2 flex items-center justify-between border-b border-white/10 pb-2">
               <div className="flex items-center gap-2"><span className="text-[10px] font-black uppercase tracking-wider text-rose-300">Sua Mão</span><span className="rounded-md bg-white/10 px-2 py-0.5 text-[10px] font-mono text-white/70">{game.hand.length} cartas</span></div>
               <div className="text-xs font-bold text-amber-200/80">Mana: <b className="font-mono text-sm text-amber-300">{game.mana}</b>/{game.maxMana}</div>
