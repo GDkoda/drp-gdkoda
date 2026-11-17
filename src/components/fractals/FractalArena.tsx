@@ -931,6 +931,29 @@ const floorPatternCache = new WeakMap<CanvasRenderingContext2D, Map<number, Canv
 const cemeteryImgs: Record<string, HTMLImageElement> = {};
 const cemeteryImagePromises = new Map<string, Promise<void>>();
 const CEMETERY_IMAGE_SOURCES = [groundImg, mausoleumImg, gravestoneImg, crossImg, candlesImg, catUrnImg] as const;
+
+// Atlas de efeitos Kenney (CC0), já empacotado e versionado para Sangue das Fendas.
+// Reutilizá-lo evita duplicar imagens e mantém um único recurso leve no projeto.
+type FractalFxCell = "slash" | "spark" | "magic" | "flame";
+const fractalFxAtlas: HTMLImageElement | null = typeof Image !== "undefined" ? new Image() : null;
+if (fractalFxAtlas) {
+  fractalFxAtlas.decoding = "async";
+  fractalFxAtlas.src = "/assets/minigames/bloodcard/fx/kenney-fx-atlas.webp";
+}
+function drawFractalFxAtlas(ctx: CanvasRenderingContext2D, cell: FractalFxCell, x: number, y: number, size: number, alpha: number, rotation = 0): boolean {
+  const image = fractalFxAtlas;
+  if (!image?.complete || image.naturalWidth < 2 || image.naturalHeight < 2 || alpha <= 0) return false;
+  const cellWidth = image.naturalWidth / 2;
+  const cellHeight = image.naturalHeight / 2;
+  const index = cell === "spark" ? 1 : cell === "magic" ? 2 : cell === "flame" ? 3 : 0;
+  ctx.save();
+  ctx.translate(x, y);
+  if (rotation !== 0) ctx.rotate(rotation);
+  ctx.globalAlpha *= clamp(alpha, 0, 1);
+  ctx.drawImage(image, (index % 2) * cellWidth, Math.floor(index / 2) * cellHeight, cellWidth, cellHeight, -size / 2, -size / 2, size, size);
+  ctx.restore();
+  return true;
+}
 function cemImg(src: string): HTMLImageElement | null {
   if (typeof Image === "undefined") return null;
   let img = cemeteryImgs[src];
@@ -1750,6 +1773,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
       ctx.beginPath(); ctx.moveTo(star[0].x, star[0].y); for (let i = 1; i < star.length; i++) ctx.lineTo(star[i].x, star[i].y); ctx.stroke();
       ctx.strokeStyle = "rgba(255,241,242,.9)"; ctx.lineWidth = 1.3;
       ctx.beginPath(); ctx.arc(0, 0, radius * (0.42 + progress * 0.12), 0, Math.PI * 2); ctx.stroke();
+      if (!lowQuality) drawFractalFxAtlas(ctx, "flame", 0, 0, radius * 1.35, lifeRatio * 0.34, game.elapsed * 0.18);
       ctx.restore();
       return;
     }
@@ -1780,6 +1804,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
       ctx.strokeStyle = shot.kind === "boomerang_catch" ? "#a5f3fc" : "#d8b4fe"; ctx.lineWidth = shot.kind === "rift_residue" ? 1.5 : 3;
       const progress = 1 - lifeRatio;
       ctx.beginPath(); ctx.arc(0, 0, radius * (0.62 + progress * 0.34), game.elapsed * 2, game.elapsed * 2 + Math.PI * 1.65); ctx.stroke();
+      if (!lowQuality) drawFractalFxAtlas(ctx, shot.kind === "rift_residue" ? "magic" : "slash", 0, 0, radius * 0.9, lifeRatio * 0.34, -game.elapsed * 0.3);
       ctx.restore(); return;
     }
     if (shot.kind === "sentinel_explosion") {
@@ -1791,6 +1816,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
       drawCachedRadialGlow(ctx,0,0,radius,explosionStops,1,"lighter");
       ctx.strokeStyle = "#a5f3fc"; ctx.lineWidth = 4; ctx.shadowColor = "#22d3ee"; ctx.shadowBlur = 0;
       ctx.beginPath(); ctx.arc(0, 0, radius * (0.62 + (1 - lifeRatio) * 0.25), 0, Math.PI * 2); ctx.stroke();
+      if (!lowQuality) drawFractalFxAtlas(ctx, "spark", 0, 0, radius * 0.92, lifeRatio * 0.48, game.elapsed * 0.18);
       ctx.restore();
       return;
     }
@@ -1815,6 +1841,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
         ctx.strokeStyle = "rgba(253,224,71,0.7)"; ctx.lineWidth = 2;
         ctx.beginPath(); ctx.arc(0, 0, radius * 0.68, game.elapsed * 0.5, game.elapsed * 0.5 + Math.PI * 1.4); ctx.stroke();
       }
+      if (!lowQuality) drawFractalFxAtlas(ctx, game.evolved ? "magic" : "flame", 0, 0, radius * 1.25, lifeRatio * 0.25, -game.elapsed * 0.16);
       ctx.restore();
       return;
     }
@@ -2106,12 +2133,16 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
 
   ctx.save();
   game.rings?.forEach((ring) => {
+    const ringCull = (ring.max ?? ring.r) + 12;
+    if (ring.x < cameraX - ringCull || ring.x > cameraX + viewWidth + ringCull || ring.y < cameraY - ringCull || ring.y > cameraY + viewHeight + ringCull) return;
     ctx.globalAlpha = clamp(ring.life * 2.4, 0, 1);
     ctx.strokeStyle = ring.color; ctx.lineWidth = 3;
     ctx.beginPath(); ctx.arc(ring.x, ring.y, ring.r, 0, Math.PI * 2); ctx.stroke();
   });
   ctx.restore();
   game.microVortices.forEach((vortex) => {
+    const vortexCull = vortex.radius + 12;
+    if (vortex.x < cameraX - vortexCull || vortex.x > cameraX + viewWidth + vortexCull || vortex.y < cameraY - vortexCull || vortex.y > cameraY + viewHeight + vortexCull) return;
     const alpha = clamp(vortex.life / vortex.maxLife, 0, 1);
     ctx.save();
     ctx.globalAlpha = alpha * 0.72;
@@ -2123,7 +2154,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     drawCachedRadialGlow(ctx,vortex.x,vortex.y,vortex.radius*.4,[[0,"rgba(221,214,254,.35)"],[1,"rgba(139,92,246,0)"]],1,"source-over");
     ctx.restore();
   });
-  if (game.alchemyCircle) {
+  if (game.alchemyCircle && game.alchemyCircle.x >= cameraX - game.alchemyCircle.radius && game.alchemyCircle.x <= cameraX + viewWidth + game.alchemyCircle.radius && game.alchemyCircle.y >= cameraY - game.alchemyCircle.radius && game.alchemyCircle.y <= cameraY + viewHeight + game.alchemyCircle.radius) {
     ctx.save();
     ctx.globalAlpha = 0.18 + 0.12 * (game.alchemyCircle.life / game.alchemyCircle.maxLife);
     drawCachedRadialGlow(ctx,game.alchemyCircle.x,game.alchemyCircle.y,game.alchemyCircle.radius,[[0,"rgba(52,211,153,.22)"],[.82,"rgba(52,211,153,.09)"],[1,"rgba(52,211,153,0)"]],1,"source-over");
@@ -2347,6 +2378,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     ctx.textBaseline = "middle";
     ctx.lineJoin = "round";
     for (const number of game.damageNumbers) {
+      if (number.x < cameraX - 36 || number.x > cameraX + viewWidth + 36 || number.y < cameraY - 36 || number.y > cameraY + viewHeight + 36) continue;
       const isCritical = number.isCritical === true;
       ctx.font = `900 ${isCritical ? 18 : 15}px Inter, ui-sans-serif, system-ui, sans-serif`;
       const progress = 1 - number.life / number.maxLife;
@@ -2520,6 +2552,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
   }
   ctx.restore();
   game.pickupLabels.forEach((label) => {
+    if (label.x < cameraX - 100 || label.x > cameraX + viewWidth + 100 || label.y < cameraY - 40 || label.y > cameraY + viewHeight + 40) return;
     const alpha = clamp(label.life / label.maxLife, 0, 1);
     ctx.save();
     ctx.globalAlpha = alpha;
