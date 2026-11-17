@@ -1754,7 +1754,25 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
   ctx.save();
   ctx.globalCompositeOperation = "lighter";
   game.shots.forEach((shot) => {
-    if (shot.x < cameraX - 280 || shot.x > cameraX + viewWidth + 280 || shot.y < cameraY - 280 || shot.y > cameraY + viewHeight + 280) return;
+    // Culling visual usa a extensão real do efeito: projéteis comuns precisam de
+    // pouca margem; áreas grandes preservam o brilho; trilhas são testadas pelo segmento.
+    const shotRadius = shot.radius ?? 0;
+    const visualMargin = shot.kind === "blood_ritual_blast"
+      ? Math.max(80, shotRadius * 1.4 + 12)
+      : shot.kind === "scythe_slash" || shot.kind === "gravity_well"
+        || shot.kind === "plasma_puddle" || shot.kind === "sentinel_explosion"
+        || shot.kind === "rift_blast" || shot.kind === "rift_residue"
+        || shot.kind === "boomerang_catch" || shot.kind === "fractal_boomerang"
+        ? shotRadius + 24
+        : Math.max(80, shotRadius + 24);
+    if (shot.kind === "blood_trail") {
+      const sx = shot.startX ?? shot.x, sy = shot.startY ?? shot.y;
+      const ex = shot.endX ?? shot.x, ey = shot.endY ?? shot.y;
+      const trailMargin = shotRadius + 8;
+      if (Math.max(sx, ex) < cameraX - trailMargin || Math.min(sx, ex) > cameraX + viewWidth + trailMargin
+        || Math.max(sy, ey) < cameraY - trailMargin || Math.min(sy, ey) > cameraY + viewHeight + trailMargin) return;
+    } else if (shot.x < cameraX - visualMargin || shot.x > cameraX + viewWidth + visualMargin
+      || shot.y < cameraY - visualMargin || shot.y > cameraY + viewHeight + visualMargin) return;
     const lifeRatio = clamp(shot.life / Math.max(0.01, shot.maxLife ?? game.player.projectileLife), 0.08, 1);
 
     if (shot.kind === "dash_strike") return;
