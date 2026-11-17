@@ -80,9 +80,9 @@ function spawnParticle(game: GameState, particle: Particle): void {
     reused.vy = particle.vy;
     reused.life = particle.life;
     reused.color = particle.color;
-    spawnParticle(game, reused);
+    game.particles[game.particles.length] = reused;
   } else {
-    spawnParticle(game, particle);
+    game.particles[game.particles.length] = particle;
   }
 }
 
