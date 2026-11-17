@@ -25,7 +25,8 @@ type UpgradeId = "power" | "haste" | "vitality" | "swift" | "special_area" | "sp
 type Upgrade = { id: UpgradeId; name: string; description: string; icon: typeof Zap; rarity?: "normal" | "uncommon" | "rare" | "epic" | "legendary" | "maestria" | "evolution" };
 type UpgradeCounts = Record<string, { name: string; count: number; rarity: string }>;
 
-type Enemy = { x: number; y: number; hp: number; maxHp: number; speed: number; radius: number; damage: number; color: string; xp: number; type: "wraith" | "brute" | "charger" | "elite" | "boss"; attack: number; flash: number; windup: number; targetX: number; targetY: number; dashTime: number; summonedAtHalf: boolean; furyTriggered: boolean; isExecutioner?: boolean; slowTimer?: number; slowFactor?: number; hunterMarkTimer?: number; boomerangMarkTimer?: number; thermalBurnTimer?: number; thermalBurnTick?: number; thermalBurnDamage?: number; bloodStacks?: number; bloodStackDamage?: number };
+type AekashicsEnemyKey = "aek_wraith" | "aek_brute" | "aek_charger" | "aek_elite" | "aek_boss_reaper" | "aek_boss_lich" | "aek_boss_dragon" | "aek_boss_golem";
+type Enemy = { x: number; y: number; hp: number; maxHp: number; speed: number; radius: number; damage: number; color: string; xp: number; type: "wraith" | "brute" | "charger" | "elite" | "boss"; visual?: AekashicsEnemyKey; attack: number; flash: number; windup: number; targetX: number; targetY: number; dashTime: number; summonedAtHalf: boolean; furyTriggered: boolean; isExecutioner?: boolean; slowTimer?: number; slowFactor?: number; hunterMarkTimer?: number; boomerangMarkTimer?: number; thermalBurnTimer?: number; thermalBurnTick?: number; thermalBurnDamage?: number; bloodStacks?: number; bloodStackDamage?: number };
 type ShotKind =
   | "bullet"
   | "revolver_empowered"
@@ -96,7 +97,7 @@ type DamageNumber = { x: number; y: number; value: number; life: number; maxLife
 type PickupLabel = { x: number; y: number; text: string; life: number; maxLife: number };
 type ChallengeEvent = { id: 1 | 2; x: number; y: number; radius: number; remaining: number; progress: number };
 type SpriteKey = "boss" | "elite" | "wraith" | "charger" | "brute" | "playerIdle" | "playerMove" | "playerCast" | "xpGem" | "specialXP" | "specialArea" | "specialRange" | "specialProjectiles" | "projectile";
-type SpriteMap = Partial<Record<SpriteKey, HTMLImageElement>>;
+type SpriteMap = Partial<Record<SpriteKey | AekashicsEnemyKey, HTMLImageElement>>;
 type PlayerVisualAction = "idle" | "move" | "cast";
 const WEAPON_CONFIG: Record<WeaponId, { name: string; description: string; price: number; purchaseKey: keyof PurchaseState | null; masteryKey: keyof PurchaseState; projectKey: keyof PurchaseState; evolutionName: string }> = {
   void_revolver: { name: "Revólver do Vazio", description: "Rajadas lineares de precisão; a cada seis disparos, uma bala dourada reforçada. Na evolução, cada projétil normal causa 30% do dano e o reforçado 100%.", price: 0, purchaseKey: null, masteryKey: "mastery_void_revolver", projectKey: "evolution_void_revolver", evolutionName: "Seis Ecos" },
@@ -1382,10 +1383,12 @@ function spawnEnemy(game: GameState, missionId: number, elapsed: number, corrupt
           ? { hp: 36 * scale, speed: 105, radius: 11, damage: 10, color: "#e5a45b", xp: 2 }
           : { hp: 28 * scale, speed: 57, radius: 10, damage: 8, color: "#9b91b4", xp: 2 };
   const scaledStats = { ...stats, hp: stats.hp * game.omenEnemyHpMultiplier };
-  game.enemies.push({ x, y, ...scaledStats, maxHp: scaledStats.hp, type, attack: type === "boss" ? 2.2 : 0, flash: 0, windup: 0, targetX: x, targetY: y, dashTime: 0, summonedAtHalf: false, furyTriggered: false });
+  const bossVisuals: AekashicsEnemyKey[] = ["aek_boss_reaper", "aek_boss_lich", "aek_boss_dragon", "aek_boss_golem"];
+  const visual: AekashicsEnemyKey = type === "boss" ? bossVisuals[Math.floor(Math.random() * bossVisuals.length)] : type === "elite" ? "aek_elite" : type === "brute" ? "aek_brute" : type === "charger" ? "aek_charger" : "aek_wraith";
+  game.enemies.push({ x, y, ...scaledStats, maxHp: scaledStats.hp, type, visual, attack: type === "boss" ? 2.2 : 0, flash: 0, windup: 0, targetX: x, targetY: y, dashTime: 0, summonedAtHalf: false, furyTriggered: false });
   // Spawn pressure is bounded. It affects encounter density, not enemy HP directly.
   if (!boss && pressure.enemySpawnScale > 1.25 && game.enemies.length < 48 && Math.random() < 0.18) {
-    game.enemies.push({ x: x + (Math.random() - 0.5) * 70, y: y + (Math.random() - 0.5) * 70, ...scaledStats, maxHp: scaledStats.hp, type, attack: 0, flash: 0, windup: 0, targetX: x, targetY: y, dashTime: 0, summonedAtHalf: false, furyTriggered: false });
+    game.enemies.push({ x: x + (Math.random() - 0.5) * 70, y: y + (Math.random() - 0.5) * 70, ...scaledStats, maxHp: scaledStats.hp, type, visual, attack: 0, flash: 0, windup: 0, targetX: x, targetY: y, dashTime: 0, summonedAtHalf: false, furyTriggered: false });
   }
 }
 
@@ -2315,7 +2318,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
     }
     if (enemy.type === "elite") { ctx.save(); ctx.globalAlpha = .18 + Math.sin(game.elapsed * 4) * .06; ctx.strokeStyle = "#d69cff"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, 0, 105, 0, Math.PI * 2); ctx.stroke(); ctx.restore(); }
     const hurt = enemy.flash > 0;
-    const enemySprite = enemy.type === "boss" ? sprites.boss : enemy.type === "elite" ? sprites.elite : enemy.type === "wraith" ? sprites.wraith : enemy.type === "charger" ? sprites.charger : sprites.brute;
+    const enemySprite = (enemy.visual ? sprites[enemy.visual] : undefined) ?? (enemy.type === "boss" ? sprites.boss : enemy.type === "elite" ? sprites.elite : enemy.type === "wraith" ? sprites.wraith : enemy.type === "charger" ? sprites.charger : sprites.brute);
     if (enemySprite?.complete && enemySprite.naturalWidth > 0) {
       ctx.save();
       const dimensions: Record<Enemy["type"], [number, number, number]> = {
@@ -2743,7 +2746,29 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
       image.onload = () => { if (!cancelled) spritesRef.current[key] = image; };
       image.src = src;
     });
-    return () => { cancelled = true; };
+    // Um atlas compacto contém as oito artes; os recortes são preparados uma vez, fora do loop de jogo.
+    const enemyAtlas = new Image();
+    enemyAtlas.decoding = "async";
+    enemyAtlas.onload = () => {
+      if (cancelled || !enemyAtlas.naturalWidth || !enemyAtlas.naturalHeight) return;
+      const keys: AekashicsEnemyKey[] = ["aek_wraith", "aek_brute", "aek_charger", "aek_elite", "aek_boss_reaper", "aek_boss_lich", "aek_boss_dragon", "aek_boss_golem"];
+      const cellWidth = enemyAtlas.naturalWidth / 4;
+      const cellHeight = enemyAtlas.naturalHeight / 2;
+      for (let index = 0; index < keys.length; index++) {
+        const canvas = document.createElement("canvas");
+        canvas.width = cellWidth;
+        canvas.height = cellHeight;
+        const crop = canvas.getContext("2d");
+        if (!crop) continue;
+        crop.drawImage(enemyAtlas, (index % 4) * cellWidth, Math.floor(index / 4) * cellHeight, cellWidth, cellHeight, 0, 0, cellWidth, cellHeight);
+        const sprite = new Image();
+        sprite.decoding = "async";
+        sprite.onload = () => { if (!cancelled) spritesRef.current[keys[index]] = sprite; };
+        sprite.src = canvas.toDataURL("image/webp", 0.88);
+      }
+    };
+    enemyAtlas.src = "/fractals/sprites/enemies/aekashics-enemy-atlas.webp";
+    return () => { cancelled = true; enemyAtlas.onload = null; };
   }, []);
 
   // Baixa e decodifica o cenário antes da primeira partida, evitando a troca tardia do piso e dos sprites.
