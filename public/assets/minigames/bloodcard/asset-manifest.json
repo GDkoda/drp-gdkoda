@@ -1,0 +1,123 @@
+{
+  "characters": {
+    "file": "sprites/characters-atlas.webp",
+    "cellSize": [
+      50,
+      50
+    ],
+    "columns": 8,
+    "rows": 16,
+    "sourceResolution": [
+      800,
+      1600
+    ],
+    "optimizedResolution": [
+      400,
+      800
+    ],
+    "frames": {
+      "blood-monster": {
+        "idle": 6,
+        "attack": 8,
+        "hurt": 4,
+        "death": 4,
+        "rowBase": 0
+      },
+      "demon": {
+        "idle": 6,
+        "attack": 7,
+        "hurt": 4,
+        "death": 4,
+        "rowBase": 4
+      },
+      "orc": {
+        "idle": 6,
+        "attack": 6,
+        "hurt": 4,
+        "death": 4,
+        "rowBase": 8
+      },
+      "soldier": {
+        "idle": 6,
+        "attack": 6,
+        "hurt": 4,
+        "death": 4,
+        "rowBase": 12
+      }
+    },
+    "actions": [
+      "idle",
+      "attack",
+      "hurt",
+      "death"
+    ]
+  },
+  "effects": {
+    "file": "fx/kenney-fx-atlas.webp",
+    "cellSize": [
+      64,
+      64
+    ],
+    "columns": 2,
+    "rows": 2,
+    "sourceResolution": [
+      256,
+      256
+    ],
+    "optimizedResolution": [
+      128,
+      128
+    ],
+    "cells": {
+      "slash_04.png": {
+        "x": 0,
+        "y": 0
+      },
+      "spark_03.png": {
+        "x": 1,
+        "y": 0
+      },
+      "magic_02.png": {
+        "x": 0,
+        "y": 1
+      },
+      "flame_06.png": {
+        "x": 1,
+        "y": 1
+      }
+    }
+  },
+  "hanna": {
+    "file": "hanna-sigil.webp",
+    "source": "Image supplied by the project owner",
+    "resolution": [
+      256,
+      258
+    ]
+  },
+  "credits": [
+    {
+      "name": "Kenney Particle Pack 1.1",
+      "creator": "Kenney (Kenney.nl)",
+      "license": "CC0 1.0",
+      "note": "Personal and commercial use permitted; credit appreciated but not required."
+    },
+    {
+      "name": "Tiny RPG Character Asset Pack 01 v2.0 - Free Soldier & Orc",
+      "creator": "Zerie",
+      "license": "Personal and commercial video-game projects are permitted; modification is permitted. Redistribution, resale, or re-upload as standalone assets is not allowed.",
+      "officialTerms": "https://zerie.itch.io/tiny-rpg-character-asset-pack"
+    },
+    {
+      "name": "Tiny RPG Character Asset Pack 02 v1.01 - Free Demon_A & Blood Monster_A",
+      "creator": "Zerie",
+      "license": "Personal and commercial video-game projects are permitted; modification is permitted. Redistribution, resale, or re-upload as standalone assets is not allowed.",
+      "officialTerms": "https://zerie.itch.io/tiny-rpg-character-asset-pack-02"
+    },
+    {
+      "name": "Hanna Deity Sigil",
+      "creator": "User-supplied artwork",
+      "license": "Provided by project owner for integration into this personal project."
+    }
+  ]
+}
