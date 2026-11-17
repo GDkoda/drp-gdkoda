@@ -2325,7 +2325,11 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
         boss: [78, 98, 0.68], elite: [46, 52, 0.68], wraith: [34, 52, 0.62],
         charger: [46, 48, 0.66], brute: [56, 64, 0.68],
       };
-      const [spriteWidth, spriteHeight, anchor] = dimensions[enemy.type];
+      const [legacyWidth, legacyHeight, legacyAnchor] = dimensions[enemy.type];
+      // As artes do atlas são quadradas; manter a proporção evita deformar monstros e chefes.
+      const spriteWidth = enemy.visual ? (enemy.type === "boss" ? 86 : enemy.type === "brute" ? 58 : enemy.type === "elite" ? 54 : enemy.type === "charger" ? 50 : 46) : legacyWidth;
+      const spriteHeight = enemy.visual ? spriteWidth : legacyHeight;
+      const anchor = enemy.visual ? 0.74 : legacyAnchor;
       ctx.shadowColor = bossInFury ? "#d41438" : enemy.type === "brute" ? "#9b7bce" : enemy.type === "charger" ? "#b58cff" : "#8b68ff";
       ctx.shadowBlur = 0;
       // Um único passe por sprite evita a troca individual para composição aditiva.
