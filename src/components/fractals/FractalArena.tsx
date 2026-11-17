@@ -898,8 +898,8 @@ function buildEnemySpatialGrid(enemies: Enemy[]): EnemySpatialGrid {
   return grid;
 }
 
-function getNearbyEnemies(x: number, y: number, grid: EnemySpatialGrid): Enemy[] {
-  const nearby: Enemy[] = [];
+function getNearbyEnemies(x: number, y: number, grid: EnemySpatialGrid, nearby: Enemy[] = []): Enemy[] {
+  nearby.length = 0;
   const cellX = Math.floor(x / ENEMY_GRID_CELL_SIZE);
   const cellY = Math.floor(y / ENEMY_GRID_CELL_SIZE);
   for (let offsetY = -1; offsetY <= 1; offsetY++) {
@@ -911,8 +911,8 @@ function getNearbyEnemies(x: number, y: number, grid: EnemySpatialGrid): Enemy[]
   return nearby;
 }
 
-function getEnemiesInRadius(x: number, y: number, radius: number, grid: EnemySpatialGrid): Enemy[] {
-  const nearby: Enemy[] = [];
+function getEnemiesInRadius(x: number, y: number, radius: number, grid: EnemySpatialGrid, nearby: Enemy[] = []): Enemy[] {
+  nearby.length = 0;
   const minCellX = Math.floor((x - radius) / ENEMY_GRID_CELL_SIZE);
   const maxCellX = Math.floor((x + radius) / ENEMY_GRID_CELL_SIZE);
   const minCellY = Math.floor((y - radius) / ENEMY_GRID_CELL_SIZE);
@@ -4409,6 +4409,8 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         // A grade só é criada quando algum ataque realmente precisa testar colisões.
         // Os impactos do Grilhão são espaçados; não é necessário reconstruí-la a cada frame.
         let collisionGrid: EnemySpatialGrid | null = null;
+        // Reutiliza o mesmo buffer durante todo o passe; cada consulta o limpa antes de preenchê-lo.
+        const nearbyTargetsScratch: Enemy[] = [];
         for (const shot of game.shots) {
           // A aura é processada exclusivamente pelo sistema de Vínculos Rituais acima.
           if (shot.kind === "gravity_well" && shot.isAura) continue;
@@ -4420,14 +4422,13 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           }
           const isBloodTrail = shot.kind === "blood_trail";
           const wideAttack = shot.kind === "scythe_slash" || shot.kind === "sentinel_explosion" || shot.kind === "rift_blast" || shot.kind === "rift_residue" || shot.kind === "boomerang_catch" || shot.kind === "blood_ritual_blast" || isBloodTrail || (shot.kind === "fractal_boomerang" && shot.phase === "spin") || isPulsingField;
-          let nearbyTargets: Enemy[];
           // As demais armas continuam consultando a grade espacial sob demanda.
           if (!collisionGrid) collisionGrid = buildEnemySpatialGrid(game.enemies);
           const trailHalfLength = isBloodTrail ? Math.hypot((shot.endX ?? shot.x) - (shot.startX ?? shot.x), (shot.endY ?? shot.y) - (shot.startY ?? shot.y)) * 0.5 : 0;
           const queryRadius = isBloodTrail ? trailHalfLength + (shot.radius ?? 19) + 42 : (shot.radius ?? 180) + 42;
-          nearbyTargets = wideAttack
-            ? getEnemiesInRadius(shot.x, shot.y, queryRadius, collisionGrid)
-            : getNearbyEnemies(shot.x, shot.y, collisionGrid);
+          const nearbyTargets = wideAttack
+            ? getEnemiesInRadius(shot.x, shot.y, queryRadius, collisionGrid, nearbyTargetsScratch)
+            : getNearbyEnemies(shot.x, shot.y, collisionGrid, nearbyTargetsScratch);
           if (!wideAttack && shot.targetEnemy && !nearbyTargets.includes(shot.targetEnemy)) nearbyTargets.push(shot.targetEnemy);
           for (const enemy of nearbyTargets) {
             if (enemy.hp <= 0 || shot.hitTargets.includes(enemy)) continue;
