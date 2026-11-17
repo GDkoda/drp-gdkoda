@@ -70,20 +70,16 @@ const PARTICLE_POOL_CAPACITY = 256;
 const PARTICLE_ACTIVE_CAPACITY = 200;
 const particlePool: Particle[] = [];
 
-function spawnParticle(game: GameState, particle: Particle): void {
+function spawnParticle(game: GameState, x: number, y: number, vx: number, vy: number, life: number, color: string): void {
   if (game.particles.length >= PARTICLE_ACTIVE_CAPACITY) return;
-  const reused = particlePool.pop();
-  if (reused) {
-    reused.x = particle.x;
-    reused.y = particle.y;
-    reused.vx = particle.vx;
-    reused.vy = particle.vy;
-    reused.life = particle.life;
-    reused.color = particle.color;
-    game.particles[game.particles.length] = reused;
-  } else {
-    game.particles[game.particles.length] = particle;
-  }
+  const particle = particlePool.pop() ?? { x, y, vx, vy, life, color };
+  particle.x = x;
+  particle.y = y;
+  particle.vx = vx;
+  particle.vy = vy;
+  particle.life = life;
+  particle.color = color;
+  game.particles[game.particles.length] = particle;
 }
 
 function recycleParticle(particle: Particle): void {
@@ -1340,11 +1336,7 @@ function spawnBloodRitualBlast(game: GameState): void {
   for (let particle = 0; particle < 18 && game.particles.length < 75; particle++) {
     const particleAngle = particle / 18 * Math.PI * 2;
     const particleSpeed = 70 + (particle % 3) * 42;
-    spawnParticle(game, {
-      x: game.player.x, y: game.player.y,
-      vx: Math.cos(particleAngle) * particleSpeed, vy: Math.sin(particleAngle) * particleSpeed,
-      life: 0.32 + (particle % 3) * 0.08, color: particle % 2 ? "#fda4af" : "#991b1b",
-    });
+    spawnParticle(game, game.player.x, game.player.y, Math.cos(particleAngle) * particleSpeed, Math.sin(particleAngle) * particleSpeed, 0.32 + (particle % 3) * 0.08, particle % 2 ? "#fda4af" : "#991b1b");
   }
 }
 
@@ -3204,13 +3196,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
         for (let i = 0; i < count && game.particles.length < 80; i++) {
           const angle = Math.random() * Math.PI * 2;
           const speed = 50 + Math.random() * (big ? 200 : 120);
-          spawnParticle(game, {
-            x: enemy.x, y: enemy.y,
-            vx: Math.cos(angle) * speed,
-            vy: Math.sin(angle) * speed,
-            life: 0.28 + Math.random() * 0.25,
-            color: i % 3 === 0 ? "#fff1ff" : i % 3 === 1 ? "#b98cff" : enemy.color,
-          });
+          spawnParticle(game, enemy.x, enemy.y, Math.cos(angle) * speed, Math.sin(angle) * speed, 0.28 + Math.random() * 0.25, i % 3 === 0 ? "#fff1ff" : i % 3 === 1 ? "#b98cff" : enemy.color);
         }
         (game.rings ??= []).push({
           x: enemy.x, y: enemy.y, r: 6,
@@ -3239,7 +3225,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
       }
       for (let i = 0; i < 18 && game.particles.length < 110; i++) {
         const angle = i / 18 * Math.PI * 2;
-        spawnParticle(game, { x: game.player.x, y: game.player.y, vx: Math.cos(angle) * 125, vy: Math.sin(angle) * 125, life: 0.28, color: "#fb7185" });
+        spawnParticle(game, game.player.x, game.player.y, Math.cos(angle) * 125, Math.sin(angle) * 125, 0.28, "#fb7185");
       }
     };
 
@@ -3360,13 +3346,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               game.player.castTimer = Math.max(game.player.castTimer, 0.2);
               if (game.particles.length < 75) for (let particle = 0; particle < 5; particle++) {
                 const side = (particle - 2) * 5;
-                spawnParticle(game, {
-                  x: game.player.x - game.player.dashX * 10 - game.player.dashY * side,
-                  y: game.player.y - game.player.dashY * 10 + game.player.dashX * side,
-                  vx: -game.player.dashX * (30 + particle * 8),
-                  vy: -game.player.dashY * (30 + particle * 8),
-                  life: 0.28, color: particle % 2 ? "#fda4af" : "#ef4444",
-                });
+                spawnParticle(game, game.player.x - game.player.dashX * 10 - game.player.dashY * side, game.player.y - game.player.dashY * 10 + game.player.dashX * side, -game.player.dashX * (30 + particle * 8), -game.player.dashY * (30 + particle * 8), 0.28, particle % 2 ? "#fda4af" : "#ef4444");
               }
             }
             (game.rings ??= []).push({ x: game.player.x, y: game.player.y, r: 8, max: 34 + purchasesRef.current.dash * 10, life: 0.3, color: purchasesRef.current.dash >= 3 ? "#f43f5e" : purchasesRef.current.dash >= 2 ? "#facc15" : purchasesRef.current.dash >= 1 ? "#67e8f9" : "#c4b5fd" });
@@ -3475,7 +3455,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               compactInPlace(game.enemies,(enemy)=>enemy.hp>0);
               game.rings = [...(game.rings ?? []), { x: centerX, y: centerY, r: 12, max: 460, life: 1.1, color: "#c084fc" }];
               game.shake = Math.max(game.shake ?? 0, 13);
-              for(let i=0;i<42;i++){const a=Math.random()*Math.PI*2,sp=70+Math.random()*260;spawnParticle(game, {x:centerX,y:centerY,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:.5+Math.random()*.5,color:i%2?"#d8b4fe":"#f0abfc"});}
+              for(let i=0;i<42;i++){const a=Math.random()*Math.PI*2,sp=70+Math.random()*260;spawnParticle(game, centerX, centerY, Math.cos(a)*sp, Math.sin(a)*sp, .5+Math.random()*.5, i%2?"#d8b4fe":"#f0abfc");}
               game.challengeEvent = null; eventRewardRemainingRef.current = 2; setEventRewardStep(1); setSelectedUpgrade(null); setFlippedCardId(null);
               setLevelChoices(buildLevelChoices(game,purchasesRef.current));
               toast.success("Ritual da Fenda Rúnica concluído! A onda de choque rompeu a horda. Duas dádivas aguardam.");
@@ -3611,11 +3591,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             for (let p = 0; p < 8; p++) {
               const pAngle = slashAngle + (Math.random() - 0.5) * arcSpan;
               const pDist = slashRadius * (0.85 + Math.random() * 0.3);
-              spawnParticle(game, {
-                x: game.player.x + Math.cos(pAngle) * pDist, y: game.player.y + Math.sin(pAngle) * pDist,
-                vx: Math.cos(pAngle) * (40 + Math.random() * 80), vy: Math.sin(pAngle) * (40 + Math.random() * 80),
-                life: 0.35 + Math.random() * 0.25, color: game.evolved ? (Math.random() > 0.5 ? "#2dd4bf" : "#0b0f17") : (Math.random() > 0.4 ? "#5eead4" : "#99f6e4"),
-              });
+              spawnParticle(game, game.player.x + Math.cos(pAngle) * pDist, game.player.y + Math.sin(pAngle) * pDist, Math.cos(pAngle) * (40 + Math.random() * 80), Math.sin(pAngle) * (40 + Math.random() * 80), 0.35 + Math.random() * 0.25, game.evolved ? (Math.random() > 0.5 ? "#2dd4bf" : "#0b0f17") : (Math.random() > 0.4 ? "#5eead4" : "#99f6e4"));
             }
             game.player.castFacing = game.player.facing;
             game.player.castTimer = 0.24;
@@ -3707,8 +3683,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               (game.rings ??= []).push({ x: position.x, y: position.y, r: 3, max: 32, life: 0.42, color: "#a78bfa" });
               if (game.particles.length < 126) for (let particle = 0; particle < 5; particle++) {
                 const particleAngle = particle / 5 * Math.PI * 2, particleSpeed = 36 + particle * 7;
-                spawnParticle(game, { x: position.x, y: position.y, vx: Math.cos(particleAngle) * particleSpeed,
-                  vy: Math.sin(particleAngle) * particleSpeed, life: 0.22, color: particle % 2 ? "#c4b5fd" : "#67e8f9" });
+                spawnParticle(game, position.x, position.y, Math.cos(particleAngle) * particleSpeed, Math.sin(particleAngle) * particleSpeed, 0.22, particle % 2 ? "#c4b5fd" : "#67e8f9");
               }
             }
             game.player.castFacing = directionFromVector(target.x - game.player.x, target.y - game.player.y);
@@ -3821,7 +3796,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               if (game.particles.length < 128) {
                 const trailAngle = Math.atan2(shot.vy, shot.vx) + Math.PI;
                 const trailColor = shot.phase === "return" ? "#67e8f9" : game.evolved ? "#e879f9" : "#c4b5fd";
-                spawnParticle(game, { x: shot.x, y: shot.y, vx: Math.cos(trailAngle) * 34, vy: Math.sin(trailAngle) * 34, life: 0.17, color: trailColor });
+                spawnParticle(game, shot.x, shot.y, Math.cos(trailAngle) * 34, Math.sin(trailAngle) * 34, 0.17, trailColor);
               }
             }
             if (shot.phase === "outbound") {
@@ -3837,8 +3812,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                   shot.life = Math.max(shot.life, 0.85);
                   if (game.particles.length < 128) for (let particle = 0; particle < 10; particle++) {
                     const angle = particle / 10 * Math.PI * 2, particleSpeed = 65 + (particle % 3) * 24;
-                    spawnParticle(game, { x: shot.x, y: shot.y, vx: Math.cos(angle) * particleSpeed, vy: Math.sin(angle) * particleSpeed,
-                      life: 0.28 + (particle % 2) * 0.08, color: particle % 2 ? "#f0abfc" : "#67e8f9" });
+                    spawnParticle(game, shot.x, shot.y, Math.cos(angle) * particleSpeed, Math.sin(angle) * particleSpeed, 0.28 + (particle % 2) * 0.08, particle % 2 ? "#f0abfc" : "#67e8f9");
                   }
                 } else { shot.phase = "return"; shot.radius = 17; }
                 const shardLevel = game.upgradeCounts.gift_boomerang_shards?.count ?? 0;
@@ -3880,8 +3854,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                     life: 0.38, color: "#a5f3fc" });
                   if (game.particles.length < 132) for (let particle = 0; particle < 8; particle++) {
                     const angle = particle / 8 * Math.PI * 2;
-                    spawnParticle(game, { x: game.player.x, y: game.player.y, vx: Math.cos(angle) * 90, vy: Math.sin(angle) * 90,
-                      life: 0.22, color: "#a5f3fc" });
+                    spawnParticle(game, game.player.x, game.player.y, Math.cos(angle) * 90, Math.sin(angle) * 90, 0.22, "#a5f3fc");
                   }
                 }
               }
@@ -3958,8 +3931,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                 (game.rings ??= []).push({ x: mine.x, y: mine.y, r: 8, max: mine.blastRadius, life: 0.55, color: "#c084fc" });
                 if (game.particles.length < 126) for (let particle = 0; particle < 12; particle++) {
                   const angle = particle / 12 * Math.PI * 2, particleSpeed = 80 + (particle % 4) * 34;
-                  spawnParticle(game, { x: mine.x, y: mine.y, vx: Math.cos(angle) * particleSpeed, vy: Math.sin(angle) * particleSpeed,
-                    life: 0.34 + (particle % 3) * 0.06, color: particle % 2 ? "#c4b5fd" : "#67e8f9" });
+                  spawnParticle(game, mine.x, mine.y, Math.cos(angle) * particleSpeed, Math.sin(angle) * particleSpeed, 0.34 + (particle % 3) * 0.06, particle % 2 ? "#c4b5fd" : "#67e8f9");
                 }
                 const shardLevel = game.upgradeCounts.gift_rift_shards?.count ?? 0;
                 const shardCount = shardLevel > 0 ? Math.min(5, 2 + shardLevel) : 0;
@@ -4102,7 +4074,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               const burnDamage = enemy.thermalBurnDamage ?? 0;
               enemy.hp = Math.max(0, enemy.hp - burnDamage);
               game.totalDamageDealt += burnDamage;
-              if (game.particles.length < 100) spawnParticle(game, { x: enemy.x, y: enemy.y, vx: (Math.random() - 0.5) * 50, vy: -25 - Math.random() * 35, life: 0.3, color: "#fb923c" });
+              if (game.particles.length < 100) spawnParticle(game, enemy.x, enemy.y, (Math.random() - 0.5) * 50, -25 - Math.random() * 35, 0.3, "#fb923c");
               if (enemy.hp <= 0) { handleEnemyDefeat(game, enemy); continue; }
             }
             if (enemy.thermalBurnTimer <= 0) {
@@ -4138,7 +4110,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
                 for (let particle = 0; particle < 26; particle++) {
                   const angle = Math.random() * Math.PI * 2;
                   const speed = 70 + Math.random() * 190;
-                  spawnParticle(game, { x: enemy.x, y: enemy.y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 0.45 + Math.random() * 0.45, color: particle % 2 ? "#ff4b55" : "#ff9a54" });
+                  spawnParticle(game, enemy.x, enemy.y, Math.cos(angle) * speed, Math.sin(angle) * speed, 0.45 + Math.random() * 0.45, particle % 2 ? "#ff4b55" : "#ff9a54");
                 }
                 toast.error("O GUARDIÃO ENTROU EM FÚRIA!");
               }
@@ -4168,7 +4140,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             if (inFury && !enemy.furyTriggered) {
               enemy.furyTriggered = true;
               game.shake = 14;
-              for (let i = 0; i < 26; i++) { const angle = Math.random() * Math.PI * 2; const speed = 70 + Math.random() * 190; spawnParticle(game, { x: enemy.x, y: enemy.y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 0.45 + Math.random() * 0.45, color: i % 2 ? "#ff4b55" : "#ff9a54" }); }
+              for (let i = 0; i < 26; i++) { const angle = Math.random() * Math.PI * 2; const speed = 70 + Math.random() * 190; spawnParticle(game, enemy.x, enemy.y, Math.cos(angle) * speed, Math.sin(angle) * speed, 0.45 + Math.random() * 0.45, i % 2 ? "#ff4b55" : "#ff9a54"); }
               toast.error("O GUARDIÃO ENTROU EM FÚRIA!");
             }
             if (enemy.windup > 0) {
@@ -4224,7 +4196,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               enemy.windup = Math.max(0, enemy.windup - dt);
               if (enemy.windup === 0) {
                 if (distance(game.player.x, game.player.y, enemy.x, enemy.y) < 78 + 12 && game.player.invuln <= 0) { applyPlayerDamage(game, enemy.damage * 1.35, .8);  }
-                for (let i=0;i<5;i++) { const a=i*Math.PI*2/5; spawnParticle(game, {x:enemy.x,y:enemy.y,vx:Math.cos(a)*105,vy:Math.sin(a)*105,life:.35,color:"#e7a56d"}); }
+                for (let i=0;i<5;i++) { const a=i*Math.PI*2/5; spawnParticle(game, enemy.x, enemy.y, Math.cos(a)*105, Math.sin(a)*105, .35, "#e7a56d"); }
                 (game.rings ??= []).push({ x: enemy.x, y: enemy.y, r: 12, max: 82, life: 0.35, color: "#ffb36b" }); game.shake = Math.max(game.shake ?? 0, 4);
                 enemy.attack = 2.7;
               }
@@ -4305,12 +4277,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           for (let particle = 0; particle < 14; particle++) {
             const angle = Math.random() * Math.PI * 2;
             const speed = 70 + Math.random() * 220;
-            spawnParticle(game, {
-              x: totem.x, y: totem.y,
-              vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
-              life: 0.4 + Math.random() * 0.55,
-              color: game.evolved ? (particle % 2 ? "#7f1d1d" : "#ef4444") : (particle % 2 ? "#fbbf24" : "#22d3ee"),
-            });
+            spawnParticle(game, totem.x, totem.y, Math.cos(angle) * speed, Math.sin(angle) * speed, 0.4 + Math.random() * 0.55, game.evolved ? (particle % 2 ? "#7f1d1d" : "#ef4444") : (particle % 2 ? "#fbbf24" : "#22d3ee"));
           }
           game.sentinelTotems.splice(totemIndex, 1);
         }
@@ -4557,14 +4524,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
               if (game.particles.length < 75) {
                 const bloodImpact = game.weaponId === "blood_spear"
                   && (shot.kind === "blood_spear" || shot.kind === "blood_spear_rain" || shot.kind === "blood_trail" || shot.kind === "blood_ritual_blast");
-                spawnParticle(game, {
-                  x: shot.x,
-                  y: shot.y,
-                  vx: (Math.random() - 0.5) * 140,
-                  vy: (Math.random() - 0.5) * 140,
-                  life: 0.18,
-                  color: bloodImpact ? (isCrit ? "#fff1f2" : "#fb7185") : shot.isAnchorBurst ? "#fbbf24" : shot.isChainLightning ? "#67e8f9" : "#f3dcff",
-                });
+                spawnParticle(game, shot.x, shot.y, (Math.random() - 0.5) * 140, (Math.random() - 0.5) * 140, 0.18, bloodImpact ? (isCrit ? "#fff1f2" : "#fb7185") : shot.isAnchorBurst ? "#fbbf24" : shot.isChainLightning ? "#67e8f9" : "#f3dcff");
               }
               game.damageNumbers.push({
                 x: enemy.x + (Math.random() - 0.5) * 8,
@@ -4771,13 +4731,13 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             urn.hp -= 1; urn.contactCooldown = 0.35;
             for (let p = 0; p < 4; p++) {
               const angle = Math.random() * Math.PI * 2, speed = 25 + Math.random() * 85;
-              spawnParticle(game, { x: urn.x, y: urn.y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 0.25 + Math.random() * 0.25, color: "#b7a4b9" });
+              spawnParticle(game, urn.x, urn.y, Math.cos(angle) * speed, Math.sin(angle) * speed, 0.25 + Math.random() * 0.25, "#b7a4b9");
             }
             if (urn.hp <= 0) {
               urn.broken = true;
               for (let p = 0; p < 18; p++) {
                 const angle = Math.random() * Math.PI * 2, speed = 45 + Math.random() * 170;
-                spawnParticle(game, { x: urn.x, y: urn.y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 0.35 + Math.random() * 0.45, color: p % 2 ? "#c4b5c5" : "#8f7b99" });
+                spawnParticle(game, urn.x, urn.y, Math.cos(angle) * speed, Math.sin(angle) * speed, 0.35 + Math.random() * 0.45, p % 2 ? "#c4b5c5" : "#8f7b99");
               }
               const roll = Math.random(), fortuneBonus = [0, 0.10, 0.20, 0.30, 0.40, 0.50][Math.max(0, Math.min(5, purchasesRef.current.fortune))];
               const specialMultiplier = (1 + fortuneBonus) * game.omenRewardMultiplier;
@@ -4815,7 +4775,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             const pull = 260 * dt;
             gem.x += ((game.player.x - gem.x) / Math.max(1, d)) * pull;
             gem.y += ((game.player.y - gem.y) / Math.max(1, d)) * pull;
-            spawnParticle(game, { x: gem.x, y: gem.y, vx: (game.player.x - gem.x) * 0.16 + (Math.random() - 0.5) * 22, vy: (game.player.y - gem.y) * 0.16 + (Math.random() - 0.5) * 22, life: 0.22, color: Math.random() > 0.5 ? "#a78bfa" : "#38bdf8" });
+            spawnParticle(game, gem.x, gem.y, (game.player.x - gem.x) * 0.16 + (Math.random() - 0.5) * 22, (game.player.y - gem.y) * 0.16 + (Math.random() - 0.5) * 22, 0.22, Math.random() > 0.5 ? "#a78bfa" : "#38bdf8");
             // O rastro é desenhado no Canvas usando a posição anterior e a atual.
             gem.previousX = previousX;
             gem.previousY = previousY;
@@ -4926,7 +4886,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
           game.rings = [...(game.rings ?? []), { x: game.player.x, y: game.player.y, r: 10, max: 220, life: 1.1, color: "#fbbf24" }];
           for (let i = 0; i < 32; i++) {
             const angle = Math.random() * Math.PI * 2, speed = 45 + Math.random() * 180;
-            spawnParticle(game, { x: game.player.x, y: game.player.y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 0.45 + Math.random() * 0.55, color: i % 2 ? "#fbbf24" : "#f5d0fe" });
+            spawnParticle(game, game.player.x, game.player.y, Math.cos(angle) * speed, Math.sin(angle) * speed, 0.45 + Math.random() * 0.55, i % 2 ? "#fbbf24" : "#f5d0fe");
           }
 
           if (consumedAnchorNumber === 2 && purchasesRef.current.anchor_soul >= 3) {
@@ -4936,7 +4896,7 @@ export function FractalArena({ isMaster = false }: { isMaster?: boolean }) {
             game.rings = [...(game.rings ?? []), { x: game.player.x, y: game.player.y, r: 18, max: burstRadius, life: 0.85, color: "#fbbf24" }];
             for (let i = 0; i < 42; i++) {
               const angle = Math.random() * Math.PI * 2, speed = 70 + Math.random() * 230;
-              spawnParticle(game, { x: game.player.x, y: game.player.y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 0.35 + Math.random() * 0.55, color: i % 2 ? "#fbbf24" : "#fff1b3" });
+              spawnParticle(game, game.player.x, game.player.y, Math.cos(angle) * speed, Math.sin(angle) * speed, 0.35 + Math.random() * 0.55, i % 2 ? "#fbbf24" : "#fff1b3");
             }
             for (const enemy of burstTargets) {
               game.shots.push({
