@@ -1873,6 +1873,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, corruption: nu
       if (game.evolved) { ctx.globalAlpha = lifeRatio * 0.8; ctx.fillStyle = "#05080f"; crescent(radius - thick * 0.25, thick * 0.3); ctx.fill(); }
       ctx.globalAlpha = lifeRatio * 0.95; ctx.strokeStyle = "#ccfbf1"; ctx.lineWidth = game.evolved ? 4 : 3;
       ctx.beginPath(); ctx.arc(0, 0, radius + 4, startAngle, sweepEnd); ctx.stroke();
+      if (!lowQuality) drawFractalFxAtlas(ctx, "slash", 0, 0, radius * 1.05, lifeRatio * (mediumQuality ? 0.22 : 0.34), centerAngle);
       ctx.restore();
       return;
     }
